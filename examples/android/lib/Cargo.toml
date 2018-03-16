@@ -1,0 +1,14 @@
+[package]
+name = "servo_media_android"
+description = "Android lib to use Servo Media from Android Java"
+version = "0.1.0"
+authors = ["Fernando Jiménez Moreno <ferjmoreno@gmail.com>"]
+
+[lib]
+crate-type = ["dylib"]
+
+[dependencies]
+servo-media = { path = "../../.." }
+
+[target.'cfg(target_os="android")'.dependencies]
+jni = { version = "0.5", default-features = false }
