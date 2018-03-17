@@ -1,6 +1,6 @@
 mod backends;
 
-#[cfg(feature = "gstreamer")]
+#[cfg(feature = "gst")]
 use backends::gstreamer::GStreamer;
 
 pub trait ServoMediaBackend {
@@ -10,7 +10,7 @@ pub trait ServoMediaBackend {
 pub struct ServoMedia {}
 
 impl ServoMedia {
-    #[cfg(feature = "gstreamer")]
+    #[cfg(feature = "gst")]
     pub fn backend_id() -> String {
         GStreamer::backend_id()
     }
@@ -22,7 +22,7 @@ mod tests {
     fn test_backend_id() {
         use ServoMedia;
 
-        #[cfg(feature = "gstreamer")]
-        assert_eq!(ServoMedia::backend_id(), "GStreamer");
+        #[cfg(feature = "gst")]
+        assert_eq!(ServoMedia::backend_id(), "GStreamer 1.12.4");
     }
 }

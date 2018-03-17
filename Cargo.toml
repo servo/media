@@ -8,7 +8,8 @@ license = "MPL-2.0"
 name = "servo_media"
 
 [features]
-default = ["gstreamer"]
-gstreamer = []
+default = ["gst"]
+gst = ["gstreamer"]
 
 [dependencies]
+gstreamer = { version = "0.10.2", optional = true }
