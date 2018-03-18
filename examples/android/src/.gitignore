@@ -7,3 +7,5 @@
 /build
 /captures
 .externalNativeBuild
+app/src/main/jniLibs/armeabi/libgstreamer_android.so
+app/src/main/jniLibs/armeabi/libservo_media_android.so

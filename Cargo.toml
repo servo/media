@@ -13,3 +13,7 @@ gst = ["gstreamer"]
 
 [dependencies]
 gstreamer = { version = "0.10.2", optional = true }
+
+[build-dependencies]
+regex = "0.2.10"
+zip = "0.3.1"
