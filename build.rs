@@ -67,7 +67,7 @@ fn android_main(target: &str) {
             let expr = format!("s#libdir=.*#libdir={}#g", &lib_dir.to_str().unwrap());
             let pkg_config_dir_str = outpath.to_str().unwrap();
             let status =
-                Command::new("sed").arg("-i").arg("-e").arg(&expr).arg(&pkg_config_dir_str).status().unwrap();
+                Command::new("sed").arg("-i").arg(".bak").arg(&expr).arg(&pkg_config_dir_str).status().unwrap();
             if !status.success() {
                 panic!("Could not modify pkgconfig data {}", status);
             }
