@@ -54,6 +54,23 @@ fn android_main(target: &str) {
             }
             let mut outfile = fs::File::create(&outpath).unwrap();
             io::copy(&mut file, &mut outfile).unwrap();
+
+            if outpath.extension().unwrap() != "pc" {
+                continue;
+            }
+
+            // If this is a .pc file, change pkgconfig info to make all GStreamer
+            // dependencies point to libgstreamer_android.so
+            let mut lib_dir = env::current_dir().unwrap();
+            lib_dir.push("target");
+            lib_dir.push(lib_file_name);
+            let expr = format!("s#libdir=.*#libdir={}#g", &lib_dir.to_str().unwrap());
+            let pkg_config_dir_str = outpath.to_str().unwrap();
+            let status =
+                Command::new("sed").arg("-i").arg("-e").arg(&expr).arg(&pkg_config_dir_str).status().unwrap();
+            if !status.success() {
+                panic!("Could not modify pkgconfig data {}", status);
+            }
         }
 
         // Get and Set permissions
@@ -69,22 +86,6 @@ fn android_main(target: &str) {
 
     // Remove downloaded zip
     fs::remove_file("lib.zip").unwrap();
-
-    // Change pkgconfig info to make all GStreamer dependencies point to
-    // libgstreamer_android.so
-    let mut lib_dir = env::current_dir().unwrap();
-    lib_dir.push("target");
-    lib_dir.push(lib_file_name);
-    let mut pkg_config_dir = lib_dir.clone();
-    let lib_dir_str = lib_dir.to_str().unwrap();
-    let expr = format!("'s?libdir=.*?libdir={}?g'", &lib_dir_str);
-    pkg_config_dir.push("pkgconfig");
-    pkg_config_dir.push("*");
-    let pkg_config_dir_str = pkg_config_dir.to_str().unwrap();
-    let status = Command::new("perl").arg("-i").arg("-pe").arg(&expr).arg(&pkg_config_dir_str).status().unwrap();
-    if !status.success() {
-        panic!("Could not modify pkgconfig data {}", status);
-    }
 }
 
 fn sanitize_filename(filename: &str) -> std::path::PathBuf {
