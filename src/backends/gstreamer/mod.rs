@@ -1,15 +1,17 @@
 extern crate glib;
-extern crate gst_plugin;
 extern crate gstreamer_audio as gst_audio;
 extern crate gstreamer_base as gst_base;
 
-mod src_element;
+// XXX not needed at some point.
+extern crate byte_slice_cast;
+extern crate num_traits;
+
+pub mod src_element;
 
 use gst;
+use ServoMediaBackend;
 
 pub struct GStreamer {}
-
-use ServoMediaBackend;
 
 impl ServoMediaBackend for GStreamer {
     fn backend_id() -> String {

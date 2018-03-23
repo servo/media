@@ -6,10 +6,12 @@ license = "MPL-2.0"
 
 [lib]
 name = "servo_media"
+crate-type = ["cdylib"]
+path = "src/lib.rs"
 
 [features]
 default = ["gst"]
-gst = ["gstreamer", "glib", "gst-plugin", "gstreamer-audio", "gstreamer-base"]
+gst = ["gstreamer", "glib", "gst-plugin", "gstreamer-audio", "gstreamer-base", "byte-slice-cast", "num-traits"]
 
 [dependencies]
 glib = { version = "0.4", optional = true }
@@ -17,6 +19,8 @@ gst-plugin = { version = "0.1", optional = true }
 gstreamer = { version = "0.10.2", optional = true }
 gstreamer-audio = { version = "0.10", optional = true }
 gstreamer-base = { version = "0.10.2", optional = true }
+byte-slice-cast = { version = "0.1", optional = true }
+num-traits = { version = "0.1", optional = true }
 
 [build-dependencies]
 regex = "0.2.10"
