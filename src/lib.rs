@@ -1,3 +1,7 @@
+#[cfg(feature = "gst")]
+#[macro_use]
+extern crate gstreamer as gst;
+
 mod backends;
 
 #[cfg(feature = "gst")]
