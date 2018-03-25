@@ -6,7 +6,7 @@ use std::ffi::{CString};
 
 #[no_mangle]
 pub extern fn servo_media_backend_id() -> *mut c_char {
-    CString::new(ServoMedia::backend_id()).unwrap().into_raw()
+    CString::new(ServoMedia::get().version()).unwrap().into_raw()
 }
 
 /// Expose the JNI interface for android below

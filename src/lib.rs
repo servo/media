@@ -9,8 +9,26 @@ extern crate gst_plugin;
 mod backends;
 
 #[cfg(feature = "gst")]
-use backends::gstreamer::GStreamer;
-use backends::gstreamer::src_element;
+use backends::gstreamer::{GStreamer, src_element};
+
+pub trait AudioStream {
+    fn play(&self);
+    fn stop(&self);
+}
+
+pub trait ServoMediaBackend {
+    fn version(&self) -> String;
+    fn get_audio_stream(&self) -> Result<Box<AudioStream>, ()>;
+}
+
+pub struct ServoMedia {}
+
+impl ServoMedia {
+    #[cfg(feature = "gst")]
+    pub fn get() -> Box<ServoMediaBackend> {
+        Box::new(GStreamer::new())
+    }
+}
 
 #[cfg(feature = "gst")]
 plugin_define!(
@@ -31,19 +49,6 @@ fn plugin_init(plugin: &gst::Plugin) -> bool {
     true
 }
 
-pub trait ServoMediaBackend {
-    fn backend_id() -> String;
-}
-
-pub struct ServoMedia {}
-
-impl ServoMedia {
-    #[cfg(feature = "gst")]
-    pub fn backend_id() -> String {
-        GStreamer::backend_id()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     #[test]
@@ -51,6 +56,6 @@ mod tests {
         use ServoMedia;
 
         #[cfg(feature = "gst")]
-        assert_eq!(ServoMedia::backend_id(), "GStreamer 1.12.4");
+        assert_eq!(ServoMedia::get().version(), "GStreamer 1.14.0");
     }
 }
