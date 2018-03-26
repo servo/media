@@ -1,5 +1,5 @@
 [package]
-name = "servo-media"
+name = "servo_media"
 version = "0.1.0"
 authors = ["Fernando Jiménez Moreno <ferjmoreno@gmail.com>"]
 license = "MPL-2.0"

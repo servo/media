@@ -8,7 +8,7 @@ authors = ["Fernando Jiménez Moreno <ferjmoreno@gmail.com>"]
 crate-type = ["dylib"]
 
 [dependencies]
-servo-media = { path = "../../.." }
+servo_media = { path = "../../.." }
 
 [target.'cfg(target_os="android")'.dependencies]
 jni = { version = "0.5", default-features = false }
