@@ -1,4 +1,3 @@
-extern crate glib;
 extern crate gstreamer_audio as gst_audio;
 extern crate gstreamer_base as gst_base;
 
