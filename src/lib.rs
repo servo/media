@@ -28,11 +28,17 @@ impl ServoMedia {
 
 #[cfg(test)]
 mod tests {
+    use ServoMedia;
+
     #[test]
     fn test_backend_id() {
-        use ServoMedia;
-
         #[cfg(feature = "gst")]
         assert_eq!(ServoMedia::get().version(), "GStreamer 1.14.0");
+    }
+
+    #[test]
+    fn test_audio_stream() {
+        #[cfg(feature = "gst")]
+        ServoMedia::get().get_audio_stream().unwrap().play();
     }
 }
