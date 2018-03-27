@@ -1,12 +1,12 @@
 use gst;
-use gst_plugin::base_src::*;
-use gst_plugin::element::*;
-use gst_plugin::object::*;
 use std::i32;
 use std::ops::Rem;
 use std::sync::Mutex;
 use super::gst_audio;
 use super::gst_base::prelude::*;
+use super::gst_plugin::base_src::*;
+use super::gst_plugin::element::*;
+use super::gst_plugin::object::*;
 
 // XXX not needed at some point.
 use super::num_traits::float::Float;
@@ -364,7 +364,7 @@ impl ImplTypeStatic<BaseSrc> for AudioSrcStatic {
 // Registers the type for our element, and then registers in GStreamer under
 // the name "servoaudiosrc" for being able to instantiate it via e.g.
 // gst::ElementFactory::make().
-pub fn register(plugin: &gst::Plugin) {
+pub fn register() {
     let type_ = register_type(AudioSrcStatic);
-    gst::Element::register(plugin, "servoaudiosrc", 0, type_);
+    gst::Element::register(None, "servoaudiosrc", 0, type_);
 }
