@@ -5,7 +5,7 @@ version = "0.1.0"
 authors = ["Fernando Jiménez Moreno <ferjmoreno@gmail.com>"]
 
 [lib]
-crate-type = ["dylib"]
+crate-type = ["cdylib"]
 
 [dependencies]
 servo_media = { path = "../../.." }

@@ -4,10 +4,11 @@ cd ../../
 export PKG_CONFIG_PATH=${PWD}/target/gst-build-armeabi/pkgconfig
 cd ${ROOT}
 cd lib
-PKG_CONFIG_ALLOW_CROSS=1 cargo build
+PKG_CONFIG_ALLOW_CROSS=1 PKG_CONFIG_PATH=${PKG_CONFIG_PATH} cargo build
 export PKG_CONFIG_PATH=$PKG_CONFIG_PATH_OLD
 cd ../src/app/src/main/
 
+rm -rf jniLibs
 mkdir jniLibs 2>&1 >/dev/null
 mkdir jniLibs/armeabi 2>&1 >/dev/null
 

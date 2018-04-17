@@ -27,7 +27,7 @@ fn android_main(target: &str) {
         panic!("Invalid target architecture {}", target);
     };
 
-    let url = format!("https://github.com/ferjm/libgstreamer_android_gen/blob/gh-pages/out/{}.zip?raw=true",
+    let url = format!("https://github.com/ferjm/libgstreamer_android_gen/blob/master/out/{}.zip?raw=true",
                       lib_file_name);
     let status = Command::new("wget").args(&[&url, "-O", "lib.zip"]).status().unwrap();
     if !status.success() {
@@ -84,7 +84,7 @@ fn android_main(target: &str) {
         }
     }
 
-    // Remove downloaded zip
+    // Remove downloaded zip.
     fs::remove_file("lib.zip").unwrap();
 }
 
