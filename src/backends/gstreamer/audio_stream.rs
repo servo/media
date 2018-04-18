@@ -11,7 +11,6 @@ pub struct GStreamerAudioStream {
 
 impl GStreamerAudioStream {
     pub fn new() -> Result<Self, ()> {
-        gst::init().map_err(|_| ())?;
         let src = gst::ElementFactory::make("servoaudiosrc", None).ok_or(())?;
         let convert = gst::ElementFactory::make("audioconvert", None).ok_or(())?;
         let sink = gst::ElementFactory::make("autoaudiosink", None).ok_or(())?;
@@ -66,7 +65,7 @@ impl AudioStream for GStreamerAudioStream {
     }
 
     fn stop(&self) {
-        self.pipeline.set_state(gst::State::Paused);
+        let _ = self.pipeline.set_state(gst::State::Paused);
     }
 }
 
