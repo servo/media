@@ -12,6 +12,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "android_glue"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "android_injected_glue"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "array-init"
 version = "0.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -426,6 +436,8 @@ dependencies = [
 name = "servo_media_android"
 version = "0.1.0"
 dependencies = [
+ "android_glue 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "android_injected_glue 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "jni 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "servo_media 0.1.0",
 ]
@@ -516,6 +528,8 @@ dependencies = [
 [metadata]
 "checksum adler32 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "6cbd0b9af8587c72beadc9f72d35b9fbb070982c9e6203e46e93f10df25f8f45"
 "checksum aho-corasick 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)" = "d6531d44de723825aa81398a6415283229725a00fa30713812ab9323faa82fc4"
+"checksum android_glue 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "000444226fcff248f2bc4c7625be32c63caccfecc2723a2b9f78a7487a49c407"
+"checksum android_injected_glue 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "80b9e34fcbf29c0563547cb2ecce9b49504597cad6166769b1e4efb45c6c2951"
 "checksum array-init 0.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "4d3b508d35216892b50a135fb52c9bb90f04a97b7782230805dff1a156ad5469"
 "checksum ascii 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)" = "3ae7d751998c189c1d4468cf0a39bb2eae052a9c58d50ebb3b9591ee3813ad50"
 "checksum bitflags 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "b3c30d3802dfb7281680d6285f2ccdaa8c2d8fee41f93805dba5c4cf50dc23cf"

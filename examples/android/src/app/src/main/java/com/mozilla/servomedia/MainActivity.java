@@ -18,5 +18,7 @@ public class MainActivity extends AppCompatActivity {
         ServoMedia media = new ServoMedia();
         String backendId = media.getBackendId();
         ((TextView)findViewById(R.id.backendId)).setText(backendId);
+
+        media.playStream();
     }
 }
