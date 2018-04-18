@@ -79,12 +79,12 @@ impl AudioSrc {
 
         Box::new(Self {
             cat: gst::DebugCategory::new(
-                     "servoaudiosrc",
-                     gst::DebugColorFlags::empty(),
-                     "Servo Audio Source",
-                     ),
-                     state: Mutex::new(Default::default()),
-                     settings: Mutex::new(Default::default()),
+                "servoaudiosrc",
+                gst::DebugColorFlags::empty(),
+                "Servo Audio Source",
+            ),
+            state: Mutex::new(Default::default()),
+            settings: Mutex::new(Default::default()),
         })
     }
 
@@ -103,24 +103,22 @@ impl AudioSrc {
             "Source/Audio",
             "Creates sound",
             "Fernando Jimenez Moreno <ferjmoreno@gmail.com>",
-            );
+        );
 
         // On the src pad, we can produce F32 with any sample rate
         // and any number of channels
         let caps = gst::Caps::new_simple(
             "audio/x-raw",
             &[
-            (
-                "format",
-                &gst::List::new(&[
-                                &gst_audio::AUDIO_FORMAT_F32.to_string(),
-                ]),
+                (
+                    "format",
+                    &gst::List::new(&[&gst_audio::AUDIO_FORMAT_F32.to_string()]),
                 ),
                 ("layout", &"interleaved"),
                 ("rate", &gst::IntRange::<i32>::new(1, i32::MAX)),
                 ("channels", &gst::IntRange::<i32>::new(1, i32::MAX)),
             ],
-            );
+        );
         // The src pad template must be named "src" for basesrc
         // and specific a pad that is always there
         let src_pad_template = gst::PadTemplate::new(
@@ -128,7 +126,7 @@ impl AudioSrc {
             gst::PadDirection::Src,
             gst::PadPresence::Always,
             &caps,
-            );
+        );
         klass.add_pad_template(src_pad_template);
     }
 
@@ -139,7 +137,7 @@ impl AudioSrc {
         rate: u32,
         channels: u32,
         vol: f64,
-        ) {
+    ) {
         use std::f64::consts::PI;
 
         // Reinterpret our byte-slice as a slice containing elements of the type
@@ -176,10 +174,10 @@ impl AudioSrc {
     }
 }
 
-impl ObjectImpl<BaseSrc> for AudioSrc { }
+impl ObjectImpl<BaseSrc> for AudioSrc {}
 
 // Virtual methods of gst::Element. We override none
-impl ElementImpl<BaseSrc> for AudioSrc { }
+impl ElementImpl<BaseSrc> for AudioSrc {}
 
 impl BaseSrcImpl<BaseSrc> for AudioSrc {
     // Called when starting, so we can initialize all stream-related state to its defaults
@@ -257,7 +255,7 @@ impl BaseSrcImpl<BaseSrc> for AudioSrc {
         element: &BaseSrc,
         _offset: u64,
         _length: u32,
-        ) -> Result<gst::Buffer, gst::FlowReturn> {
+    ) -> Result<gst::Buffer, gst::FlowReturn> {
         // Keep a local copy of the values of all our properties at this very moment. This
         // ensures that the mutex is never locked for long and the application wouldn't
         // have to block until this function returns when getting/setting property values
@@ -321,7 +319,7 @@ impl BaseSrcImpl<BaseSrc> for AudioSrc {
                     info.rate(),
                     info.channels(),
                     settings.volume,
-                    );
+                );
             } else {
                 Self::process::<f64>(
                     data,
@@ -330,7 +328,7 @@ impl BaseSrcImpl<BaseSrc> for AudioSrc {
                     info.rate(),
                     info.channels(),
                     settings.volume,
-                    );
+                );
             }
         }
         state.sample_offset += n_samples;
