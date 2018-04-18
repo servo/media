@@ -1,6 +1,7 @@
+extern crate glib;
+extern crate gst_plugin;
 extern crate gstreamer_audio as gst_audio;
 extern crate gstreamer_base as gst_base;
-extern crate gst_plugin;
 
 // XXX not needed at some point.
 extern crate byte_slice_cast;
