@@ -18,9 +18,7 @@ impl GStreamerAudioStream {
         let pipeline = gst::Pipeline::new(None);
         pipeline.add_many(&[&src, &convert, &sink]).map_err(|_| ())?;
         gst::Element::link_many(&[&src, &convert, &sink]).map_err(|_| ())?;
-        Ok(Self {
-            pipeline
-        })
+        Ok(Self { pipeline })
     }
 }
 
@@ -42,23 +40,26 @@ impl AudioStream for GStreamerAudioStream {
                         err.get_debug()
                     );
                     break;
-                },
+                }
                 MessageView::Eos(..) => {
                     println!("End-Of-Stream reached");
                     break;
-                },
+                }
                 MessageView::StateChanged(state_changed) => {
-                    if state_changed.get_src().map(|s| s == self.pipeline).unwrap_or(false) {
+                    if state_changed
+                        .get_src()
+                        .map(|s| s == self.pipeline)
+                        .unwrap_or(false)
+                    {
                         let new_state = state_changed.get_current();
                         let old_state = state_changed.get_old();
 
                         println!(
                             "Pipeline state changed from {:?} to {:?}",
-                            old_state,
-                            new_state,
+                            old_state, new_state,
                         );
                     }
-                },
+                }
                 _ => (),
             }
         }
@@ -74,5 +75,3 @@ impl Drop for GStreamerAudioStream {
         let _ = self.pipeline.set_state(gst::State::Null);
     }
 }
-
-
