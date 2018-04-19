@@ -8,7 +8,7 @@ extern crate gstreamer as gst;
 mod backends;
 
 #[cfg(feature = "gst")]
-use backends::gstreamer::{src_element, GStreamer};
+use backends::gstreamer::GStreamer;
 
 pub trait AudioStream {
     fn play(&self);
@@ -42,6 +42,7 @@ impl ServoMedia {
 #[cfg(test)]
 mod tests {
     use ServoMedia;
+    use std::{thread, time};
 
     #[test]
     #[cfg(feature = "gst")]
@@ -56,10 +57,13 @@ mod tests {
     #[test]
     #[cfg(feature = "gst")]
     fn test_audio_stream() {
-        let servo_media = ServoMedia::get();
-        match servo_media {
-            Ok(servo_media) => servo_media.get_audio_stream().unwrap().play(),
-            Err(_) => unreachable!(),
-        };
+        if let Ok(servo_media) = ServoMedia::get() {
+            let stream = servo_media.get_audio_stream().unwrap();
+            stream.play();
+            thread::sleep(time::Duration::from_millis(5000));
+            stream.stop();
+        } else {
+            unreachable!();
+        }
     }
 }

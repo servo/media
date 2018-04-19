@@ -2,11 +2,13 @@ use gst;
 use std::i32;
 use std::ops::Rem;
 use std::sync::Mutex;
+use super::glib;
 use super::gst_audio;
 use super::gst_base::prelude::*;
 use super::gst_plugin::base_src::*;
 use super::gst_plugin::element::*;
 use super::gst_plugin::object::*;
+use super::gst_plugin::uri_handler::{register_uri_handler, URIHandlerImpl, URIHandlerImplStatic};
 
 // XXX not needed at some point.
 use super::num_traits::float::Float;
@@ -79,12 +81,12 @@ impl AudioSrc {
 
         Box::new(Self {
             cat: gst::DebugCategory::new(
-                     "servoaudiosrc",
-                     gst::DebugColorFlags::empty(),
-                     "Servo Audio Source",
-                     ),
-                     state: Mutex::new(Default::default()),
-                     settings: Mutex::new(Default::default()),
+                "servoaudiosrc",
+                gst::DebugColorFlags::empty(),
+                "Servo Audio Source",
+            ),
+            state: Mutex::new(Default::default()),
+            settings: Mutex::new(Default::default()),
         })
     }
 
@@ -103,24 +105,22 @@ impl AudioSrc {
             "Source/Audio",
             "Creates sound",
             "Fernando Jimenez Moreno <ferjmoreno@gmail.com>",
-            );
+        );
 
         // On the src pad, we can produce F32 with any sample rate
         // and any number of channels
         let caps = gst::Caps::new_simple(
             "audio/x-raw",
             &[
-            (
-                "format",
-                &gst::List::new(&[
-                                &gst_audio::AUDIO_FORMAT_F32.to_string(),
-                ]),
+                (
+                    "format",
+                    &gst::List::new(&[&gst_audio::AUDIO_FORMAT_F32.to_string()]),
                 ),
                 ("layout", &"interleaved"),
                 ("rate", &gst::IntRange::<i32>::new(1, i32::MAX)),
                 ("channels", &gst::IntRange::<i32>::new(1, i32::MAX)),
             ],
-            );
+        );
         // The src pad template must be named "src" for basesrc
         // and specific a pad that is always there
         let src_pad_template = gst::PadTemplate::new(
@@ -128,7 +128,7 @@ impl AudioSrc {
             gst::PadDirection::Src,
             gst::PadPresence::Always,
             &caps,
-            );
+        );
         klass.add_pad_template(src_pad_template);
     }
 
@@ -139,7 +139,7 @@ impl AudioSrc {
         rate: u32,
         channels: u32,
         vol: f64,
-        ) {
+    ) {
         use std::f64::consts::PI;
 
         // Reinterpret our byte-slice as a slice containing elements of the type
@@ -176,10 +176,25 @@ impl AudioSrc {
     }
 }
 
-impl ObjectImpl<BaseSrc> for AudioSrc { }
+impl ObjectImpl<BaseSrc> for AudioSrc {}
 
 // Virtual methods of gst::Element. We override none
-impl ElementImpl<BaseSrc> for AudioSrc { }
+impl ElementImpl<BaseSrc> for AudioSrc {}
+
+impl URIHandlerImpl for AudioSrc {
+    fn get_uri(&self, _element: &gst::URIHandler) -> Option<String> {
+        // TODO: Return URI stored in element.
+        Some("webaudiosrc://".to_string())
+    }
+
+    fn set_uri(&self, _element: &gst::URIHandler, uri: Option<String>) -> Result<(), glib::Error> {
+        if let Some(u) = uri {
+            // TODO: handle WebAudio stream identifier passed via URI and store URI in Source element.
+            println!("set uri to {}", u);
+        }
+        Ok(())
+    }
+}
 
 impl BaseSrcImpl<BaseSrc> for AudioSrc {
     // Called when starting, so we can initialize all stream-related state to its defaults
@@ -257,7 +272,7 @@ impl BaseSrcImpl<BaseSrc> for AudioSrc {
         element: &BaseSrc,
         _offset: u64,
         _length: u32,
-        ) -> Result<gst::Buffer, gst::FlowReturn> {
+    ) -> Result<gst::Buffer, gst::FlowReturn> {
         // Keep a local copy of the values of all our properties at this very moment. This
         // ensures that the mutex is never locked for long and the application wouldn't
         // have to block until this function returns when getting/setting property values
@@ -321,7 +336,7 @@ impl BaseSrcImpl<BaseSrc> for AudioSrc {
                     info.rate(),
                     info.channels(),
                     settings.volume,
-                    );
+                );
             } else {
                 Self::process::<f64>(
                     data,
@@ -330,7 +345,7 @@ impl BaseSrcImpl<BaseSrc> for AudioSrc {
                     info.rate(),
                     info.channels(),
                     settings.volume,
-                    );
+                );
             }
         }
         state.sample_offset += n_samples;
@@ -359,6 +374,24 @@ impl ImplTypeStatic<BaseSrc> for AudioSrcStatic {
     fn class_init(&self, klass: &mut BaseSrcClass) {
         AudioSrc::class_init(klass);
     }
+
+    fn type_init(&self, token: &TypeInitToken, type_: glib::Type) {
+        register_uri_handler(token, type_, self);
+    }
+}
+
+impl URIHandlerImplStatic<BaseSrc> for AudioSrcStatic {
+    fn get_impl<'a>(&self, imp: &'a Box<BaseSrcImpl<BaseSrc>>) -> &'a URIHandlerImpl {
+        imp.downcast_ref::<AudioSrc>().unwrap()
+    }
+
+    fn get_type(&self) -> gst::URIType {
+        gst::URIType::Src
+    }
+
+    fn get_protocols(&self) -> Vec<String> {
+        vec!["webaudiosrc".into()]
+    }
 }
 
 // Registers the type for our element, and then registers in GStreamer under
@@ -366,5 +399,5 @@ impl ImplTypeStatic<BaseSrc> for AudioSrcStatic {
 // gst::ElementFactory::make().
 pub fn register() {
     let type_ = register_type(AudioSrcStatic);
-    gst::Element::register(None, "servoaudiosrc", 0, type_);
+    gst::Element::register(None, "servoaudiosrc", 257 * 100, type_);
 }
