@@ -17,15 +17,12 @@ impl GStreamerAudioStream {
             .set_property("uri", &glib::Value::from("webaudiosrc://foo"))
             .expect("Cant't set URI property");
         if let Some(category) = gst::DebugCategory::get("gst-player") {
-            category.set_threshold(gst::DebugLevel::Trace);
+            category.set_threshold(gst::DebugLevel::Debug);
         }
         if let Some(category) = gst::DebugCategory::get("openslessink") {
             category.set_threshold(gst::DebugLevel::Trace);
         }
-        if let Some(category) = gst::DebugCategory::get("*") {
-            category.set_threshold(gst::DebugLevel::Error);
-        }
-        Ok(Self { player: player })
+        Ok(Self { player })
     }
 }
 
