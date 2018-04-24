@@ -6,12 +6,18 @@ import android.os.SystemClock;
 import org.freedesktop.gstreamer.GStreamer;
 
 public class ServoMedia {
+    private long streamPtr;
+
     public static void init(Context context) throws Exception {
         System.loadLibrary("gstreamer_android");
         GStreamer.init(context);
 
         System.loadLibrary("servo_media_android");
       }
+
+    protected ServoMedia() {
+        this.streamPtr = audioStreamNew();
+    }
 
     private static native String backendId();
     private static native long audioStreamNew();
@@ -24,12 +30,10 @@ public class ServoMedia {
     }
 
     public void playStream() {
-      long streamPtr = audioStreamNew();
-      audioStreamPlay(streamPtr);
+        audioStreamPlay(this.streamPtr);
     }
 
     public void stopStream() {
-        long streamPtr = audioStreamNew();
-        audioStreamStop(streamPtr);
+        audioStreamStop(this.streamPtr);
     }
 }
