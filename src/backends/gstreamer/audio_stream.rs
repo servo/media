@@ -1,13 +1,13 @@
-use AudioStream;
-use gst::prelude::*;
 use super::gst;
+use gst::prelude::*;
+use AudioStream;
 
-use std::process;
+use super::src_element::app_src_oscillator;
 
 // XXX Define own error type.
 
 pub struct GStreamerAudioStream {
-    pipeline: gst::Element,
+    pipeline: gst::Pipeline,
 }
 
 impl GStreamerAudioStream {
@@ -15,26 +15,14 @@ impl GStreamerAudioStream {
         if let Some(category) = gst::DebugCategory::get("openslessink") {
             category.set_threshold(gst::DebugLevel::Trace);
         }
-        let pipeline_str = "servoaudiosrc ! audioconvert ! autoaudiosink";
+        gst::init().map_err(|_| ())?;
 
-        let mut context = gst::ParseContext::new();
-        let pipeline = match gst::parse_launch_full(
-            &pipeline_str,
-            Some(&mut context),
-            gst::ParseFlags::NONE,
-        ) {
-            Ok(pipeline) => pipeline,
-            Err(err) => {
-                if let Some(gst::ParseError::NoSuchElement) = err.kind::<gst::ParseError>() {
-                    println!("Missing element(s): {:?}", context.get_missing_elements());
-                } else {
-                    println!("Failed to parse pipeline: {}", err);
-                }
-
-                process::exit(-1)
-            }
-        };
-
+        let src = app_src_oscillator()?;
+        let convert = gst::ElementFactory::make("audioconvert", None).ok_or(())?;
+        let sink = gst::ElementFactory::make("autoaudiosink", None).ok_or(())?;
+        let pipeline = gst::Pipeline::new(None);
+        pipeline.add_many(&[&src, &convert, &sink]).map_err(|_| ())?;
+        gst::Element::link_many(&[&src, &convert, &sink]).map_err(|_| ())?;
         Ok(Self { pipeline })
     }
 }
