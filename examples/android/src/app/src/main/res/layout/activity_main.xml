@@ -6,6 +6,29 @@
     android:layout_height="match_parent"
     tools:context="com.mozilla.servomedia.MainActivity">
 
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dip"
+        android:gravity="center_horizontal"
+        android:orientation="horizontal" >
+        <ImageButton
+            android:id="@+id/button_play"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/button_play"
+            android:src="@android:drawable/ic_media_play"
+            android:text="@string/button_play" />
+
+        <ImageButton
+            android:id="@+id/button_pause"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/button_pause"
+            android:src="@android:drawable/ic_media_pause"
+            android:text="@string/button_pause" />
+    </LinearLayout>
+
     <TextView
         android:id="@+id/backendId"
         android:layout_width="wrap_content"

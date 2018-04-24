@@ -27,4 +27,9 @@ public class ServoMedia {
       long streamPtr = audioStreamNew();
       audioStreamPlay(streamPtr);
     }
+
+    public void stopStream() {
+        long streamPtr = audioStreamNew();
+        audioStreamStop(streamPtr);
+    }
 }

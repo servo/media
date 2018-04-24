@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">ServoMedia</string>
+    <string name="button_play">Play</string>
+    <string name="button_pause">Pause</string>
 </resources>

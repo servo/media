@@ -4,6 +4,9 @@ import android.content.Context;
 import android.os.Bundle;
 import android.os.PowerManager;
 
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.support.v7.app.AppCompatActivity;
@@ -32,12 +35,24 @@ public class MainActivity extends AppCompatActivity {
         wake_lock = pm.newWakeLock(PowerManager.FULL_WAKE_LOCK, "GStreamer Play");
         wake_lock.setReferenceCounted(false);
 
+        ImageButton play = (ImageButton) this.findViewById(R.id.button_play);
+        play.setOnClickListener(new OnClickListener() {
+                public void onClick(View v) {
+                    media.playStream();
+                    wake_lock.acquire();
+                }
+            });
+
+        ImageButton pause = (ImageButton) this.findViewById(R.id.button_pause);
+        pause.setOnClickListener(new OnClickListener() {
+                public void onClick(View v) {
+                    media.stopStream();
+                    wake_lock.release();
+                }
+            });
 
         String backendId = media.getBackendId();
         ((TextView)findViewById(R.id.backendId)).setText(backendId);
 
-        //wake_lock.acquire();
-
-        media.playStream();
     }
 }
