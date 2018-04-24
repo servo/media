@@ -76,7 +76,7 @@ impl AudioSrc {
     fn new(element: &BaseSrc) -> Box<BaseSrcImpl<BaseSrc>> {
         // Initialize live-ness and notify the base class that
         // we'd like to operate in Time format
-        element.set_live(false);
+        element.set_live(true);
         element.set_format(gst::Format::Time);
 
         Box::new(Self {
@@ -399,5 +399,5 @@ impl URIHandlerImplStatic<BaseSrc> for AudioSrcStatic {
 // gst::ElementFactory::make().
 pub fn register() {
     let type_ = register_type(AudioSrcStatic);
-    gst::Element::register(None, "servoaudiosrc", 257 * 100, type_);
+    gst::Element::register(None, "servoaudiosrc", 0u32, type_);
 }
