@@ -37,6 +37,7 @@ public class MainActivity extends AppCompatActivity {
         ((TextView)findViewById(R.id.backendId)).setText(backendId);
 
         //wake_lock.acquire();
+
         media.playStream();
     }
 }

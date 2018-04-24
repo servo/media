@@ -1,8 +1,28 @@
 extern crate servo_media;
 
 use servo_media::ServoMedia;
-use std::os::raw::c_char;
 use std::ffi::CString;
+use std::os::raw::c_char;
+
+struct AudioStream {
+    inner: Box<servo_media::AudioStream>,
+}
+
+impl AudioStream {
+    pub fn new() -> Self {
+        Self {
+            inner: ServoMedia::get().unwrap().get_audio_stream().unwrap(),
+        }
+    }
+
+    pub fn play(&self) {
+        self.inner.play()
+    }
+
+    pub fn stop(&self) {
+        self.inner.stop()
+    }
+}
 
 #[no_mangle]
 pub extern "C" fn servo_media_backend_id() -> *mut c_char {
@@ -12,32 +32,16 @@ pub extern "C" fn servo_media_backend_id() -> *mut c_char {
     }
 }
 
-#[no_mangle]
-pub extern "C" fn servo_media_test_stream() {
-    match ServoMedia::get() {
-        Ok(servo_media) => {
-            match servo_media.get_audio_stream() {
-                Ok(stream) => {
-                    stream.play();
-                    // FIXME: return stream and store it in JNI env to prevent GC to kick in.
-                }
-                Err(_) => {}
-            };
-        }
-        Err(_) => {}
-    };
-}
-
 /// Expose the JNI interface for android below
 #[cfg(target_os = "android")]
 #[allow(non_snake_case)]
 pub mod android {
     extern crate jni;
 
-    use super::*;
-    use self::jni::JNIEnv;
     use self::jni::objects::JClass;
-    use self::jni::sys::jstring;
+    use self::jni::sys::{jlong, jstring};
+    use self::jni::JNIEnv;
+    use super::*;
 
     #[no_mangle]
     pub unsafe extern "C" fn Java_com_mozilla_servomedia_ServoMedia_backendId(
@@ -52,11 +56,42 @@ pub mod android {
     }
 
     #[no_mangle]
-    pub unsafe extern "C" fn Java_com_mozilla_servomedia_ServoMedia_testStream(
-        _env: JNIEnv,
+    pub unsafe extern "C" fn Java_com_mozilla_servomedia_ServoMedia_audioStreamNew(
+        _: JNIEnv,
         _: JClass,
+    ) -> jlong {
+        let stream = AudioStream::new();
+        Box::into_raw(Box::new(stream)) as jlong
+    }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn Java_com_mozilla_servomedia_ServoMedia_audioStreamPlay(
+        _: JNIEnv,
+        _: JClass,
+        stream_ptr: jlong,
     ) {
-        servo_media_test_stream();
+        let stream = &mut *(stream_ptr as *mut AudioStream);
+        stream.play();
+    }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn Java_com_mozilla_servomedia_ServoMedia_audioStreamStop(
+        _: JNIEnv,
+        _: JClass,
+        stream_ptr: jlong,
+    ) {
+        let stream = &mut *(stream_ptr as *mut AudioStream);
+        stream.stop();
+    }
+
+
+    #[no_mangle]
+    pub unsafe extern "C" fn Java_com_mozilla_servomedia_ServoMedia_audioStreamDestroy(
+        _: JNIEnv,
+        _: JClass,
+        stream_ptr: jlong,
+    ) {
+        let _ = Box::from_raw(stream_ptr as *mut AudioStream);
     }
 }
 
