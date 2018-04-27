@@ -8,8 +8,6 @@ authors = ["Fernando Jiménez Moreno <ferjmoreno@gmail.com>"]
 crate-type = ["cdylib"]
 
 [dependencies]
-android_glue = "0.2.3"
-android_injected_glue = "0.2.3"
 servo_media = { path = "../../.." }
 
 [target.'cfg(target_os="android")'.dependencies]

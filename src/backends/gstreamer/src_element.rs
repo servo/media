@@ -1,7 +1,3 @@
-use gst;
-use std::i32;
-use std::ops::Rem;
-use std::sync::Mutex;
 use super::glib;
 use super::gst_audio;
 use super::gst_base::prelude::*;
@@ -9,11 +5,15 @@ use super::gst_plugin::base_src::*;
 use super::gst_plugin::element::*;
 use super::gst_plugin::object::*;
 use super::gst_plugin::uri_handler::{register_uri_handler, URIHandlerImpl, URIHandlerImplStatic};
+use gst;
+use std::i32;
+use std::ops::Rem;
+use std::sync::Mutex;
 
 // XXX not needed at some point.
-use super::num_traits::float::Float;
-use super::num_traits::cast::NumCast;
 use super::byte_slice_cast::*;
+use super::num_traits::cast::NumCast;
+use super::num_traits::float::Float;
 
 // Default values of properties
 const DEFAULT_SAMPLES_PER_BUFFER: u32 = 1024;

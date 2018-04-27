@@ -12,16 +12,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "android_glue"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "android_injected_glue"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
 name = "array-init"
 version = "0.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -242,35 +232,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gstreamer-player"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "bitflags 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "glib 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "glib-sys 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "gobject-sys 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "gstreamer 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "gstreamer-player-sys 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "gstreamer-sys 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "gstreamer-video 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.2.39 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "gstreamer-player-sys"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "glib-sys 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "gobject-sys 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "gstreamer-sys 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "gstreamer-video-sys 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.2.39 (registry+https://github.com/rust-lang/crates.io-index)",
- "pkg-config 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "gstreamer-sys"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -278,37 +239,6 @@ dependencies = [
  "bitflags 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "glib-sys 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gobject-sys 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.2.39 (registry+https://github.com/rust-lang/crates.io-index)",
- "pkg-config 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "gstreamer-video"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "bitflags 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "glib 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "glib-sys 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "gobject-sys 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "gstreamer 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "gstreamer-base 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "gstreamer-base-sys 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "gstreamer-sys 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "gstreamer-video-sys 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.2.39 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "gstreamer-video-sys"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "bitflags 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "glib-sys 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "gobject-sys 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "gstreamer-base-sys 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "gstreamer-sys 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.39 (registry+https://github.com/rust-lang/crates.io-index)",
  "pkg-config 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -483,12 +413,10 @@ name = "servo_media"
 version = "0.1.0"
 dependencies = [
  "byte-slice-cast 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "glib 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gst-plugin 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer-audio 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer-base 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "gstreamer-player 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "num-traits 0.1.43 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "zip 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -498,8 +426,6 @@ dependencies = [
 name = "servo_media_android"
 version = "0.1.0"
 dependencies = [
- "android_glue 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "android_injected_glue 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "jni 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "servo_media 0.1.0",
 ]
@@ -590,8 +516,6 @@ dependencies = [
 [metadata]
 "checksum adler32 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "6cbd0b9af8587c72beadc9f72d35b9fbb070982c9e6203e46e93f10df25f8f45"
 "checksum aho-corasick 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)" = "d6531d44de723825aa81398a6415283229725a00fa30713812ab9323faa82fc4"
-"checksum android_glue 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "000444226fcff248f2bc4c7625be32c63caccfecc2723a2b9f78a7487a49c407"
-"checksum android_injected_glue 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "80b9e34fcbf29c0563547cb2ecce9b49504597cad6166769b1e4efb45c6c2951"
 "checksum array-init 0.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "4d3b508d35216892b50a135fb52c9bb90f04a97b7782230805dff1a156ad5469"
 "checksum ascii 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)" = "3ae7d751998c189c1d4468cf0a39bb2eae052a9c58d50ebb3b9591ee3813ad50"
 "checksum bitflags 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "b3c30d3802dfb7281680d6285f2ccdaa8c2d8fee41f93805dba5c4cf50dc23cf"
@@ -616,11 +540,7 @@ dependencies = [
 "checksum gstreamer-audio-sys 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "fd60631f2dd055f0aae2831e86bd6c1d45e24528d4c478002cc07490dd84b56e"
 "checksum gstreamer-base 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)" = "05ec7a84b4160b61c72ea27ccf3f46eb9c8f996c5991746623e69e3e532e3cb5"
 "checksum gstreamer-base-sys 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "501a7add44f256aab6cb5b65ef121c449197cf55087d6a7586846c8d1e42e88b"
-"checksum gstreamer-player 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d831e2c4aa1296a8d0f3b4caa0b5ae8d6f5c0eed67ed20236f8647010005c63e"
-"checksum gstreamer-player-sys 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3b9476078cc76164446e88b2c4331e81e24a07f7b7c3a8b4bf8975a47998ebd4"
 "checksum gstreamer-sys 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "7b2f51e25a6f97dd4bfd640cba96f192f8759b8766afd66d6d9ea0f82ca14a37"
-"checksum gstreamer-video 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)" = "76c6c8971688f530ae93e96ea29fe6051658bb4d00b4b40d30575ca1d8a25a18"
-"checksum gstreamer-video-sys 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3ed798787e78a0f1c8be06bd3adcab03f962f049a820743aae9f690f56a0d538"
 "checksum jni 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)" = "cffc930ce6a38a4013e30567b559bdc79f601013ba4a81e65dbda9207263efd4"
 "checksum jni-sys 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)" = "de0aaaba8809ab8d83a53fe2b313b996b79e8632b855eae9f70ad4323dca91b8"
 "checksum kernel32-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7507624b29483431c0ba2d82aece8ca6cdba9382bff4ddd0f7490560c056098d"
