@@ -1,7 +1,3 @@
-use gst;
-use std::i32;
-use std::ops::Rem;
-use std::sync::Mutex;
 use super::glib;
 use super::gst_audio;
 use super::gst_base::prelude::*;
@@ -9,11 +5,15 @@ use super::gst_plugin::base_src::*;
 use super::gst_plugin::element::*;
 use super::gst_plugin::object::*;
 use super::gst_plugin::uri_handler::{register_uri_handler, URIHandlerImpl, URIHandlerImplStatic};
+use gst;
+use std::i32;
+use std::ops::Rem;
+use std::sync::Mutex;
 
 // XXX not needed at some point.
-use super::num_traits::float::Float;
-use super::num_traits::cast::NumCast;
 use super::byte_slice_cast::*;
+use super::num_traits::cast::NumCast;
+use super::num_traits::float::Float;
 
 // Default values of properties
 const DEFAULT_SAMPLES_PER_BUFFER: u32 = 1024;
@@ -76,7 +76,7 @@ impl AudioSrc {
     fn new(element: &BaseSrc) -> Box<BaseSrcImpl<BaseSrc>> {
         // Initialize live-ness and notify the base class that
         // we'd like to operate in Time format
-        element.set_live(false);
+        element.set_live(true);
         element.set_format(gst::Format::Time);
 
         Box::new(Self {
@@ -399,5 +399,5 @@ impl URIHandlerImplStatic<BaseSrc> for AudioSrcStatic {
 // gst::ElementFactory::make().
 pub fn register() {
     let type_ = register_type(AudioSrcStatic);
-    gst::Element::register(None, "servoaudiosrc", 257 * 100, type_);
+    gst::Element::register(None, "servoaudiosrc", 0u32, type_);
 }
