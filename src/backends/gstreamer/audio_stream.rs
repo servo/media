@@ -12,9 +12,6 @@ pub struct GStreamerAudioStream {
 
 impl GStreamerAudioStream {
     pub fn new() -> Result<Self, ()> {
-        if let Some(category) = gst::DebugCategory::get("gst-player") {
-            category.set_threshold(gst::DebugLevel::Debug);
-        }
         if let Some(category) = gst::DebugCategory::get("openslessink") {
             category.set_threshold(gst::DebugLevel::Trace);
         }
