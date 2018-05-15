@@ -14,7 +14,6 @@ mod audio_stream;
 use AudioStream;
 use gst;
 use self::audio_stream::GStreamerAudioStream;
-use self::src_element::register as register_src_element;
 use ServoMediaBackend;
 
 pub struct GStreamer {}
@@ -22,7 +21,6 @@ pub struct GStreamer {}
 impl GStreamer {
     pub fn new() -> Self {
         gst::init().unwrap();
-        register_src_element();
         Self {}
     }
 }
