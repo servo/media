@@ -1,5 +1,6 @@
 extern crate glib;
 extern crate gst_plugin;
+extern crate gstreamer_app as gst_app;
 extern crate gstreamer_audio as gst_audio;
 extern crate gstreamer_base as gst_base;
 
@@ -13,7 +14,6 @@ mod audio_stream;
 use AudioStream;
 use gst;
 use self::audio_stream::GStreamerAudioStream;
-use self::src_element::register as register_src_element;
 use ServoMediaBackend;
 
 pub struct GStreamer {}
@@ -21,7 +21,6 @@ pub struct GStreamer {}
 impl GStreamer {
     pub fn new() -> Self {
         gst::init().unwrap();
-        register_src_element();
         Self {}
     }
 }

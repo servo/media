@@ -2,7 +2,6 @@ use std::sync::{self, Once};
 use std::sync::{Arc, Mutex};
 
 #[cfg(feature = "gst")]
-#[macro_use]
 extern crate gstreamer as gst;
 
 mod backends;
