@@ -23,7 +23,7 @@ rustup target add arm-linux-androideabi
 In addition to that, you also need to install the Android
 [NDK](https://developer.android.com/ndk/guides/index.html#install).
 The recommended NDK version is
-[r12b](https://developer.android.com/ndk/downloads/older_releases.html). The
+[r16b](https://developer.android.com/ndk/downloads/older_releases.html). The
 Android [SDK](https://developer.android.com/studio/index.html) is not mandatory
 but recommended for practical development.
 
