@@ -43,7 +43,7 @@ impl ServoMedia {
         self.backend.version()
     }
 
-    pub fn create_audio_graph(&self) -> Arc<AudioGraph> {
+    pub fn create_audio_graph(&self) -> Result<AudioGraph, ()> {
         AudioGraph::new()
     }
 }
@@ -67,7 +67,7 @@ mod tests {
     #[cfg(feature = "gst")]
     fn test_audio_stream() {
         if let Ok(servo_media) = ServoMedia::get() {
-            let mut graph = servo_media.create_audio_graph();
+            let mut graph = servo_media.create_audio_graph().unwrap();
             graph.resume_processing();
             thread::sleep(time::Duration::from_millis(5000));
             graph.pause_processing();

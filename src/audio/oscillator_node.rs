@@ -1,7 +1,6 @@
 use audio::byte_slice_cast::*;
 use audio::node::AudioNodeEngine;
 use audio::num_traits::cast::NumCast;
-use audio::num_traits::float::Float;
 
 pub struct OscillatorNode {}
 

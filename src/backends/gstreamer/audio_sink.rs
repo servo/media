@@ -1,7 +1,7 @@
 use super::gst;
 use super::gst_app::{AppSrc, AppSrcCallbacks};
 use super::gst_audio;
-use audio::graph::AudioGraph;
+use audio::graph_thread::AudioGraphThread;
 use audio::sink::AudioSink;
 use gst::prelude::*;
 use std::sync::Arc;
@@ -50,7 +50,7 @@ impl GStreamerAudioSink {
 }
 
 impl AudioSink for GStreamerAudioSink {
-    fn init(&self, graph: Arc<AudioGraph>) -> Result<(), ()> {
+    fn init(&self, graph: Arc<AudioGraphThread>) -> Result<(), ()> {
         if let Some(category) = gst::DebugCategory::get("openslessink") {
             category.set_threshold(gst::DebugLevel::Trace);
         }
@@ -100,7 +100,7 @@ impl AudioSink for GStreamerAudioSink {
                 );
                 sample_offset += n_samples;
             }
-            app.push_buffer(buffer);
+            let _ = app.push_buffer(buffer);
         };
         src.set_callbacks(AppSrcCallbacks::new().need_data(need_data).build());
 

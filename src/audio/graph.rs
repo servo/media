@@ -1,53 +1,28 @@
-use audio::node::AudioNodeEngine;
-use audio::oscillator_node::OscillatorNode;
-use audio::sink::AudioSink;
-use std::sync::Arc;
-
-#[cfg(feature = "gst")]
-use backends::gstreamer::audio_sink::GStreamerAudioSink;
+use audio::graph_thread::{AudioGraphMsg, AudioGraphThread};
+use std::sync::mpsc::{self, Sender};
+use std::thread::Builder;
 
 pub struct AudioGraph {
-    // XXX This should be a graph at some point.
-    // It's a single node just for early testing purposes.
-    node: Box<AudioNodeEngine>,
-    sink: Box<AudioSink>,
+    sender: Sender<AudioGraphMsg>,
 }
 
-unsafe impl Sync for AudioGraph {}
-unsafe impl Send for AudioGraph {}
-
 impl AudioGraph {
-    pub fn new() -> Arc<AudioGraph> {
-        #[cfg(feature = "gst")]
-        let graph = Arc::new(Self {
-            // XXX Test with an oscillator node.
-            node: Box::new(OscillatorNode::new()),
-            sink: Box::new(GStreamerAudioSink::new()),
-        });
-
-        let _ = graph.sink.init(graph.clone());
-
-        graph
+    pub fn new() -> Result<Self, ()> {
+        let (sender, receiver) = mpsc::channel();
+        Builder::new()
+            .name("AudioGraph".to_owned())
+            .spawn(move || {
+                AudioGraphThread::start(receiver);
+            })
+            .unwrap();
+        Ok(Self { sender })
     }
 
     pub fn resume_processing(&self) {
-        self.sink.play();
+        let _ = self.sender.send(AudioGraphMsg::ResumeProcessing);
     }
 
     pub fn pause_processing(&self) {
-        self.sink.stop();
-    }
-
-    pub fn process(
-        &self,
-        data: &mut [u8],
-        accumulator_ref: &mut f64,
-        freq: u32,
-        rate: u32,
-        channels: u32,
-        vol: f64,
-    ) {
-        self.node
-            .process(data, accumulator_ref, freq, rate, channels, vol);
+        let _ = self.sender.send(AudioGraphMsg::PauseProcessing);
     }
 }
