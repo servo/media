@@ -1,4 +1,4 @@
-wget https://github.com/ferjm/libgstreamer_android_gen/blob/gst1.14/out/src.zip?raw=true -O src.zip
+wget https://github.com/servo/libgstreamer_android_gen/blob/master/out/src.zip?raw=true -O src.zip
 unzip src.zip -d src_
 
 cp -v src_/src/org/freedesktop/gstreamer/GStreamer.java src/app/src/main/java/org/freedesktop/gstreamer/
