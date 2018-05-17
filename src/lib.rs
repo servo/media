@@ -65,7 +65,7 @@ mod tests {
 
     #[test]
     #[cfg(feature = "gst")]
-    fn test_audio_stream() {
+    fn test_audio_graph() {
         if let Ok(servo_media) = ServoMedia::get() {
             let mut graph = servo_media.create_audio_graph().unwrap();
             graph.resume_processing();
