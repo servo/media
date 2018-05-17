@@ -58,7 +58,7 @@ impl AudioSink for GStreamerAudioSink {
 
         let src = gst::ElementFactory::make("appsrc", None).ok_or(())?;
         let src = src.downcast::<AppSrc>().map_err(|_| ())?;
-        let info = gst_audio::AudioInfo::new(gst_audio::AUDIO_FORMAT_F32, 48000, 1)
+        let info = gst_audio::AudioInfo::new(gst_audio::AUDIO_FORMAT_F32, 44100, 1)
             .build()
             .ok_or(())?;
         src.set_caps(&info.to_caps().unwrap());
@@ -105,12 +105,13 @@ impl AudioSink for GStreamerAudioSink {
         src.set_callbacks(AppSrcCallbacks::new().need_data(need_data).build());
 
         let src = src.upcast();
+        let resample = gst::ElementFactory::make("audioresample", None).ok_or(())?;
         let convert = gst::ElementFactory::make("audioconvert", None).ok_or(())?;
         let sink = gst::ElementFactory::make("autoaudiosink", None).ok_or(())?;
         self.pipeline
-            .add_many(&[&src, &convert, &sink])
+            .add_many(&[&src, &resample, &convert, &sink])
             .map_err(|_| ())?;
-        gst::Element::link_many(&[&src, &convert, &sink]).map_err(|_| ())?;
+        gst::Element::link_many(&[&src, &resample, &convert, &sink]).map_err(|_| ())?;
 
         Ok(())
     }
