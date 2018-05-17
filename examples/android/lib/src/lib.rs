@@ -5,22 +5,22 @@ use std::ffi::CString;
 use std::os::raw::c_char;
 
 struct AudioStream {
-    inner: Box<servo_media::AudioStream>,
+    inner: servo_media::AudioGraph,
 }
 
 impl AudioStream {
     pub fn new() -> Self {
         Self {
-            inner: ServoMedia::get().unwrap().get_audio_stream().unwrap(),
+            inner: ServoMedia::get().unwrap().create_audio_graph().unwrap(),
         }
     }
 
     pub fn play(&self) {
-        self.inner.play()
+        self.inner.resume_processing()
     }
 
     pub fn stop(&self) {
-        self.inner.stop()
+        self.inner.pause_processing()
     }
 }
 
