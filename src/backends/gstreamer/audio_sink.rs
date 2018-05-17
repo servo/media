@@ -105,12 +105,13 @@ impl AudioSink for GStreamerAudioSink {
         src.set_callbacks(AppSrcCallbacks::new().need_data(need_data).build());
 
         let src = src.upcast();
+        let resample = gst::ElementFactory::make("audioresample", None).ok_or(())?;
         let convert = gst::ElementFactory::make("audioconvert", None).ok_or(())?;
         let sink = gst::ElementFactory::make("autoaudiosink", None).ok_or(())?;
         self.pipeline
-            .add_many(&[&src, &convert, &sink])
+            .add_many(&[&src, &resample, &convert, &sink])
             .map_err(|_| ())?;
-        gst::Element::link_many(&[&src, &convert, &sink]).map_err(|_| ())?;
+        gst::Element::link_many(&[&src, &resample, &convert, &sink]).map_err(|_| ())?;
 
         Ok(())
     }
