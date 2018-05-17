@@ -58,7 +58,7 @@ impl AudioSink for GStreamerAudioSink {
 
         let src = gst::ElementFactory::make("appsrc", None).ok_or(())?;
         let src = src.downcast::<AppSrc>().map_err(|_| ())?;
-        let info = gst_audio::AudioInfo::new(gst_audio::AUDIO_FORMAT_F32, 48000, 1)
+        let info = gst_audio::AudioInfo::new(gst_audio::AUDIO_FORMAT_F32, 44100, 1)
             .build()
             .ok_or(())?;
         src.set_caps(&info.to_caps().unwrap());
