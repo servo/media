@@ -5,7 +5,7 @@ use regex::Regex;
 use std::env;
 use std::io;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 fn main() {
@@ -26,6 +26,15 @@ fn android_main(target: &str) {
     } else {
         panic!("Invalid target architecture {}", target);
     };
+
+    let mut lib_dir = env::current_dir().unwrap();
+    lib_dir.push("target");
+    lib_dir.push(lib_file_name);
+    let path = Path::new(&lib_dir);
+
+    if path.exists() {
+        return;
+    }
 
     let url = format!("https://github.com/servo/libgstreamer_android_gen/blob/master/out/{}.zip?raw=true",
                       lib_file_name);
@@ -61,9 +70,6 @@ fn android_main(target: &str) {
 
             // If this is a .pc file, change pkgconfig info to make all GStreamer
             // dependencies point to libgstreamer_android.so
-            let mut lib_dir = env::current_dir().unwrap();
-            lib_dir.push("target");
-            lib_dir.push(lib_file_name);
             let expr = format!("s#libdir=.*#libdir={}#g", &lib_dir.to_str().unwrap());
             let pkg_config_dir_str = outpath.to_str().unwrap();
             let status =
