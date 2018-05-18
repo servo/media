@@ -1,6 +1,8 @@
-use audio::node::AudioNodeEngine;
+use audio::node::{AudioNodeEngine, AudioNodeType};
 use audio::oscillator_node::OscillatorNode;
 use audio::sink::AudioSink;
+use std::cell::RefCell;
+use std::collections::hash_map::HashMap;
 use std::sync::mpsc::Receiver;
 use std::sync::Arc;
 
@@ -8,14 +10,15 @@ use std::sync::Arc;
 use backends::gstreamer::audio_sink::GStreamerAudioSink;
 
 pub enum AudioGraphMsg {
+    CreateNode(usize, AudioNodeType),
     ResumeProcessing,
     PauseProcessing,
 }
 
 pub struct AudioGraphThread {
-    // XXX This should be a graph at some point.
-    // It's a single node just for early testing purposes.
-    node: Box<AudioNodeEngine>,
+    // XXX Test with a hash map for now. This should end up
+    // being a graph, like https://docs.rs/petgraph/0.4.12/petgraph/.
+    nodes: RefCell<HashMap<usize, Box<AudioNodeEngine>>>,
     sink: Box<AudioSink>,
 }
 
@@ -28,8 +31,9 @@ impl AudioGraphThread {
     pub fn start(receiver: Receiver<AudioGraphMsg>) {
         #[cfg(feature = "gst")]
         let graph = Arc::new(Self {
-            // XXX Test with an oscillator node.
-            node: Box::new(OscillatorNode::new()),
+            // XXX Test with a hash map for now. This should end up
+            // being a graph, like https://docs.rs/petgraph/0.4.12/petgraph/.
+            nodes: RefCell::new(HashMap::new()),
             sink: Box::new(GStreamerAudioSink::new()),
         });
 
@@ -46,6 +50,17 @@ impl AudioGraphThread {
         self.sink.stop();
     }
 
+    pub fn create_node(&self, node_id: usize, node_type: AudioNodeType) {
+        match node_type {
+            AudioNodeType::OscillatorNode(options) => {
+                let node = Box::new(OscillatorNode::new(options));
+                let mut nodes = self.nodes.borrow_mut();
+                nodes.insert(node_id, node);
+            }
+            _ => unimplemented!(),
+        }
+    }
+
     pub fn process(
         &self,
         data: &mut [u8],
@@ -55,14 +70,19 @@ impl AudioGraphThread {
         channels: u32,
         vol: f64,
     ) {
-        self.node
-            .process(data, accumulator_ref, freq, rate, channels, vol);
+        let nodes = self.nodes.borrow();
+        for (_, node) in nodes.iter() {
+            node.process(data, accumulator_ref, freq, rate, channels, vol);
+        }
     }
 
     pub fn event_loop(&self, receiver: Receiver<AudioGraphMsg>) {
         loop {
             if let Ok(msg) = receiver.try_recv() {
                 match msg {
+                    AudioGraphMsg::CreateNode(node_id, node_type) => {
+                        self.create_node(node_id, node_type);
+                    }
                     AudioGraphMsg::ResumeProcessing => {
                         self.resume_processing();
                     }

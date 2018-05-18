@@ -2,11 +2,43 @@ use audio::byte_slice_cast::*;
 use audio::node::AudioNodeEngine;
 use audio::num_traits::cast::NumCast;
 
-pub struct OscillatorNode {}
+pub struct PeriodicWaveOptions {
+    // XXX https://webaudio.github.io/web-audio-api/#dictdef-periodicwaveoptions
+}
+
+pub enum OscillatorType {
+    Sine,
+    Square,
+    Sawtooth,
+    Triangle,
+    Custom,
+}
+
+pub struct OscillatorNodeOptions {
+    oscillator_type: OscillatorType,
+    freq: f32,
+    detune: f32,
+    periodic_wave_options: Option<PeriodicWaveOptions>,
+}
+
+impl Default for OscillatorNodeOptions {
+    fn default() -> Self {
+        OscillatorNodeOptions {
+            oscillator_type: OscillatorType::Sine,
+            freq: 440.,
+            detune: 0.,
+            periodic_wave_options: None,
+        }
+    }
+}
+
+pub struct OscillatorNode {
+    options: OscillatorNodeOptions,
+}
 
 impl OscillatorNode {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(options: OscillatorNodeOptions) -> Self {
+        Self { options }
     }
 }
 
@@ -20,6 +52,9 @@ impl AudioNodeEngine for OscillatorNode {
         channels: u32,
         vol: f64,
     ) {
+        // XXX Implement this properly and according to self.options
+        // as defined in https://webaudio.github.io/web-audio-api/#oscillatornode
+
         use std::f64::consts::PI;
 
         // Reinterpret our byte-slice as a slice containing elements of the type

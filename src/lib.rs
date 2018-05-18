@@ -52,6 +52,8 @@ impl ServoMedia {
 mod tests {
     use std::{thread, time};
     use ServoMedia;
+    use audio::node::AudioNodeType;
+    use audio::oscillator_node::OscillatorNodeOptions;
 
     #[test]
     #[cfg(feature = "gst")]
@@ -68,6 +70,7 @@ mod tests {
     fn test_audio_graph() {
         if let Ok(servo_media) = ServoMedia::get() {
             let mut graph = servo_media.create_audio_graph().unwrap();
+            graph.create_node(AudioNodeType::OscillatorNode(OscillatorNodeOptions::default()));
             graph.resume_processing();
             thread::sleep(time::Duration::from_millis(5000));
             graph.pause_processing();
