@@ -8,14 +8,8 @@ pub mod audio;
 mod backends;
 
 pub use audio::graph::AudioGraph;
-use backends::ServoMediaBackend;
 
-#[cfg(feature = "gst")]
-use backends::gstreamer::GStreamer;
-
-pub struct ServoMedia {
-    backend: Box<ServoMediaBackend>,
-}
+pub struct ServoMedia {}
 
 static INITIALIZER: Once = sync::ONCE_INIT;
 static mut INSTANCE: *mut Mutex<Option<Arc<ServoMedia>>> = 0 as *mut _;
@@ -23,9 +17,9 @@ static mut INSTANCE: *mut Mutex<Option<Arc<ServoMedia>>> = 0 as *mut _;
 impl ServoMedia {
     pub fn new() -> Self {
         #[cfg(feature = "gst")]
-        Self {
-            backend: Box::new(GStreamer::new()),
-        }
+        gst::init().unwrap();
+
+        Self {}
     }
 
     pub fn get() -> Result<Arc<ServoMedia>, ()> {
@@ -39,26 +33,7 @@ impl ServoMedia {
         }
     }
 
-    pub fn version(&self) -> String {
-        self.backend.version()
-    }
-
     pub fn create_audio_graph(&self) -> Result<AudioGraph, ()> {
         AudioGraph::new()
-    }
-}
-
-#[cfg(test)]
-mod tests {   
-    use ServoMedia;
-    
-    #[test]
-    #[cfg(feature = "gst")]
-    fn test_backend_id() {
-        let servo_media = ServoMedia::get();
-        match servo_media {
-            Ok(servo_media) => assert_eq!(servo_media.version(), "GStreamer 1.14.0"),
-            Err(_) => unreachable!(),
-        };
     }
 }
