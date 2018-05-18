@@ -1,3 +1,24 @@
+pub enum AudioNodeType {
+    AnalyserNode,
+    BiquadFilterNode,
+    AudioBuffer,
+    AudioBufferSourceNode,
+    ChannelMergerNode,
+    ChannelSplitterNode,
+    ConstantSourceNode,
+    ConvolverNode,
+    DelayNode,
+    DynamicsCompressionNode,
+    GainNode,
+    IIRFilterNode,
+    OscillatorNode,
+    PannerNode,
+    PeriodicWave,
+    ScriptProcessorNode,
+    StereoPannerNode,
+    WaveShaperNode,
+}
+
 pub trait AudioNodeEngine: Sync + Send {
     // XXX Create an AudioBuffer abstraction
     fn process(
