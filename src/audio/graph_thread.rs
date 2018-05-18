@@ -52,8 +52,8 @@ impl AudioGraphThread {
 
     pub fn create_node(&self, node_id: usize, node_type: AudioNodeType) {
         match node_type {
-            AudioNodeType::OscillatorNode => {
-                let node = Box::new(OscillatorNode::new());
+            AudioNodeType::OscillatorNode(options) => {
+                let node = Box::new(OscillatorNode::new(options));
                 let mut nodes = self.nodes.borrow_mut();
                 nodes.insert(node_id, node);
             }

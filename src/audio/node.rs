@@ -1,3 +1,5 @@
+use audio::oscillator_node::OscillatorNodeOptions;
+
 pub enum AudioNodeType {
     AnalyserNode,
     BiquadFilterNode,
@@ -11,7 +13,7 @@ pub enum AudioNodeType {
     DynamicsCompressionNode,
     GainNode,
     IIRFilterNode,
-    OscillatorNode,
+    OscillatorNode(OscillatorNodeOptions),
     PannerNode,
     PeriodicWave,
     ScriptProcessorNode,
