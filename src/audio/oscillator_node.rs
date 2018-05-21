@@ -15,10 +15,10 @@ pub enum OscillatorType {
 }
 
 pub struct OscillatorNodeOptions {
-    oscillator_type: OscillatorType,
-    freq: f32,
-    detune: f32,
-    periodic_wave_options: Option<PeriodicWaveOptions>,
+    pub oscillator_type: OscillatorType,
+    pub freq: f32,
+    pub detune: f32,
+    pub periodic_wave_options: Option<PeriodicWaveOptions>,
 }
 
 impl Default for OscillatorNodeOptions {
