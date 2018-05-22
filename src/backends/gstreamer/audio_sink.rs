@@ -65,7 +65,6 @@ impl AudioSink for GStreamerAudioSink {
         src.set_property_format(gst::Format::Time);
         let settings = Settings::default();
         let mut sample_offset = 0;
-        let mut accumulator = 0.;
         let n_samples = settings.samples_per_buffer as u64;
         let buf_size = (n_samples as usize) * (info.bpf() as usize);
         let rate = info.rate();
@@ -92,11 +91,7 @@ impl AudioSink for GStreamerAudioSink {
                 let data = map.as_mut_slice();
                 graph_.process(
                     data,
-                    &mut accumulator,
-                    settings.freq,
                     rate,
-                    1,
-                    settings.volume,
                 );
                 sample_offset += n_samples;
             }

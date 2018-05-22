@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 #[cfg(feature = "gst")]
 extern crate gstreamer as gst;
 
-mod audio;
+pub mod audio;
 mod backends;
 
 pub use audio::graph::AudioGraph;
@@ -49,12 +49,9 @@ impl ServoMedia {
 }
 
 #[cfg(test)]
-mod tests {
-    use std::{thread, time};
+mod tests {   
     use ServoMedia;
-    use audio::node::AudioNodeType;
-    use audio::oscillator_node::OscillatorNodeOptions;
-
+    
     #[test]
     #[cfg(feature = "gst")]
     fn test_backend_id() {
@@ -63,19 +60,5 @@ mod tests {
             Ok(servo_media) => assert_eq!(servo_media.version(), "GStreamer 1.14.0"),
             Err(_) => unreachable!(),
         };
-    }
-
-    #[test]
-    #[cfg(feature = "gst")]
-    fn test_audio_graph() {
-        if let Ok(servo_media) = ServoMedia::get() {
-            let mut graph = servo_media.create_audio_graph().unwrap();
-            graph.create_node(AudioNodeType::OscillatorNode(OscillatorNodeOptions::default()));
-            graph.resume_processing();
-            thread::sleep(time::Duration::from_millis(5000));
-            graph.pause_processing();
-        } else {
-            unreachable!();
-        }
     }
 }
