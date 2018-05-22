@@ -6,7 +6,6 @@ use audio::sink::AudioSink;
 use gst;
 use gst::prelude::*;
 use std::sync::Arc;
-use byte_slice_cast::*;
 
 // XXX Define own error type.
 
@@ -63,9 +62,13 @@ impl AudioSink for GStreamerAudioSink {
                 buffer.set_duration(next_pts - pts);
                 
                 let mut chunks = graph_.process(rate);
+                // sometimes nothing reaches the output
+                if chunks.len() == 0 {
+                    chunks.blocks.push(Default::default());
+                    info.format_info().fill_silence(chunks.blocks[0].as_mut_byte_slice());
+                }
                 debug_assert!(chunks.len() == 1);
-                let data = &mut chunks.blocks[0].data;
-                let data = data.as_mut_byte_slice().expect("casting failed");
+                let data = chunks.blocks[0].as_mut_byte_slice();
 
                 // XXXManishearth if we have a safe way to convert
                 // from Box<[f32]> to Box<[u8]> (similarly for Vec)
