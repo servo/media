@@ -9,7 +9,7 @@ use std::sync::Arc;
 #[cfg(feature = "gst")]
 use backends::gstreamer::audio_sink::GStreamerAudioSink;
 
-pub enum AudioGraphMsg {
+pub enum AudioGraphThreadMsg {
     CreateNode(usize, AudioNodeType),
     ResumeProcessing,
     PauseProcessing,
@@ -28,7 +28,7 @@ unsafe impl Sync for AudioGraphThread {}
 unsafe impl Send for AudioGraphThread {}
 
 impl AudioGraphThread {
-    pub fn start(receiver: Receiver<AudioGraphMsg>) {
+    pub fn start(event_queue: Receiver<AudioGraphThreadMsg>) {
         #[cfg(feature = "gst")]
         let graph = Arc::new(Self {
             // XXX Test with a hash map for now. This should end up
@@ -39,7 +39,7 @@ impl AudioGraphThread {
 
         let _ = graph.sink.init(graph.clone());
 
-        graph.event_loop(receiver);
+        graph.event_loop(event_queue);
     }
 
     pub fn resume_processing(&self) {
@@ -61,28 +61,24 @@ impl AudioGraphThread {
         }
     }
 
-    pub fn process(
-        &self,
-        data: &mut [u8],
-        rate: u32
-    ) {
+    pub fn process(&self, data: &mut [u8], rate: u32) {
         let nodes = self.nodes.borrow();
         for (_, node) in nodes.iter() {
             node.process(data, rate);
         }
     }
 
-    pub fn event_loop(&self, receiver: Receiver<AudioGraphMsg>) {
+    pub fn event_loop(&self, event_queue: Receiver<AudioGraphThreadMsg>) {
         loop {
-            if let Ok(msg) = receiver.try_recv() {
+            if let Ok(msg) = event_queue.try_recv() {
                 match msg {
-                    AudioGraphMsg::CreateNode(node_id, node_type) => {
+                    AudioGraphThreadMsg::CreateNode(node_id, node_type) => {
                         self.create_node(node_id, node_type);
                     }
-                    AudioGraphMsg::ResumeProcessing => {
+                    AudioGraphThreadMsg::ResumeProcessing => {
                         self.resume_processing();
                     }
-                    AudioGraphMsg::PauseProcessing => {
+                    AudioGraphThreadMsg::PauseProcessing => {
                         self.pause_processing();
                     }
                 }

@@ -1,8 +1,8 @@
-use super::gst;
 use super::gst_app::{AppSrc, AppSrcCallbacks};
 use super::gst_audio;
 use audio::graph_thread::AudioGraphThread;
 use audio::sink::AudioSink;
+use gst;
 use gst::prelude::*;
 use std::sync::Arc;
 
@@ -89,10 +89,7 @@ impl AudioSink for GStreamerAudioSink {
                 buffer.set_duration(next_pts - pts);
                 let mut map = buffer.map_writable().unwrap();
                 let data = map.as_mut_slice();
-                graph_.process(
-                    data,
-                    rate,
-                );
+                graph_.process(data, rate);
                 sample_offset += n_samples;
             }
             let _ = app.push_buffer(buffer);

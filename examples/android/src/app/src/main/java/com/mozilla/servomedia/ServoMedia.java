@@ -19,15 +19,10 @@ public class ServoMedia {
         this.streamPtr = audioStreamNew();
     }
 
-    private static native String backendId();
     private static native long audioStreamNew();
     private static native void audioStreamPlay(long ptr);
     private static native void audioStreamStop(long ptr);
     private static native void audioStreamRelease(long ptr);
-
-    public String getBackendId() {
-        return backendId();
-    }
 
     public void playStream() {
         audioStreamPlay(this.streamPtr);

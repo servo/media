@@ -1,7 +1,7 @@
-use std::cell::Cell;
 use audio::byte_slice_cast::*;
 use audio::node::AudioNodeEngine;
 use audio::num_traits::cast::NumCast;
+use std::cell::Cell;
 
 pub struct PeriodicWaveOptions {
     // XXX https://webaudio.github.io/web-audio-api/#dictdef-periodicwaveoptions
@@ -35,21 +35,20 @@ impl Default for OscillatorNodeOptions {
 
 pub struct OscillatorNode {
     options: OscillatorNodeOptions,
-    accumulator: Cell<f64>
+    accumulator: Cell<f64>,
 }
 
 impl OscillatorNode {
     pub fn new(options: OscillatorNodeOptions) -> Self {
-        Self { options, accumulator: Cell::new(0.) }
+        Self {
+            options,
+            accumulator: Cell::new(0.),
+        }
     }
 }
 
 impl AudioNodeEngine for OscillatorNode {
-    fn process(
-        &self,
-        data: &mut [u8],
-        rate: u32,
-    ) {
+    fn process(&self, data: &mut [u8], rate: u32) {
         // XXX Implement this properly and according to self.options
         // as defined in https://webaudio.github.io/web-audio-api/#oscillatornode
 

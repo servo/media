@@ -1,7 +1,7 @@
 extern crate servo_media;
 
-use servo_media::*;
 use servo_media::audio::node::AudioNodeType;
+use servo_media::*;
 use std::{thread, time};
 
 fn main() {

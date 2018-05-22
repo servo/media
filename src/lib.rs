@@ -1,31 +1,40 @@
+use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
+use std::sync::mpsc::{self, Sender};
 use std::sync::{self, Once};
 use std::sync::{Arc, Mutex};
+use std::thread::Builder;
 
 #[cfg(feature = "gst")]
 extern crate gstreamer as gst;
 
 pub mod audio;
 mod backends;
+mod media_thread;
 
 pub use audio::graph::AudioGraph;
-use backends::ServoMediaBackend;
-
-#[cfg(feature = "gst")]
-use backends::gstreamer::GStreamer;
+use media_thread::MediaThreadMsg;
 
 pub struct ServoMedia {
-    backend: Box<ServoMediaBackend>,
+    sender: Sender<MediaThreadMsg>,
 }
 
 static INITIALIZER: Once = sync::ONCE_INIT;
 static mut INSTANCE: *mut Mutex<Option<Arc<ServoMedia>>> = 0 as *mut _;
+static NEXT_GRAPH_ID: AtomicUsize = ATOMIC_USIZE_INIT;
 
 impl ServoMedia {
     pub fn new() -> Self {
         #[cfg(feature = "gst")]
-        Self {
-            backend: Box::new(GStreamer::new()),
-        }
+        gst::init().unwrap();
+
+        let (sender, receiver) = mpsc::channel();
+        Builder::new()
+            .name("ServoMedia".to_owned())
+            .spawn(move || {
+                media_thread::event_loop(receiver);
+            })
+            .unwrap();
+        Self { sender }
     }
 
     pub fn get() -> Result<Arc<ServoMedia>, ()> {
@@ -39,26 +48,8 @@ impl ServoMedia {
         }
     }
 
-    pub fn version(&self) -> String {
-        self.backend.version()
-    }
-
     pub fn create_audio_graph(&self) -> Result<AudioGraph, ()> {
-        AudioGraph::new()
-    }
-}
-
-#[cfg(test)]
-mod tests {   
-    use ServoMedia;
-    
-    #[test]
-    #[cfg(feature = "gst")]
-    fn test_backend_id() {
-        let servo_media = ServoMedia::get();
-        match servo_media {
-            Ok(servo_media) => assert_eq!(servo_media.version(), "GStreamer 1.14.0"),
-            Err(_) => unreachable!(),
-        };
+        let graph_id = NEXT_GRAPH_ID.fetch_add(1, Ordering::SeqCst);
+        Ok(AudioGraph::new(graph_id, self.sender.clone()))
     }
 }
