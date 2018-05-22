@@ -1,3 +1,4 @@
+use audio::gain_node::GainNodeOptions;
 use audio::oscillator_node::OscillatorNodeOptions;
 use audio::block::Chunk;
 
@@ -12,7 +13,7 @@ pub enum AudioNodeType {
     ConvolverNode,
     DelayNode,
     DynamicsCompressionNode,
-    GainNode,
+    GainNode(GainNodeOptions),
     IIRFilterNode,
     OscillatorNode(OscillatorNodeOptions),
     PannerNode,
