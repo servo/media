@@ -84,7 +84,6 @@ pub mod android {
         stream.stop();
     }
 
-
     #[no_mangle]
     pub unsafe extern "C" fn Java_com_mozilla_servomedia_ServoMedia_audioStreamDestroy(
         _: JNIEnv,

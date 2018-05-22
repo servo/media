@@ -61,11 +61,7 @@ impl AudioGraphThread {
         }
     }
 
-    pub fn process(
-        &self,
-        data: &mut [u8],
-        rate: u32
-    ) {
+    pub fn process(&self, data: &mut [u8], rate: u32) {
         let nodes = self.nodes.borrow();
         for (_, node) in nodes.iter() {
             node.process(data, rate);

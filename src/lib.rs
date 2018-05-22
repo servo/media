@@ -1,7 +1,7 @@
-use std::sync::{self, Once};
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 use std::sync::mpsc::{self, Sender};
+use std::sync::{self, Once};
+use std::sync::{Arc, Mutex};
 use std::thread::Builder;
 
 #[cfg(feature = "gst")]

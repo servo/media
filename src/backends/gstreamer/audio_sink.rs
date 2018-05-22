@@ -89,10 +89,7 @@ impl AudioSink for GStreamerAudioSink {
                 buffer.set_duration(next_pts - pts);
                 let mut map = buffer.map_writable().unwrap();
                 let data = map.as_mut_slice();
-                graph_.process(
-                    data,
-                    rate,
-                );
+                graph_.process(data, rate);
                 sample_offset += n_samples;
             }
             let _ = app.push_buffer(buffer);
