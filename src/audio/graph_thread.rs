@@ -1,3 +1,4 @@
+use audio::block::Chunk;
 use audio::node::{AudioNodeEngine, AudioNodeType};
 use audio::oscillator_node::OscillatorNode;
 use audio::sink::AudioSink;
@@ -61,11 +62,18 @@ impl AudioGraphThread {
         }
     }
 
-    pub fn process(&self, data: &mut [u8], rate: u32) {
+    pub fn process(
+        &self,
+        rate: u32
+    
+    ) -> Chunk 
+    {
         let nodes = self.nodes.borrow();
+        let mut data = Chunk::default();
         for (_, node) in nodes.iter() {
-            node.process(data, rate);
+            data = node.process(data, rate);
         }
+        data
     }
 
     pub fn event_loop(&self, event_queue: Receiver<AudioGraphThreadMsg>) {

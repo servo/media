@@ -1,4 +1,5 @@
 use audio::oscillator_node::OscillatorNodeOptions;
+use audio::block::Chunk;
 
 pub enum AudioNodeType {
     AnalyserNode,
@@ -23,5 +24,9 @@ pub enum AudioNodeType {
 
 pub trait AudioNodeEngine: Send {
     // XXX Create an AudioBuffer abstraction
-    fn process(&self, data: &mut [u8], rate: u32);
+    fn process(
+        &self,
+        inputs: Chunk,
+        rate: u32,
+    ) -> Chunk;
 }

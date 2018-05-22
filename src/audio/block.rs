@@ -24,12 +24,18 @@ impl Default for Chunk {
     }
 }
 
+impl Chunk {
+    pub fn len(&self) -> usize {
+        self.blocks.len()
+    }
+}
+
 /// We render audio in blocks of size FRAMES_PER_BLOCK
 ///
 /// A single block may contain multiple channels
 pub struct Block {
-    // todo: handle channels (probably by making this a vec)
-    pub data: Box<[f32; FRAMES_PER_BLOCK]>,
+    // todo: handle channels
+    pub data: Box<[f32]>,
 }
 
 impl Default for Block {

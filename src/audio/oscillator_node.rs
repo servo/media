@@ -1,6 +1,6 @@
-use audio::byte_slice_cast::*;
+use audio::block::Chunk;
 use audio::node::AudioNodeEngine;
-use audio::num_traits::cast::NumCast;
+use num_traits::cast::NumCast;
 use std::cell::Cell;
 
 pub struct PeriodicWaveOptions {
@@ -48,39 +48,46 @@ impl OscillatorNode {
 }
 
 impl AudioNodeEngine for OscillatorNode {
-    fn process(&self, data: &mut [u8], rate: u32) {
+    fn process(
+        &self,
+        mut inputs: Chunk,
+        rate: u32,
+    ) -> Chunk {
         // XXX Implement this properly and according to self.options
         // as defined in https://webaudio.github.io/web-audio-api/#oscillatornode
 
         use std::f64::consts::PI;
 
-        // Reinterpret our byte-slice as a slice containing elements of the type
-        // we're interested in. GStreamer requires for raw audio that the alignment
-        // of memory is correct, so this will never ever fail unless there is an
-        // actual bug elsewhere.
-        let data = data.as_mut_slice_of::<f32>().unwrap();
+        debug_assert!(inputs.len() == 0);
 
-        // Convert all our parameters to the target type for calculations
-        let vol: f32 = 1.0;
-        let freq = self.options.freq as f64;
-        let rate = rate as f64;
-        let two_pi = 2.0 * PI;
+        inputs.blocks.push(Default::default());
 
-        // We're carrying a accumulator with up to 2pi around instead of working
-        // on the sample offset. High sample offsets cause too much inaccuracy when
-        // converted to floating point numbers and then iterated over in 1-steps
-        let step = two_pi * freq / rate;
-        let mut accumulator = self.accumulator.get();
+        {
+            let data = &mut inputs.blocks[0].data;
 
-        for sample in data {
-            let value = vol * f32::sin(NumCast::from(accumulator).unwrap());
-            *sample = value;
+            // Convert all our parameters to the target type for calculations
+            let vol: f32 = 1.0;
+            let freq = self.options.freq as f64;
+            let rate = rate as f64;
+            let two_pi = 2.0 * PI;
 
-            accumulator += step;
-            if accumulator >= two_pi {
-                accumulator -= two_pi;
+            // We're carrying a accumulator with up to 2pi around instead of working
+            // on the sample offset. High sample offsets cause too much inaccuracy when
+            // converted to floating point numbers and then iterated over in 1-steps
+            let step = two_pi * freq / rate;
+            let mut accumulator = self.accumulator.get();
+
+            for sample in data.iter_mut() {
+                let value = vol * f32::sin(NumCast::from(accumulator).unwrap());
+                *sample = value;
+
+                accumulator += step;
+                if accumulator >= two_pi {
+                    accumulator -= two_pi;
+                }
             }
+            self.accumulator.set(accumulator);
         }
-        self.accumulator.set(accumulator);
+        inputs
     }
 }

@@ -6,6 +6,7 @@ use audio::sink::AudioSink;
 use gst;
 use gst::prelude::*;
 use std::sync::Arc;
+use byte_slice_cast::*;
 
 // XXX Define own error type.
 
@@ -60,9 +61,13 @@ impl AudioSink for GStreamerAudioSink {
                     .into();
                 buffer.set_pts(pts);
                 buffer.set_duration(next_pts - pts);
-                let mut map = buffer.map_writable().unwrap();
-                let data = map.as_mut_slice();
-                graph_.process(data, rate);
+                
+                let mut chunks = graph_.process(rate);
+                debug_assert!(chunks.len() == 1);
+                let data = &mut chunks.blocks[0].data;
+                let data = data.as_mut_byte_slice().expect("casting failed");
+                buffer.copy_from_slice(0, data).expect("copying failed");
+
                 sample_offset += n_samples;
             }
             let _ = app.push_buffer(buffer);

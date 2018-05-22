@@ -8,6 +8,8 @@ use std::thread::Builder;
 extern crate gstreamer as gst;
 
 extern crate smallvec;
+extern crate byte_slice_cast;
+extern crate num_traits;
 
 pub mod audio;
 mod backends;
