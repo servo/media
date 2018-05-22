@@ -24,14 +24,6 @@ impl AudioStream {
     }
 }
 
-#[no_mangle]
-pub extern "C" fn servo_media_backend_id() -> *mut c_char {
-    match ServoMedia::get() {
-        Ok(servo_media) => CString::new(servo_media.version()).unwrap().into_raw(),
-        Err(_) => CString::new("Ooops").unwrap().into_raw(),
-    }
-}
-
 /// Expose the JNI interface for android below
 #[cfg(target_os = "android")]
 #[allow(non_snake_case)]
@@ -42,18 +34,6 @@ pub mod android {
     use self::jni::sys::{jlong, jstring};
     use self::jni::JNIEnv;
     use super::*;
-
-    #[no_mangle]
-    pub unsafe extern "C" fn Java_com_mozilla_servomedia_ServoMedia_backendId(
-        env: JNIEnv,
-        _: JClass,
-    ) -> jstring {
-        let backend_id = CString::from_raw(servo_media_backend_id());
-        let output = env.new_string(backend_id.to_str().unwrap())
-            .expect("Couldn't create java string!");
-
-        output.into_inner()
-    }
 
     #[no_mangle]
     pub unsafe extern "C" fn Java_com_mozilla_servomedia_ServoMedia_audioStreamNew(

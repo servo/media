@@ -50,9 +50,5 @@ public class MainActivity extends AppCompatActivity {
                     wake_lock.release();
                 }
             });
-
-        String backendId = media.getBackendId();
-        ((TextView)findViewById(R.id.backendId)).setText(backendId);
-
     }
 }
