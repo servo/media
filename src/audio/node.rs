@@ -12,6 +12,7 @@ pub enum AudioNodeType {
     ConstantSourceNode,
     ConvolverNode,
     DelayNode,
+    DestinationNode,
     DynamicsCompressionNode,
     GainNode(GainNodeOptions),
     IIRFilterNode,
