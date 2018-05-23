@@ -7,6 +7,10 @@ use std::thread::Builder;
 #[cfg(feature = "gst")]
 extern crate gstreamer as gst;
 
+extern crate smallvec;
+extern crate byte_slice_cast;
+extern crate num_traits;
+
 pub mod audio;
 mod backends;
 mod media_thread;

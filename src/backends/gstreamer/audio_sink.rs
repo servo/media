@@ -1,41 +1,14 @@
 use super::gst_app::{AppSrc, AppSrcCallbacks};
 use super::gst_audio;
+use audio::block::FRAMES_PER_BLOCK;
 use audio::graph_thread::AudioGraphThread;
 use audio::sink::AudioSink;
 use gst;
 use gst::prelude::*;
 use std::sync::Arc;
+use byte_slice_cast::*;
 
 // XXX Define own error type.
-
-// Default values of properties
-const DEFAULT_SAMPLES_PER_BUFFER: u32 = 1024;
-const DEFAULT_FREQ: u32 = 440;
-const DEFAULT_VOLUME: f64 = 0.8;
-const DEFAULT_MUTE: bool = false;
-const DEFAULT_IS_LIVE: bool = false;
-
-// Property value storage
-#[derive(Debug, Clone, Copy)]
-struct Settings {
-    samples_per_buffer: u32,
-    freq: u32,
-    volume: f64,
-    mute: bool,
-    is_live: bool,
-}
-
-impl Default for Settings {
-    fn default() -> Self {
-        Settings {
-            samples_per_buffer: DEFAULT_SAMPLES_PER_BUFFER,
-            freq: DEFAULT_FREQ,
-            volume: DEFAULT_VOLUME,
-            mute: DEFAULT_MUTE,
-            is_live: DEFAULT_IS_LIVE,
-        }
-    }
-}
 
 pub struct GStreamerAudioSink {
     pipeline: gst::Pipeline,
@@ -63,10 +36,11 @@ impl AudioSink for GStreamerAudioSink {
             .ok_or(())?;
         src.set_caps(&info.to_caps().unwrap());
         src.set_property_format(gst::Format::Time);
-        let settings = Settings::default();
         let mut sample_offset = 0;
-        let n_samples = settings.samples_per_buffer as u64;
+        let n_samples = FRAMES_PER_BLOCK as u64;
         let buf_size = (n_samples as usize) * (info.bpf() as usize);
+
+        assert!(info.bpf() == 4);
         let rate = info.rate();
 
         let graph_ = graph.clone();
@@ -87,9 +61,17 @@ impl AudioSink for GStreamerAudioSink {
                     .into();
                 buffer.set_pts(pts);
                 buffer.set_duration(next_pts - pts);
-                let mut map = buffer.map_writable().unwrap();
-                let data = map.as_mut_slice();
-                graph_.process(data, rate);
+                
+                let mut chunks = graph_.process(rate);
+                debug_assert!(chunks.len() == 1);
+                let data = &mut chunks.blocks[0].data;
+                let data = data.as_mut_byte_slice().expect("casting failed");
+
+                // XXXManishearth if we have a safe way to convert
+                // from Box<[f32]> to Box<[u8]> (similarly for Vec)
+                // we can use Buffer::from_slice instead
+                buffer.copy_from_slice(0, data).expect("copying failed");
+
                 sample_offset += n_samples;
             }
             let _ = app.push_buffer(buffer);

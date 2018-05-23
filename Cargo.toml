@@ -1,26 +1,39 @@
 [package]
-name = "servo_media"
-version = "0.1.0"
 authors = ["Fernando Jiménez Moreno <ferjmoreno@gmail.com>"]
 license = "MPL-2.0"
-
-[lib]
 name = "servo_media"
-
-[features]
-default = ["gst"]
-gst = ["gstreamer", "gst-plugin", "gstreamer-audio", "gstreamer-app", "gstreamer-base", "byte-slice-cast", "num-traits", "glib"]
-
-[dependencies]
-byte-slice-cast = { version = "0.1", optional = true }
-glib = { version = "0.5", optional = true }
-gst-plugin = { version = "0.2", optional = true }
-gstreamer = { version = "0.11", optional = true }
-gstreamer-audio = { version = "0.11", optional = true }
-gstreamer-base = { version = "0.11", optional = true }
-gstreamer-app = { version = "0.11.2", optional = true }
-num-traits = { version = "0.1", optional = true }
+version = "0.1.0"
 
 [build-dependencies]
 regex = "0.2.10"
 zip = "0.3.1"
+
+[dependencies]
+smallvec = "0.6.1"
+
+[dependencies.byte-slice-cast]
+optional = true
+version = "0.1"
+
+[dependencies.gstreamer]
+optional = true
+version = "0.11"
+
+[dependencies.gstreamer-app]
+optional = true
+version = "0.11.2"
+
+[dependencies.gstreamer-audio]
+optional = true
+version = "0.11"
+
+[dependencies.num-traits]
+optional = true
+version = "0.1"
+
+[features]
+default = ["gst"]
+gst = ["gstreamer", "gstreamer-audio", "gstreamer-app", "byte-slice-cast", "num-traits"]
+
+[lib]
+name = "servo_media"
