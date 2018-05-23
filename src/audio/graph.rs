@@ -71,10 +71,11 @@ pub struct AudioGraphProxy {
 impl AudioGraphProxy {
     pub fn new() -> Self {
         let (sender, receiver) = mpsc::channel();
+        let s2 = sender.clone();
         Builder::new()
             .name("AudioGraph".to_owned())
             .spawn(move || {
-                AudioGraphThread::start(receiver);
+                AudioGraphThread::start(s2, receiver);
             })
             .unwrap();
         Self { sender }

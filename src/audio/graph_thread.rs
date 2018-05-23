@@ -5,8 +5,7 @@ use audio::node::{AudioNodeEngine, AudioNodeType, AudioNodeMessage};
 use audio::oscillator_node::OscillatorNode;
 use audio::sink::AudioSink;
 use std::cell::RefCell;
-use std::sync::mpsc::Receiver;
-use std::sync::Arc;
+use std::sync::mpsc::{Sender, Receiver};
 
 #[cfg(feature = "gst")]
 use backends::gstreamer::audio_sink::GStreamerAudioSink;
@@ -16,6 +15,7 @@ pub enum AudioGraphThreadMsg {
     MessageNode(usize, AudioNodeMessage),
     ResumeProcessing,
     PauseProcessing,
+    SinkNeedsData,
 }
 
 pub struct AudioGraphThread {
@@ -23,24 +23,22 @@ pub struct AudioGraphThread {
     // being a graph, like https://docs.rs/petgraph/0.4.12/petgraph/.
     nodes: RefCell<Vec<Box<AudioNodeEngine>>>,
     sink: Box<AudioSink>,
+    rate: u32,
 }
 
-// XXX This is only required until we update gstreamer
-// https://github.com/sdroege/gstreamer-rs/commit/062403bdacf0658b719731bc38b570dcf500366e#diff-8fec33a7daa25b45af418d646ff7ea24
-unsafe impl Sync for AudioGraphThread {}
-unsafe impl Send for AudioGraphThread {}
-
 impl AudioGraphThread {
-    pub fn start(event_queue: Receiver<AudioGraphThreadMsg>) {
+    pub fn start(sender: Sender<AudioGraphThreadMsg>,
+                 event_queue: Receiver<AudioGraphThreadMsg>) {
         #[cfg(feature = "gst")]
-        let graph = Arc::new(Self {
+        let mut graph = Self {
             // XXX Test with a vec map for now. This should end up
             // being a graph, like https://docs.rs/petgraph/0.4.12/petgraph/.
             nodes: RefCell::new(Vec::new()),
-            sink: Box::new(GStreamerAudioSink::new()),
-        });
+            sink: Box::new(GStreamerAudioSink::new(sender)),
+            rate: 44100,
+        };
 
-        let _ = graph.sink.init(graph.clone());
+        let _ = graph.sink.init(graph.rate);
 
         graph.event_loop(event_queue);
     }
@@ -64,11 +62,11 @@ impl AudioGraphThread {
         nodes.push(node)
     }
 
-    pub fn process(&self, rate: u32) -> Chunk {
+    pub fn process(&self) -> Chunk {
         let nodes = self.nodes.borrow();
         let mut data = Chunk::default();
         for node in nodes.iter() {
-            data = node.process(data, rate);
+            data = node.process(data, self.rate);
         }
         data
     }
@@ -88,6 +86,10 @@ impl AudioGraphThread {
                     }
                     AudioGraphThreadMsg::MessageNode(index, msg) => {
                         self.nodes.borrow_mut()[index].message(msg)
+                    }
+                    AudioGraphThreadMsg::SinkNeedsData => {
+                        let chunk = self.process();
+                        self.sink.send_chunk(chunk);
                     }
                 }
             }
