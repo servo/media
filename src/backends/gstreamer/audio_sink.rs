@@ -66,6 +66,10 @@ impl AudioSink for GStreamerAudioSink {
                 debug_assert!(chunks.len() == 1);
                 let data = &mut chunks.blocks[0].data;
                 let data = data.as_mut_byte_slice().expect("casting failed");
+
+                // XXXManishearth if we have a safe way to convert
+                // from Box<[f32]> to Box<[u8]> (similarly for Vec)
+                // we can use Buffer::from_slice instead
                 buffer.copy_from_slice(0, data).expect("copying failed");
 
                 sample_offset += n_samples;
