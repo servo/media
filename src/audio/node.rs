@@ -31,4 +31,13 @@ pub trait AudioNodeEngine: Send {
         inputs: Chunk,
         rate: u32,
     ) -> Chunk;
+
+    fn message(&mut self, _: AudioNodeMessage) {
+
+    }
+}
+
+
+pub enum AudioNodeMessage {
+    SetFloatParam(f32)
 }

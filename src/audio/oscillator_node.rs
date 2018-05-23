@@ -1,5 +1,5 @@
 use audio::block::Chunk;
-use audio::node::AudioNodeEngine;
+use audio::node::{AudioNodeEngine, AudioNodeMessage};
 use num_traits::cast::NumCast;
 use std::cell::Cell;
 
@@ -89,5 +89,13 @@ impl AudioNodeEngine for OscillatorNode {
             self.accumulator.set(accumulator);
         }
         inputs
+    }
+    fn message(&mut self, msg: AudioNodeMessage) {
+        match msg {
+            AudioNodeMessage::SetFloatParam(val) => {
+                self.options.freq = val
+            }
+        }
+
     }
 }

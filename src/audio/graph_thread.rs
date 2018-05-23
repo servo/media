@@ -1,7 +1,7 @@
 use audio::block::Chunk;
 use audio::destination_node::DestinationNode;
 use audio::gain_node::GainNode;
-use audio::node::{AudioNodeEngine, AudioNodeType};
+use audio::node::{AudioNodeEngine, AudioNodeType, AudioNodeMessage};
 use audio::oscillator_node::OscillatorNode;
 use audio::sink::AudioSink;
 use std::cell::RefCell;
@@ -13,6 +13,7 @@ use backends::gstreamer::audio_sink::GStreamerAudioSink;
 
 pub enum AudioGraphThreadMsg {
     CreateNode(AudioNodeType),
+    MessageNode(usize, AudioNodeMessage),
     ResumeProcessing,
     PauseProcessing,
 }
@@ -84,6 +85,9 @@ impl AudioGraphThread {
                     }
                     AudioGraphThreadMsg::PauseProcessing => {
                         self.pause_processing();
+                    }
+                    AudioGraphThreadMsg::MessageNode(index, msg) => {
+                        self.nodes.borrow_mut()[index].message(msg)
                     }
                 }
             }
