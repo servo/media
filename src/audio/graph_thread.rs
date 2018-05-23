@@ -1,6 +1,7 @@
 use audio::block::Chunk;
-use audio::node::{AudioNodeEngine, AudioNodeType};
+use audio::destination_node::DestinationNode;
 use audio::gain_node::GainNode;
+use audio::node::{AudioNodeEngine, AudioNodeType};
 use audio::oscillator_node::OscillatorNode;
 use audio::sink::AudioSink;
 use std::cell::RefCell;
@@ -54,6 +55,7 @@ impl AudioGraphThread {
     pub fn create_node(&self, node_type: AudioNodeType) {
         let node: Box<AudioNodeEngine> = match node_type {
             AudioNodeType::OscillatorNode(options) => Box::new(OscillatorNode::new(options)),
+            AudioNodeType::DestinationNode => Box::new(DestinationNode::new()),
             AudioNodeType::GainNode(options) => Box::new(GainNode::new(options)),
             _ => unimplemented!(),
         };
@@ -61,12 +63,7 @@ impl AudioGraphThread {
         nodes.push(node)
     }
 
-    pub fn process(
-        &self,
-        rate: u32
-    
-    ) -> Chunk 
-    {
+    pub fn process(&self, rate: u32) -> Chunk {
         let nodes = self.nodes.borrow();
         let mut data = Chunk::default();
         for node in nodes.iter() {
