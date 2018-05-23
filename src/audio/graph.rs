@@ -1,5 +1,5 @@
 use audio::graph_thread::{AudioGraphThread, AudioGraphThreadMsg};
-use audio::node::AudioNodeType;
+use audio::node::{AudioNodeType, AudioNodeMessage};
 use media_thread::MediaThreadMsg;
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 use std::sync::mpsc::{self, Sender};
@@ -29,6 +29,15 @@ impl AudioGraph {
         receiver.recv().unwrap()
     }
 
+    pub fn message_node(&self, node_id: usize, msg: AudioNodeMessage) {
+        self.sender
+            .send(MediaThreadMsg::AudioGraphRequest(
+                self.id,
+                AudioGraphProxyMsg::MessageNode(node_id, msg),
+            ))
+            .unwrap();
+    }
+
     pub fn resume_processing(&self) {
         self.sender
             .send(MediaThreadMsg::AudioGraphRequest(
@@ -50,6 +59,7 @@ impl AudioGraph {
 
 pub enum AudioGraphProxyMsg {
     CreateNode(AudioNodeType, Sender<usize>),
+    MessageNode(usize, AudioNodeMessage),
     Resume,
     Pause,
 }
@@ -83,5 +93,9 @@ impl AudioGraphProxy {
 
     pub fn pause_processing(&self) {
         let _ = self.sender.send(AudioGraphThreadMsg::PauseProcessing);
+    }
+
+    pub fn message_node(&self, id: usize, msg: AudioNodeMessage) {
+        let _ = self.sender.send(AudioGraphThreadMsg::MessageNode(id, msg));
     }
 }

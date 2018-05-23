@@ -19,6 +19,9 @@ pub fn on_audio_graph_request(audio_graph: &AudioGraphProxy, msg: AudioGraphProx
         AudioGraphProxyMsg::Pause => {
             audio_graph.pause_processing();
         }
+        AudioGraphProxyMsg::MessageNode(node_id, node_type) => {
+            audio_graph.message_node(node_id, node_type)
+        }
     };
 }
 
