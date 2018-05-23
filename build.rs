@@ -3,9 +3,9 @@ extern crate zip;
 
 use regex::Regex;
 use std::env;
-use std::io;
 use std::fs;
-use std::path::PathBuf;
+use std::io;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 fn main() {
@@ -17,21 +17,47 @@ fn main() {
 
 fn android_main(target: &str) {
     // Download zip file containing prebuilt libgstreamer_android.so
-    let lib_file_name = if Regex::new("arm-([a-z])*-androideabi").unwrap().is_match(target) {
+    let lib_file_name = if Regex::new("arm-([a-z])*-androideabi")
+        .unwrap()
+        .is_match(target)
+    {
         "gst-build-armeabi"
-    } else if Regex::new("armv7-([a-z])*-androideabi").unwrap().is_match(target) {
+    } else if Regex::new("armv7-([a-z])*-androideabi")
+        .unwrap()
+        .is_match(target)
+    {
         "gst-build-armeabi-v7a"
-    } else if Regex::new("x86_64-([a-z])*-android").unwrap().is_match(target) {
+    } else if Regex::new("x86_64-([a-z])*-android")
+        .unwrap()
+        .is_match(target)
+    {
         "gst-build-x86_g4"
     } else {
         panic!("Invalid target architecture {}", target);
     };
 
-    let url = format!("https://github.com/servo/libgstreamer_android_gen/blob/master/out/{}.zip?raw=true",
-                      lib_file_name);
-    let status = Command::new("wget").args(&[&url, "-O", "lib.zip"]).status().unwrap();
+    let mut lib_dir = env::current_dir().unwrap();
+    lib_dir.push("target");
+    lib_dir.push(lib_file_name);
+    let path = Path::new(&lib_dir);
+
+    if path.exists() {
+        return;
+    }
+
+    let url = format!(
+        "https://github.com/servo/libgstreamer_android_gen/blob/master/out/{}.zip?raw=true",
+        lib_file_name
+    );
+    let status = Command::new("wget")
+        .args(&[&url, "-O", "lib.zip"])
+        .status()
+        .unwrap();
     if !status.success() {
-        panic!("Could not download required libgstreamer_android.so {}", status);
+        panic!(
+            "Could not download required libgstreamer_android.so {}",
+            status
+        );
     }
 
     // Unpack downloaded lib zip
@@ -43,10 +69,19 @@ fn android_main(target: &str) {
         let mut outpath = PathBuf::from("target");
         outpath.push(sanitize_filename(file.name()));
         if (&*file.name()).ends_with('/') {
-            println!("File {} extracted to \"{}\"", i, outpath.as_path().display());
+            println!(
+                "File {} extracted to \"{}\"",
+                i,
+                outpath.as_path().display()
+            );
             fs::create_dir_all(&outpath).unwrap();
         } else {
-            println!("File {} extracted to \"{}\" ({} bytes)", i, outpath.as_path().display(), file.size());
+            println!(
+                "File {} extracted to \"{}\" ({} bytes)",
+                i,
+                outpath.as_path().display(),
+                file.size()
+            );
             if let Some(p) = outpath.parent() {
                 if !p.exists() {
                     fs::create_dir_all(&p).unwrap();
@@ -61,13 +96,15 @@ fn android_main(target: &str) {
 
             // If this is a .pc file, change pkgconfig info to make all GStreamer
             // dependencies point to libgstreamer_android.so
-            let mut lib_dir = env::current_dir().unwrap();
-            lib_dir.push("target");
-            lib_dir.push(lib_file_name);
             let expr = format!("s#libdir=.*#libdir={}#g", &lib_dir.to_str().unwrap());
             let pkg_config_dir_str = outpath.to_str().unwrap();
-            let status =
-                Command::new("perl").arg("-i").arg("-pe").arg(&expr).arg(&pkg_config_dir_str).status().unwrap();
+            let status = Command::new("perl")
+                .arg("-i")
+                .arg("-pe")
+                .arg(&expr)
+                .arg(&pkg_config_dir_str)
+                .status()
+                .unwrap();
             if !status.success() {
                 panic!("Could not modify pkgconfig data {}", status);
             }
@@ -100,8 +137,8 @@ fn sanitize_filename(filename: &str) -> std::path::PathBuf {
             std::path::Component::Normal(..) => true,
             _ => false,
         })
-    .fold(std::path::PathBuf::new(), |mut path, ref cur| {
-        path.push(cur.as_os_str());
-        path
-    })
+        .fold(std::path::PathBuf::new(), |mut path, ref cur| {
+            path.push(cur.as_os_str());
+            path
+        })
 }
