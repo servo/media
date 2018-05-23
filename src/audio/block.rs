@@ -1,4 +1,5 @@
 use smallvec::SmallVec;
+use byte_slice_cast::*;
 
 // defined by spec
 // https://webaudio.github.io/web-audio-api/#render-quantum
@@ -43,5 +44,11 @@ impl Default for Block {
         Block {
             data: Box::new([0.; FRAMES_PER_BLOCK])
         }
+    }
+}
+
+impl Block {
+    pub fn as_mut_byte_slice(&mut self) -> &mut [u8] {
+        self.data.as_mut_byte_slice().expect("casting failed")
     }
 }
