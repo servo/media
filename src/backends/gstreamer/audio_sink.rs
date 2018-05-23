@@ -54,7 +54,6 @@ impl AudioSink for GStreamerAudioSink {
 
         let graph = self.graph.clone();
         let need_data = move |app: &AppSrc, _bytes: u32| {
-            graph.send(AudioGraphThreadMsg::SinkNeedsData).unwrap();
 
             let mut process_chunk = |mut chunk: Chunk| {
                 let mut buffer = gst::Buffer::with_size(buf_size).unwrap();
@@ -94,14 +93,24 @@ impl AudioSink for GStreamerAudioSink {
                 let _ = app.push_buffer(buffer);
             };
 
-            // block till we get the first chunk
-            process_chunk(chunk_receiver.recv().unwrap());
+
+            let mut processed = false;
 
             // we may have extra chunks, might as well process them
             while let Ok(chunk) = chunk_receiver.try_recv() {
+                processed = true;
                 process_chunk(chunk);
-
             }
+
+            if processed {
+                return;
+            }
+
+            graph.send(AudioGraphThreadMsg::SinkNeedsData).unwrap();
+            // block till we get the first chunk
+            process_chunk(chunk_receiver.recv().unwrap());
+
+
         };
         src.set_callbacks(AppSrcCallbacks::new().need_data(need_data).build());
 

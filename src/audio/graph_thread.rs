@@ -72,8 +72,10 @@ impl AudioGraphThread {
     }
 
     pub fn event_loop(&self, event_queue: Receiver<AudioGraphThreadMsg>) {
+        let mut queued = -1;
         loop {
             if let Ok(msg) = event_queue.try_recv() {
+                queued = 0;
                 match msg {
                     AudioGraphThreadMsg::CreateNode(node_type) => {
                         self.create_node(node_type);
@@ -91,6 +93,15 @@ impl AudioGraphThread {
                         let chunk = self.process();
                         self.sink.send_chunk(chunk);
                     }
+                }
+            } else {
+                // if we don't have anything to do right now,
+                // compute another tick and send it down instead of
+                // waiting for the callback
+                if queued < 20 {
+                    let chunk = self.process();
+                    self.sink.send_chunk(chunk);
+                    queued += 1;
                 }
             }
         }
