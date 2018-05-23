@@ -32,7 +32,7 @@ impl AudioGraphThread {
     pub fn start(event_queue: Receiver<AudioGraphThreadMsg>) {
         #[cfg(feature = "gst")]
         let graph = Arc::new(Self {
-            // XXX Test with a hash map for now. This should end up
+            // XXX Test with a vec map for now. This should end up
             // being a graph, like https://docs.rs/petgraph/0.4.12/petgraph/.
             nodes: RefCell::new(Vec::new()),
             sink: Box::new(GStreamerAudioSink::new()),
@@ -52,19 +52,13 @@ impl AudioGraphThread {
     }
 
     pub fn create_node(&self, node_type: AudioNodeType) {
-        match node_type {
-            AudioNodeType::OscillatorNode(options) => {
-                let node = Box::new(OscillatorNode::new(options));
-                let mut nodes = self.nodes.borrow_mut();
-                nodes.push(node);
-            }
-            AudioNodeType::GainNode(options) => {
-                let node = Box::new(GainNode::new(options));
-                let mut nodes = self.nodes.borrow_mut();
-                nodes.push(node);
-            }
+        let node: Box<AudioNodeEngine> = match node_type {
+            AudioNodeType::OscillatorNode(options) => Box::new(OscillatorNode::new(options)),
+            AudioNodeType::GainNode(options) => Box::new(GainNode::new(options)),
             _ => unimplemented!(),
-        }
+        };
+        let mut nodes = self.nodes.borrow_mut();
+        nodes.push(node)
     }
 
     pub fn process(
