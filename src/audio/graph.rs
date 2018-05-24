@@ -16,7 +16,7 @@ impl AudioGraph {
         Builder::new()
             .name("AudioGraph".to_owned())
             .spawn(move || {
-                AudioGraphThread::start(receiver);
+                AudioGraphThread::start(receiver).expect("Could not start AudioGraphThread");
             })
             .unwrap();
         Self { sender }
@@ -24,8 +24,7 @@ impl AudioGraph {
 
     pub fn create_node(&self, node_type: AudioNodeType) -> usize {
         let node_id = NEXT_NODE_ID.fetch_add(1, Ordering::SeqCst);
-        let _ = self.sender
-            .send(AudioGraphThreadMsg::CreateNode(node_type));
+        let _ = self.sender.send(AudioGraphThreadMsg::CreateNode(node_type));
         node_id
     }
 

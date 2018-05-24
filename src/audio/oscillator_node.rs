@@ -51,7 +51,7 @@ impl AudioNodeEngine for OscillatorNode {
     fn process(
         &self,
         mut inputs: Chunk,
-        rate: u32,
+        sample_rate: f32,
     ) -> Chunk {
         // XXX Implement this properly and according to self.options
         // as defined in https://webaudio.github.io/web-audio-api/#oscillatornode
@@ -68,13 +68,13 @@ impl AudioNodeEngine for OscillatorNode {
             // Convert all our parameters to the target type for calculations
             let vol: f32 = 1.0;
             let freq = self.options.freq as f64;
-            let rate = rate as f64;
+            let sample_rate = sample_rate as f64;
             let two_pi = 2.0 * PI;
 
             // We're carrying a accumulator with up to 2pi around instead of working
             // on the sample offset. High sample offsets cause too much inaccuracy when
             // converted to floating point numbers and then iterated over in 1-steps
-            let step = two_pi * freq / rate;
+            let step = two_pi * freq / sample_rate;
             let mut accumulator = self.accumulator.get();
 
             for sample in data.iter_mut() {
