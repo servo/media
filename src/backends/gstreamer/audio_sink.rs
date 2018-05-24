@@ -74,7 +74,8 @@ impl AudioSink for GStreamerAudioSink {
 
     fn push_data(&self, mut chunk: Chunk) -> Result<(), ()> {
         let sample_rate = self.sample_rate.get() as u64;
-        let ref audio_info = self.audio_info.borrow().clone().unwrap();
+        let audio_info = self.audio_info.borrow();
+        let audio_info = audio_info.as_ref().unwrap();
         let bpf = audio_info.bpf() as usize;
         assert!(bpf == 4);
         let n_samples = FRAMES_PER_BLOCK as u64;

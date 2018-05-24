@@ -1,11 +1,13 @@
 use audio::block::Chunk;
 use audio::destination_node::DestinationNode;
 use audio::gain_node::GainNode;
-use audio::node::{AudioNodeEngine, AudioNodeType, AudioNodeMessage};
+use audio::node::{AudioNodeEngine, AudioNodeMessage, AudioNodeType};
 use audio::oscillator_node::OscillatorNode;
 use audio::sink::AudioSink;
 use std::cell::RefCell;
 use std::sync::mpsc::Receiver;
+use std::thread;
+use std::time::Duration;
 
 #[cfg(feature = "gst")]
 use backends::gstreamer::audio_sink::GStreamerAudioSink;
@@ -94,9 +96,12 @@ impl AudioGraphThread {
                 }
             }
 
-            // Process a render quantum if the sink can handle
-            // more data.
-            if !self.sink.has_enough_data() {
+            // Process a render quantum if the sink can handle more data.
+            // Otherwise, sleep the thread for a few ms to avoid 100% CPU
+            // usage.
+            if self.sink.has_enough_data() {
+                thread::sleep(Duration::from_millis(5));
+            } else {
                 let _ = self.sink.push_data(self.process());
             }
         }
