@@ -1,11 +1,15 @@
-use super::gst_app::AppSrc;
+use super::gst_app::{AppSrc, AppSrcCallbacks};
 use super::gst_audio;
 use audio::block::{Chunk, FRAMES_PER_BLOCK};
+use audio::graph_thread::AudioGraphThreadMsg;
 use audio::sink::AudioSink;
 use byte_slice_cast::*;
 use gst;
 use gst::prelude::*;
 use std::cell::{Cell, RefCell};
+use std::sync::mpsc::Sender;
+use std::sync::Arc;
+use std::thread::Builder;
 
 // XXX Define own error type.
 
@@ -13,7 +17,7 @@ const DEFAULT_SAMPLE_RATE: f32 = 44100.;
 
 pub struct GStreamerAudioSink {
     pipeline: gst::Pipeline,
-    appsrc: AppSrc,
+    appsrc: Arc<AppSrc>,
     sample_rate: Cell<f32>,
     audio_info: RefCell<Option<gst_audio::AudioInfo>>,
     sample_offset: Cell<u64>,
@@ -30,7 +34,7 @@ impl GStreamerAudioSink {
         let appsrc = appsrc.downcast::<AppSrc>().map_err(|_| ())?;
         Ok(Self {
             pipeline: gst::Pipeline::new(None),
-            appsrc,
+            appsrc: Arc::new(appsrc),
             sample_rate: Cell::new(DEFAULT_SAMPLE_RATE),
             audio_info: RefCell::new(None),
             sample_offset: Cell::new(0),
@@ -39,7 +43,11 @@ impl GStreamerAudioSink {
 }
 
 impl AudioSink for GStreamerAudioSink {
-    fn init(&self, sample_rate: f32) -> Result<(), ()> {
+    fn init(
+        &self,
+        sample_rate: f32,
+        graph_thread_channel: Sender<AudioGraphThreadMsg>,
+    ) -> Result<(), ()> {
         self.sample_rate.set(sample_rate);
         let audio_info =
             gst_audio::AudioInfo::new(gst_audio::AUDIO_FORMAT_F32, sample_rate as u32, 1)
@@ -48,7 +56,19 @@ impl AudioSink for GStreamerAudioSink {
         self.appsrc.set_caps(&audio_info.to_caps().unwrap());
         *self.audio_info.borrow_mut() = Some(audio_info);
         self.appsrc.set_property_format(gst::Format::Time);
-        let appsrc = self.appsrc.clone().upcast();
+
+        let appsrc = self.appsrc.clone();
+        Builder::new()
+            .name("GstAppSrcCallbacks".to_owned())
+            .spawn(move || {
+                let need_data = move |_: &AppSrc, _: u32| {
+                    graph_thread_channel.send(AudioGraphThreadMsg::SinkNeedData).unwrap();
+                };
+                appsrc.set_callbacks(AppSrcCallbacks::new().need_data(need_data).build());
+            })
+            .unwrap();
+
+        let appsrc = self.appsrc.as_ref().clone().upcast();
         let resample = gst::ElementFactory::make("audioresample", None).ok_or(())?;
         let convert = gst::ElementFactory::make("audioconvert", None).ok_or(())?;
         let sink = gst::ElementFactory::make("autoaudiosink", None).ok_or(())?;

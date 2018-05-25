@@ -5,9 +5,7 @@ use audio::node::{AudioNodeEngine, AudioNodeMessage, AudioNodeType};
 use audio::oscillator_node::OscillatorNode;
 use audio::sink::AudioSink;
 use std::cell::RefCell;
-use std::sync::mpsc::Receiver;
-use std::thread;
-use std::time::Duration;
+use std::sync::mpsc::{Receiver, Sender};
 
 #[cfg(feature = "gst")]
 use backends::gstreamer::audio_sink::GStreamerAudioSink;
@@ -17,6 +15,7 @@ pub enum AudioGraphThreadMsg {
     MessageNode(usize, AudioNodeMessage),
     ResumeProcessing,
     PauseProcessing,
+    SinkNeedData,
 }
 
 pub struct AudioGraphThread {
@@ -28,7 +27,10 @@ pub struct AudioGraphThread {
 }
 
 impl AudioGraphThread {
-    pub fn start(event_queue: Receiver<AudioGraphThreadMsg>) -> Result<(), ()> {
+    pub fn start(
+        event_queue: Receiver<AudioGraphThreadMsg>,
+        sender: Sender<AudioGraphThreadMsg>,
+    ) -> Result<(), ()> {
         #[cfg(feature = "gst")]
         let sink = GStreamerAudioSink::new()?;
 
@@ -41,7 +43,7 @@ impl AudioGraphThread {
             sample_rate: 44100.,
         };
 
-        graph.sink.init(graph.sample_rate)?;
+        graph.sink.init(graph.sample_rate, sender)?;
 
         graph.event_loop(event_queue);
 
@@ -77,31 +79,44 @@ impl AudioGraphThread {
     }
 
     pub fn event_loop(&self, event_queue: Receiver<AudioGraphThreadMsg>) {
-        loop {
-            // Process the control message queue.
-            if let Ok(msg) = event_queue.try_recv() {
-                match msg {
-                    AudioGraphThreadMsg::CreateNode(node_type) => {
-                        self.create_node(node_type);
-                    }
-                    AudioGraphThreadMsg::ResumeProcessing => {
-                        self.resume_processing();
-                    }
-                    AudioGraphThreadMsg::PauseProcessing => {
-                        self.pause_processing();
-                    }
-                    AudioGraphThreadMsg::MessageNode(index, msg) => {
-                        self.nodes.borrow_mut()[index].message(msg)
-                    }
+        let handle_msg = move |msg: AudioGraphThreadMsg| {
+            match msg {
+                AudioGraphThreadMsg::CreateNode(node_type) => {
+                    self.create_node(node_type);
+                }
+                AudioGraphThreadMsg::ResumeProcessing => {
+                    self.resume_processing();
+                }
+                AudioGraphThreadMsg::PauseProcessing => {
+                    self.pause_processing();
+                }
+                AudioGraphThreadMsg::MessageNode(index, msg) => {
+                    self.nodes.borrow_mut()[index].message(msg)
+                }
+                AudioGraphThreadMsg::SinkNeedData => {
+                    // Do nothing. This will simply unblock the thread so we
+                    // can restart the non-blocking event loop.
                 }
             }
+        };
 
-            // Process a render quantum if the sink can handle more data.
-            // Otherwise, sleep the thread for a few ms to avoid 100% CPU
-            // usage.
+        loop {
             if self.sink.has_enough_data() {
-                thread::sleep(Duration::from_millis(5));
+                // If we have already pushed enough data into the audio sink
+                // we wait for messages coming from the control thread or
+                // the audio sink. The audio sink will notify whenever it
+                // needs more data.
+                if let Ok(msg) = event_queue.recv() {
+                    handle_msg(msg);
+                }
             } else {
+                // If we have not pushed enough data into the audio sink yet,
+                // we process the control message queue
+                if let Ok(msg) = event_queue.try_recv() {
+                    handle_msg(msg);
+                }
+                // and push into the audio sink the result of processing a
+                // render quantum.
                 let _ = self.sink.push_data(self.process());
             }
         }

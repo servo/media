@@ -13,10 +13,11 @@ pub struct AudioGraph {
 impl AudioGraph {
     pub fn new() -> Self {
         let (sender, receiver) = mpsc::channel();
+        let sender_ = sender.clone();
         Builder::new()
             .name("AudioGraph".to_owned())
             .spawn(move || {
-                AudioGraphThread::start(receiver).expect("Could not start AudioGraphThread");
+                AudioGraphThread::start(receiver, sender_).expect("Could not start AudioGraphThread");
             })
             .unwrap();
         Self { sender }
