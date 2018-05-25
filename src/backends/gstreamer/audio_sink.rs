@@ -1,7 +1,7 @@
 use super::gst_app::{AppSrc, AppSrcCallbacks};
 use super::gst_audio;
 use audio::block::{Chunk, FRAMES_PER_BLOCK};
-use audio::graph_thread::AudioGraphThreadMsg;
+use audio::render_thread::AudioRenderThreadMsg;
 use audio::sink::AudioSink;
 use byte_slice_cast::*;
 use gst;
@@ -46,7 +46,7 @@ impl AudioSink for GStreamerAudioSink {
     fn init(
         &self,
         sample_rate: f32,
-        graph_thread_channel: Sender<AudioGraphThreadMsg>,
+        graph_thread_channel: Sender<AudioRenderThreadMsg>,
     ) -> Result<(), ()> {
         self.sample_rate.set(sample_rate);
         let audio_info =
@@ -62,7 +62,9 @@ impl AudioSink for GStreamerAudioSink {
             .name("GstAppSrcCallbacks".to_owned())
             .spawn(move || {
                 let need_data = move |_: &AppSrc, _: u32| {
-                    graph_thread_channel.send(AudioGraphThreadMsg::SinkNeedData).unwrap();
+                    graph_thread_channel
+                        .send(AudioRenderThreadMsg::SinkNeedData)
+                        .unwrap();
                 };
                 appsrc.set_callbacks(AppSrcCallbacks::new().need_data(need_data).build());
             })

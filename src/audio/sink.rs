@@ -1,12 +1,12 @@
 use audio::block::Chunk;
-use audio::graph_thread::AudioGraphThreadMsg;
+use audio::render_thread::AudioRenderThreadMsg;
 use std::sync::mpsc::Sender;
 
 pub trait AudioSink {
     fn init(
         &self,
         sample_rate: f32,
-        graph_thread_channel: Sender<AudioGraphThreadMsg>,
+        render_thread_channel: Sender<AudioRenderThreadMsg>,
     ) -> Result<(), ()>;
     fn play(&self);
     fn stop(&self);

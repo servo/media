@@ -10,7 +10,7 @@ use std::sync::mpsc::{Receiver, Sender};
 #[cfg(feature = "gst")]
 use backends::gstreamer::audio_sink::GStreamerAudioSink;
 
-pub enum AudioGraphThreadMsg {
+pub enum AudioRenderThreadMsg {
     CreateNode(AudioNodeType),
     MessageNode(usize, AudioNodeMessage),
     ResumeProcessing,
@@ -18,7 +18,7 @@ pub enum AudioGraphThreadMsg {
     SinkNeedData,
 }
 
-pub struct AudioGraphThread {
+pub struct AudioRenderThread {
     // XXX Test with a hash map for now. This should end up
     // being a graph, like https://docs.rs/petgraph/0.4.12/petgraph/.
     nodes: RefCell<Vec<Box<AudioNodeEngine>>>,
@@ -26,10 +26,10 @@ pub struct AudioGraphThread {
     sample_rate: f32,
 }
 
-impl AudioGraphThread {
+impl AudioRenderThread {
     pub fn start(
-        event_queue: Receiver<AudioGraphThreadMsg>,
-        sender: Sender<AudioGraphThreadMsg>,
+        event_queue: Receiver<AudioRenderThreadMsg>,
+        sender: Sender<AudioRenderThreadMsg>,
     ) -> Result<(), ()> {
         #[cfg(feature = "gst")]
         let sink = GStreamerAudioSink::new()?;
@@ -78,22 +78,22 @@ impl AudioGraphThread {
         data
     }
 
-    pub fn event_loop(&self, event_queue: Receiver<AudioGraphThreadMsg>) {
-        let handle_msg = move |msg: AudioGraphThreadMsg| {
+    pub fn event_loop(&self, event_queue: Receiver<AudioRenderThreadMsg>) {
+        let handle_msg = move |msg: AudioRenderThreadMsg| {
             match msg {
-                AudioGraphThreadMsg::CreateNode(node_type) => {
+                AudioRenderThreadMsg::CreateNode(node_type) => {
                     self.create_node(node_type);
                 }
-                AudioGraphThreadMsg::ResumeProcessing => {
+                AudioRenderThreadMsg::ResumeProcessing => {
                     self.resume_processing();
                 }
-                AudioGraphThreadMsg::PauseProcessing => {
+                AudioRenderThreadMsg::PauseProcessing => {
                     self.pause_processing();
                 }
-                AudioGraphThreadMsg::MessageNode(index, msg) => {
+                AudioRenderThreadMsg::MessageNode(index, msg) => {
                     self.nodes.borrow_mut()[index].message(msg)
                 }
-                AudioGraphThreadMsg::SinkNeedData => {
+                AudioRenderThreadMsg::SinkNeedData => {
                     // Do nothing. This will simply unblock the thread so we
                     // can restart the non-blocking event loop.
                 }
