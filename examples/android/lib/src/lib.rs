@@ -1,26 +1,30 @@
 extern crate servo_media;
 
+use servo_media::audio::gain_node::GainNodeOptions;
+use servo_media::audio::graph::AudioGraph;
+use servo_media::audio::node::AudioNodeType;
 use servo_media::ServoMedia;
-use std::ffi::CString;
-use std::os::raw::c_char;
 
 struct AudioStream {
-    inner: servo_media::AudioGraph,
+    graph: AudioGraph,
 }
 
 impl AudioStream {
     pub fn new() -> Self {
-        Self {
-            inner: ServoMedia::get().unwrap().create_audio_graph().unwrap(),
-        }
+        let graph = ServoMedia::get().unwrap().create_audio_graph();
+        graph.create_node(AudioNodeType::OscillatorNode(Default::default()));
+        let mut options = GainNodeOptions::default();
+        options.gain = 0.5;
+        graph.create_node(AudioNodeType::GainNode(options));
+        Self { graph }
     }
 
     pub fn play(&self) {
-        self.inner.resume_processing()
+        self.graph.resume_processing()
     }
 
     pub fn stop(&self) {
-        self.inner.pause_processing()
+        self.graph.pause_processing()
     }
 }
 
@@ -31,7 +35,7 @@ pub mod android {
     extern crate jni;
 
     use self::jni::objects::JClass;
-    use self::jni::sys::{jlong, jstring};
+    use self::jni::sys::jlong;
     use self::jni::JNIEnv;
     use super::*;
 

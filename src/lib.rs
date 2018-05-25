@@ -4,14 +4,14 @@ use std::sync::{Arc, Mutex};
 #[cfg(feature = "gst")]
 extern crate gstreamer as gst;
 
-extern crate smallvec;
 extern crate byte_slice_cast;
 extern crate num_traits;
+extern crate smallvec;
 
 pub mod audio;
 mod backends;
 
-pub use audio::graph::AudioGraph;
+use audio::graph::AudioGraph;
 
 pub struct ServoMedia {}
 
@@ -23,7 +23,7 @@ impl ServoMedia {
         #[cfg(feature = "gst")]
         gst::init().unwrap();
 
-        Self { }
+        Self {}
     }
 
     pub fn get() -> Result<Arc<ServoMedia>, ()> {
