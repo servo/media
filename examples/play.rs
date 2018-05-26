@@ -1,13 +1,13 @@
 extern crate servo_media;
 
-use servo_media::audio::node::{AudioNodeType, AudioNodeMessage};
-use servo_media::*;
 use servo_media::audio::gain_node::GainNodeOptions;
+use servo_media::audio::node::{AudioNodeMessage, AudioNodeType};
+use servo_media::ServoMedia;
 use std::{thread, time};
 
 fn main() {
     if let Ok(servo_media) = ServoMedia::get() {
-        let mut graph = servo_media.create_audio_graph().unwrap();
+        let mut graph = servo_media.create_audio_graph();
         graph.create_node(AudioNodeType::OscillatorNode(Default::default()));
         let mut options = GainNodeOptions::default();
         options.gain = 0.5;
