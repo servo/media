@@ -1,8 +1,8 @@
-use audio::graph_thread::AudioGraphThread;
-use std::sync::Arc;
+use audio::block::Chunk;
 
 pub trait AudioSink {
-    fn init(&self, Arc<AudioGraphThread>) -> Result<(), ()>;
+    fn init(&mut self, rate: u32) -> Result<(), ()>;
     fn play(&self);
     fn stop(&self);
+    fn send_chunk(&self, chunk: Chunk);
 }

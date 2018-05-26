@@ -1,28 +1,36 @@
+use std::sync::mpsc::{Sender, Receiver, channel};
+use audio::block::Chunk;
+use audio::graph_thread::AudioGraphThreadMsg;
 use super::gst_app::{AppSrc, AppSrcCallbacks};
 use super::gst_audio;
 use audio::block::FRAMES_PER_BLOCK;
-use audio::graph_thread::AudioGraphThread;
 use audio::sink::AudioSink;
 use gst;
 use gst::prelude::*;
-use std::sync::Arc;
 
 // XXX Define own error type.
 
 pub struct GStreamerAudioSink {
     pipeline: gst::Pipeline,
+    chunk_sender: Sender<Chunk>,
+    chunk_receiver: Option<Receiver<Chunk>>,
+    graph: Sender<AudioGraphThreadMsg>
 }
 
 impl GStreamerAudioSink {
-    pub fn new() -> Self {
+    pub fn new(graph: Sender<AudioGraphThreadMsg>) -> Self {
+        let (sender, receiver) = channel();
         Self {
             pipeline: gst::Pipeline::new(None),
+            chunk_sender: sender,
+            chunk_receiver: Some(receiver),
+            graph
         }
     }
 }
 
 impl AudioSink for GStreamerAudioSink {
-    fn init(&self, graph: Arc<AudioGraphThread>) -> Result<(), ()> {
+    fn init(&mut self, rate: u32) -> Result<(), ()> {
         if let Some(category) = gst::DebugCategory::get("openslessink") {
             category.set_threshold(gst::DebugLevel::Trace);
         }
@@ -30,7 +38,7 @@ impl AudioSink for GStreamerAudioSink {
 
         let src = gst::ElementFactory::make("appsrc", None).ok_or(())?;
         let src = src.downcast::<AppSrc>().map_err(|_| ())?;
-        let info = gst_audio::AudioInfo::new(gst_audio::AUDIO_FORMAT_F32, 44100, 1)
+        let info = gst_audio::AudioInfo::new(gst_audio::AUDIO_FORMAT_F32, rate, 1)
             .build()
             .ok_or(())?;
         src.set_caps(&info.to_caps().unwrap());
@@ -42,42 +50,67 @@ impl AudioSink for GStreamerAudioSink {
         assert!(info.bpf() == 4);
         let rate = info.rate();
 
-        let graph_ = graph.clone();
+        let chunk_receiver = self.chunk_receiver.take().expect("Already initialized");
+
+        let graph = self.graph.clone();
         let need_data = move |app: &AppSrc, _bytes: u32| {
-            let mut buffer = gst::Buffer::with_size(buf_size).unwrap();
-            {
-                let buffer = buffer.get_mut().unwrap();
-                // Calculate the current timestamp (PTS) and the next one,
-                // and calculate the duration from the difference instead of
-                // simply the number of samples to prevent rounding errors
-                let pts = sample_offset
-                    .mul_div_floor(gst::SECOND_VAL, rate as u64)
-                    .unwrap()
-                    .into();
-                let next_pts: gst::ClockTime = (sample_offset + n_samples)
-                    .mul_div_floor(gst::SECOND_VAL, rate as u64)
-                    .unwrap()
-                    .into();
-                buffer.set_pts(pts);
-                buffer.set_duration(next_pts - pts);
-                
-                let mut chunks = graph_.process(rate);
-                // sometimes nothing reaches the output
-                if chunks.len() == 0 {
-                    chunks.blocks.push(Default::default());
-                    info.format_info().fill_silence(chunks.blocks[0].as_mut_byte_slice());
+
+            let mut process_chunk = |mut chunk: Chunk| {
+                let mut buffer = gst::Buffer::with_size(buf_size).unwrap();
+                {
+                    let buffer = buffer.get_mut().unwrap();
+                    // Calculate the current timestamp (PTS) and the next one,
+                    // and calculate the duration from the difference instead of
+                    // simply the number of samples to prevent rounding errors
+                    let pts = sample_offset
+                        .mul_div_floor(gst::SECOND_VAL, rate as u64)
+                        .unwrap()
+                        .into();
+                    let next_pts: gst::ClockTime = (sample_offset + n_samples)
+                        .mul_div_floor(gst::SECOND_VAL, rate as u64)
+                        .unwrap()
+                        .into();
+                    buffer.set_pts(pts);
+                    buffer.set_duration(next_pts - pts);
+
+                    
+                    // let mut chunks = graph_.process(rate);
+                    // sometimes nothing reaches the output
+                    if chunk.len() == 0 {
+                        chunk.blocks.push(Default::default());
+                        info.format_info().fill_silence(chunk.blocks[0].as_mut_byte_slice());
+                    }
+                    debug_assert!(chunk.len() == 1);
+                    let data = chunk.blocks[0].as_mut_byte_slice();
+
+                    // XXXManishearth if we have a safe way to convert
+                    // from Box<[f32]> to Box<[u8]> (similarly for Vec)
+                    // we can use Buffer::from_slice instead
+                    buffer.copy_from_slice(0, data).expect("copying failed");
+
+                    sample_offset += n_samples;
                 }
-                debug_assert!(chunks.len() == 1);
-                let data = chunks.blocks[0].as_mut_byte_slice();
+                let _ = app.push_buffer(buffer);
+            };
 
-                // XXXManishearth if we have a safe way to convert
-                // from Box<[f32]> to Box<[u8]> (similarly for Vec)
-                // we can use Buffer::from_slice instead
-                buffer.copy_from_slice(0, data).expect("copying failed");
 
-                sample_offset += n_samples;
+            let mut processed = false;
+
+            // we may have extra chunks, might as well process them
+            while let Ok(chunk) = chunk_receiver.try_recv() {
+                processed = true;
+                process_chunk(chunk);
             }
-            let _ = app.push_buffer(buffer);
+
+            if processed {
+                return;
+            }
+
+            graph.send(AudioGraphThreadMsg::SinkNeedsData).unwrap();
+            // block till we get the first chunk
+            process_chunk(chunk_receiver.recv().unwrap());
+
+
         };
         src.set_callbacks(AppSrcCallbacks::new().need_data(need_data).build());
 
@@ -91,6 +124,10 @@ impl AudioSink for GStreamerAudioSink {
         gst::Element::link_many(&[&src, &resample, &convert, &sink]).map_err(|_| ())?;
 
         Ok(())
+    }
+
+    fn send_chunk(&self, chunk: Chunk) {
+        self.chunk_sender.send(chunk).unwrap();
     }
 
     fn play(&self) {
