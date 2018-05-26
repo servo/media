@@ -27,7 +27,7 @@ impl AudioNodeEngine for GainNode {
     fn process(
         &self,
         mut inputs: Chunk,
-        _rate: u32,
+        _sample_rate: f32,
     ) -> Chunk {
         debug_assert!(inputs.len() == 1);
 

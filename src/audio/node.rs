@@ -29,7 +29,7 @@ pub trait AudioNodeEngine: Send {
     fn process(
         &self,
         inputs: Chunk,
-        rate: u32,
+        sample_rate: f32,
     ) -> Chunk;
 
     fn message(&mut self, _: AudioNodeMessage) {
