@@ -3,7 +3,9 @@ use audio::param::Param;
 use audio::node::BlockInfo;
 use audio::block::Chunk;
 use audio::node::{AudioNodeEngine, AudioNodeMessage};
+use audio::node::{AudioScheduledSourceNode, AudioScheduledSourceNodeState};
 use num_traits::cast::NumCast;
+use std::cell::Cell;
 
 pub struct PeriodicWaveOptions {
     // XXX https://webaudio.github.io/web-audio-api/#dictdef-periodicwaveoptions
@@ -38,6 +40,7 @@ impl Default for OscillatorNodeOptions {
 pub struct OscillatorNode {
     frequency: Param,
     phase: f64,
+    state: Cell<AudioScheduledSourceNodeState>,
 }
 
 impl OscillatorNode {
@@ -45,6 +48,7 @@ impl OscillatorNode {
         Self {
             frequency: Param::new(options.freq.into()),
             phase: 0.,
+            state: Cell::new(AudioScheduledSourceNodeState::Playing(0.)),
         }
     }
 
@@ -68,6 +72,20 @@ impl AudioNodeEngine for OscillatorNode {
 
         inputs.blocks.push(Default::default());
 
+        let not_playing = match self.state.get() {
+            AudioScheduledSourceNodeState::Stopped(_when) => {
+                // XXX check if _when is >= context's current time once #22 is done.
+                true
+            },
+            AudioScheduledSourceNodeState::Playing(_when) => {
+                // XXX check if _when is <= context's current time once #22 is done.
+                false
+            },
+        };
+
+        if not_playing {
+            return inputs;
+        }
 
         {
             let data = &mut inputs.blocks[0].data;
@@ -107,5 +125,14 @@ impl AudioNodeEngine for OscillatorNode {
                 self.frequency.insert_event(event.to_event(sample_rate))
             }
         }
+    }
+}
+
+impl AudioScheduledSourceNode for OscillatorNode {
+    fn start(&self, when: f64) {
+        self.state.set(AudioScheduledSourceNodeState::Playing(when));
+    }
+    fn stop(&self, when: f64) {
+        self.state.set(AudioScheduledSourceNodeState::Stopped(when));
     }
 }
