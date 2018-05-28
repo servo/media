@@ -1,14 +1,12 @@
-use audio::block::Chunk;
-use audio::block::Tick;
-use audio::node::AudioNodeEngine;
-use audio::node::BlockInfo;
-use audio::node::{AudioScheduledSourceNode, AudioScheduledSourceNodeState};
+use audio::block::{Chunk, Tick};
+use audio::node::{AudioNodeEngine, AudioScheduledSourceNode, BlockInfo};
 use audio::param::{Param, UserAutomationEvent};
 use num_traits::cast::NumCast;
-use std::cell::Cell;
 
 pub enum OscillatorNodeMessage {
     SetFrequency(UserAutomationEvent),
+    Start(f64),
+    Stop(f64),
 }
 
 pub struct PeriodicWaveOptions {
@@ -44,7 +42,10 @@ impl Default for OscillatorNodeOptions {
 pub struct OscillatorNode {
     frequency: Param,
     phase: f64,
-    state: Cell<AudioScheduledSourceNodeState>,
+    /// Time at which the source should start playing.
+    start_at: Option<f64>,
+    /// Time at which the source should stop playing.
+    stop_at: Option<f64>,
 }
 
 impl OscillatorNode {
@@ -52,7 +53,8 @@ impl OscillatorNode {
         Self {
             frequency: Param::new(options.freq.into()),
             phase: 0.,
-            state: Cell::new(AudioScheduledSourceNodeState::Playing(0.)),
+            start_at: None,
+            stop_at: None,
         }
     }
 
@@ -64,6 +66,12 @@ impl OscillatorNode {
         match message {
             OscillatorNodeMessage::SetFrequency(event) => {
                 self.frequency.insert_event(event.to_event(sample_rate))
+            }
+            OscillatorNodeMessage::Start(when) => {
+                self.start(when);
+            }
+            OscillatorNodeMessage::Stop(when) => {
+                self.stop(when);
             }
         }
     }
@@ -79,21 +87,6 @@ impl AudioNodeEngine for OscillatorNode {
         debug_assert!(inputs.len() == 0);
 
         inputs.blocks.push(Default::default());
-
-        let not_playing = match self.state.get() {
-            AudioScheduledSourceNodeState::Stopped(_when) => {
-                // XXX check if _when is >= context's current time once #22 is done.
-                true
-            }
-            AudioScheduledSourceNodeState::Playing(_when) => {
-                // XXX check if _when is <= context's current time once #22 is done.
-                false
-            }
-        };
-
-        if not_playing {
-            return inputs;
-        }
 
         {
             let data = &mut inputs.blocks[0].data;
@@ -132,10 +125,24 @@ impl AudioNodeEngine for OscillatorNode {
 }
 
 impl AudioScheduledSourceNode for OscillatorNode {
-    fn start(&self, when: f64) {
-        self.state.set(AudioScheduledSourceNodeState::Playing(when));
+    fn start(&mut self, when: f64) -> bool {
+        // We can only allow a single call to `start` and always before
+        // any `stop` calls.
+        if self.start_at.is_some() || self.stop_at.is_some() {
+            return false;
+        }
+        self.start_at = Some(when);
+        true
     }
-    fn stop(&self, when: f64) {
-        self.state.set(AudioScheduledSourceNodeState::Stopped(when));
+
+    fn stop(&mut self, when: f64) -> bool {
+        // We can only allow calls to `stop` after `start` is called.
+        if self.start_at.is_none() {
+            return false;
+        }
+        // If `stop` is called again after already having been called,
+        // the last invocation will be the only one applied.
+        self.stop_at = Some(when);
+        true
     }
 }

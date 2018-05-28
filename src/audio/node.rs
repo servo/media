@@ -43,7 +43,6 @@ impl BlockInfo {
 
 /// This trait represents the common features of all audio nodes.
 pub trait AudioNodeEngine: Send {
-    // XXX Create an AudioBuffer abstraction
     fn process(&mut self, inputs: Chunk, info: &BlockInfo) -> Chunk;
 
     fn message(&mut self, _: AudioNodeMessage, _sample_rate: f32) {}
@@ -55,22 +54,14 @@ pub enum AudioNodeMessage {
     GainNode(GainNodeMessage),
 }
 
-/// Current state of an AudioScheduledSourceNode.
-#[derive(Clone, Copy, PartialEq)]
-pub enum AudioScheduledSourceNodeState {
-    /// The AudioScheduledSourceNodeState is playing or will be playing back
-    /// sound at the given time.
-    Playing(f64),
-    /// The AudioScheduledSourceNodeState is not playing or will stop playing
-    /// back at the given time.
-    Stopped(f64),
-}
-
 /// This trait represents the common features of the source nodes such as
 /// AudioBufferSourceNode, ConstantSourceNode and OscillatorNode.
+/// https://webaudio.github.io/web-audio-api/#AudioScheduledSourceNode
 pub trait AudioScheduledSourceNode {
     /// Schedules a sound to playback at an exact time.
-    fn start(&self, when: f64);
+    /// Returns true if the scheduling request is processed succesfully.
+    fn start(&mut self, when: f64) -> bool;
     /// Schedules a sound to stop playback at an exact time.
-    fn stop(&self, when: f64);
+    /// Returns true if the scheduling request is processed successfully.
+    fn stop(&mut self, when: f64) -> bool;
 }
