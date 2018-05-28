@@ -1,8 +1,7 @@
-use audio::block::Tick;
-use audio::gain_node::GainNodeOptions;
-use audio::oscillator_node::OscillatorNodeOptions;
-use audio::param::UserAutomationEvent;
 use audio::block::Chunk;
+use audio::block::Tick;
+use audio::gain_node::{GainNodeMessage, GainNodeOptions};
+use audio::oscillator_node::{OscillatorNodeMessage, OscillatorNodeOptions};
 
 /// Type of AudioNodeEngine.
 pub enum AudioNodeType {
@@ -45,20 +44,15 @@ impl BlockInfo {
 /// This trait represents the common features of all audio nodes.
 pub trait AudioNodeEngine: Send {
     // XXX Create an AudioBuffer abstraction
-    fn process(
-        &mut self,
-        inputs: Chunk,
-        info: &BlockInfo,
-    ) -> Chunk;
+    fn process(&mut self, inputs: Chunk, info: &BlockInfo) -> Chunk;
 
-    fn message(&mut self, _: AudioNodeMessage, _sample_rate: f32) {
-
-    }
+    fn message(&mut self, _: AudioNodeMessage, _sample_rate: f32) {}
 }
 
 /// Current state of an AudioScheduledSourceNode.
 pub enum AudioNodeMessage {
-    SetAudioParamEvent(UserAutomationEvent)
+    OscillatorNode(OscillatorNodeMessage),
+    GainNode(GainNodeMessage),
 }
 
 /// Current state of an AudioScheduledSourceNode.

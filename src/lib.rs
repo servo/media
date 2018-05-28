@@ -8,6 +8,7 @@ extern crate byte_slice_cast;
 extern crate num_traits;
 extern crate smallvec;
 
+#[macro_use]
 pub mod audio;
 mod backends;
 

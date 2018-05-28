@@ -1,11 +1,15 @@
-use audio::block::Tick;
-use audio::param::Param;
-use audio::node::BlockInfo;
 use audio::block::Chunk;
-use audio::node::{AudioNodeEngine, AudioNodeMessage};
+use audio::block::Tick;
+use audio::node::AudioNodeEngine;
+use audio::node::BlockInfo;
 use audio::node::{AudioScheduledSourceNode, AudioScheduledSourceNodeState};
+use audio::param::{Param, UserAutomationEvent};
 use num_traits::cast::NumCast;
 use std::cell::Cell;
+
+pub enum OscillatorNodeMessage {
+    SetFrequency(UserAutomationEvent),
+}
 
 pub struct PeriodicWaveOptions {
     // XXX https://webaudio.github.io/web-audio-api/#dictdef-periodicwaveoptions
@@ -55,14 +59,18 @@ impl OscillatorNode {
     pub fn update_parameters(&mut self, info: &BlockInfo, tick: Tick) -> bool {
         self.frequency.update(info, tick)
     }
+
+    pub fn handle_message(&mut self, message: OscillatorNodeMessage, sample_rate: f32) {
+        match message {
+            OscillatorNodeMessage::SetFrequency(event) => {
+                self.frequency.insert_event(event.to_event(sample_rate))
+            }
+        }
+    }
 }
 
 impl AudioNodeEngine for OscillatorNode {
-    fn process(
-        &mut self,
-        mut inputs: Chunk,
-        info: &BlockInfo,
-    ) -> Chunk {
+    fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
         // XXX Implement this properly and according to self.options
         // as defined in https://webaudio.github.io/web-audio-api/#oscillatornode
 
@@ -76,11 +84,11 @@ impl AudioNodeEngine for OscillatorNode {
             AudioScheduledSourceNodeState::Stopped(_when) => {
                 // XXX check if _when is >= context's current time once #22 is done.
                 true
-            },
+            }
             AudioScheduledSourceNodeState::Playing(_when) => {
                 // XXX check if _when is <= context's current time once #22 is done.
                 false
-            },
+            }
         };
 
         if not_playing {
@@ -119,13 +127,8 @@ impl AudioNodeEngine for OscillatorNode {
         }
         inputs
     }
-    fn message(&mut self, msg: AudioNodeMessage, sample_rate: f32) {
-        match msg {
-            AudioNodeMessage::SetAudioParamEvent(event) => {
-                self.frequency.insert_event(event.to_event(sample_rate))
-            }
-        }
-    }
+
+    make_message_handler!(OscillatorNode);
 }
 
 impl AudioScheduledSourceNode for OscillatorNode {
