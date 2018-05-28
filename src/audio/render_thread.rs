@@ -18,6 +18,10 @@ pub enum AudioRenderThreadMsg {
     SinkNeedData,
 }
 
+pub enum AudioRenderThreadSyncMsg {
+    GetCurrentTime(Sender<f64>),
+}
+
 pub struct AudioRenderThread {
     // XXX Test with a hash map for now. This should end up
     // being a graph, like https://docs.rs/petgraph/0.4.12/petgraph/.
@@ -30,7 +34,9 @@ pub struct AudioRenderThread {
 impl AudioRenderThread {
     pub fn start(
         event_queue: Receiver<AudioRenderThreadMsg>,
+        sync_event_queue: Receiver<AudioRenderThreadSyncMsg>,
         sender: Sender<AudioRenderThreadMsg>,
+        sample_rate: f32,
     ) -> Result<(), ()> {
         #[cfg(feature = "gst")]
         let sink = GStreamerAudioSink::new()?;
@@ -40,27 +46,25 @@ impl AudioRenderThread {
             // being a graph, like https://docs.rs/petgraph/0.4.12/petgraph/.
             nodes: RefCell::new(Vec::new()),
             sink: Box::new(sink),
-            // XXX Get this from AudioContextOptions.
-            sample_rate: 44100.,
+            sample_rate,
             current_time: Cell::new(0.),
         };
 
-        graph.sink.init(graph.sample_rate, sender)?;
-
-        graph.event_loop(event_queue);
+        graph.sink.init(sample_rate, sender)?;
+        graph.event_loop(event_queue, sync_event_queue);
 
         Ok(())
     }
 
-    pub fn resume_processing(&self) {
+    fn resume_processing(&self) {
         self.sink.play();
     }
 
-    pub fn pause_processing(&self) {
+    fn pause_processing(&self) {
         self.sink.stop();
     }
 
-    pub fn create_node(&self, node_type: AudioNodeType) {
+    fn create_node(&self, node_type: AudioNodeType) {
         let node: Box<AudioNodeEngine> = match node_type {
             AudioNodeType::OscillatorNode(options) => Box::new(OscillatorNode::new(options)),
             AudioNodeType::DestinationNode => Box::new(DestinationNode::new()),
@@ -71,7 +75,7 @@ impl AudioRenderThread {
         nodes.push(node)
     }
 
-    pub fn process(&self) -> Chunk {
+    fn process(&self) -> Chunk {
         let nodes = self.nodes.borrow();
         let mut data = Chunk::default();
         for node in nodes.iter() {
@@ -80,7 +84,11 @@ impl AudioRenderThread {
         data
     }
 
-    pub fn event_loop(&self, event_queue: Receiver<AudioRenderThreadMsg>) {
+    fn event_loop(
+        &self,
+        event_queue: Receiver<AudioRenderThreadMsg>,
+        sync_event_queue: Receiver<AudioRenderThreadSyncMsg>,
+    ) {
         let handle_msg = move |msg: AudioRenderThreadMsg| {
             match msg {
                 AudioRenderThreadMsg::CreateNode(node_type) => {
@@ -99,7 +107,15 @@ impl AudioRenderThread {
                     // Do nothing. This will simply unblock the thread so we
                     // can restart the non-blocking event loop.
                 }
-            }
+            };
+        };
+
+        let handle_sync_msg = move |msg: AudioRenderThreadSyncMsg| {
+            match msg {
+                AudioRenderThreadSyncMsg::GetCurrentTime(response) => {
+                    response.send(self.current_time.get()).unwrap()
+                }
+            };
         };
 
         loop {
@@ -124,6 +140,10 @@ impl AudioRenderThread {
                 } else {
                     eprintln!("Could not push data to audio sink");
                 }
+            }
+
+            if let Ok(msg) = sync_event_queue.try_recv() {
+                handle_sync_msg(msg);
             }
         }
     }
