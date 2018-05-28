@@ -4,7 +4,7 @@ use audio::gain_node::GainNode;
 use audio::node::{AudioNodeEngine, AudioNodeMessage, AudioNodeType};
 use audio::oscillator_node::OscillatorNode;
 use audio::sink::AudioSink;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::sync::mpsc::{Receiver, Sender};
 
 #[cfg(feature = "gst")]
@@ -24,6 +24,7 @@ pub struct AudioRenderThread {
     nodes: RefCell<Vec<Box<AudioNodeEngine>>>,
     sink: Box<AudioSink>,
     sample_rate: f32,
+    current_time: Cell<f64>,
 }
 
 impl AudioRenderThread {
@@ -41,6 +42,7 @@ impl AudioRenderThread {
             sink: Box::new(sink),
             // XXX Get this from AudioContextOptions.
             sample_rate: 44100.,
+            current_time: Cell::new(0.),
         };
 
         graph.sink.init(graph.sample_rate, sender)?;
@@ -117,7 +119,11 @@ impl AudioRenderThread {
                 }
                 // and push into the audio sink the result of processing a
                 // render quantum.
-                let _ = self.sink.push_data(self.process());
+                if let Ok(duration) = self.sink.push_data(self.process()) {
+                    self.current_time.set(self.current_time.get() + duration);
+                } else {
+                    eprintln!("Could not push data to audio sink");
+                }
             }
         }
     }
