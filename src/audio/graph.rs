@@ -85,3 +85,9 @@ impl AudioGraph {
         let _ = self.sender.send(AudioRenderThreadMsg::MessageNode(id, msg));
     }
 }
+
+impl Drop for AudioGraph {
+    fn drop(&mut self) {
+        let _ = self.sender.send(AudioRenderThreadMsg::Close);
+    }
+}

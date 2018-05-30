@@ -94,7 +94,7 @@ impl AudioSink for GStreamerAudioSink {
         self.appsrc.get_current_level_bytes() >= self.appsrc.get_max_bytes()
     }
 
-    fn push_data(&self, mut chunk: Chunk) -> Result<f64, ()> {
+    fn push_data(&self, mut chunk: Chunk) -> Result<(), ()> {
         let sample_rate = self.sample_rate.get() as u64;
         let audio_info = self.audio_info.borrow();
         let audio_info = audio_info.as_ref().unwrap();
@@ -140,13 +140,11 @@ impl AudioSink for GStreamerAudioSink {
             self.sample_offset.set(sample_offset);
         }
 
-        let duration = buffer.get_duration().mseconds().unwrap_or(0) as f64;
-        let _ = self.appsrc
+        self.appsrc
             .push_buffer(buffer)
             .into_result()
             .map(|_| ())
-            .map_err(|_| ());
-        Ok(duration)
+            .map_err(|_| ())
     }
 }
 

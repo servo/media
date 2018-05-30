@@ -1,4 +1,4 @@
-use audio::block::Chunk;
+use audio::block::{Chunk, FRAMES_PER_BLOCK};
 use audio::destination_node::DestinationNode;
 use audio::gain_node::GainNode;
 use audio::graph::ProcessingState;
@@ -98,6 +98,7 @@ impl AudioRenderThread {
         event_queue: Receiver<AudioRenderThreadMsg>,
         sync_event_queue: Receiver<AudioRenderThreadSyncMsg>,
     ) {
+        let mut current_frame = 0;
         let handle_msg = move |context: &mut Self, msg: AudioRenderThreadMsg| -> bool {
             let mut break_loop = false;
             match msg {
@@ -153,10 +154,12 @@ impl AudioRenderThread {
                     }
                 }
                 debug_assert_eq!(self.state, ProcessingState::Running);
-                // and push into the audio sink the result of processing a
+                // push into the audio sink the result of processing a
                 // render quantum.
-                if let Ok(duration) = self.sink.push_data(self.process()) {
-                    self.current_time += duration;
+                if self.sink.push_data(self.process()).is_ok() {
+                    // increment current frame by the render quantum size.
+                    current_frame += FRAMES_PER_BLOCK;
+                    self.current_time = current_frame as f64 / self.sample_rate as f64;
                 } else {
                     eprintln!("Could not push data to audio sink");
                 }
