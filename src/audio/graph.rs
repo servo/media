@@ -7,9 +7,17 @@ use std::thread::Builder;
 
 static NEXT_NODE_ID: AtomicUsize = ATOMIC_USIZE_INIT;
 
+#[derive(Debug, PartialEq)]
+pub enum ProcessingState {
+    Suspended,
+    Running,
+    Closed,
+}
+
 pub struct AudioGraph {
     sender: Sender<AudioRenderThreadMsg>,
     sync_sender: SyncSender<AudioRenderThreadSyncMsg>,
+    state: ProcessingState,
     sample_rate: f32,
 }
 
@@ -31,6 +39,7 @@ impl AudioGraph {
         Self {
             sender,
             sync_sender,
+            state: ProcessingState::Suspended,
             sample_rate,
         }
     }
@@ -53,12 +62,23 @@ impl AudioGraph {
         node_id
     }
 
-    pub fn resume_processing(&self) {
-        let _ = self.sender.send(AudioRenderThreadMsg::ResumeProcessing);
+    /// Resume audio processing.
+    pub fn resume(&mut self) {
+        assert_eq!(self.state, ProcessingState::Suspended);
+        self.state = ProcessingState::Running;
+        let _ = self.sender.send(AudioRenderThreadMsg::Resume);
     }
 
-    pub fn pause_processing(&self) {
-        let _ = self.sender.send(AudioRenderThreadMsg::PauseProcessing);
+    /// Suspend audio processing.
+    pub fn suspend(&mut self) {
+        self.state = ProcessingState::Suspended;
+        let _ = self.sender.send(AudioRenderThreadMsg::Suspend);
+    }
+
+    /// Stop audio processing and close render thread.
+    pub fn close(&mut self) {
+        self.state = ProcessingState::Closed;
+        let _ = self.sender.send(AudioRenderThreadMsg::Close);
     }
 
     pub fn message_node(&self, id: usize, msg: AudioNodeMessage) {

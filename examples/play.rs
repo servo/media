@@ -12,14 +12,17 @@ fn main() {
         let mut options = GainNodeOptions::default();
         options.gain = 0.5;
         graph.create_node(AudioNodeType::GainNode(options));
-        // assert_eq!(graph.current_time(), 0.);
-        graph.resume_processing();
+        assert_eq!(graph.current_time(), 0.);
+        graph.resume();
         thread::sleep(time::Duration::from_millis(2000));
         graph.message_node(0, AudioNodeMessage::SetFloatParam(220.));
-
-        thread::sleep(time::Duration::from_millis(2000));
-        //assert!(graph.current_time() != 0.);
-        graph.pause_processing();
+        thread::sleep(time::Duration::from_millis(1000));
+        graph.suspend();
+        thread::sleep(time::Duration::from_millis(1000));
+        graph.resume();
+        assert!(graph.current_time() != 0.);
+        thread::sleep(time::Duration::from_millis(1000));
+        graph.close();
     } else {
         unreachable!();
     }

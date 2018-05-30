@@ -1,6 +1,7 @@
 use audio::block::Chunk;
 use audio::destination_node::DestinationNode;
 use audio::gain_node::GainNode;
+use audio::graph::ProcessingState;
 use audio::node::{AudioNodeEngine, AudioNodeMessage, AudioNodeType};
 use audio::oscillator_node::OscillatorNode;
 use audio::sink::AudioSink;
@@ -12,8 +13,9 @@ use backends::gstreamer::audio_sink::GStreamerAudioSink;
 pub enum AudioRenderThreadMsg {
     CreateNode(AudioNodeType),
     MessageNode(usize, AudioNodeMessage),
-    ResumeProcessing,
-    PauseProcessing,
+    Resume,
+    Suspend,
+    Close,
     SinkNeedData,
 }
 
@@ -24,10 +26,11 @@ pub enum AudioRenderThreadSyncMsg {
 pub struct AudioRenderThread {
     // XXX Test with a hash map for now. This should end up
     // being a graph, like https://docs.rs/petgraph/0.4.12/petgraph/.
-    nodes: Vec<Box<AudioNodeEngine>>,
-    sink: Box<AudioSink>,
-    sample_rate: f32,
-    current_time: f64,
+    pub nodes: Vec<Box<AudioNodeEngine>>,
+    pub sink: Box<AudioSink>,
+    pub state: ProcessingState,
+    pub sample_rate: f32,
+    pub current_time: f64,
 }
 
 impl AudioRenderThread {
@@ -45,6 +48,7 @@ impl AudioRenderThread {
             // being a graph, like https://docs.rs/petgraph/0.4.12/petgraph/.
             nodes: Vec::new(),
             sink: Box::new(sink),
+            state: ProcessingState::Suspended,
             sample_rate,
             current_time: 0.,
         };
@@ -55,11 +59,19 @@ impl AudioRenderThread {
         Ok(())
     }
 
-    fn resume_processing(&self) {
+    fn resume(&mut self) {
+        assert_eq!(self.state, ProcessingState::Suspended);
+        self.state = ProcessingState::Running;
         self.sink.play();
     }
 
-    fn pause_processing(&self) {
+    fn suspend(&mut self) {
+        self.state = ProcessingState::Suspended;
+        self.sink.stop();
+    }
+
+    fn close(&mut self) {
+        self.state = ProcessingState::Closed;
         self.sink.stop();
     }
 
@@ -86,25 +98,30 @@ impl AudioRenderThread {
         event_queue: Receiver<AudioRenderThreadMsg>,
         sync_event_queue: Receiver<AudioRenderThreadSyncMsg>,
     ) {
-        let handle_msg = move |context: &mut Self, msg: AudioRenderThreadMsg| {
+        let handle_msg = move |context: &mut Self, msg: AudioRenderThreadMsg| -> bool {
+            let mut break_loop = false;
             match msg {
                 AudioRenderThreadMsg::CreateNode(node_type) => {
                     context.create_node(node_type);
                 }
-                AudioRenderThreadMsg::ResumeProcessing => {
-                    context.resume_processing();
+                AudioRenderThreadMsg::Resume => {
+                    context.resume();
                 }
-                AudioRenderThreadMsg::PauseProcessing => {
-                    context.pause_processing();
+                AudioRenderThreadMsg::Suspend => {
+                    context.suspend();
                 }
-                AudioRenderThreadMsg::MessageNode(index, msg) => {
-                    context.nodes[index].message(msg)
+                AudioRenderThreadMsg::Close => {
+                    context.close();
+                    break_loop = true;
                 }
+                AudioRenderThreadMsg::MessageNode(index, msg) => context.nodes[index].message(msg),
                 AudioRenderThreadMsg::SinkNeedData => {
                     // Do nothing. This will simply unblock the thread so we
                     // can restart the non-blocking event loop.
                 }
             };
+
+            break_loop
         };
 
         let handle_sync_msg = move |context: &Self, msg: AudioRenderThreadSyncMsg| {
@@ -116,20 +133,26 @@ impl AudioRenderThread {
         };
 
         loop {
-            if self.sink.has_enough_data() {
-                // If we have already pushed enough data into the audio sink
+            if self.sink.has_enough_data() || self.state == ProcessingState::Suspended {
+                // If we are not processing audio or
+                // if we have already pushed enough data into the audio sink
                 // we wait for messages coming from the control thread or
                 // the audio sink. The audio sink will notify whenever it
                 // needs more data.
                 if let Ok(msg) = event_queue.recv() {
-                    handle_msg(self, msg);
+                    if handle_msg(self, msg) {
+                        break;
+                    }
                 }
             } else {
                 // If we have not pushed enough data into the audio sink yet,
                 // we process the control message queue
                 if let Ok(msg) = event_queue.try_recv() {
-                    handle_msg(self, msg);
+                    if handle_msg(self, msg) {
+                        break;
+                    }
                 }
+                debug_assert_eq!(self.state, ProcessingState::Running);
                 // and push into the audio sink the result of processing a
                 // render quantum.
                 if let Ok(duration) = self.sink.push_data(self.process()) {
