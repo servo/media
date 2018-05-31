@@ -17,9 +17,6 @@ pub enum AudioRenderThreadMsg {
     Suspend,
     Close,
     SinkNeedData,
-}
-
-pub enum AudioRenderThreadSyncMsg {
     GetCurrentTime(Sender<f64>),
 }
 
@@ -36,7 +33,6 @@ pub struct AudioRenderThread {
 impl AudioRenderThread {
     pub fn start(
         event_queue: Receiver<AudioRenderThreadMsg>,
-        sync_event_queue: Receiver<AudioRenderThreadSyncMsg>,
         sender: Sender<AudioRenderThreadMsg>,
         sample_rate: f32,
     ) -> Result<(), ()> {
@@ -54,7 +50,7 @@ impl AudioRenderThread {
         };
 
         graph.sink.init(sample_rate, sender)?;
-        graph.event_loop(event_queue, sync_event_queue);
+        graph.event_loop(event_queue);
 
         Ok(())
     }
@@ -96,7 +92,6 @@ impl AudioRenderThread {
     fn event_loop(
         &mut self,
         event_queue: Receiver<AudioRenderThreadMsg>,
-        sync_event_queue: Receiver<AudioRenderThreadSyncMsg>,
     ) {
         let mut current_frame = 0;
         let handle_msg = move |context: &mut Self, msg: AudioRenderThreadMsg| -> bool {
@@ -115,6 +110,9 @@ impl AudioRenderThread {
                     context.close();
                     break_loop = true;
                 }
+                AudioRenderThreadMsg::GetCurrentTime(response) => {
+                    response.send(context.current_time).unwrap()
+                }
                 AudioRenderThreadMsg::MessageNode(index, msg) => context.nodes[index].message(msg),
                 AudioRenderThreadMsg::SinkNeedData => {
                     // Do nothing. This will simply unblock the thread so we
@@ -123,14 +121,6 @@ impl AudioRenderThread {
             };
 
             break_loop
-        };
-
-        let handle_sync_msg = move |context: &Self, msg: AudioRenderThreadSyncMsg| {
-            match msg {
-                AudioRenderThreadSyncMsg::GetCurrentTime(response) => {
-                    response.send(context.current_time).unwrap()
-                }
-            };
         };
 
         loop {
@@ -163,10 +153,6 @@ impl AudioRenderThread {
                 } else {
                     eprintln!("Could not push data to audio sink");
                 }
-            }
-
-            if let Ok(msg) = sync_event_queue.try_recv() {
-                handle_sync_msg(self, msg);
             }
         }
     }
