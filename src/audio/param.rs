@@ -1,4 +1,4 @@
-
+use audio::block::Tick;
 use audio::node::BlockInfo;
 
 /// An AudioParam. 
@@ -27,8 +27,8 @@ impl Param {
     }
 
     /// Update the value of this param to the next
-    pub fn update(&mut self, _block: &BlockInfo, frame: u32) {
-        if frame != 0 && self.kind == ParamKind::KRate {
+    pub fn update(&mut self, _block: &BlockInfo, tick: Tick) {
+        if tick.0 != 0 && self.kind == ParamKind::KRate {
             return;
         }
         // fun stuff goes here

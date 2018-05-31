@@ -1,3 +1,4 @@
+use audio::block::Tick;
 use audio::node::BlockInfo;
 use audio::block::{Chunk, FRAMES_PER_BLOCK};
 use audio::destination_node::DestinationNode;
@@ -29,7 +30,7 @@ pub struct AudioRenderThread {
     pub state: ProcessingState,
     pub sample_rate: f32,
     pub current_time: f64,
-    pub current_frame: u32,
+    pub current_frame: Tick,
 }
 
 impl AudioRenderThread {
@@ -49,7 +50,7 @@ impl AudioRenderThread {
             state: ProcessingState::Suspended,
             sample_rate,
             current_time: 0.,
-            current_frame: 0,
+            current_frame: Tick(0),
         };
 
         graph.sink.init(sample_rate, sender)?;
@@ -156,8 +157,8 @@ impl AudioRenderThread {
                 let data = self.process();
                 if self.sink.push_data(data).is_ok() {
                     // increment current frame by the render quantum size.
-                    self.current_frame += FRAMES_PER_BLOCK as u32;
-                    self.current_time = self.current_frame as f64 / self.sample_rate as f64;
+                    self.current_frame += FRAMES_PER_BLOCK;
+                    self.current_time = self.current_frame / self.sample_rate as f64;
                 } else {
                     eprintln!("Could not push data to audio sink");
                 }

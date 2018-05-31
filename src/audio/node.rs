@@ -1,3 +1,4 @@
+use audio::block::Tick;
 use audio::gain_node::GainNodeOptions;
 use audio::oscillator_node::OscillatorNodeOptions;
 use audio::block::Chunk;
@@ -27,7 +28,7 @@ pub enum AudioNodeType {
 #[derive(Copy, Clone)]
 pub struct BlockInfo {
     pub sample_rate: f32,
-    pub frame: u32,
+    pub frame: Tick,
     pub time: f64,
 }
 
