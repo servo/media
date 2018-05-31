@@ -139,6 +139,7 @@ impl AudioSink for GStreamerAudioSink {
             sample_offset += n_samples;
             self.sample_offset.set(sample_offset);
         }
+
         self.appsrc
             .push_buffer(buffer)
             .into_result()
