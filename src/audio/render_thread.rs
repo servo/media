@@ -1,3 +1,4 @@
+use audio::node::BlockInfo;
 use audio::block::{Chunk, FRAMES_PER_BLOCK};
 use audio::destination_node::DestinationNode;
 use audio::gain_node::GainNode;
@@ -28,6 +29,7 @@ pub struct AudioRenderThread {
     pub state: ProcessingState,
     pub sample_rate: f32,
     pub current_time: f64,
+    pub current_frame: u32,
 }
 
 impl AudioRenderThread {
@@ -47,6 +49,7 @@ impl AudioRenderThread {
             state: ProcessingState::Suspended,
             sample_rate,
             current_time: 0.,
+            current_frame: 0,
         };
 
         graph.sink.init(sample_rate, sender)?;
@@ -81,10 +84,15 @@ impl AudioRenderThread {
         self.nodes.push(node)
     }
 
-    fn process(&mut self) -> Chunk {
+    fn process(&mut self, ) -> Chunk {
         let mut data = Chunk::default();
+        let info = BlockInfo {
+            sample_rate: self.sample_rate,
+            frame: self.current_frame,
+            time: self.current_time,
+        };
         for node in self.nodes.iter_mut() {
-            data = node.process(data, self.sample_rate);
+            data = node.process(data, &info);
         }
         data
     }
@@ -93,7 +101,6 @@ impl AudioRenderThread {
         &mut self,
         event_queue: Receiver<AudioRenderThreadMsg>,
     ) {
-        let mut current_frame = 0;
         let handle_msg = move |context: &mut Self, msg: AudioRenderThreadMsg| -> bool {
             let mut break_loop = false;
             match msg {
@@ -149,8 +156,8 @@ impl AudioRenderThread {
                 let data = self.process();
                 if self.sink.push_data(data).is_ok() {
                     // increment current frame by the render quantum size.
-                    current_frame += FRAMES_PER_BLOCK;
-                    self.current_time = current_frame as f64 / self.sample_rate as f64;
+                    self.current_frame += FRAMES_PER_BLOCK as u32;
+                    self.current_time = self.current_frame as f64 / self.sample_rate as f64;
                 } else {
                     eprintln!("Could not push data to audio sink");
                 }

@@ -1,3 +1,4 @@
+use audio::node::BlockInfo;
 use audio::block::Chunk;
 use audio::node::{AudioNodeEngine, AudioNodeMessage};
 use num_traits::cast::NumCast;
@@ -50,7 +51,7 @@ impl AudioNodeEngine for OscillatorNode {
     fn process(
         &mut self,
         mut inputs: Chunk,
-        sample_rate: f32,
+        info: &BlockInfo,
     ) -> Chunk {
         // XXX Implement this properly and according to self.options
         // as defined in https://webaudio.github.io/web-audio-api/#oscillatornode
@@ -67,7 +68,7 @@ impl AudioNodeEngine for OscillatorNode {
             // Convert all our parameters to the target type for calculations
             let vol: f32 = 1.0;
             let freq = self.options.freq as f64;
-            let sample_rate = sample_rate as f64;
+            let sample_rate = info.sample_rate as f64;
             let two_pi = 2.0 * PI;
 
             // We're carrying a accumulator with up to 2pi around instead of working

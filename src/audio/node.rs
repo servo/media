@@ -24,12 +24,18 @@ pub enum AudioNodeType {
     WaveShaperNode,
 }
 
+pub struct BlockInfo {
+    pub sample_rate: f32,
+    pub frame: u32,
+    pub time: f64,
+}
+
 pub trait AudioNodeEngine: Send {
     // XXX Create an AudioBuffer abstraction
     fn process(
         &mut self,
         inputs: Chunk,
-        sample_rate: f32,
+        info: &BlockInfo,
     ) -> Chunk;
 
     fn message(&mut self, _: AudioNodeMessage) {

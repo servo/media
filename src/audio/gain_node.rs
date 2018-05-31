@@ -1,3 +1,4 @@
+use audio::node::BlockInfo;
 use audio::node::AudioNodeEngine;
 use audio::block::Chunk;
 
@@ -27,7 +28,7 @@ impl AudioNodeEngine for GainNode {
     fn process(
         &mut self,
         mut inputs: Chunk,
-        _sample_rate: f32,
+        _: &BlockInfo,
     ) -> Chunk {
         debug_assert!(inputs.len() == 1);
 
