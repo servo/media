@@ -11,6 +11,7 @@ pub struct Param {
     events: Vec<AutomationEvent>,
     current_event: usize,
     event_start_time: Tick,
+    event_start_value: f32,
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
@@ -30,6 +31,7 @@ impl Param {
             events: vec![],
             current_event: 0,
             event_start_time: Tick(0),
+            event_start_value: val,
         }
     }
 
@@ -58,6 +60,7 @@ impl Param {
         if let Some(done_time) = current_event.done_time() {
             if done_time < current_tick {
                 self.current_event += 1;
+                self.event_start_value = self.val;
                 self.event_start_time = current_tick;
                 if let Some(next) = self.events.get(self.current_event) {
                     current_event = next;
@@ -69,13 +72,16 @@ impl Param {
             if let Some(start_time) = next.start_time() {
                 if start_time >= current_tick {
                     self.current_event += 1;
+                    self.event_start_value = self.val;
                     self.event_start_time = current_tick;
                     current_event = next;
                 }
             }
         }
 
-        current_event.run(&mut self.val, current_tick, self.event_start_time)
+        current_event.run(&mut self.val, current_tick,
+                          self.event_start_time,
+                          self.event_start_value)
     }
 
     pub fn value(&self) -> f32 {
@@ -107,9 +113,9 @@ pub enum RampKind {
 pub(crate) enum AutomationEvent {
 
     SetValueAtTime(f32, Tick),
-    // RampToValueAtTime(RampKind, f64, Tick),
-    // SetTargetAtTime(f64, Tick, /* time constant, units of 1/Tick */ f64),
-    // SetValueCurveAtTime(Vec<f64>, Tick, /* duration */ Tick)
+    RampToValueAtTime(RampKind, f32, Tick),
+    // SetTargetAtTime(f32, Tick, /* time constant, units of 1/Tick */ f64),
+    // SetValueCurveAtTime(Vec<f32>, Tick, /* duration */ Tick)
     // CancelAndHoldAtTime(Tick),
 }
 
@@ -119,9 +125,9 @@ pub(crate) enum AutomationEvent {
 pub enum UserAutomationEvent {
 
     SetValueAtTime(f32, /* time */ f64),
-    // RampToValueAtTime(RampKind, f64, Tick),
-    // SetTargetAtTime(f64, Tick, /* time constant, units of 1/Tick */ f64),
-    // SetValueCurveAtTime(Vec<f64>, Tick, /* duration */ Tick)
+    RampToValueAtTime(RampKind, f32, /* time */ f64),
+    // SetTargetAtTime(f32, Tick, /* time constant, units of 1/Tick */ f64),
+    // SetValueCurveAtTime(Vec<f32>, Tick, /* duration */ Tick)
     // CancelAndHoldAtTime(Tick),
 }
 
@@ -129,7 +135,9 @@ impl UserAutomationEvent {
     pub(crate) fn to_event(self, rate: f32) -> AutomationEvent {
         match self {
             UserAutomationEvent::SetValueAtTime(val, time) =>
-                AutomationEvent::SetValueAtTime(val, Tick::from_time(time, rate))
+                AutomationEvent::SetValueAtTime(val, Tick::from_time(time, rate)),
+            UserAutomationEvent::RampToValueAtTime(kind, val, time) =>
+                AutomationEvent::RampToValueAtTime(kind, val, Tick::from_time(time, rate))
         }
     }
 }
@@ -139,18 +147,21 @@ impl AutomationEvent {
     pub fn time(&self) -> Tick {
         match *self {
             AutomationEvent::SetValueAtTime(_, tick) => tick,
+            AutomationEvent::RampToValueAtTime(_, _, tick) => tick,
         }
     }
 
     pub fn done_time(&self) -> Option<Tick> {
         match *self {
             AutomationEvent::SetValueAtTime(_, tick) => Some(tick),
+            AutomationEvent::RampToValueAtTime(_, _, tick) => Some(tick),
         }
     }
 
     pub fn start_time(&self) -> Option<Tick> {
         match *self {
             AutomationEvent::SetValueAtTime(_, tick) => Some(tick),
+            AutomationEvent::RampToValueAtTime(..) => None,
         }
     }
 
@@ -158,7 +169,9 @@ impl AutomationEvent {
     ///
     /// Returns true if something changed
     pub fn run(&self, value: &mut f32,
-               current_tick: Tick, _event_start_time: Tick) -> bool {
+               current_tick: Tick,
+               event_start_time: Tick,
+               event_start_value: f32) -> bool {
         match *self {
             AutomationEvent::SetValueAtTime(val, time) => {
                 if current_tick == time {
@@ -167,6 +180,19 @@ impl AutomationEvent {
                 } else {
                     false
                 }
+            }
+            AutomationEvent::RampToValueAtTime(kind, val, time) => {
+                let progress = (current_tick - event_start_time).0 as f32 /
+                               (time - event_start_time).0 as f32;
+                match kind {
+                    RampKind::Linear => {
+                        *value = event_start_value + (val - event_start_value) * progress;
+                    }
+                    RampKind::Exponential => {
+                        *value = event_start_value * (val / event_start_value).powf(progress);
+                    }
+                }
+                true
             }
         }
     }
