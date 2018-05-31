@@ -32,6 +32,14 @@ pub struct BlockInfo {
     pub time: f64,
 }
 
+impl BlockInfo {
+    /// Given the current block, calculate the absolute zero-relative
+    /// tick of the given tick
+    pub fn absolute_tick(&self, tick: Tick) -> Tick {
+        self.frame + tick
+    }
+}
+
 pub trait AudioNodeEngine: Send {
     // XXX Create an AudioBuffer abstraction
     fn process(

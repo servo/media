@@ -7,7 +7,7 @@ use byte_slice_cast::*;
 pub const FRAMES_PER_BLOCK: Tick = Tick(128);
 
 /// A tick, i.e. the time taken for a single frame
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
 pub struct Tick(pub u32);
 
 /// A collection of blocks received as input by a node
