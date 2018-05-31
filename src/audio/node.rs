@@ -27,7 +27,7 @@ pub enum AudioNodeType {
 pub trait AudioNodeEngine: Send {
     // XXX Create an AudioBuffer abstraction
     fn process(
-        &self,
+        &mut self,
         inputs: Chunk,
         sample_rate: f32,
     ) -> Chunk;

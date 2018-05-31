@@ -1,7 +1,6 @@
 use audio::block::Chunk;
 use audio::node::{AudioNodeEngine, AudioNodeMessage};
 use num_traits::cast::NumCast;
-use std::cell::Cell;
 
 pub struct PeriodicWaveOptions {
     // XXX https://webaudio.github.io/web-audio-api/#dictdef-periodicwaveoptions
@@ -35,21 +34,21 @@ impl Default for OscillatorNodeOptions {
 
 pub struct OscillatorNode {
     options: OscillatorNodeOptions,
-    accumulator: Cell<f64>,
+    accumulator: f64,
 }
 
 impl OscillatorNode {
     pub fn new(options: OscillatorNodeOptions) -> Self {
         Self {
             options,
-            accumulator: Cell::new(0.),
+            accumulator: 0.,
         }
     }
 }
 
 impl AudioNodeEngine for OscillatorNode {
     fn process(
-        &self,
+        &mut self,
         mut inputs: Chunk,
         sample_rate: f32,
     ) -> Chunk {
@@ -75,7 +74,7 @@ impl AudioNodeEngine for OscillatorNode {
             // on the sample offset. High sample offsets cause too much inaccuracy when
             // converted to floating point numbers and then iterated over in 1-steps
             let step = two_pi * freq / sample_rate;
-            let mut accumulator = self.accumulator.get();
+            let mut accumulator = self.accumulator;
 
             for sample in data.iter_mut() {
                 let value = vol * f32::sin(NumCast::from(accumulator).unwrap());
@@ -86,7 +85,7 @@ impl AudioNodeEngine for OscillatorNode {
                     accumulator -= two_pi;
                 }
             }
-            self.accumulator.set(accumulator);
+            self.accumulator = accumulator;
         }
         inputs
     }

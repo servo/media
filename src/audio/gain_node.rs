@@ -25,7 +25,7 @@ impl GainNode {
 
 impl AudioNodeEngine for GainNode {
     fn process(
-        &self,
+        &mut self,
         mut inputs: Chunk,
         _sample_rate: f32,
     ) -> Chunk {
