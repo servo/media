@@ -82,7 +82,7 @@ impl Param {
         self.val
     }
 
-    pub fn insert_event(&mut self, event: AutomationEvent) {
+    pub(crate) fn insert_event(&mut self, event: AutomationEvent) {
         let time = event.time();
 
         let result = self.events.binary_search_by(|e| e.time().cmp(&time));
@@ -104,13 +104,34 @@ pub enum RampKind {
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 /// https://webaudio.github.io/web-audio-api/#dfn-automation-event
-pub enum AutomationEvent {
+pub(crate) enum AutomationEvent {
 
     SetValueAtTime(f64, Tick),
     // RampToValueAtTime(RampKind, f64, Tick),
     // SetTargetAtTime(f64, Tick, /* time constant, units of 1/Tick */ f64),
     // SetValueCurveAtTime(Vec<f64>, Tick, /* duration */ Tick)
     // CancelAndHoldAtTime(Tick),
+}
+
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+/// An AutomationEvent that uses times in s instead of Ticks
+pub enum UserAutomationEvent {
+
+    SetValueAtTime(f64, /* time */ f64),
+    // RampToValueAtTime(RampKind, f64, Tick),
+    // SetTargetAtTime(f64, Tick, /* time constant, units of 1/Tick */ f64),
+    // SetValueCurveAtTime(Vec<f64>, Tick, /* duration */ Tick)
+    // CancelAndHoldAtTime(Tick),
+}
+
+impl UserAutomationEvent {
+    pub(crate) fn to_event(self, rate: f32) -> AutomationEvent {
+        match self {
+            UserAutomationEvent::SetValueAtTime(val, time) =>
+                AutomationEvent::SetValueAtTime(val, Tick::from_time(time, rate))
+        }
+    }
 }
 
 impl AutomationEvent {

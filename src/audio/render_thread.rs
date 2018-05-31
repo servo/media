@@ -102,6 +102,7 @@ impl AudioRenderThread {
         &mut self,
         event_queue: Receiver<AudioRenderThreadMsg>,
     ) {
+        let sample_rate = self.sample_rate;
         let handle_msg = move |context: &mut Self, msg: AudioRenderThreadMsg| -> bool {
             let mut break_loop = false;
             match msg {
@@ -121,7 +122,7 @@ impl AudioRenderThread {
                 AudioRenderThreadMsg::GetCurrentTime(response) => {
                     response.send(context.current_time).unwrap()
                 }
-                AudioRenderThreadMsg::MessageNode(index, msg) => context.nodes[index].message(msg),
+                AudioRenderThreadMsg::MessageNode(index, msg) => context.nodes[index].message(msg, sample_rate),
                 AudioRenderThreadMsg::SinkNeedData => {
                     // Do nothing. This will simply unblock the thread so we
                     // can restart the non-blocking event loop.

@@ -99,10 +99,10 @@ impl AudioNodeEngine for OscillatorNode {
         }
         inputs
     }
-    fn message(&mut self, msg: AudioNodeMessage) {
+    fn message(&mut self, msg: AudioNodeMessage, sample_rate: f32) {
         match msg {
-            AudioNodeMessage::SetFloatParam(val) => {
-                unimplemented!()
+            AudioNodeMessage::SetAudioParamEvent(event) => {
+                self.frequency.insert_event(event.to_event(sample_rate))
             }
         }
 

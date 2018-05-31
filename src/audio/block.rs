@@ -98,3 +98,9 @@ impl Div<f64> for Tick {
         self.0 as f64 / other
     }
 }
+
+impl Tick {
+    pub fn from_time(time: f64, rate: f32) -> Tick {
+        Tick((time * rate as f64) as u32)
+    }
+}

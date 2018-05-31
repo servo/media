@@ -1,6 +1,7 @@
 use audio::block::Tick;
 use audio::gain_node::GainNodeOptions;
 use audio::oscillator_node::OscillatorNodeOptions;
+use audio::param::UserAutomationEvent;
 use audio::block::Chunk;
 
 pub enum AudioNodeType {
@@ -48,12 +49,12 @@ pub trait AudioNodeEngine: Send {
         info: &BlockInfo,
     ) -> Chunk;
 
-    fn message(&mut self, _: AudioNodeMessage) {
+    fn message(&mut self, _: AudioNodeMessage, _sample_rate: f32) {
 
     }
 }
 
 
 pub enum AudioNodeMessage {
-    SetFloatParam(f32)
+    SetAudioParamEvent(UserAutomationEvent)
 }
