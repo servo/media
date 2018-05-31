@@ -94,7 +94,7 @@ impl AudioNodeEngine for OscillatorNode {
                 if self.accumulator >= two_pi {
                     self.accumulator -= two_pi;
                 }
-                tick += Tick(1);
+                tick.advance();
             }
         }
         inputs
@@ -105,6 +105,5 @@ impl AudioNodeEngine for OscillatorNode {
                 self.frequency.insert_event(event.to_event(sample_rate))
             }
         }
-
     }
 }

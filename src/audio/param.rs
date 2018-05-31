@@ -6,7 +6,7 @@ use audio::node::BlockInfo;
 /// https://webaudio.github.io/web-audio-api/#AudioParam
 #[derive(Debug)]
 pub struct Param {
-    val: f64,
+    val: f32,
     kind: ParamKind,
     events: Vec<AutomationEvent>,
     current_event: usize,
@@ -23,7 +23,7 @@ pub enum ParamKind {
 
 
 impl Param {
-    pub fn new(val: f64) -> Self{
+    pub fn new(val: f32) -> Self{
         Param {
             val,
             kind: ParamKind::ARate,
@@ -78,7 +78,7 @@ impl Param {
         current_event.run(&mut self.val, current_tick, self.event_start_time)
     }
 
-    pub fn value(&self) -> f64 {
+    pub fn value(&self) -> f32 {
         self.val
     }
 
@@ -106,7 +106,7 @@ pub enum RampKind {
 /// https://webaudio.github.io/web-audio-api/#dfn-automation-event
 pub(crate) enum AutomationEvent {
 
-    SetValueAtTime(f64, Tick),
+    SetValueAtTime(f32, Tick),
     // RampToValueAtTime(RampKind, f64, Tick),
     // SetTargetAtTime(f64, Tick, /* time constant, units of 1/Tick */ f64),
     // SetValueCurveAtTime(Vec<f64>, Tick, /* duration */ Tick)
@@ -118,7 +118,7 @@ pub(crate) enum AutomationEvent {
 /// An AutomationEvent that uses times in s instead of Ticks
 pub enum UserAutomationEvent {
 
-    SetValueAtTime(f64, /* time */ f64),
+    SetValueAtTime(f32, /* time */ f64),
     // RampToValueAtTime(RampKind, f64, Tick),
     // SetTargetAtTime(f64, Tick, /* time constant, units of 1/Tick */ f64),
     // SetValueCurveAtTime(Vec<f64>, Tick, /* duration */ Tick)
@@ -157,7 +157,7 @@ impl AutomationEvent {
     /// Update a parameter based on this event
     ///
     /// Returns true if something changed
-    pub fn run(&self, value: &mut f64,
+    pub fn run(&self, value: &mut f32,
                current_tick: Tick, _event_start_time: Tick) -> bool {
         match *self {
             AutomationEvent::SetValueAtTime(val, time) => {

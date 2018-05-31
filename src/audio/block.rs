@@ -103,4 +103,8 @@ impl Tick {
     pub fn from_time(time: f64, rate: f32) -> Tick {
         Tick((time * rate as f64) as u32)
     }
+
+    pub fn advance(&mut self) {
+        self.0 += 1;
+    }
 }

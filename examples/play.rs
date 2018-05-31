@@ -16,8 +16,11 @@ fn main() {
         assert_eq!(graph.current_time(), 0.);
         graph.resume();
         // change frequency at 0.5s and 1s
+        // change gain at 0.75s and 1.25s
         graph.message_node(0, AudioNodeMessage::SetAudioParamEvent(UserAutomationEvent::SetValueAtTime(110., 0.5)));
         graph.message_node(0, AudioNodeMessage::SetAudioParamEvent(UserAutomationEvent::SetValueAtTime(220., 1.)));
+        graph.message_node(1, AudioNodeMessage::SetAudioParamEvent(UserAutomationEvent::SetValueAtTime(0.25, 0.75)));
+        graph.message_node(1, AudioNodeMessage::SetAudioParamEvent(UserAutomationEvent::SetValueAtTime(0.75, 1.25)));
         thread::sleep(time::Duration::from_millis(2000));
         graph.suspend();
         thread::sleep(time::Duration::from_millis(500));
