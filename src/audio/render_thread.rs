@@ -81,9 +81,9 @@ impl AudioRenderThread {
         self.nodes.push(node)
     }
 
-    fn process(&self) -> Chunk {
+    fn process(&mut self) -> Chunk {
         let mut data = Chunk::default();
-        for node in self.nodes.iter() {
+        for node in self.nodes.iter_mut() {
             data = node.process(data, self.sample_rate);
         }
         data
@@ -146,7 +146,8 @@ impl AudioRenderThread {
                 debug_assert_eq!(self.state, ProcessingState::Running);
                 // push into the audio sink the result of processing a
                 // render quantum.
-                if self.sink.push_data(self.process()).is_ok() {
+                let data = self.process();
+                if self.sink.push_data(data).is_ok() {
                     // increment current frame by the render quantum size.
                     current_frame += FRAMES_PER_BLOCK;
                     self.current_time = current_frame as f64 / self.sample_rate as f64;

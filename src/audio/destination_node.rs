@@ -10,7 +10,7 @@ impl DestinationNode {
 }
 
 impl AudioNodeEngine for DestinationNode {
-    fn process(&self, inputs: Chunk, _sample_rate: f32) -> Chunk {
+    fn process(&mut self, inputs: Chunk, _sample_rate: f32) -> Chunk {
         inputs
     }
 }
