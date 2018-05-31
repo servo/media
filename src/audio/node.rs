@@ -24,6 +24,7 @@ pub enum AudioNodeType {
     WaveShaperNode,
 }
 
+#[derive(Copy, Clone)]
 pub struct BlockInfo {
     pub sample_rate: f32,
     pub frame: u32,
