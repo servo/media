@@ -1,3 +1,5 @@
+use audio::block::Tick;
+use audio::param::Param;
 use audio::node::BlockInfo;
 use audio::block::Chunk;
 use audio::node::{AudioNodeEngine, AudioNodeMessage};
@@ -34,16 +36,20 @@ impl Default for OscillatorNodeOptions {
 }
 
 pub struct OscillatorNode {
-    options: OscillatorNodeOptions,
+    frequency: Param,
     accumulator: f64,
 }
 
 impl OscillatorNode {
     pub fn new(options: OscillatorNodeOptions) -> Self {
         Self {
-            options,
+            frequency: Param::new(options.freq.into()),
             accumulator: 0.,
         }
+    }
+
+    pub fn update_parameters(&mut self, info: &BlockInfo, tick: Tick) -> bool {
+        self.frequency.update(info, tick)
     }
 }
 
@@ -62,38 +68,41 @@ impl AudioNodeEngine for OscillatorNode {
 
         inputs.blocks.push(Default::default());
 
+
         {
             let data = &mut inputs.blocks[0].data;
 
             // Convert all our parameters to the target type for calculations
             let vol: f32 = 1.0;
-            let freq = self.options.freq as f64;
+            let freq = self.frequency.value() as f64;
             let sample_rate = info.sample_rate as f64;
             let two_pi = 2.0 * PI;
 
             // We're carrying a accumulator with up to 2pi around instead of working
             // on the sample offset. High sample offsets cause too much inaccuracy when
             // converted to floating point numbers and then iterated over in 1-steps
-            let step = two_pi * freq / sample_rate;
-            let mut accumulator = self.accumulator;
-
+            let mut step = two_pi * freq / sample_rate;
+            let mut tick = Tick(0);
             for sample in data.iter_mut() {
-                let value = vol * f32::sin(NumCast::from(accumulator).unwrap());
+                if self.update_parameters(info, tick) {
+                    step = two_pi * freq / sample_rate;
+                }
+                let value = vol * f32::sin(NumCast::from(self.accumulator).unwrap());
                 *sample = value;
 
-                accumulator += step;
-                if accumulator >= two_pi {
-                    accumulator -= two_pi;
+                self.accumulator += step;
+                if self.accumulator >= two_pi {
+                    self.accumulator -= two_pi;
                 }
+                tick += Tick(1);
             }
-            self.accumulator = accumulator;
         }
         inputs
     }
     fn message(&mut self, msg: AudioNodeMessage) {
         match msg {
             AudioNodeMessage::SetFloatParam(val) => {
-                self.options.freq = val
+                unimplemented!()
             }
         }
 

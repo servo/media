@@ -34,14 +34,16 @@ impl Param {
     }
 
     /// Update the value of this param to the next
-    pub fn update(&mut self, block: &BlockInfo, tick: Tick) {
+    ///
+    /// Returns true if anything changed
+    pub fn update(&mut self, block: &BlockInfo, tick: Tick) -> bool {
         if tick.0 != 0 && self.kind == ParamKind::KRate {
-            return;
+            return false;
         }
 
         // println!("Curr {:?}", self.current_event);
         if self.events.len() <= self.current_event  {
-            return;
+            return false;
         }
 
 
@@ -60,7 +62,7 @@ impl Param {
                 if let Some(next) = self.events.get(self.current_event) {
                     current_event = next;
                 } else {
-                    return;
+                    return false;
                 }
             }
         } else if let Some(next) = self.events.get(self.current_event + 1) {
@@ -73,7 +75,7 @@ impl Param {
             }
         }
 
-        current_event.run(&mut self.val, current_tick, self.event_start_time);
+        current_event.run(&mut self.val, current_tick, self.event_start_time)
     }
 
     pub fn value(&self) -> f64 {
@@ -131,11 +133,18 @@ impl AutomationEvent {
         }
     }
 
-    pub fn run(&self, value: &mut f64, current_tick: Tick, _event_start_time: Tick) {
+    /// Update a parameter based on this event
+    ///
+    /// Returns true if something changed
+    pub fn run(&self, value: &mut f64,
+               current_tick: Tick, _event_start_time: Tick) -> bool {
         match *self {
             AutomationEvent::SetValueAtTime(val, time) => {
                 if current_tick == time {
-                    *value = val
+                    *value = val;
+                    true
+                } else {
+                    false
                 }
             }
         }
