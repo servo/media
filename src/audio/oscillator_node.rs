@@ -1,3 +1,6 @@
+use audio::block::Tick;
+use audio::param::Param;
+use audio::node::BlockInfo;
 use audio::block::Chunk;
 use audio::node::{AudioNodeEngine, AudioNodeMessage};
 use num_traits::cast::NumCast;
@@ -33,16 +36,20 @@ impl Default for OscillatorNodeOptions {
 }
 
 pub struct OscillatorNode {
-    options: OscillatorNodeOptions,
-    accumulator: f64,
+    frequency: Param,
+    phase: f64,
 }
 
 impl OscillatorNode {
     pub fn new(options: OscillatorNodeOptions) -> Self {
         Self {
-            options,
-            accumulator: 0.,
+            frequency: Param::new(options.freq.into()),
+            phase: 0.,
         }
+    }
+
+    pub fn update_parameters(&mut self, info: &BlockInfo, tick: Tick) -> bool {
+        self.frequency.update(info, tick)
     }
 }
 
@@ -50,7 +57,7 @@ impl AudioNodeEngine for OscillatorNode {
     fn process(
         &mut self,
         mut inputs: Chunk,
-        sample_rate: f32,
+        info: &BlockInfo,
     ) -> Chunk {
         // XXX Implement this properly and according to self.options
         // as defined in https://webaudio.github.io/web-audio-api/#oscillatornode
@@ -61,40 +68,44 @@ impl AudioNodeEngine for OscillatorNode {
 
         inputs.blocks.push(Default::default());
 
+
         {
             let data = &mut inputs.blocks[0].data;
 
             // Convert all our parameters to the target type for calculations
             let vol: f32 = 1.0;
-            let freq = self.options.freq as f64;
-            let sample_rate = sample_rate as f64;
+            let freq = self.frequency.value() as f64;
+            let sample_rate = info.sample_rate as f64;
             let two_pi = 2.0 * PI;
 
-            // We're carrying a accumulator with up to 2pi around instead of working
+            // We're carrying a phase with up to 2pi around instead of working
             // on the sample offset. High sample offsets cause too much inaccuracy when
             // converted to floating point numbers and then iterated over in 1-steps
-            let step = two_pi * freq / sample_rate;
-            let mut accumulator = self.accumulator;
-
+            //
+            // Also, if the frequency changes the phase should not
+            let mut step = two_pi * freq / sample_rate;
+            let mut tick = Tick(0);
             for sample in data.iter_mut() {
-                let value = vol * f32::sin(NumCast::from(accumulator).unwrap());
+                if self.update_parameters(info, tick) {
+                    step = two_pi * freq / sample_rate;
+                }
+                let value = vol * f32::sin(NumCast::from(self.phase).unwrap());
                 *sample = value;
 
-                accumulator += step;
-                if accumulator >= two_pi {
-                    accumulator -= two_pi;
+                self.phase += step;
+                if self.phase >= two_pi {
+                    self.phase -= two_pi;
                 }
+                tick.advance();
             }
-            self.accumulator = accumulator;
         }
         inputs
     }
-    fn message(&mut self, msg: AudioNodeMessage) {
+    fn message(&mut self, msg: AudioNodeMessage, sample_rate: f32) {
         match msg {
-            AudioNodeMessage::SetFloatParam(val) => {
-                self.options.freq = val
+            AudioNodeMessage::SetAudioParamEvent(event) => {
+                self.frequency.insert_event(event.to_event(sample_rate))
             }
         }
-
     }
 }

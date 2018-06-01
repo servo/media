@@ -1,4 +1,4 @@
-use audio::node::AudioNodeEngine;
+use audio::node::{AudioNodeEngine, BlockInfo};
 use audio::block::Chunk;
 
 pub struct DestinationNode {}
@@ -10,7 +10,7 @@ impl DestinationNode {
 }
 
 impl AudioNodeEngine for DestinationNode {
-    fn process(&mut self, inputs: Chunk, _sample_rate: f32) -> Chunk {
+    fn process(&mut self, inputs: Chunk, _: &BlockInfo) -> Chunk {
         inputs
     }
 }
