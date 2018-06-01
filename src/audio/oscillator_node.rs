@@ -43,9 +43,9 @@ pub struct OscillatorNode {
     frequency: Param,
     phase: f64,
     /// Time at which the source should start playing.
-    start_at: Option<f64>,
+    start_at: Option<Tick>,
     /// Time at which the source should stop playing.
-    stop_at: Option<f64>,
+    stop_at: Option<Tick>,
 }
 
 impl OscillatorNode {
@@ -68,29 +68,24 @@ impl OscillatorNode {
                 self.frequency.insert_event(event.to_event(sample_rate))
             }
             OscillatorNodeMessage::Start(when) => {
-                self.start(when);
+                self.start(Tick::from_time(when, sample_rate));
             }
             OscillatorNodeMessage::Stop(when) => {
-                self.stop(when);
+                self.stop(Tick::from_time(when, sample_rate));
             }
         }
     }
 
-    pub fn should_play_at(&self, current_time: f64) -> (bool, bool) {
+    pub fn should_play_at(&self, tick: Tick) -> (bool, bool) {
         if self.start_at.is_none() {
             return (false, true);
         }
 
-        if current_time < self.start_at.unwrap() {
-            println!(
-                "current_time {:?} < start_at {:?}",
-                current_time,
-                self.start_at.unwrap()
-            );
+        if tick < self.start_at.unwrap() {
             (false, false)
         } else {
             if let Some(stop_at) = self.stop_at {
-                if current_time >= stop_at {
+                if tick >= stop_at {
                     return (false, true);
                 }
             }
@@ -110,7 +105,7 @@ impl AudioNodeEngine for OscillatorNode {
 
         inputs.blocks.push(Default::default());
 
-        if self.should_play_at(info.time) == (false, true) {
+        if self.should_play_at(info.frame) == (false, true) {
             return inputs;
         }
 
@@ -131,8 +126,7 @@ impl AudioNodeEngine for OscillatorNode {
             let mut step = two_pi * freq / sample_rate;
             let mut tick = Tick(0);
             for sample in data.iter_mut() {
-                let current_time = (info.frame + tick.0) / sample_rate;
-                let (should_play_at, should_break) = self.should_play_at(current_time);
+                let (should_play_at, should_break) = self.should_play_at(info.frame + tick);
                 if !should_play_at {
                     if should_break {
                         break;
@@ -159,24 +153,24 @@ impl AudioNodeEngine for OscillatorNode {
 }
 
 impl AudioScheduledSourceNode for OscillatorNode {
-    fn start(&mut self, when: f64) -> bool {
+    fn start(&mut self, tick: Tick) -> bool {
         // We can only allow a single call to `start` and always before
         // any `stop` calls.
         if self.start_at.is_some() || self.stop_at.is_some() {
             return false;
         }
-        self.start_at = Some(when);
+        self.start_at = Some(tick);
         true
     }
 
-    fn stop(&mut self, when: f64) -> bool {
+    fn stop(&mut self, tick: Tick) -> bool {
         // We can only allow calls to `stop` after `start` is called.
         if self.start_at.is_none() {
             return false;
         }
         // If `stop` is called again after already having been called,
         // the last invocation will be the only one applied.
-        self.stop_at = Some(when);
+        self.stop_at = Some(tick);
         true
     }
 }

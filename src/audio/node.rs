@@ -48,7 +48,6 @@ pub trait AudioNodeEngine: Send {
     fn message(&mut self, _: AudioNodeMessage, _sample_rate: f32) {}
 }
 
-/// Current state of an AudioScheduledSourceNode.
 pub enum AudioNodeMessage {
     OscillatorNode(OscillatorNodeMessage),
     GainNode(GainNodeMessage),
@@ -60,8 +59,8 @@ pub enum AudioNodeMessage {
 pub trait AudioScheduledSourceNode {
     /// Schedules a sound to playback at an exact time.
     /// Returns true if the scheduling request is processed succesfully.
-    fn start(&mut self, when: f64) -> bool;
+    fn start(&mut self, tick: Tick) -> bool;
     /// Schedules a sound to stop playback at an exact time.
     /// Returns true if the scheduling request is processed successfully.
-    fn stop(&mut self, when: f64) -> bool;
+    fn stop(&mut self, tick: Tick) -> bool;
 }

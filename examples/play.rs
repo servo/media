@@ -24,6 +24,8 @@ fn main() {
         );
         assert_eq!(graph.current_time(), 0.);
         graph.resume();
+        // change frequency at 0.5s and 1s, then ramp up linearly till 1.7s, then ramp down till 2.5s
+        // change gain at 0.75s, then ramp to full gain reached at 1.5s
         graph.message_node(
             0,
             AudioNodeMessage::OscillatorNode(OscillatorNodeMessage::SetFrequency(
