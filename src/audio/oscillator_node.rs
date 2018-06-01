@@ -37,14 +37,14 @@ impl Default for OscillatorNodeOptions {
 
 pub struct OscillatorNode {
     frequency: Param,
-    accumulator: f64,
+    phase: f64,
 }
 
 impl OscillatorNode {
     pub fn new(options: OscillatorNodeOptions) -> Self {
         Self {
             frequency: Param::new(options.freq.into()),
-            accumulator: 0.,
+            phase: 0.,
         }
     }
 
@@ -78,21 +78,23 @@ impl AudioNodeEngine for OscillatorNode {
             let sample_rate = info.sample_rate as f64;
             let two_pi = 2.0 * PI;
 
-            // We're carrying a accumulator with up to 2pi around instead of working
+            // We're carrying a phase with up to 2pi around instead of working
             // on the sample offset. High sample offsets cause too much inaccuracy when
             // converted to floating point numbers and then iterated over in 1-steps
+            //
+            // Also, if the frequency changes the phase should not
             let mut step = two_pi * freq / sample_rate;
             let mut tick = Tick(0);
             for sample in data.iter_mut() {
                 if self.update_parameters(info, tick) {
                     step = two_pi * freq / sample_rate;
                 }
-                let value = vol * f32::sin(NumCast::from(self.accumulator).unwrap());
+                let value = vol * f32::sin(NumCast::from(self.phase).unwrap());
                 *sample = value;
 
-                self.accumulator += step;
-                if self.accumulator >= two_pi {
-                    self.accumulator -= two_pi;
+                self.phase += step;
+                if self.phase >= two_pi {
+                    self.phase -= two_pi;
                 }
                 tick.advance();
             }
