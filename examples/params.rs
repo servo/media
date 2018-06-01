@@ -19,38 +19,42 @@ fn main() {
             0,
             AudioNodeMessage::OscillatorNode(OscillatorNodeMessage::Start(0.)),
         );
-        // change frequency at 0.5s and 1s, then ramp up linearly till 1.7s, then ramp down till 2.5s
-        // change gain at 0.75s, then ramp to full gain reached at 1.5s
+        // 0.5s: Set frequency to 110Hz
         graph.message_node(
             0,
             AudioNodeMessage::OscillatorNode(OscillatorNodeMessage::SetFrequency(
                 UserAutomationEvent::SetValueAtTime(110., 0.5),
             )),
         );
+        // 1s: Set frequency to 220Hz
         graph.message_node(
             0,
             AudioNodeMessage::OscillatorNode(OscillatorNodeMessage::SetFrequency(
                 UserAutomationEvent::SetValueAtTime(220., 1.),
             )),
         );
+        // 0.75s: Set gain to 0.25
         graph.message_node(
             1,
             AudioNodeMessage::GainNode(GainNodeMessage::SetGain(
                 UserAutomationEvent::SetValueAtTime(0.25, 0.75),
             )),
         );
+        // 0.75s - 1.5s: Exponentially ramp gain to 1
         graph.message_node(
             1,
             AudioNodeMessage::GainNode(GainNodeMessage::SetGain(
                 UserAutomationEvent::RampToValueAtTime(RampKind::Exponential, 1., 1.5),
             )),
         );
+        // 0.75s - 1.75s: Linearly ramp frequency to 880Hz
         graph.message_node(
             0,
             AudioNodeMessage::OscillatorNode(OscillatorNodeMessage::SetFrequency(
                 UserAutomationEvent::RampToValueAtTime(RampKind::Linear, 880., 1.75),
             )),
         );
+        // 1.75s - 2.5s: Exponentially ramp frequency to 110Hz
         graph.message_node(
             0,
             AudioNodeMessage::OscillatorNode(OscillatorNodeMessage::SetFrequency(
