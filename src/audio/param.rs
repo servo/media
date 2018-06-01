@@ -50,6 +50,14 @@ impl Param {
         let current_tick = block.absolute_tick(tick);
         let mut current_event = &self.events[self.current_event];
 
+        if let Some(start_time) = current_event.start_time() {
+            if start_time > current_tick {
+                // The previous event finished and we advanced to this
+                // event, but it's not started yet. Return early
+                return false;
+            }
+        }
+
         // move to next event if necessary
         // XXXManishearth k-rate events may get skipped over completely by this
         // method. Firefox currently doesn't support these, however, so we can
@@ -57,11 +65,15 @@ impl Param {
         loop {
             let mut move_next = false;
             if let Some(done_time) = current_event.done_time() {
+                // If this event is done, move on
                 if done_time < current_tick {
                     move_next = true;
                 }
             } else if let Some(next) = self.events.get(self.current_event + 1) {
+                // this event has no done time and we must run it till the next one
+                // starts
                 if let Some(start_time) = next.start_time() {
+                    // if the next one is ready to start, move on
                     if start_time <= current_tick {
                         move_next = true;
                     }
@@ -69,7 +81,8 @@ impl Param {
                     // If we have a next event with no start time and
                     // the current event has no done time, this *has* to be because
                     // the current event is SetTargetAtTime and the next is a Ramp
-                    // event. In both cases we basically skip the event.
+                    // event. In this case we skip directly to the ramp assuming
+                    // the SetTarget is ready to start (or has started already)
                     if current_event.time() <= current_tick {
                         move_next = true;
                     } else {
