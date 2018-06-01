@@ -43,14 +43,11 @@ impl Param {
             return false;
         }
 
-        // println!("Curr {:?}", self.current_event);
         if self.events.len() <= self.current_event  {
             return false;
         }
 
-
         let current_tick = block.absolute_tick(tick);
-        // println!("curr_tick {:?}", current_tick);
         let mut current_event = &self.events[self.current_event];
 
         // move to next event if necessary
