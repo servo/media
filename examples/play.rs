@@ -18,6 +18,10 @@ fn main() {
             0,
             AudioNodeMessage::OscillatorNode(OscillatorNodeMessage::Start(0.)),
         );
+        graph.message_node(
+            0,
+            AudioNodeMessage::OscillatorNode(OscillatorNodeMessage::Stop(3.)),
+        );
         assert_eq!(graph.current_time(), 0.);
         graph.resume();
         graph.message_node(
@@ -60,8 +64,13 @@ fn main() {
         graph.suspend();
         thread::sleep(time::Duration::from_millis(500));
         graph.resume();
-        assert!(graph.current_time() != 0.);
-        thread::sleep(time::Duration::from_millis(500));
+        let current_time = graph.current_time();
+        assert!(current_time > 0.);
+        // Leave some time to enjoy the silence after stopping the
+        // oscillator node.
+        thread::sleep(time::Duration::from_millis(5000));
+        // And check that we keep incrementing playback time.
+        assert!(current_time < graph.current_time());
         graph.close();
     } else {
         unreachable!();

@@ -75,6 +75,28 @@ impl OscillatorNode {
             }
         }
     }
+
+    pub fn should_play_at(&self, current_time: f64) -> (bool, bool) {
+        if self.start_at.is_none() {
+            return (false, true);
+        }
+
+        if current_time < self.start_at.unwrap() {
+            println!(
+                "current_time {:?} < start_at {:?}",
+                current_time,
+                self.start_at.unwrap()
+            );
+            (false, false)
+        } else {
+            if let Some(stop_at) = self.stop_at {
+                if current_time >= stop_at {
+                    return (false, true);
+                }
+            }
+            (true, false)
+        }
+    }
 }
 
 impl AudioNodeEngine for OscillatorNode {
@@ -87,6 +109,10 @@ impl AudioNodeEngine for OscillatorNode {
         debug_assert!(inputs.len() == 0);
 
         inputs.blocks.push(Default::default());
+
+        if self.should_play_at(info.time) == (false, true) {
+            return inputs;
+        }
 
         {
             let data = &mut inputs.blocks[0].data;
@@ -105,6 +131,14 @@ impl AudioNodeEngine for OscillatorNode {
             let mut step = two_pi * freq / sample_rate;
             let mut tick = Tick(0);
             for sample in data.iter_mut() {
+                let current_time = (info.frame + tick.0) / sample_rate;
+                let (should_play_at, should_break) = self.should_play_at(current_time);
+                if !should_play_at {
+                    if should_break {
+                        break;
+                    }
+                    continue;
+                }
                 if self.update_parameters(info, tick) {
                     step = two_pi * freq / sample_rate;
                 }
