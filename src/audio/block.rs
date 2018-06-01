@@ -8,7 +8,7 @@ pub const FRAMES_PER_BLOCK: Tick = Tick(128);
 
 /// A tick, i.e. the time taken for a single frame
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
-pub struct Tick(pub u32);
+pub struct Tick(pub u64);
 
 /// A collection of blocks received as input by a node
 /// or outputted by a node.
@@ -78,16 +78,16 @@ impl Sub<Tick> for Tick {
     }
 }
 
-impl Add<u32> for Tick {
+impl Add<u64> for Tick {
     type Output = Tick;
-    fn add(self, other: u32) -> Self {
+    fn add(self, other: u64) -> Self {
         Tick(self.0 + other)
     }
 }
 
-impl Sub<u32> for Tick {
+impl Sub<u64> for Tick {
     type Output = Tick;
-    fn sub(self, other: u32) -> Self {
+    fn sub(self, other: u64) -> Self {
         Tick(self.0 - other)
     }
 }
@@ -101,7 +101,7 @@ impl Div<f64> for Tick {
 
 impl Tick {
     pub fn from_time(time: f64, rate: f32) -> Tick {
-        Tick((time * rate as f64) as u32)
+        Tick((time * rate as f64) as u64)
     }
 
     pub fn advance(&mut self) {
