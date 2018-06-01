@@ -54,27 +54,45 @@ impl Param {
         // XXXManishearth k-rate events may get skipped over completely by this
         // method. Firefox currently doesn't support these, however, so we can
         // handle those later
-        if let Some(done_time) = current_event.done_time() {
-            if done_time < current_tick {
+        loop {
+            let mut move_next = false;
+            if let Some(done_time) = current_event.done_time() {
+                if done_time < current_tick {
+                    move_next = true;
+                }
+            } else if let Some(next) = self.events.get(self.current_event + 1) {
+                if let Some(start_time) = next.start_time() {
+                    if start_time <= current_tick {
+                        move_next = true;
+                    }
+                } else {
+                    // If we have a next event with no start time and
+                    // the current event has no done time, this *has* to be because
+                    // the current event is SetTargetAtTime and the next is a Ramp
+                    // event. In both cases we basically skip the event.
+                    if current_event.time() <= current_tick {
+                        move_next = true;
+                    } else {
+                        // This is a SetTarget event before its start time, ignore
+                        return false;
+                    }
+                }
+            }
+            if move_next {
                 self.current_event += 1;
                 self.event_start_value = self.val;
                 self.event_start_time = current_tick;
-                if let Some(next) = self.events.get(self.current_event) {
+                if let Some(next) = self.events.get(self.current_event + 1) {
                     current_event = next;
+                    // may need to move multiple times
+                    continue;
                 } else {
                     return false;
                 }
             }
-        } else if let Some(next) = self.events.get(self.current_event + 1) {
-            if let Some(start_time) = next.start_time() {
-                if start_time >= current_tick {
-                    self.current_event += 1;
-                    self.event_start_value = self.val;
-                    self.event_start_time = current_tick;
-                    current_event = next;
-                }
-            }
+            break;
         }
+
 
         current_event.run(&mut self.val, current_tick,
                           self.event_start_time,
@@ -111,7 +129,7 @@ pub(crate) enum AutomationEvent {
 
     SetValueAtTime(f32, Tick),
     RampToValueAtTime(RampKind, f32, Tick),
-    // SetTargetAtTime(f32, Tick, /* time constant, units of 1/Tick */ f64),
+    SetTargetAtTime(f32, Tick, /* time constant, units of Tick */ f64),
     // SetValueCurveAtTime(Vec<f32>, Tick, /* duration */ Tick)
     // CancelAndHoldAtTime(Tick),
 }
@@ -123,7 +141,7 @@ pub enum UserAutomationEvent {
 
     SetValueAtTime(f32, /* time */ f64),
     RampToValueAtTime(RampKind, f32, /* time */ f64),
-    // SetTargetAtTime(f32, Tick, /* time constant, units of 1/Tick */ f64),
+    SetTargetAtTime(f32, f64, /* time constant, units of s */ f64),
     // SetValueCurveAtTime(Vec<f32>, Tick, /* duration */ Tick)
     // CancelAndHoldAtTime(Tick),
 }
@@ -134,7 +152,10 @@ impl UserAutomationEvent {
             UserAutomationEvent::SetValueAtTime(val, time) =>
                 AutomationEvent::SetValueAtTime(val, Tick::from_time(time, rate)),
             UserAutomationEvent::RampToValueAtTime(kind, val, time) =>
-                AutomationEvent::RampToValueAtTime(kind, val, Tick::from_time(time, rate))
+                AutomationEvent::RampToValueAtTime(kind, val, Tick::from_time(time, rate)),
+            UserAutomationEvent::SetTargetAtTime(val, start, tau) =>
+                AutomationEvent::SetTargetAtTime(val, Tick::from_time(start, rate),
+                                                 tau * rate as f64),
         }
     }
 }
@@ -145,6 +166,7 @@ impl AutomationEvent {
         match *self {
             AutomationEvent::SetValueAtTime(_, tick) => tick,
             AutomationEvent::RampToValueAtTime(_, _, tick) => tick,
+            AutomationEvent::SetTargetAtTime(_, start, _) => start
         }
     }
 
@@ -152,6 +174,7 @@ impl AutomationEvent {
         match *self {
             AutomationEvent::SetValueAtTime(_, tick) => Some(tick),
             AutomationEvent::RampToValueAtTime(_, _, tick) => Some(tick),
+            AutomationEvent::SetTargetAtTime(..) => None,
         }
     }
 
@@ -159,6 +182,7 @@ impl AutomationEvent {
         match *self {
             AutomationEvent::SetValueAtTime(_, tick) => Some(tick),
             AutomationEvent::RampToValueAtTime(..) => None,
+            AutomationEvent::SetTargetAtTime(_, start, _) => Some(start),
         }
     }
 
@@ -190,6 +214,15 @@ impl AutomationEvent {
                     }
                 }
                 true
+            }
+            AutomationEvent::SetTargetAtTime(val, start, tau) => {
+                if current_tick >= start {
+                    let exp = - ((current_tick - start) / tau);
+                    *value = val + (event_start_value - val) * exp.exp() as f32;
+                    true
+                } else {
+                    false
+                }
             }
         }
     }
