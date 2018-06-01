@@ -1,9 +1,12 @@
-use audio::node::AudioNodeMessage;
-use audio::param::Param;
-use audio::block::Tick;
-use audio::node::BlockInfo;
-use audio::node::AudioNodeEngine;
 use audio::block::Chunk;
+use audio::block::Tick;
+use audio::node::AudioNodeEngine;
+use audio::node::BlockInfo;
+use audio::param::{Param, UserAutomationEvent};
+
+pub enum GainNodeMessage {
+    SetGain(UserAutomationEvent),
+}
 
 pub struct GainNodeOptions {
     pub gain: f32,
@@ -11,9 +14,7 @@ pub struct GainNodeOptions {
 
 impl Default for GainNodeOptions {
     fn default() -> Self {
-        GainNodeOptions {
-            gain: 1.
-        }
+        GainNodeOptions { gain: 1. }
     }
 }
 
@@ -24,21 +25,23 @@ pub struct GainNode {
 impl GainNode {
     pub fn new(options: GainNodeOptions) -> Self {
         Self {
-            gain: Param::new(options.gain)
+            gain: Param::new(options.gain),
         }
     }
 
     pub fn update_parameters(&mut self, info: &BlockInfo, tick: Tick) -> bool {
         self.gain.update(info, tick)
     }
+
+    pub fn handle_message(&mut self, message: GainNodeMessage, sample_rate: f32) {
+        match message {
+            GainNodeMessage::SetGain(event) => self.gain.insert_event(event.to_event(sample_rate)),
+        }
+    }
 }
 
 impl AudioNodeEngine for GainNode {
-    fn process(
-        &mut self,
-        mut inputs: Chunk,
-        info: &BlockInfo,
-    ) -> Chunk {
+    fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
         debug_assert!(inputs.len() == 1);
 
         {
@@ -56,11 +59,6 @@ impl AudioNodeEngine for GainNode {
         }
         inputs
     }
-    fn message(&mut self, msg: AudioNodeMessage, sample_rate: f32) {
-        match msg {
-            AudioNodeMessage::SetAudioParamEvent(event) => {
-                self.gain.insert_event(event.to_event(sample_rate))
-            }
-        }
-    }
+
+    make_message_handler!(GainNode);
 }

@@ -1,9 +1,13 @@
-use audio::block::Tick;
-use audio::param::Param;
-use audio::node::BlockInfo;
-use audio::block::Chunk;
-use audio::node::{AudioNodeEngine, AudioNodeMessage};
+use audio::block::{Chunk, Tick};
+use audio::node::{AudioNodeEngine, AudioScheduledSourceNode, BlockInfo};
+use audio::param::{Param, UserAutomationEvent};
 use num_traits::cast::NumCast;
+
+pub enum OscillatorNodeMessage {
+    SetFrequency(UserAutomationEvent),
+    Start(f64),
+    Stop(f64),
+}
 
 pub struct PeriodicWaveOptions {
     // XXX https://webaudio.github.io/web-audio-api/#dictdef-periodicwaveoptions
@@ -38,6 +42,10 @@ impl Default for OscillatorNodeOptions {
 pub struct OscillatorNode {
     frequency: Param,
     phase: f64,
+    /// Time at which the source should start playing.
+    start_at: Option<Tick>,
+    /// Time at which the source should stop playing.
+    stop_at: Option<Tick>,
 }
 
 impl OscillatorNode {
@@ -45,20 +53,49 @@ impl OscillatorNode {
         Self {
             frequency: Param::new(options.freq.into()),
             phase: 0.,
+            start_at: None,
+            stop_at: None,
         }
     }
 
     pub fn update_parameters(&mut self, info: &BlockInfo, tick: Tick) -> bool {
         self.frequency.update(info, tick)
     }
+
+    pub fn handle_message(&mut self, message: OscillatorNodeMessage, sample_rate: f32) {
+        match message {
+            OscillatorNodeMessage::SetFrequency(event) => {
+                self.frequency.insert_event(event.to_event(sample_rate))
+            }
+            OscillatorNodeMessage::Start(when) => {
+                self.start(Tick::from_time(when, sample_rate));
+            }
+            OscillatorNodeMessage::Stop(when) => {
+                self.stop(Tick::from_time(when, sample_rate));
+            }
+        }
+    }
+
+    pub fn should_play_at(&self, tick: Tick) -> (bool, bool) {
+        if self.start_at.is_none() {
+            return (false, true);
+        }
+
+        if tick < self.start_at.unwrap() {
+            (false, false)
+        } else {
+            if let Some(stop_at) = self.stop_at {
+                if tick >= stop_at {
+                    return (false, true);
+                }
+            }
+            (true, false)
+        }
+    }
 }
 
 impl AudioNodeEngine for OscillatorNode {
-    fn process(
-        &mut self,
-        mut inputs: Chunk,
-        info: &BlockInfo,
-    ) -> Chunk {
+    fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
         // XXX Implement this properly and according to self.options
         // as defined in https://webaudio.github.io/web-audio-api/#oscillatornode
 
@@ -68,6 +105,9 @@ impl AudioNodeEngine for OscillatorNode {
 
         inputs.blocks.push(Default::default());
 
+        if self.should_play_at(info.frame) == (false, true) {
+            return inputs;
+        }
 
         {
             let data = &mut inputs.blocks[0].data;
@@ -86,6 +126,13 @@ impl AudioNodeEngine for OscillatorNode {
             let mut step = two_pi * freq / sample_rate;
             let mut tick = Tick(0);
             for sample in data.iter_mut() {
+                let (should_play_at, should_break) = self.should_play_at(info.frame + tick);
+                if !should_play_at {
+                    if should_break {
+                        break;
+                    }
+                    continue;
+                }
                 if self.update_parameters(info, tick) {
                     step = two_pi * freq / sample_rate;
                 }
@@ -101,11 +148,29 @@ impl AudioNodeEngine for OscillatorNode {
         }
         inputs
     }
-    fn message(&mut self, msg: AudioNodeMessage, sample_rate: f32) {
-        match msg {
-            AudioNodeMessage::SetAudioParamEvent(event) => {
-                self.frequency.insert_event(event.to_event(sample_rate))
-            }
+
+    make_message_handler!(OscillatorNode);
+}
+
+impl AudioScheduledSourceNode for OscillatorNode {
+    fn start(&mut self, tick: Tick) -> bool {
+        // We can only allow a single call to `start` and always before
+        // any `stop` calls.
+        if self.start_at.is_some() || self.stop_at.is_some() {
+            return false;
         }
+        self.start_at = Some(tick);
+        true
+    }
+
+    fn stop(&mut self, tick: Tick) -> bool {
+        // We can only allow calls to `stop` after `start` is called.
+        if self.start_at.is_none() {
+            return false;
+        }
+        // If `stop` is called again after already having been called,
+        // the last invocation will be the only one applied.
+        self.stop_at = Some(tick);
+        true
     }
 }

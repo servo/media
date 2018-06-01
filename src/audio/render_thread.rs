@@ -1,9 +1,9 @@
 use audio::block::Tick;
-use audio::node::BlockInfo;
 use audio::block::{Chunk, FRAMES_PER_BLOCK};
 use audio::destination_node::DestinationNode;
 use audio::gain_node::GainNode;
 use audio::graph::ProcessingState;
+use audio::node::BlockInfo;
 use audio::node::{AudioNodeEngine, AudioNodeMessage, AudioNodeType};
 use audio::oscillator_node::OscillatorNode;
 use audio::sink::AudioSink;
@@ -85,7 +85,7 @@ impl AudioRenderThread {
         self.nodes.push(node)
     }
 
-    fn process(&mut self, ) -> Chunk {
+    fn process(&mut self) -> Chunk {
         let mut data = Chunk::default();
         let info = BlockInfo {
             sample_rate: self.sample_rate,
@@ -98,10 +98,7 @@ impl AudioRenderThread {
         data
     }
 
-    fn event_loop(
-        &mut self,
-        event_queue: Receiver<AudioRenderThreadMsg>,
-    ) {
+    fn event_loop(&mut self, event_queue: Receiver<AudioRenderThreadMsg>) {
         let sample_rate = self.sample_rate;
         let handle_msg = move |context: &mut Self, msg: AudioRenderThreadMsg| -> bool {
             let mut break_loop = false;
@@ -122,7 +119,9 @@ impl AudioRenderThread {
                 AudioRenderThreadMsg::GetCurrentTime(response) => {
                     response.send(context.current_time).unwrap()
                 }
-                AudioRenderThreadMsg::MessageNode(index, msg) => context.nodes[index].message(msg, sample_rate),
+                AudioRenderThreadMsg::MessageNode(index, msg) => {
+                    context.nodes[index].message(msg, sample_rate)
+                }
                 AudioRenderThreadMsg::SinkNeedData => {
                     // Do nothing. This will simply unblock the thread so we
                     // can restart the non-blocking event loop.
@@ -152,7 +151,12 @@ impl AudioRenderThread {
                         break;
                     }
                 }
-                debug_assert_eq!(self.state, ProcessingState::Running);
+
+                if self.state == ProcessingState::Suspended {
+                    // Bail out if we just suspended processing.
+                    continue;
+                }
+
                 // push into the audio sink the result of processing a
                 // render quantum.
                 let data = self.process();

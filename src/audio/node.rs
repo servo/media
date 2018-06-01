@@ -1,9 +1,9 @@
-use audio::block::Tick;
-use audio::gain_node::GainNodeOptions;
-use audio::oscillator_node::OscillatorNodeOptions;
-use audio::param::UserAutomationEvent;
 use audio::block::Chunk;
+use audio::block::Tick;
+use audio::gain_node::{GainNodeMessage, GainNodeOptions};
+use audio::oscillator_node::{OscillatorNodeMessage, OscillatorNodeOptions};
 
+/// Type of AudioNodeEngine.
 pub enum AudioNodeType {
     AnalyserNode,
     BiquadFilterNode,
@@ -41,20 +41,26 @@ impl BlockInfo {
     }
 }
 
+/// This trait represents the common features of all audio nodes.
 pub trait AudioNodeEngine: Send {
-    // XXX Create an AudioBuffer abstraction
-    fn process(
-        &mut self,
-        inputs: Chunk,
-        info: &BlockInfo,
-    ) -> Chunk;
+    fn process(&mut self, inputs: Chunk, info: &BlockInfo) -> Chunk;
 
-    fn message(&mut self, _: AudioNodeMessage, _sample_rate: f32) {
-
-    }
+    fn message(&mut self, _: AudioNodeMessage, _sample_rate: f32) {}
 }
 
-
 pub enum AudioNodeMessage {
-    SetAudioParamEvent(UserAutomationEvent)
+    OscillatorNode(OscillatorNodeMessage),
+    GainNode(GainNodeMessage),
+}
+
+/// This trait represents the common features of the source nodes such as
+/// AudioBufferSourceNode, ConstantSourceNode and OscillatorNode.
+/// https://webaudio.github.io/web-audio-api/#AudioScheduledSourceNode
+pub trait AudioScheduledSourceNode {
+    /// Schedules a sound to playback at an exact time.
+    /// Returns true if the scheduling request is processed succesfully.
+    fn start(&mut self, tick: Tick) -> bool;
+    /// Schedules a sound to stop playback at an exact time.
+    /// Returns true if the scheduling request is processed successfully.
+    fn stop(&mut self, tick: Tick) -> bool;
 }
