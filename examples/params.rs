@@ -61,6 +61,21 @@ fn main() {
                 UserAutomationEvent::RampToValueAtTime(RampKind::Exponential, 110., 2.5),
             )),
         );
+
+        // 2.75s: Exponentially approach 110Hz
+        graph.message_node(
+            0,
+            AudioNodeMessage::OscillatorNode(OscillatorNodeMessage::SetFrequency(
+                UserAutomationEvent::SetTargetAtTime(1100., 2.75, 1.1),
+            )),
+        );
+        // 3.3s: But actually stop at 3.3Hz and hold
+        graph.message_node(
+            0,
+            AudioNodeMessage::OscillatorNode(OscillatorNodeMessage::SetFrequency(
+                UserAutomationEvent::CancelAndHoldAtTime(3.3),
+            )),
+        );
         thread::sleep(time::Duration::from_millis(5000));
     } else {
         unreachable!();

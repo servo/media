@@ -50,14 +50,6 @@ impl Param {
         let current_tick = block.absolute_tick(tick);
         let mut current_event = &self.events[self.current_event];
 
-        if let Some(start_time) = current_event.start_time() {
-            if start_time > current_tick {
-                // The previous event finished and we advanced to this
-                // event, but it's not started yet. Return early
-                return false;
-            }
-        }
-
         // move to next event if necessary
         // XXXManishearth k-rate events may get skipped over completely by this
         // method. Firefox currently doesn't support these, however, so we can
@@ -125,6 +117,22 @@ impl Param {
             Ok(idx) => idx,
             Err(idx) => idx,
         };
+
+        // XXXManishearth this isn't quite correct, this
+        // doesn't handle cases for when this lands inside a running
+        // event
+        if let Some(is_hold) = event.cancel_event() {
+            self.events.truncate(idx);
+            if !is_hold {
+                // If we cancelled the current event, reset
+                // the value to what it was before
+                if self.current_event >= self.events.len() {
+                    self.val = self.event_start_value;
+                }
+                // don't actually insert the event
+                return;
+            }
+        }
         self.events.insert(idx, event);
         // XXXManishearth handle inserting events with a time before that
         // of the current one
@@ -143,8 +151,8 @@ pub(crate) enum AutomationEvent {
     SetValueAtTime(f32, Tick),
     RampToValueAtTime(RampKind, f32, Tick),
     SetTargetAtTime(f32, Tick, /* time constant, units of Tick */ f64),
-    // SetValueCurveAtTime(Vec<f32>, Tick, /* duration */ Tick)
-    // CancelAndHoldAtTime(Tick),
+    CancelAndHoldAtTime(Tick),
+    CancelScheduledValues(Tick),
 }
 
 
@@ -156,7 +164,8 @@ pub enum UserAutomationEvent {
     RampToValueAtTime(RampKind, f32, /* time */ f64),
     SetTargetAtTime(f32, f64, /* time constant, units of s */ f64),
     // SetValueCurveAtTime(Vec<f32>, Tick, /* duration */ Tick)
-    // CancelAndHoldAtTime(Tick),
+    CancelAndHoldAtTime(f64),
+    CancelScheduledValues(f64),
 }
 
 impl UserAutomationEvent {
@@ -169,6 +178,10 @@ impl UserAutomationEvent {
             UserAutomationEvent::SetTargetAtTime(val, start, tau) =>
                 AutomationEvent::SetTargetAtTime(val, Tick::from_time(start, rate),
                                                  tau * rate as f64),
+            UserAutomationEvent::CancelScheduledValues(t) =>
+                AutomationEvent::CancelScheduledValues(Tick::from_time(t, rate)),
+            UserAutomationEvent::CancelAndHoldAtTime(t) =>
+                AutomationEvent::CancelAndHoldAtTime(Tick::from_time(t, rate))
         }
     }
 }
@@ -179,7 +192,10 @@ impl AutomationEvent {
         match *self {
             AutomationEvent::SetValueAtTime(_, tick) => tick,
             AutomationEvent::RampToValueAtTime(_, _, tick) => tick,
-            AutomationEvent::SetTargetAtTime(_, start, _) => start
+            AutomationEvent::SetTargetAtTime(_, start, _) => start,
+            AutomationEvent::CancelAndHoldAtTime(t) => t,
+            AutomationEvent::CancelScheduledValues(..) =>
+                unreachable!("CancelScheduledValues should never appear in the timeline"),
         }
     }
 
@@ -188,6 +204,9 @@ impl AutomationEvent {
             AutomationEvent::SetValueAtTime(_, tick) => Some(tick),
             AutomationEvent::RampToValueAtTime(_, _, tick) => Some(tick),
             AutomationEvent::SetTargetAtTime(..) => None,
+            AutomationEvent::CancelAndHoldAtTime(t) => Some(t),
+            AutomationEvent::CancelScheduledValues(..) =>
+                unreachable!("CancelScheduledValues should never appear in the timeline"),
         }
     }
 
@@ -196,6 +215,19 @@ impl AutomationEvent {
             AutomationEvent::SetValueAtTime(_, tick) => Some(tick),
             AutomationEvent::RampToValueAtTime(..) => None,
             AutomationEvent::SetTargetAtTime(_, start, _) => Some(start),
+            AutomationEvent::CancelAndHoldAtTime(t) => Some(t),
+            AutomationEvent::CancelScheduledValues(..) =>
+                unreachable!("CancelScheduledValues should never appear in the timeline"),
+        }
+    }
+
+    /// Returns Some if it's a cancel event
+    /// the boolean is if it's CancelAndHold
+    pub fn cancel_event(&self) -> Option<bool> {
+        match *self {
+            AutomationEvent::CancelAndHoldAtTime(..) => Some(true),
+            AutomationEvent::CancelScheduledValues(..) => Some(false),
+            _ => None
         }
     }
 
@@ -206,6 +238,14 @@ impl AutomationEvent {
                current_tick: Tick,
                event_start_time: Tick,
                event_start_value: f32) -> bool {
+        if let Some(start_time) = self.start_time() {
+            if start_time > current_tick {
+                // The previous event finished and we advanced to this
+                // event, but it's not started yet. Return early
+                return false;
+            }
+        }
+
         match *self {
             AutomationEvent::SetValueAtTime(val, time) => {
                 if current_tick == time {
@@ -229,14 +269,15 @@ impl AutomationEvent {
                 true
             }
             AutomationEvent::SetTargetAtTime(val, start, tau) => {
-                if current_tick >= start {
-                    let exp = - ((current_tick - start) / tau);
-                    *value = val + (event_start_value - val) * exp.exp() as f32;
-                    true
-                } else {
-                    false
-                }
+                let exp = - ((current_tick - start) / tau);
+                *value = val + (event_start_value - val) * exp.exp() as f32;
+                true
             }
+            AutomationEvent::CancelAndHoldAtTime(..) => {
+                false
+            }
+            AutomationEvent::CancelScheduledValues(..) =>
+                unreachable!("CancelScheduledValues should never appear in the timeline"),
         }
     }
 }
