@@ -79,10 +79,6 @@ impl AudioRenderThread {
     }
 
     fn create_node(&mut self, node_type: AudioNodeType) {
-        // XXX This won't be needed once we switch to a graph.
-        //     Right now we just keep the destination node as
-        //     the last item in the vec.
-        let destination_node = self.nodes.pop();
         let node: Box<AudioNodeEngine> = match node_type {
             AudioNodeType::OscillatorNode(options) => Box::new(OscillatorNode::new(options)),
             AudioNodeType::GainNode(options) => Box::new(GainNode::new(options)),
@@ -90,11 +86,11 @@ impl AudioRenderThread {
             AudioNodeType::DestinationNode => unreachable!(),
             _ => unimplemented!(),
         };
-        self.nodes.push(node);
-        if let Some(destination) = destination_node {
-            self.nodes.push(destination);
-            self.destination = self.nodes.len() - 1;
-        }
+        // XXX This won't be needed once we switch to a graph.
+        //     Right now we just keep the destination node as
+        //     the last item in the vec.
+        self.nodes.insert(self.destination, node);
+        self.destination += 1;
     }
 
     fn process(&mut self) {
