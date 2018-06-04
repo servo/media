@@ -16,5 +16,7 @@ ln -s ${ROOT}/../../target/gst-build-armeabi/libgstreamer_android.so jniLibs/arm
 cd ${ROOT}/src
 ./gradlew installDebug || return 1
 
+cd ${ROOT}
+
 adb shell am start -n com.mozilla.servomedia/.MainActivity
 adb logcat | egrep '(servo|gst)'
