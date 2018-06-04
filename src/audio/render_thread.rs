@@ -60,17 +60,25 @@ impl AudioRenderThread {
     }
 
     fn resume(&mut self) {
-        assert_eq!(self.state, ProcessingState::Suspended);
+        if self.state == ProcessingState::Running {
+            return;
+        }
         self.state = ProcessingState::Running;
         self.sink.play();
     }
 
     fn suspend(&mut self) {
+        if self.state == ProcessingState::Suspended {
+            return;
+        }
         self.state = ProcessingState::Suspended;
         self.sink.stop();
     }
 
     fn close(&mut self) {
+        if self.state == ProcessingState::Closed {
+            return;
+        }
         self.state = ProcessingState::Closed;
         self.sink.stop();
     }
