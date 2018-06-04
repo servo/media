@@ -2,7 +2,7 @@ use audio::block::Chunk;
 use audio::render_thread::AudioRenderThreadMsg;
 use std::sync::mpsc::Sender;
 
-pub trait AudioSink {
+pub trait AudioSink: Send {
     fn init(
         &self,
         sample_rate: f32,

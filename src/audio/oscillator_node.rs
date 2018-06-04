@@ -2,6 +2,7 @@ use audio::block::{Chunk, Tick};
 use audio::node::{AudioNodeEngine, AudioScheduledSourceNode, BlockInfo};
 use audio::param::{Param, UserAutomationEvent};
 use num_traits::cast::NumCast;
+use std::any::Any;
 
 pub enum OscillatorNodeMessage {
     SetFrequency(UserAutomationEvent),
@@ -95,7 +96,7 @@ impl OscillatorNode {
 }
 
 impl AudioNodeEngine for OscillatorNode {
-    fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
+    fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Option<Chunk> {
         // XXX Implement this properly and according to self.options
         // as defined in https://webaudio.github.io/web-audio-api/#oscillatornode
 
@@ -106,7 +107,7 @@ impl AudioNodeEngine for OscillatorNode {
         inputs.blocks.push(Default::default());
 
         if self.should_play_at(info.frame) == (false, true) {
-            return inputs;
+            return Some(inputs);
         }
 
         {
@@ -146,10 +147,15 @@ impl AudioNodeEngine for OscillatorNode {
                 tick.advance();
             }
         }
-        inputs
+
+        Some(inputs)
     }
 
     make_message_handler!(OscillatorNode);
+
+    fn as_any(&self) -> &Any {
+        self
+    }
 }
 
 impl AudioScheduledSourceNode for OscillatorNode {

@@ -2,6 +2,7 @@ use audio::block::Chunk;
 use audio::block::Tick;
 use audio::gain_node::{GainNodeMessage, GainNodeOptions};
 use audio::oscillator_node::{OscillatorNodeMessage, OscillatorNodeOptions};
+use std::any::Any;
 
 /// Type of AudioNodeEngine.
 pub enum AudioNodeType {
@@ -43,10 +44,14 @@ impl BlockInfo {
 
 /// This trait represents the common features of all audio nodes.
 pub trait AudioNodeEngine: Send {
-    fn process(&mut self, inputs: Chunk, info: &BlockInfo) -> Chunk;
+    fn process(&mut self, inputs: Chunk, info: &BlockInfo) -> Option<Chunk>;
 
     fn message(&mut self, _: AudioNodeMessage, _sample_rate: f32) {}
+
+    fn as_any(&self) -> &Any;
 }
+
+
 
 pub enum AudioNodeMessage {
     OscillatorNode(OscillatorNodeMessage),
