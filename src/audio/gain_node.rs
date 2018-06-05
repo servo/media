@@ -1,7 +1,6 @@
 use audio::block::{Chunk, Tick};
 use audio::node::{AudioNodeEngine, BlockInfo};
 use audio::param::{Param, UserAutomationEvent};
-use std::any::Any;
 
 pub enum GainNodeMessage {
     SetGain(UserAutomationEvent),
@@ -61,8 +60,4 @@ impl AudioNodeEngine for GainNode {
     }
 
     make_message_handler!(GainNode);
-
-    fn as_any(&self) -> &Any {
-        self
-    }
 }

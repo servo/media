@@ -2,7 +2,6 @@ use audio::block::Chunk;
 use audio::node::{AudioNodeEngine, BlockInfo};
 use audio::render_thread::AudioRenderThreadMsg;
 use audio::sink::AudioSink;
-use std::any::Any;
 use std::sync::mpsc::Sender;
 
 #[cfg(feature = "gst")]
@@ -40,10 +39,6 @@ impl AudioNodeEngine for DestinationNode {
 
         // AudioDestinationNodes have no output.
         None
-    }
-
-    fn as_any(&self) -> &Any {
-        self
     }
 }
 
