@@ -1,3 +1,4 @@
+use audio::graph_impl::NodeId;
 use audio::block::Tick;
 use audio::block::{Chunk, FRAMES_PER_BLOCK};
 use audio::destination_node::DestinationNode;
@@ -13,8 +14,8 @@ use std::sync::mpsc::{Receiver, Sender};
 use backends::gstreamer::audio_sink::GStreamerAudioSink;
 
 pub enum AudioRenderThreadMsg {
-    CreateNode(AudioNodeType),
-    MessageNode(usize, AudioNodeMessage),
+    CreateNode(AudioNodeType, Sender<NodeId>),
+    MessageNode(NodeId, AudioNodeMessage),
     Resume,
     Suspend,
     Close,
@@ -83,14 +84,15 @@ impl AudioRenderThread {
         self.sink.stop();
     }
 
-    fn create_node(&mut self, node_type: AudioNodeType) {
+    fn create_node(&mut self, node_type: AudioNodeType) -> NodeId {
         let node: Box<AudioNodeEngine> = match node_type {
             AudioNodeType::OscillatorNode(options) => Box::new(OscillatorNode::new(options)),
             AudioNodeType::DestinationNode => Box::new(DestinationNode::new()),
             AudioNodeType::GainNode(options) => Box::new(GainNode::new(options)),
             _ => unimplemented!(),
         };
-        self.nodes.push(node)
+        self.nodes.push(node);
+        NodeId(self.nodes.len() - 1)
     }
 
     fn process(&mut self) -> Chunk {
@@ -111,8 +113,8 @@ impl AudioRenderThread {
         let handle_msg = move |context: &mut Self, msg: AudioRenderThreadMsg| -> bool {
             let mut break_loop = false;
             match msg {
-                AudioRenderThreadMsg::CreateNode(node_type) => {
-                    context.create_node(node_type);
+                AudioRenderThreadMsg::CreateNode(node_type, tx) => {
+                    let _ = tx.send(context.create_node(node_type));
                 }
                 AudioRenderThreadMsg::Resume => {
                     context.resume();
@@ -127,8 +129,8 @@ impl AudioRenderThread {
                 AudioRenderThreadMsg::GetCurrentTime(response) => {
                     response.send(context.current_time).unwrap()
                 }
-                AudioRenderThreadMsg::MessageNode(index, msg) => {
-                    context.nodes[index].message(msg, sample_rate)
+                AudioRenderThreadMsg::MessageNode(id, msg) => {
+                    context.nodes[id.0].message(msg, sample_rate)
                 }
                 AudioRenderThreadMsg::SinkNeedData => {
                     // Do nothing. This will simply unblock the thread so we
