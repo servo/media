@@ -49,6 +49,9 @@ pub trait AudioNodeEngine: Send {
 
     fn input_count(&self) -> u32 { 1 }
     fn output_count(&self) -> u32 { 1 }
+
+    /// If we're the destination node, extract the contained data
+    fn destination_data(&mut self) -> Option<Chunk> { None }
 }
 
 pub enum AudioNodeMessage {

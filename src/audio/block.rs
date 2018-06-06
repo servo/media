@@ -1,3 +1,4 @@
+use audio::graph_impl::PortIndex;
 use std::ops::*;
 use smallvec::SmallVec;
 use byte_slice_cast::*;
@@ -39,6 +40,7 @@ impl Chunk {
 /// We render audio in blocks of size FRAMES_PER_BLOCK
 ///
 /// A single block may contain multiple channels
+#[derive(Clone)]
 pub struct Block {
     // todo: handle channels
     // None means silence, will be lazily filled
@@ -67,6 +69,25 @@ impl Block {
     pub fn data_mut(&mut self) -> &mut [f32] {
         self.explicit_silence();
         &mut ** self.data.as_mut().unwrap()
+    }
+
+    pub fn take(&mut self) -> Block {
+        Block {
+            data: self.data.take()
+        }
+    }
+}
+
+impl<T> IndexMut<PortIndex<T>> for Chunk {
+    fn index_mut(&mut self, i: PortIndex<T>) -> &mut Block {
+        &mut self.blocks[i.0 as usize]
+    }
+}
+
+impl<T> Index<PortIndex<T>> for Chunk {
+    type Output = Block;
+    fn index(&self, i: PortIndex<T>) -> &Block {
+        &self.blocks[i.0 as usize]
     }
 }
 
