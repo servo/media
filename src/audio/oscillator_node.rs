@@ -149,6 +149,8 @@ impl AudioNodeEngine for OscillatorNode {
         inputs
     }
 
+    fn input_count(&self) -> u32 { 0 }
+
     make_message_handler!(OscillatorNode);
 }
 

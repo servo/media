@@ -1,11 +1,11 @@
 use audio::node::{AudioNodeEngine, BlockInfo};
 use audio::block::Chunk;
 
-pub struct DestinationNode {}
+pub struct DestinationNode;
 
 impl DestinationNode {
     pub fn new() -> Self {
-        Self {}
+        DestinationNode
     }
 }
 
