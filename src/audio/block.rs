@@ -41,20 +41,32 @@ impl Chunk {
 /// A single block may contain multiple channels
 pub struct Block {
     // todo: handle channels
-    pub data: Box<[f32]>,
+    // None means silence, will be lazily filled
+    data: Option<Box<[f32]>>,
 }
 
 impl Default for Block {
     fn default() -> Self {
         Block {
-            data: Box::new([0.; FRAMES_PER_BLOCK.0 as usize])
+            data: None
         }
     }
 }
 
 impl Block {
     pub fn as_mut_byte_slice(&mut self) -> &mut [u8] {
-        self.data.as_mut_byte_slice().expect("casting failed")
+        self.data_mut().as_mut_byte_slice().expect("casting failed")
+    }
+
+    pub fn explicit_silence(&mut self) {
+        if self.data.is_none() {
+            self.data = Some(Box::new([0.; FRAMES_PER_BLOCK.0 as usize]))
+        }
+    }
+
+    pub fn data_mut(&mut self) -> &mut [f32] {
+        self.explicit_silence();
+        &mut ** self.data.as_mut().unwrap()
     }
 }
 
