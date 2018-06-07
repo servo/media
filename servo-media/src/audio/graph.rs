@@ -1,4 +1,4 @@
-use audio::graph_impl::{GraphImpl, NodeId};
+use audio::graph_impl::{GraphImpl, NodeId, PortId, InputPort, OutputPort};
 use audio::node::{AudioNodeMessage, AudioNodeType};
 use audio::render_thread::AudioRenderThread;
 use audio::render_thread::AudioRenderThreadMsg;
@@ -87,6 +87,10 @@ impl AudioGraph {
 
     pub fn message_node(&self, id: NodeId, msg: AudioNodeMessage) {
         let _ = self.sender.send(AudioRenderThreadMsg::MessageNode(id, msg));
+    }
+
+    pub fn connect_ports(&self, from: PortId<OutputPort>, to: PortId<InputPort>) {
+        let _ = self.sender.send(AudioRenderThreadMsg::ConnectPorts(from, to));
     }
 }
 

@@ -13,10 +13,10 @@ use std::cell::{Ref, RefCell, RefMut};
 pub struct NodeId(NodeIndex<DefaultIx>);
 
 impl NodeId {
-    pub fn input_port(self, port: u32) -> PortId<InputPort> {
+    pub fn input(self, port: u32) -> PortId<InputPort> {
         PortId(self, PortIndex(port, InputPort))
     }
-    pub fn output_port(self, port: u32) -> PortId<OutputPort> {
+    pub fn output(self, port: u32) -> PortId<OutputPort> {
         PortId(self, PortIndex(port, OutputPort))
     }
 }

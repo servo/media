@@ -47,6 +47,7 @@ impl AudioBufferSourceNode {
 }
 
 impl AudioNodeEngine for AudioBufferSourceNode {
+    fn input_count(&self) -> u32 { 0 }
     fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
         debug_assert!(inputs.len() == 0);
 
