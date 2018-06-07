@@ -3,7 +3,7 @@ extern crate servo_media;
 use servo_media::audio::gain_node::{GainNodeMessage, GainNodeOptions};
 use servo_media::audio::node::{AudioNodeMessage, AudioNodeType};
 use servo_media::audio::oscillator_node::OscillatorNodeMessage;
-use servo_media::audio::param::{RampKind, UserAutomationEvent};
+use servo_media::audio::param::UserAutomationEvent;
 use servo_media::ServoMedia;
 use std::{thread, time};
 
