@@ -16,6 +16,10 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     }
     graph.message_node(
         buffer_source,
+        AudioNodeMessage::AudioBufferSourceNode(AudioBufferSourceNodeMessage::Start(0.)),
+    );
+    graph.message_node(
+        buffer_source,
         AudioNodeMessage::AudioBufferSourceNode(AudioBufferSourceNodeMessage::SetBuffer(buffer)),
     );
     graph.resume();
