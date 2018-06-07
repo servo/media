@@ -12,6 +12,15 @@ use std::cell::{Ref, RefCell, RefMut};
 #[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub struct NodeId(NodeIndex<DefaultIx>);
 
+impl NodeId {
+    pub fn input_port(self, port: u32) -> PortId<InputPort> {
+        PortId(self, PortIndex(port, InputPort))
+    }
+    pub fn output_port(self, port: u32) -> PortId<OutputPort> {
+        PortId(self, PortIndex(port, OutputPort))
+    }
+}
+
 /// A zero-indexed "port" for a node. Most nodes have one
 /// input and one output port, but some may have more.
 /// For example, a channel splitter node will have one output
