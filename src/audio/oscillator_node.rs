@@ -95,7 +95,7 @@ impl OscillatorNode {
 }
 
 impl AudioNodeEngine for OscillatorNode {
-    fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Option<Chunk> {
+    fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
         // XXX Implement this properly and according to self.options
         // as defined in https://webaudio.github.io/web-audio-api/#oscillatornode
 
@@ -106,7 +106,7 @@ impl AudioNodeEngine for OscillatorNode {
         inputs.blocks.push(Default::default());
 
         if self.should_play_at(info.frame) == (false, true) {
-            return Some(inputs);
+            return inputs;
         }
 
         {
@@ -146,8 +146,7 @@ impl AudioNodeEngine for OscillatorNode {
                 tick.advance();
             }
         }
-
-        Some(inputs)
+        inputs
     }
 
     make_message_handler!(OscillatorNode);

@@ -1,5 +1,7 @@
-use audio::block::{Chunk, Tick};
-use audio::node::{AudioNodeEngine, BlockInfo};
+use audio::block::Chunk;
+use audio::block::Tick;
+use audio::node::AudioNodeEngine;
+use audio::node::BlockInfo;
 use audio::param::{Param, UserAutomationEvent};
 
 pub enum GainNodeMessage {
@@ -39,7 +41,7 @@ impl GainNode {
 }
 
 impl AudioNodeEngine for GainNode {
-    fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Option<Chunk> {
+    fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
         debug_assert!(inputs.len() == 1);
 
         {
@@ -55,8 +57,7 @@ impl AudioNodeEngine for GainNode {
                 tick.advance();
             }
         }
-
-        Some(inputs)
+        inputs
     }
 
     make_message_handler!(GainNode);
