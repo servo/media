@@ -10,37 +10,37 @@ use std::{thread, time};
 fn main() {
     if let Ok(servo_media) = ServoMedia::get() {
         let mut graph = servo_media.create_audio_graph();
-        graph.create_node(AudioNodeType::OscillatorNode(Default::default()));
+        let osc = graph.create_node(AudioNodeType::OscillatorNode(Default::default()));
         let mut options = GainNodeOptions::default();
         options.gain = 0.5;
-        graph.create_node(AudioNodeType::GainNode(options));
+        let gain = graph.create_node(AudioNodeType::GainNode(options));
         graph.message_node(
-            0,
+            osc,
             AudioNodeMessage::OscillatorNode(OscillatorNodeMessage::Start(0.)),
         );
         graph.message_node(
-            0,
+            osc,
             AudioNodeMessage::OscillatorNode(OscillatorNodeMessage::Stop(3.)),
         );
         assert_eq!(graph.current_time(), 0.);
         graph.resume();
         // 0.5s: Set frequency to 110Hz
         graph.message_node(
-            0,
+            osc,
             AudioNodeMessage::OscillatorNode(OscillatorNodeMessage::SetFrequency(
                 UserAutomationEvent::SetValueAtTime(110., 0.5),
             )),
         );
         // 1s: Set frequency to 220Hz
         graph.message_node(
-            0,
+            osc,
             AudioNodeMessage::OscillatorNode(OscillatorNodeMessage::SetFrequency(
                 UserAutomationEvent::SetValueAtTime(220., 1.),
             )),
         );
         // 0.75s: Set gain to 0.25
         graph.message_node(
-            1,
+            gain,
             AudioNodeMessage::GainNode(GainNodeMessage::SetGain(
                 UserAutomationEvent::SetValueAtTime(0.25, 0.75),
             )),

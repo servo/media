@@ -110,7 +110,7 @@ impl AudioNodeEngine for OscillatorNode {
         }
 
         {
-            let data = &mut inputs.blocks[0].data;
+            let data = inputs.blocks[0].data_mut();
 
             // Convert all our parameters to the target type for calculations
             let vol: f32 = 1.0;
@@ -148,6 +148,8 @@ impl AudioNodeEngine for OscillatorNode {
         }
         inputs
     }
+
+    fn input_count(&self) -> u32 { 0 }
 
     make_message_handler!(OscillatorNode);
 }

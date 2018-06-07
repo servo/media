@@ -11,6 +11,10 @@ zip = "0.3.1"
 [dependencies]
 smallvec = "0.6.1"
 
+[dependencies.petgraph]
+version = "0.4.12"
+features = ["stable_graph"]
+
 [dependencies.byte-slice-cast]
 optional = true
 version = "0.1"

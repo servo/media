@@ -128,7 +128,7 @@ impl AudioSink for GStreamerAudioSink {
                     .fill_silence(chunk.blocks[0].as_mut_byte_slice());
             }
             debug_assert!(chunk.len() == 1);
-            let data = &mut chunk.blocks[0].data;
+            let data = chunk.blocks[0].data_mut();
             let data = data.as_mut_byte_slice().expect("casting failed");
 
             // XXXManishearth if we have a safe way to convert

@@ -1,11 +1,9 @@
+use audio::graph_impl::NodeId;
 use audio::node::{AudioNodeMessage, AudioNodeType};
 use audio::render_thread::AudioRenderThread;
 use audio::render_thread::AudioRenderThreadMsg;
-use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 use std::sync::mpsc::{self, Sender};
 use std::thread::Builder;
-
-static NEXT_NODE_ID: AtomicUsize = ATOMIC_USIZE_INIT;
 
 #[derive(Debug, PartialEq)]
 pub enum ProcessingState {
@@ -52,11 +50,11 @@ impl AudioGraph {
         receiver.recv().unwrap()
     }
 
-    pub fn create_node(&self, node_type: AudioNodeType) -> usize {
-        let node_id = NEXT_NODE_ID.fetch_add(1, Ordering::SeqCst);
+    pub fn create_node(&self, node_type: AudioNodeType) -> NodeId {
+        let (tx, rx) = mpsc::channel();
         let _ = self.sender
-            .send(AudioRenderThreadMsg::CreateNode(node_type));
-        node_id
+            .send(AudioRenderThreadMsg::CreateNode(node_type, tx));
+        rx.recv().unwrap()
     }
 
     /// Resume audio processing.
@@ -78,7 +76,7 @@ impl AudioGraph {
         let _ = self.sender.send(AudioRenderThreadMsg::Close);
     }
 
-    pub fn message_node(&self, id: usize, msg: AudioNodeMessage) {
+    pub fn message_node(&self, id: NodeId, msg: AudioNodeMessage) {
         let _ = self.sender.send(AudioRenderThreadMsg::MessageNode(id, msg));
     }
 }

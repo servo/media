@@ -45,7 +45,7 @@ impl AudioNodeEngine for GainNode {
         debug_assert!(inputs.len() == 1);
 
         {
-            let data = &mut inputs.blocks[0].data;
+            let data = inputs.blocks[0].data_mut();
 
             let mut gain = self.gain.value();
             let mut tick = Tick(0);
