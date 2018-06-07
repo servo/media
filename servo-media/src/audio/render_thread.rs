@@ -3,7 +3,7 @@ use audio::buffer_source_node::AudioBufferSourceNode;
 use audio::destination_node::DestinationNode;
 use audio::gain_node::GainNode;
 use audio::graph::ProcessingState;
-use audio::graph_impl::{GraphImpl, NodeId};
+use audio::graph_impl::{GraphImpl, NodeId, PortId, InputPort, OutputPort};
 use audio::node::BlockInfo;
 use audio::node::{AudioNodeEngine, AudioNodeMessage, AudioNodeType};
 use audio::oscillator_node::OscillatorNode;
@@ -15,6 +15,7 @@ use backends::gstreamer::audio_sink::GStreamerAudioSink;
 
 pub enum AudioRenderThreadMsg {
     CreateNode(AudioNodeType, Sender<NodeId>),
+    ConnectPorts(PortId<OutputPort>, PortId<InputPort>),
     MessageNode(NodeId, AudioNodeMessage),
     Resume,
     Suspend,
@@ -93,6 +94,11 @@ impl AudioRenderThread {
         self.graph.add_node(node)
     }
 
+    fn connect_ports(&mut self, output: PortId<OutputPort>,
+                     input: PortId<InputPort>) {
+        self.graph.add_edge(output, input)
+    }
+
     fn process(&mut self) -> Chunk {
         let info = BlockInfo {
             sample_rate: self.sample_rate,
@@ -109,6 +115,9 @@ impl AudioRenderThread {
             match msg {
                 AudioRenderThreadMsg::CreateNode(node_type, tx) => {
                     let _ = tx.send(context.create_node(node_type));
+                }
+                AudioRenderThreadMsg::ConnectPorts(output, input) => {
+                    context.connect_ports(output, input);
                 }
                 AudioRenderThreadMsg::Resume => {
                     context.resume();
