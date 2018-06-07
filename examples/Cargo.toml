@@ -1,0 +1,24 @@
+[package]
+name = "examples"
+version = "0.1.0"
+license = "MPL-2.0"
+
+[dependencies]
+servo_media = { path = "../servo-media" }
+rand = "0.5.0"
+
+[[bin]]
+name = "play"
+path = "play.rs"
+
+[[bin]]
+name = "play_noise"
+path = "play_noise.rs"
+
+[[bin]]
+name = "params"
+path = "params.rs"
+
+[[bin]]
+name = "params_settarget"
+path = "params_settarget.rs"

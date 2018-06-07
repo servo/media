@@ -9,13 +9,13 @@ use std::{thread, time};
 
 fn run_example(servo_media: Arc<ServoMedia>) {
     let mut graph = servo_media.create_audio_graph();
-    graph.create_node(AudioNodeType::AudioBufferSourceNode);
+    let buffer_source = graph.create_node(AudioNodeType::AudioBufferSourceNode);
     let mut buffer = Vec::with_capacity(4096);
     for _ in 0..4096 {
         buffer.push(rand::random::<f32>());
     }
     graph.message_node(
-        0,
+        buffer_source,
         AudioNodeMessage::AudioBufferSourceNode(AudioBufferSourceNodeMessage::SetBuffer(buffer)),
     );
     graph.resume();
