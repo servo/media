@@ -1,5 +1,4 @@
-use audio::block::Block;
-use audio::block::Chunk;
+use audio::block::{Block, Chunk};
 use audio::destination_node::DestinationNode;
 use audio::node::AudioNodeEngine;
 use audio::node::BlockInfo;
@@ -8,13 +7,9 @@ use petgraph::graph::DefaultIx;
 use petgraph::stable_graph::NodeIndex;
 use petgraph::stable_graph::StableGraph;
 use petgraph::visit::{DfsPostOrder, EdgeRef};
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell, RefMut};
 
-#[derive(Clone, Copy)]
-pub struct NodeId(pub usize);
-
-// we'll later alias NodeId to this
-pub type LocalNodeId = NodeIndex<DefaultIx>;
+pub type NodeId = NodeIndex<DefaultIx>;
 
 /// A zero-indexed "port" for a node. Most nodes have one
 /// input and one output port, but some may have more.
@@ -28,7 +23,7 @@ pub type LocalNodeId = NodeIndex<DefaultIx>;
 pub type PortIndex<Kind> = (u32, Kind);
 
 /// An identifier for a port.
-pub type PortId<Kind> = (LocalNodeId, PortIndex<Kind>);
+pub type PortId<Kind> = (NodeId, PortIndex<Kind>);
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct InputPort;
@@ -37,7 +32,7 @@ pub struct OutputPort;
 
 pub struct GraphImpl {
     graph: StableGraph<Node, Edge>,
-    dest_id: LocalNodeId,
+    dest_id: NodeId,
 }
 
 pub struct Node {
@@ -65,7 +60,7 @@ impl GraphImpl {
         GraphImpl { graph, dest_id }
     }
 
-    pub fn add_node(&mut self, node: Box<AudioNodeEngine>) -> LocalNodeId {
+    pub fn add_node(&mut self, node: Box<AudioNodeEngine>) -> NodeId {
         self.graph.add_node(Node::new(node))
     }
 
@@ -87,7 +82,7 @@ impl GraphImpl {
         self.graph.add_edge(inp.0, out.0, Edge::new(inp.1, out.1));
     }
 
-    pub fn dest_id(&self) -> LocalNodeId {
+    pub fn dest_id(&self) -> NodeId {
         self.dest_id
     }
 
@@ -126,6 +121,14 @@ impl GraphImpl {
         self.graph[self.dest_id].node.borrow_mut()
             .destination_data().expect("Destination node should have data cached")
     }
+
+    pub fn node_mut(&self, ix: NodeId) -> RefMut<Box<AudioNodeEngine>> {
+        self.graph[ix].node.borrow_mut()
+    }
+
+    pub fn node(&self, ix: NodeId) -> Ref<Box<AudioNodeEngine>> {
+        self.graph[ix].node.borrow()
+    }
 }
 
 impl Node {
@@ -145,3 +148,4 @@ impl Edge {
         }
     }
 }
+
