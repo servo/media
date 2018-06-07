@@ -10,6 +10,7 @@ zip = "0.3.1"
 
 [dependencies]
 smallvec = "0.6.1"
+servo_media_derive = { path = "../servo-media-derive" }
 
 [dependencies.petgraph]
 version = "0.4.12"
