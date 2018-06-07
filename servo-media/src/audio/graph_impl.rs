@@ -9,7 +9,8 @@ use petgraph::stable_graph::StableGraph;
 use petgraph::visit::{DfsPostOrder, EdgeRef};
 use std::cell::{Ref, RefCell, RefMut};
 
-pub type NodeId = NodeIndex<DefaultIx>;
+#[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash)]
+pub struct NodeId(NodeIndex<DefaultIx>);
 
 /// A zero-indexed "port" for a node. Most nodes have one
 /// input and one output port, but some may have more.
@@ -20,10 +21,18 @@ pub type NodeId = NodeIndex<DefaultIx>;
 ///
 /// Kind is a zero sized type and is useful for distinguishing
 /// between input and output ports (which may otherwise share indices)
-pub type PortIndex<Kind> = (u32, Kind);
+#[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash)]
+pub struct PortIndex<Kind>(pub u32, pub Kind);
+
+impl<Kind> PortId<Kind> {
+    pub fn node(&self) -> NodeId {
+        self.0
+    }
+}
 
 /// An identifier for a port.
-pub type PortId<Kind> = (NodeId, PortIndex<Kind>);
+#[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash)]
+pub struct PortId<Kind>(NodeId, PortIndex<Kind>);
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct InputPort;
@@ -56,12 +65,12 @@ pub struct Edge {
 impl GraphImpl {
     pub fn new() -> Self {
         let mut graph = StableGraph::new();
-        let dest_id = graph.add_node(Node::new(Box::new(DestinationNode::new())));
+        let dest_id = NodeId(graph.add_node(Node::new(Box::new(DestinationNode::new()))));
         GraphImpl { graph, dest_id }
     }
 
     pub fn add_node(&mut self, node: Box<AudioNodeEngine>) -> NodeId {
-        self.graph.add_node(Node::new(node))
+        NodeId(self.graph.add_node(Node::new(node)))
     }
 
     pub fn add_edge(&mut self, out: PortId<OutputPort>, inp: PortId<InputPort>) {
@@ -69,7 +78,7 @@ impl GraphImpl {
         // Remove all others
         let old = self
             .graph
-            .edges(out.0)
+            .edges(out.node().0)
             .find(|e| e.weight().input_idx == inp.1)
             .map(|e| e.id());
         if let Some(old) = old {
@@ -79,7 +88,7 @@ impl GraphImpl {
         // XXXManishearth it is actually possible for two nodes to have
         // multiple edges between them between
         // different ports. We should represent this somehow.
-        self.graph.add_edge(inp.0, out.0, Edge::new(inp.1, out.1));
+        self.graph.add_edge(inp.node().0, out.node().0, Edge::new(inp.1, out.1));
     }
 
     pub fn dest_id(&self) -> NodeId {
@@ -87,7 +96,7 @@ impl GraphImpl {
     }
 
     pub fn process(&mut self, info: &BlockInfo) -> Chunk {
-        let mut visit = DfsPostOrder::new(&self.graph, self.dest_id);
+        let mut visit = DfsPostOrder::new(&self.graph, self.dest_id.0);
         while let Some(ix) = visit.next(&self.graph) {
             let mut curr = self.graph[ix].node.borrow_mut();
             let mut chunk = Chunk::default();
@@ -118,16 +127,16 @@ impl GraphImpl {
                 *edge.cache.borrow_mut() = Some(out[edge.output_idx].take());
             }
         }
-        self.graph[self.dest_id].node.borrow_mut()
+        self.graph[self.dest_id.0].node.borrow_mut()
             .destination_data().expect("Destination node should have data cached")
     }
 
     pub fn node_mut(&self, ix: NodeId) -> RefMut<Box<AudioNodeEngine>> {
-        self.graph[ix].node.borrow_mut()
+        self.graph[ix.0].node.borrow_mut()
     }
 
     pub fn node(&self, ix: NodeId) -> Ref<Box<AudioNodeEngine>> {
-        self.graph[ix].node.borrow()
+        self.graph[ix.0].node.borrow()
     }
 }
 
