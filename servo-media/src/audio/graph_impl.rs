@@ -9,7 +9,7 @@ use petgraph::stable_graph::StableGraph;
 use petgraph::visit::{DfsPostOrder, EdgeRef};
 use std::cell::{Ref, RefCell, RefMut};
 
-#[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash, Debug)]
 pub struct NodeId(NodeIndex<DefaultIx>);
 
 impl NodeId {
@@ -87,7 +87,7 @@ impl GraphImpl {
         // Remove all others
         let old = self
             .graph
-            .edges(out.node().0)
+            .edges_directed(out.node().0, Direction::Incoming)
             .find(|e| e.weight().input_idx == inp.1)
             .map(|e| e.id());
         if let Some(old) = old {
