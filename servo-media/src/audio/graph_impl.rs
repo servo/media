@@ -126,7 +126,7 @@ impl GraphImpl {
             }
             let mut out = curr.process(chunk, info);
 
-            assert!(out.len() == curr.output_count() as usize);
+            assert_eq!(out.len(), curr.output_count() as usize);
             if curr.output_count() == 0 {
                 continue;
             }

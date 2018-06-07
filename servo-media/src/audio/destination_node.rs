@@ -18,4 +18,8 @@ impl AudioNodeEngine for DestinationNode {
     fn destination_data(&mut self) -> Option<Chunk> {
         self.0.take()
     } 
+
+    fn output_count(&self) -> u32 {
+        0
+    }
 }
