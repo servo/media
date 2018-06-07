@@ -1,9 +1,9 @@
-use audio::graph_impl::NodeId;
-use audio::block::Tick;
-use audio::block::{Chunk, FRAMES_PER_BLOCK};
+use audio::block::{Chunk, Tick, FRAMES_PER_BLOCK};
+use audio::buffer_source_node::AudioBufferSourceNode;
 use audio::destination_node::DestinationNode;
 use audio::gain_node::GainNode;
 use audio::graph::ProcessingState;
+use audio::graph_impl::NodeId;
 use audio::node::BlockInfo;
 use audio::node::{AudioNodeEngine, AudioNodeMessage, AudioNodeType};
 use audio::oscillator_node::OscillatorNode;
@@ -86,9 +86,10 @@ impl AudioRenderThread {
 
     fn create_node(&mut self, node_type: AudioNodeType) -> NodeId {
         let node: Box<AudioNodeEngine> = match node_type {
-            AudioNodeType::OscillatorNode(options) => Box::new(OscillatorNode::new(options)),
+            AudioNodeType::AudioBufferSourceNode => Box::new(AudioBufferSourceNode::new()),
             AudioNodeType::DestinationNode => Box::new(DestinationNode::new()),
             AudioNodeType::GainNode(options) => Box::new(GainNode::new(options)),
+            AudioNodeType::OscillatorNode(options) => Box::new(OscillatorNode::new(options)),
             _ => unimplemented!(),
         };
         self.nodes.push(node);

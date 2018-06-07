@@ -1,6 +1,9 @@
 use std::sync::{self, Once};
 use std::sync::{Arc, Mutex};
 
+#[macro_use]
+extern crate servo_media_derive;
+
 #[cfg(feature = "gst")]
 extern crate gstreamer as gst;
 

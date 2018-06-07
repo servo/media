@@ -2,6 +2,7 @@
 pub mod macros;
 
 pub mod block;
+pub mod buffer_source_node;
 pub mod destination_node;
 pub mod gain_node;
 pub mod graph;

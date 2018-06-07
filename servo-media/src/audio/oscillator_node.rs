@@ -1,5 +1,5 @@
 use audio::block::{Chunk, Tick};
-use audio::node::{AudioNodeEngine, AudioScheduledSourceNode, BlockInfo};
+use audio::node::{AudioNodeEngine, BlockInfo};
 use audio::param::{Param, UserAutomationEvent};
 use num_traits::cast::NumCast;
 
@@ -39,6 +39,7 @@ impl Default for OscillatorNodeOptions {
     }
 }
 
+#[derive(AudioScheduledSourceNode)]
 pub struct OscillatorNode {
     frequency: Param,
     phase: f64,
@@ -73,23 +74,6 @@ impl OscillatorNode {
             OscillatorNodeMessage::Stop(when) => {
                 self.stop(Tick::from_time(when, sample_rate));
             }
-        }
-    }
-
-    pub fn should_play_at(&self, tick: Tick) -> (bool, bool) {
-        if self.start_at.is_none() {
-            return (false, true);
-        }
-
-        if tick < self.start_at.unwrap() {
-            (false, false)
-        } else {
-            if let Some(stop_at) = self.stop_at {
-                if tick >= stop_at {
-                    return (false, true);
-                }
-            }
-            (true, false)
         }
     }
 }
@@ -149,30 +133,9 @@ impl AudioNodeEngine for OscillatorNode {
         inputs
     }
 
-    fn input_count(&self) -> u32 { 0 }
+    fn input_count(&self) -> u32 {
+        0
+    }
 
     make_message_handler!(OscillatorNode);
-}
-
-impl AudioScheduledSourceNode for OscillatorNode {
-    fn start(&mut self, tick: Tick) -> bool {
-        // We can only allow a single call to `start` and always before
-        // any `stop` calls.
-        if self.start_at.is_some() || self.stop_at.is_some() {
-            return false;
-        }
-        self.start_at = Some(tick);
-        true
-    }
-
-    fn stop(&mut self, tick: Tick) -> bool {
-        // We can only allow calls to `stop` after `start` is called.
-        if self.start_at.is_none() {
-            return false;
-        }
-        // If `stop` is called again after already having been called,
-        // the last invocation will be the only one applied.
-        self.stop_at = Some(tick);
-        true
-    }
 }

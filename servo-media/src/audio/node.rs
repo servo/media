@@ -1,5 +1,6 @@
 use audio::block::Chunk;
 use audio::block::Tick;
+use audio::buffer_source_node::AudioBufferSourceNodeMessage;
 use audio::gain_node::{GainNodeMessage, GainNodeOptions};
 use audio::oscillator_node::{OscillatorNodeMessage, OscillatorNodeOptions};
 
@@ -55,8 +56,9 @@ pub trait AudioNodeEngine: Send {
 }
 
 pub enum AudioNodeMessage {
-    OscillatorNode(OscillatorNodeMessage),
+    AudioBufferSourceNode(AudioBufferSourceNodeMessage),
     GainNode(GainNodeMessage),
+    OscillatorNode(OscillatorNodeMessage),
 }
 
 /// This trait represents the common features of the source nodes such as
