@@ -1,4 +1,4 @@
-use audio::graph_impl::NodeId;
+use audio::graph_impl::{GraphImpl, NodeId, PortId, InputPort, OutputPort};
 use audio::node::{AudioNodeMessage, AudioNodeType};
 use audio::render_thread::AudioRenderThread;
 use audio::render_thread::AudioRenderThreadMsg;
@@ -16,6 +16,7 @@ pub struct AudioGraph {
     sender: Sender<AudioRenderThreadMsg>,
     state: ProcessingState,
     sample_rate: f32,
+    dest_node: NodeId,
 }
 
 impl AudioGraph {
@@ -25,10 +26,13 @@ impl AudioGraph {
 
         let (sender, receiver) = mpsc::channel();
         let sender_ = sender.clone();
+        let graph_impl = GraphImpl::new();
+        let dest_node = graph_impl.dest_id();
         Builder::new()
             .name("AudioRenderThread".to_owned())
             .spawn(move || {
-                AudioRenderThread::start(receiver, sender_, sample_rate)
+                AudioRenderThread::start(receiver, sender_,
+                                         sample_rate, graph_impl)
                     .expect("Could not start AudioRenderThread");
             })
             .unwrap();
@@ -36,11 +40,16 @@ impl AudioGraph {
             sender,
             state: ProcessingState::Suspended,
             sample_rate,
+            dest_node,
         }
     }
 
     pub fn sample_rate(&self) -> f32 {
         self.sample_rate
+    }
+
+    pub fn dest_node(&self) -> NodeId {
+        self.dest_node
     }
 
     pub fn current_time(&self) -> f64 {
@@ -78,6 +87,10 @@ impl AudioGraph {
 
     pub fn message_node(&self, id: NodeId, msg: AudioNodeMessage) {
         let _ = self.sender.send(AudioRenderThreadMsg::MessageNode(id, msg));
+    }
+
+    pub fn connect_ports(&self, from: PortId<OutputPort>, to: PortId<InputPort>) {
+        let _ = self.sender.send(AudioRenderThreadMsg::ConnectPorts(from, to));
     }
 }
 

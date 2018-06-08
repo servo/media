@@ -3,7 +3,7 @@ use audio::buffer_source_node::AudioBufferSourceNode;
 use audio::destination_node::DestinationNode;
 use audio::gain_node::GainNode;
 use audio::graph::ProcessingState;
-use audio::graph_impl::NodeId;
+use audio::graph_impl::{GraphImpl, NodeId, PortId, InputPort, OutputPort};
 use audio::node::BlockInfo;
 use audio::node::{AudioNodeEngine, AudioNodeMessage, AudioNodeType};
 use audio::oscillator_node::OscillatorNode;
@@ -15,6 +15,7 @@ use backends::gstreamer::audio_sink::GStreamerAudioSink;
 
 pub enum AudioRenderThreadMsg {
     CreateNode(AudioNodeType, Sender<NodeId>),
+    ConnectPorts(PortId<OutputPort>, PortId<InputPort>),
     MessageNode(NodeId, AudioNodeMessage),
     Resume,
     Suspend,
@@ -24,9 +25,7 @@ pub enum AudioRenderThreadMsg {
 }
 
 pub struct AudioRenderThread {
-    // XXX Test with a hash map for now. This should end up
-    // being a graph, like https://docs.rs/petgraph/0.4.12/petgraph/.
-    pub nodes: Vec<Box<AudioNodeEngine>>,
+    pub graph: GraphImpl,
     pub sink: Box<AudioSink>,
     pub state: ProcessingState,
     pub sample_rate: f32,
@@ -35,18 +34,18 @@ pub struct AudioRenderThread {
 }
 
 impl AudioRenderThread {
+    /// Start the audio render thread
     pub fn start(
         event_queue: Receiver<AudioRenderThreadMsg>,
         sender: Sender<AudioRenderThreadMsg>,
         sample_rate: f32,
+        graph: GraphImpl,
     ) -> Result<(), ()> {
         #[cfg(feature = "gst")]
         let sink = GStreamerAudioSink::new()?;
 
         let mut graph = Self {
-            // XXX Test with a vec map for now. This should end up
-            // being a graph, like https://docs.rs/petgraph/0.4.12/petgraph/.
-            nodes: Vec::new(),
+            graph,
             sink: Box::new(sink),
             state: ProcessingState::Suspended,
             sample_rate,
@@ -92,21 +91,21 @@ impl AudioRenderThread {
             AudioNodeType::OscillatorNode(options) => Box::new(OscillatorNode::new(options)),
             _ => unimplemented!(),
         };
-        self.nodes.push(node);
-        NodeId(self.nodes.len() - 1)
+        self.graph.add_node(node)
+    }
+
+    fn connect_ports(&mut self, output: PortId<OutputPort>,
+                     input: PortId<InputPort>) {
+        self.graph.add_edge(output, input)
     }
 
     fn process(&mut self) -> Chunk {
-        let mut data = Chunk::default();
         let info = BlockInfo {
             sample_rate: self.sample_rate,
             frame: self.current_frame,
             time: self.current_time,
         };
-        for node in self.nodes.iter_mut() {
-            data = node.process(data, &info);
-        }
-        data
+        self.graph.process(&info)
     }
 
     fn event_loop(&mut self, event_queue: Receiver<AudioRenderThreadMsg>) {
@@ -116,6 +115,9 @@ impl AudioRenderThread {
             match msg {
                 AudioRenderThreadMsg::CreateNode(node_type, tx) => {
                     let _ = tx.send(context.create_node(node_type));
+                }
+                AudioRenderThreadMsg::ConnectPorts(output, input) => {
+                    context.connect_ports(output, input);
                 }
                 AudioRenderThreadMsg::Resume => {
                     context.resume();
@@ -131,7 +133,7 @@ impl AudioRenderThread {
                     response.send(context.current_time).unwrap()
                 }
                 AudioRenderThreadMsg::MessageNode(id, msg) => {
-                    context.nodes[id.0].message(msg, sample_rate)
+                    context.graph.node_mut(id).message(msg, sample_rate)
                 }
                 AudioRenderThreadMsg::SinkNeedData => {
                     // Do nothing. This will simply unblock the thread so we

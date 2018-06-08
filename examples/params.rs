@@ -10,10 +10,13 @@ use std::{thread, time};
 fn main() {
     if let Ok(servo_media) = ServoMedia::get() {
         let mut graph = servo_media.create_audio_graph();
+        let dest = graph.dest_node();
         let osc = graph.create_node(AudioNodeType::OscillatorNode(Default::default()));
         let mut options = GainNodeOptions::default();
         options.gain = 0.5;
         let gain = graph.create_node(AudioNodeType::GainNode(options));
+        graph.connect_ports(osc.output(0), gain.input(0));
+        graph.connect_ports(gain.output(0), dest.input(0));
         graph.resume();
         graph.message_node(
             osc,

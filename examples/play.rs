@@ -14,6 +14,9 @@ fn main() {
         let mut options = GainNodeOptions::default();
         options.gain = 0.5;
         let gain = graph.create_node(AudioNodeType::GainNode(options));
+        let dest = graph.dest_node();
+        graph.connect_ports(osc.output(0), gain.input(0));
+        graph.connect_ports(gain.output(0), dest.input(0));
         graph.message_node(
             osc,
             AudioNodeMessage::OscillatorNode(OscillatorNodeMessage::Start(0.)),
