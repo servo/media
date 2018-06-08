@@ -1,4 +1,4 @@
-use audio::block::{Chunk, Tick};
+use audio::block::{Chunk, Tick, FRAMES_PER_BLOCK};
 use audio::node::{AudioNodeEngine, BlockInfo};
 
 pub enum AudioBufferSourceNodeMessage {
@@ -58,27 +58,22 @@ impl AudioNodeEngine for AudioBufferSourceNode {
         }
 
         {
+            let samples_to_copy = match self.stop_at {
+                Some(stop_at) => {
+                    let ticks_to_stop = stop_at - info.frame;
+                    (if ticks_to_stop > FRAMES_PER_BLOCK {
+                        FRAMES_PER_BLOCK
+                    } else {
+                        ticks_to_stop
+                    }).0 as usize
+                }
+                None => FRAMES_PER_BLOCK.0 as usize,
+            };
             let data = inputs.blocks[0].data_mut();
-
-            let mut tick = Tick(0);
-            for sample in data.iter_mut() {
-                let (should_play_at, should_break) = self.should_play_at(info.frame + tick);
-                if !should_play_at {
-                    if should_break {
-                        break;
-                    }
-                    continue;
-                }
-
-                if self.offset >= self.buffer.len() {
-                    break;
-                }
-
-                *sample = self.buffer[self.offset];
-                self.offset += 1;
-
-                tick.advance();
-            }
+            let (data, _) = data.split_at_mut(samples_to_copy);
+            let next_offset = self.offset + samples_to_copy;
+            data.copy_from_slice(&self.buffer[self.offset..next_offset]);
+            self.offset = next_offset;
         }
 
         inputs

@@ -1,7 +1,7 @@
 use audio::graph_impl::PortIndex;
-use std::ops::*;
-use smallvec::SmallVec;
 use byte_slice_cast::*;
+use smallvec::SmallVec;
+use std::ops::*;
 
 // defined by spec
 // https://webaudio.github.io/web-audio-api/#render-quantum
@@ -20,13 +20,13 @@ pub struct Tick(pub u64);
 /// where this becomes useful. Source nodes have an input
 /// of an empty chunk.
 pub struct Chunk {
-    pub blocks: SmallVec<[Block; 1]>
+    pub blocks: SmallVec<[Block; 1]>,
 }
 
 impl Default for Chunk {
     fn default() -> Self {
         Chunk {
-            blocks: SmallVec::new()
+            blocks: SmallVec::new(),
         }
     }
 }
@@ -49,9 +49,7 @@ pub struct Block {
 
 impl Default for Block {
     fn default() -> Self {
-        Block {
-            data: None
-        }
+        Block { data: None }
     }
 }
 
@@ -68,12 +66,12 @@ impl Block {
 
     pub fn data_mut(&mut self) -> &mut [f32] {
         self.explicit_silence();
-        &mut ** self.data.as_mut().unwrap()
+        &mut **self.data.as_mut().unwrap()
     }
 
     pub fn take(&mut self) -> Block {
         Block {
-            data: self.data.take()
+            data: self.data.take(),
         }
     }
 }
