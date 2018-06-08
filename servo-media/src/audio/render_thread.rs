@@ -85,7 +85,7 @@ impl AudioRenderThread {
 
     fn create_node(&mut self, node_type: AudioNodeType) -> NodeId {
         let node: Box<AudioNodeEngine> = match node_type {
-            AudioNodeType::AudioBufferSourceNode => Box::new(AudioBufferSourceNode::new()),
+            AudioNodeType::AudioBufferSourceNode(options) => Box::new(AudioBufferSourceNode::new(options)),
             AudioNodeType::DestinationNode => Box::new(DestinationNode::new()),
             AudioNodeType::GainNode(options) => Box::new(GainNode::new(options)),
             AudioNodeType::OscillatorNode(options) => Box::new(OscillatorNode::new(options)),
