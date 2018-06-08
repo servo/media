@@ -1,6 +1,5 @@
-use audio::block::Chunk;
-use audio::block::Tick;
-use audio::buffer_source_node::AudioBufferSourceNodeMessage;
+use audio::block::{Chunk, Tick};
+use audio::buffer_source_node::{AudioBufferSourceNodeMessage, AudioBufferSourceNodeOptions};
 use audio::gain_node::{GainNodeMessage, GainNodeOptions};
 use audio::oscillator_node::{OscillatorNodeMessage, OscillatorNodeOptions};
 
@@ -9,7 +8,7 @@ pub enum AudioNodeType {
     AnalyserNode,
     BiquadFilterNode,
     AudioBuffer,
-    AudioBufferSourceNode,
+    AudioBufferSourceNode(AudioBufferSourceNodeOptions),
     ChannelMergerNode,
     ChannelSplitterNode,
     ConstantSourceNode,
@@ -48,11 +47,17 @@ pub trait AudioNodeEngine: Send {
 
     fn message(&mut self, _: AudioNodeMessage, _sample_rate: f32) {}
 
-    fn input_count(&self) -> u32 { 1 }
-    fn output_count(&self) -> u32 { 1 }
+    fn input_count(&self) -> u32 {
+        1
+    }
+    fn output_count(&self) -> u32 {
+        1
+    }
 
     /// If we're the destination node, extract the contained data
-    fn destination_data(&mut self) -> Option<Chunk> { None }
+    fn destination_data(&mut self) -> Option<Chunk> {
+        None
+    }
 }
 
 pub enum AudioNodeMessage {
