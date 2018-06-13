@@ -1,9 +1,13 @@
-use audio::graph_impl::{GraphImpl, NodeId, PortId, InputPort, OutputPort};
+use audio::decoder::AudioDecoder;
+use audio::graph_impl::{GraphImpl, InputPort, NodeId, OutputPort, PortId};
 use audio::node::{AudioNodeMessage, AudioNodeType};
 use audio::render_thread::AudioRenderThread;
 use audio::render_thread::AudioRenderThreadMsg;
 use std::sync::mpsc::{self, Sender};
 use std::thread::Builder;
+
+#[cfg(feature = "gst")]
+use backends::gstreamer::audio_decoder::GStreamerAudioDecoder;
 
 #[derive(Debug, PartialEq)]
 pub enum ProcessingState {
@@ -31,8 +35,7 @@ impl AudioGraph {
         Builder::new()
             .name("AudioRenderThread".to_owned())
             .spawn(move || {
-                AudioRenderThread::start(receiver, sender_,
-                                         sample_rate, graph_impl)
+                AudioRenderThread::start(receiver, sender_, sample_rate, graph_impl)
                     .expect("Could not start AudioRenderThread");
             })
             .unwrap();
@@ -90,7 +93,23 @@ impl AudioGraph {
     }
 
     pub fn connect_ports(&self, from: PortId<OutputPort>, to: PortId<InputPort>) {
-        let _ = self.sender.send(AudioRenderThreadMsg::ConnectPorts(from, to));
+        let _ = self.sender
+            .send(AudioRenderThreadMsg::ConnectPorts(from, to));
+    }
+
+    /// Asynchronously decodes the audio file data contained in the given
+    /// buffer.
+    // XXX Make this async with callbacks or futures.
+    pub fn decode_audio_data(&self, data: Vec<u8>) {
+        Builder::new()
+            .name("AudioDecoder".to_owned())
+            .spawn(move || {
+                #[cfg(feature = "gst")]
+                let audio_decoder = GStreamerAudioDecoder::new();
+
+                let _ = audio_decoder.decode(data);
+            })
+            .unwrap();
     }
 }
 
