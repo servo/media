@@ -2,6 +2,8 @@ use super::gst_app::AppSrc;
 use audio::decoder::AudioDecoder;
 use gst;
 use gst::prelude::*;
+use std::io::Cursor;
+use std::io::Read;
 use std::thread::Builder;
 
 pub struct GStreamerAudioDecoder {}
@@ -13,7 +15,7 @@ impl GStreamerAudioDecoder {
 }
 
 impl AudioDecoder for GStreamerAudioDecoder {
-    fn decode(&self, mut data: Vec<u8>) -> Result<(), ()> {
+    fn decode(&self, data: Vec<u8>) -> Result<(), ()> {
         let pipeline = gst::Pipeline::new(None);
         let appsrc = gst::ElementFactory::make("appsrc", None).ok_or(())?;
         let decodebin = gst::ElementFactory::make("decodebin", None).ok_or(())?;
@@ -22,6 +24,10 @@ impl AudioDecoder for GStreamerAudioDecoder {
         // in decodebins case that is media being decoded
         pipeline.add_many(&[&appsrc, &decodebin]).map_err(|_| ())?;
         gst::Element::link_many(&[&appsrc, &decodebin]).map_err(|_| ())?;
+
+        // We do not want a sink per audio stream, so we set this flag to true
+        // once we insert the sink into the pipeline.
+        let mut sink_inserted = false;
 
         let pipeline_ = pipeline.clone();
         decodebin.connect_pad_added(move |_, src_pad| {
@@ -45,7 +51,10 @@ impl AudioDecoder for GStreamerAudioDecoder {
                 }
             };
 
-            let insert_sink = || -> Result<(), ()> {
+            let mut insert_sink = move || -> Result<(), ()> {
+                if sink_inserted {
+                    return Ok(());
+                }
                 let queue = gst::ElementFactory::make("queue", None).ok_or(())?;
                 let convert = gst::ElementFactory::make("audioconvert", None).ok_or(())?;
                 let resample = gst::ElementFactory::make("audioresample", None).ok_or(())?;
@@ -61,6 +70,7 @@ impl AudioDecoder for GStreamerAudioDecoder {
                 }
 
                 let sink_pad = queue.get_static_pad("sink").expect("queue has no sinkpad");
+                sink_inserted = true;
                 src_pad
                     .link(&sink_pad)
                     .into_result()
@@ -75,7 +85,7 @@ impl AudioDecoder for GStreamerAudioDecoder {
         });
 
         let appsrc = appsrc.downcast::<AppSrc>().map_err(|_| ())?;
-        appsrc.set_property_format(gst::Format::Time);
+        appsrc.set_property_format(gst::Format::Bytes);
         appsrc.set_property_block(true);
 
         let _ = pipeline.set_state(gst::State::Playing);
@@ -87,10 +97,11 @@ impl AudioDecoder for GStreamerAudioDecoder {
         Builder::new()
             .name("Decoder data loop".to_owned())
             .spawn(move || {
-                let mut offset = 0;
                 let max_bytes = appsrc_.get_max_bytes() as usize;
-                while offset < data.len() {
-                    let data_left = data.len() - offset;
+                let data_len = data.len();
+                let mut reader = Cursor::new(data);
+                while (reader.position() as usize) < data_len {
+                    let data_left = data_len - reader.position() as usize;
                     let buffer_size = if data_left < max_bytes {
                         data_left
                     } else {
@@ -99,17 +110,13 @@ impl AudioDecoder for GStreamerAudioDecoder {
                     let mut buffer = gst::Buffer::with_size(buffer_size).unwrap();
                     {
                         let buffer = buffer.get_mut().unwrap();
-                        let next_offset = offset + buffer_size;
-                        let data = data.as_mut_slice();
-                        buffer
-                            .copy_from_slice(0, &data[offset..next_offset])
-                            .expect("copying failed");
-                        offset = next_offset;
+                        let mut map = buffer.map_writable().unwrap();
+                        let mut buffer = map.as_mut_slice();
+                        let _ = reader.read(&mut buffer);
                     }
-                    appsrc_
+                    let _ = appsrc_
                         .push_buffer(buffer)
-                        .into_result()
-                        .expect("pushing buffer failed");
+                        .into_result();
                 }
             })
             .unwrap();
