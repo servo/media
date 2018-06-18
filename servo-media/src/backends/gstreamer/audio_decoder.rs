@@ -1,12 +1,11 @@
 use super::gst_app::{AppSink, AppSinkCallbacks, AppSrc};
-use audio::decoder::{AudioDecoder, AudioDecoderMsg};
+use audio::decoder::{AudioDecoder, AudioDecoderCallbacks};
 use byte_slice_cast::*;
 use gst;
 use gst::prelude::*;
 use std::io::Cursor;
 use std::io::Read;
-use sync::mpsc::Sender;
-use sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex};
 
 pub struct GStreamerAudioDecoder {}
 
@@ -17,47 +16,40 @@ impl GStreamerAudioDecoder {
 }
 
 impl AudioDecoder for GStreamerAudioDecoder {
-    fn decode(&self, data: Vec<u8>, sender: Sender<AudioDecoderMsg>) {
+    fn decode(&self, data: Vec<u8>, callbacks: AudioDecoderCallbacks) {
         let pipeline = gst::Pipeline::new(None);
-        let sender = Arc::new(Mutex::new(sender));
-
-        let pipeline_ = pipeline.clone();
-        let sender_ = sender.clone();
-        let error = move || {
-            let _ = sender_.lock().unwrap().send(AudioDecoderMsg::Error);
-            let _ = pipeline_.set_state(gst::State::Null);
-        };
+        let callbacks = Arc::new(callbacks);
 
         let appsrc = match gst::ElementFactory::make("appsrc", None) {
             Some(appsrc) => appsrc,
-            None => return error(),
+            None => return callbacks.error(),
         };
 
         let decodebin = match gst::ElementFactory::make("decodebin", None) {
             Some(decodebin) => decodebin,
-            None => return error(),
+            None => return callbacks.error(),
         };
 
         // decodebin uses something called a "sometimes-pad", which is basically
         // a pad that will show up when a certain condition is met,
         // in decodebins case that is media being decoded
         if pipeline.add_many(&[&appsrc, &decodebin]).is_err() {
-            return error();
+            return callbacks.error();
         }
 
         if gst::Element::link_many(&[&appsrc, &decodebin]).is_err() {
-            return error();
+            return callbacks.error();
         }
 
         let appsrc = match appsrc.downcast::<AppSrc>() {
             Ok(appsrc) => appsrc,
             Err(_) => {
-                return error();
+                return callbacks.error();
             }
         };
 
         let pipeline_ = pipeline.clone();
-        let sender_ = sender.clone();
+        let callbacks_ = callbacks.clone();
         decodebin.connect_pad_added(move |_, src_pad| {
             // We only want a sink per audio stream.
             if src_pad.is_linked() {
@@ -65,7 +57,7 @@ impl AudioDecoder for GStreamerAudioDecoder {
             }
 
             let pipeline = &pipeline_;
-            let sender = &sender_;
+            let callbacks = &callbacks_;
 
             let (is_audio, _) = {
                 let media_type = src_pad.get_current_caps().and_then(|caps| {
@@ -78,14 +70,14 @@ impl AudioDecoder for GStreamerAudioDecoder {
                 match media_type {
                     None => {
                         eprintln!("Failed to get media type from pad {}", src_pad.get_name());
-                        return error();
+                        return callbacks.error();
                     }
                     Some(media_type) => media_type,
                 }
             };
 
             if !is_audio {
-                return error();
+                return callbacks.error();
             }
 
             let insert_sink = || -> Result<(), ()> {
@@ -97,8 +89,8 @@ impl AudioDecoder for GStreamerAudioDecoder {
 
                 let pipeline_ = pipeline.clone();
                 let pipeline__ = pipeline.clone();
-                let sender_ = sender.clone();
-                let sender__ = sender.clone();
+                let callbacks_ = callbacks.clone();
+                let callbacks__ = callbacks.clone();
                 appsink.set_callbacks(
                     AppSinkCallbacks::new()
                         .new_sample(move |appsink| {
@@ -112,7 +104,7 @@ impl AudioDecoder for GStreamerAudioDecoder {
                             let buffer = if let Some(buffer) = sample.get_buffer() {
                                 buffer
                             } else {
-                                let _ = sender_.lock().unwrap().send(AudioDecoderMsg::Error);
+                                callbacks_.error();
                                 let _ = pipeline_.set_state(gst::State::Null);
                                 return gst::FlowReturn::Error;
                             };
@@ -125,20 +117,17 @@ impl AudioDecoder for GStreamerAudioDecoder {
                                 )
                                 .is_err()
                             {
-                                let _ = sender_.lock().unwrap().send(AudioDecoderMsg::Error);
+                                callbacks_.error();
                                 let _ = pipeline_.set_state(gst::State::Null);
                                 return gst::FlowReturn::Error;
                             }
 
-                            let _ = sender_
-                                .lock()
-                                .unwrap()
-                                .send(AudioDecoderMsg::Progress(progress));
+                            callbacks_.progress(progress);
 
                             gst::FlowReturn::Ok
                         })
                         .eos(move |_| {
-                            let _ = sender__.lock().unwrap().send(AudioDecoderMsg::Eos);
+                            callbacks__.eos();
                             let _ = pipeline__.set_state(gst::State::Null);
                         })
                         .build(),
@@ -161,7 +150,7 @@ impl AudioDecoder for GStreamerAudioDecoder {
             };
 
             if insert_sink().is_err() {
-                error();
+                callbacks.error();
             }
         });
 

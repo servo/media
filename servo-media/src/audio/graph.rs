@@ -1,4 +1,4 @@
-use audio::decoder::{AudioDecoder, AudioDecoderMsg};
+use audio::decoder::{AudioDecoder, AudioDecoderCallbacks};
 use audio::graph_impl::{GraphImpl, InputPort, NodeId, OutputPort, PortId};
 use audio::node::{AudioNodeMessage, AudioNodeType};
 use audio::render_thread::AudioRenderThread;
@@ -99,14 +99,14 @@ impl AudioGraph {
 
     /// Asynchronously decodes the audio file data contained in the given
     /// buffer.
-    pub fn decode_audio_data(&self, data: Vec<u8>, sender: Sender<AudioDecoderMsg>) {
+    pub fn decode_audio_data(&self, data: Vec<u8>, callbacks: AudioDecoderCallbacks) {
         Builder::new()
             .name("AudioDecoder".to_owned())
             .spawn(move || {
                 #[cfg(feature = "gst")]
                 let audio_decoder = GStreamerAudioDecoder::new();
 
-                audio_decoder.decode(data, sender);
+                audio_decoder.decode(data, callbacks);
             })
             .unwrap();
     }
