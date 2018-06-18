@@ -1,4 +1,5 @@
 use super::gst_app::{AppSink, AppSinkCallbacks, AppSrc};
+use super::gst_audio;
 use audio::decoder::{AudioDecoder, AudioDecoderCallbacks};
 use byte_slice_cast::*;
 use gst;
@@ -95,6 +96,12 @@ impl AudioDecoder for GStreamerAudioDecoder {
                 let resample = gst::ElementFactory::make("audioresample", None).ok_or(())?;
                 let sink = gst::ElementFactory::make("appsink", None).ok_or(())?;
                 let appsink = sink.clone().dynamic_cast::<AppSink>().map_err(|_| ())?;
+
+                // XXX Issue #18 channels support.
+                let audio_info = gst_audio::AudioInfo::new(gst_audio::AUDIO_FORMAT_F32, 44100, 1)
+                    .build()
+                    .ok_or(())?;
+                appsink.set_caps(&audio_info.to_caps().unwrap());
 
                 let pipeline_ = pipeline.clone();
                 let pipeline__ = pipeline.clone();
