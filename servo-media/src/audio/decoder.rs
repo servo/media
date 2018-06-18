@@ -1,7 +1,7 @@
 pub struct AudioDecoderCallbacks {
     pub eos: Option<Box<Fn() + Send + 'static>>,
     pub error: Option<Box<Fn() + Send + 'static>>,
-    pub progress: Option<Box<Fn(Vec<f32>) + Send + Sync + 'static>>,
+    pub progress: Option<Box<Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>>,
 }
 
 impl AudioDecoderCallbacks {
@@ -27,7 +27,7 @@ impl AudioDecoderCallbacks {
         };
     }
 
-    pub fn progress(&self, buffer: Vec<f32>) {
+    pub fn progress(&self, buffer: Box<AsRef<[f32]>>) {
         match self.progress {
             None => return,
             Some(ref callback) => callback(buffer),
@@ -41,7 +41,7 @@ unsafe impl Sync for AudioDecoderCallbacks {}
 pub struct AudioDecoderCallbacksBuilder {
     eos: Option<Box<Fn() + Send + 'static>>,
     error: Option<Box<Fn() + Send + 'static>>,
-    progress: Option<Box<Fn(Vec<f32>) + Send + Sync + 'static>>,
+    progress: Option<Box<Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>>,
 }
 
 impl AudioDecoderCallbacksBuilder {
@@ -59,7 +59,7 @@ impl AudioDecoderCallbacksBuilder {
         }
     }
 
-    pub fn progress<F: Fn(Vec<f32>) + Send + Sync + 'static>(self, progress: F) -> Self {
+    pub fn progress<F: Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>(self, progress: F) -> Self {
         Self {
             progress: Some(Box::new(progress)),
             ..self

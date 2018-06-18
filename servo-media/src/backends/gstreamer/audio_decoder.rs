@@ -2,10 +2,19 @@ use super::gst_app::{AppSink, AppSinkCallbacks, AppSrc};
 use audio::decoder::{AudioDecoder, AudioDecoderCallbacks};
 use byte_slice_cast::*;
 use gst;
+use gst::buffer::{MappedBuffer, Readable};
 use gst::prelude::*;
 use std::io::Cursor;
 use std::io::Read;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+
+pub struct GStreamerAudioDecoderProgress(MappedBuffer<Readable>);
+
+impl AsRef<[f32]> for GStreamerAudioDecoderProgress {
+    fn as_ref(&self) -> &[f32] {
+        self.0.as_ref().as_slice_of::<f32>().unwrap()
+    }
+}
 
 pub struct GStreamerAudioDecoder {}
 
@@ -109,19 +118,15 @@ impl AudioDecoder for GStreamerAudioDecoder {
                                 return gst::FlowReturn::Error;
                             };
 
-                            let mut progress: Vec<f32> = vec![0.; buffer.get_size() / 4];
-                            if buffer
-                                .copy_to_slice(
-                                    0,
-                                    progress.as_mut_slice().as_mut_byte_slice().unwrap(),
-                                )
-                                .is_err()
-                            {
+                            let map = if let Ok(map) = buffer.into_mapped_buffer_readable() {
+                                map
+                            } else {
                                 callbacks_.error();
                                 let _ = pipeline_.set_state(gst::State::Null);
                                 return gst::FlowReturn::Error;
-                            }
+                            };
 
+                            let progress = Box::new(GStreamerAudioDecoderProgress(map));
                             callbacks_.progress(progress);
 
                             gst::FlowReturn::Ok

@@ -22,7 +22,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let mut file = File::open(filename).unwrap();
     let mut bytes = vec![];
     file.read_to_end(&mut bytes).unwrap();
-    let decoded_audio = Arc::new(Mutex::new(Vec::new()));
+    let decoded_audio: Arc<Mutex<Vec<f32>>> = Arc::new(Mutex::new(Vec::new()));
     let progress = decoded_audio.clone();
     let (sender, receiver) = mpsc::channel();
     let callbacks = AudioDecoderCallbacks::new()
@@ -33,7 +33,10 @@ fn run_example(servo_media: Arc<ServoMedia>) {
             eprintln!("Error decoding audio");
         })
         .progress(move |buffer| {
-            progress.lock().unwrap().extend_from_slice(&buffer);
+            progress
+                .lock()
+                .unwrap()
+                .extend_from_slice((*buffer).as_ref());
         })
         .build();
     graph.decode_audio_data(bytes.to_vec(), callbacks);
