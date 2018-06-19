@@ -4,16 +4,12 @@ version = "0.1.0"
 license = "MPL-2.0"
 
 [dependencies]
-servo_media = { path = "../servo-media" }
 rand = "0.5.0"
+servo_media = { path = "../servo-media" }
 
 [[bin]]
-name = "play"
-path = "play.rs"
-
-[[bin]]
-name = "play_noise"
-path = "play_noise.rs"
+name = "audio_decoder"
+path = "audio_decoder.rs"
 
 [[bin]]
 name = "params"
@@ -22,3 +18,11 @@ path = "params.rs"
 [[bin]]
 name = "params_settarget"
 path = "params_settarget.rs"
+
+[[bin]]
+name = "play"
+path = "play.rs"
+
+[[bin]]
+name = "play_noise"
+path = "play_noise.rs"
