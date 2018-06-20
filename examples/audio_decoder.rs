@@ -43,7 +43,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     println!("Decoding audio");
     receiver.recv().unwrap();
     println!("Audio decoded");
-    let buffer_source = graph.create_node(AudioNodeType::AudioBufferSourceNode);
+    let buffer_source = graph.create_node(AudioNodeType::AudioBufferSourceNode(Default::default()));
     let dest = graph.dest_node();
     graph.connect_ports(buffer_source.output(0), dest.input(0));
     graph.message_node(
