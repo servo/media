@@ -177,8 +177,12 @@ impl<'a> FrameRef<'a> {
     ///
     /// Use this when you plan to do the same operation for each channel.
     /// (Helpers for the other cases will eventually exist)
+    ///
+    /// Block must not be silence
     #[inline]
-    pub fn mutate_frame_with<F>(&mut self, f: F) where F: Fn(&mut f32) {
+    pub fn mutate_with<F>(&mut self, f: F) where F: Fn(&mut f32) {
+        debug_assert!(!self.block.is_silence(), "mutate_frame_with should not be called with a silenced block, \
+                                                 call .explicit_silence() if you wish to use this");
         if self.block.repeat {
             f(&mut self.block.buffer[self.frame.0 as usize])
         } else {
