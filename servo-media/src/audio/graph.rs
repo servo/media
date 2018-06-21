@@ -9,6 +9,7 @@ use std::thread::Builder;
 #[cfg(feature = "gst")]
 use backends::gstreamer::audio_decoder::GStreamerAudioDecoder;
 
+/// Describes the state of the audio context on the control thread.
 #[derive(Debug, PartialEq)]
 pub enum ProcessingState {
     Suspended,
@@ -16,17 +17,53 @@ pub enum ProcessingState {
     Closed,
 }
 
+/// Identify the type of playback, which affects tradeoffs between audio output
+/// and power consumption.
+pub enum LatencyCategory {
+    /// Balance audio output latency and power consumption.
+    Balanced,
+    /// Provide the lowest audio output latency possible without glitching.
+    Interactive,
+    /// Prioritize sustained playback without interruption over audio output latency.
+    /// Lowest power consumption.
+    Playback,
+}
+
+/// User-specified options for an audio context.
+pub struct AudioGraphOptions {
+    /// Number of samples that will play in one second, measured in Hz.
+    pub sample_rate: f32,
+    /// Type of playback.
+    pub latency_hint: LatencyCategory,
+}
+
+impl Default for AudioGraphOptions {
+    fn default() -> Self {
+        Self {
+            sample_rate: 48000.,
+            latency_hint: LatencyCategory::Interactive,
+        }
+    }
+}
+
+/// Representation of an audio context on the control thread.
 pub struct AudioGraph {
+    /// Rendering thread communication channel.
     sender: Sender<AudioRenderThreadMsg>,
+    /// State of the audio context on the control thread.
     state: ProcessingState,
+    /// Number of samples that will be played in one second.
     sample_rate: f32,
+    /// The identifier of an AudioDestinationNode with a single input
+    /// representing the final destination for all audio.
     dest_node: NodeId,
 }
 
 impl AudioGraph {
-    pub fn new() -> Self {
-        // XXX Get this from AudioContextOptions.
-        let sample_rate = 44100.;
+    /// Constructs a new audio context.
+    pub fn new(options: Option<AudioGraphOptions>) -> Self {
+        let options = options.unwrap_or_default();
+        let sample_rate = options.sample_rate;
 
         let (sender, receiver) = mpsc::channel();
         let sender_ = sender.clone();
@@ -35,7 +72,7 @@ impl AudioGraph {
         Builder::new()
             .name("AudioRenderThread".to_owned())
             .spawn(move || {
-                AudioRenderThread::start(receiver, sender_, sample_rate, graph_impl)
+                AudioRenderThread::start(receiver, sender_, options.sample_rate, graph_impl)
                     .expect("Could not start AudioRenderThread");
             })
             .unwrap();

@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex};
 use std::{thread, time};
 
 fn run_example(servo_media: Arc<ServoMedia>) {
-    let mut graph = servo_media.create_audio_graph();
+    let mut graph = servo_media.create_audio_graph(Default::default());
     let args: Vec<_> = env::args().collect();
     let filename: &str = if args.len() == 2 {
         args[1].as_ref()
