@@ -2,10 +2,12 @@ use audio::graph_impl::PortIndex;
 use byte_slice_cast::*;
 use smallvec::SmallVec;
 use std::ops::*;
+use std::mem;
 
 // defined by spec
 // https://webaudio.github.io/web-audio-api/#render-quantum
 pub const FRAMES_PER_BLOCK: Tick = Tick(128);
+const FRAMES_PER_BLOCK_USIZE: usize = FRAMES_PER_BLOCK.0 as usize;
 
 /// A tick, i.e. the time taken for a single frame
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
@@ -42,37 +44,78 @@ impl Chunk {
 /// A single block may contain multiple channels
 #[derive(Clone)]
 pub struct Block {
-    // todo: handle channels
-    // None means silence, will be lazily filled
-    data: Option<Box<[f32]>>,
+    /// The number of channels in this block
+    channels: u8,
+    /// This is an optimization which means that the buffer is representing multiple channels with the 
+    /// same content at once. Happens when audio is upmixed or when a source like
+    /// an oscillator node has multiple channel outputs
+    repeat: bool,
+    /// If this vector is empty, it is a shorthand for "silence"
+    /// It is possible to obtain an explicitly silent buffer via .explicit_silence()
+    ///
+    /// This must be of length channels * FRAMES_PER_BLOCK, unless `repeat` is true,
+    /// in which case it will be of length FRAMES_PER_BLOCK
+    buffer: Vec<f32>,
 }
+
 
 impl Default for Block {
     fn default() -> Self {
-        Block { data: None }
+        Block {
+            channels: 1,
+            repeat: false,
+            buffer: Vec::new(),
+        }
     }
 }
 
 impl Block {
+    /// This provides the entire buffer as a mutable slice of u8
     pub fn as_mut_byte_slice(&mut self) -> &mut [u8] {
         self.data_mut().as_mut_byte_slice().expect("casting failed")
     }
 
+    /// If this is in "silence" mode without a buffer, allocate a silent buffer
     pub fn explicit_silence(&mut self) {
-        if self.data.is_none() {
-            self.data = Some(Box::new([0.; FRAMES_PER_BLOCK.0 as usize]))
+        if self.buffer.is_empty() {
+            self.buffer.resize(FRAMES_PER_BLOCK_USIZE, 0.);
+            self.repeat = true;
         }
     }
 
+    /// This provides the entire buffer as a mutable slice of f32
     pub fn data_mut(&mut self) -> &mut [f32] {
         self.explicit_silence();
-        &mut **self.data.as_mut().unwrap()
+        &mut self.buffer
+    }
+
+    pub fn explicit_repeat(&mut self) {
+        if self.repeat && self.channels > 1 {
+            let mut new = Vec::with_capacity(FRAMES_PER_BLOCK_USIZE * self.channels as usize);
+            for _ in 0..self.channels {
+                new.extend(&self.buffer)
+            }
+
+            self.buffer = new;
+        } else {
+            self.explicit_silence()
+        }
+    }
+
+    pub fn data_chan_mut(&mut self, chan: u8) -> &mut [f32] {
+        self.explicit_repeat();
+        let start = chan as usize * FRAMES_PER_BLOCK_USIZE;
+        &mut self.buffer[start..start + FRAMES_PER_BLOCK_USIZE]
     }
 
     pub fn take(&mut self) -> Block {
-        Block {
-            data: self.data.take(),
-        }
+        let mut new = Block::default();
+        new.channels = self.channels;
+        mem::replace(self, new)
+    }
+
+    pub fn chan_count(&self) -> u8 {
+        self.channels
     }
 }
 
