@@ -117,7 +117,80 @@ impl Block {
     pub fn chan_count(&self) -> u8 {
         self.channels
     }
+
+    pub fn iter(&mut self) -> FrameIterator {
+        FrameIterator::new(self)
+    }
+
+    pub fn is_silence(&self) -> bool {
+        self.buffer.is_empty()
+    }
 }
+
+
+/// An iterator over frames in a block
+pub struct FrameIterator<'a> {
+    frame: Tick,
+    block: &'a mut Block
+}
+
+impl<'a> FrameIterator<'a> {
+    #[inline]
+    pub fn new(block: &'a mut Block) -> Self {
+        FrameIterator {
+            frame: Tick(0),
+            block
+        }
+    }
+
+    /// Advance the iterator
+    ///
+    /// We can't implement Iterator since it doesn't support
+    /// streaming iterators, but we can call `while let Some(frame) = iter.next()`
+    /// here
+    #[inline]
+    pub fn next<'b>(&'b mut self) -> Option<FrameRef<'b>> {
+        let curr = self.frame;
+        if curr < FRAMES_PER_BLOCK {
+            self.frame.advance();
+            Some(FrameRef { frame: curr, block: &mut self.block })
+        } else {
+            None
+        }
+    }
+}
+
+
+/// A reference to a frame
+pub struct FrameRef<'a> {
+    frame: Tick,
+    block: &'a mut Block
+}
+
+impl<'a> FrameRef<'a> {
+    #[inline]
+    pub fn tick(&self) -> Tick {
+        self.frame
+    }
+
+    /// Given a block and a function `f`, mutate the frame through all channels with `f`
+    ///
+    /// Use this when you plan to do the same operation for each channel.
+    /// (Helpers for the other cases will eventually exist)
+    #[inline]
+    pub fn mutate_frame_with<F>(&mut self, f: F) where F: Fn(&mut f32) {
+        if self.block.repeat {
+            f(&mut self.block.buffer[self.frame.0 as usize])
+        } else {
+            for chan in 0..self.block.channels {
+                f(&mut self.block.buffer[chan as usize * FRAMES_PER_BLOCK_USIZE + self.frame.0 as usize])
+            }
+        }
+    }
+}
+
+
+// operator impls
 
 impl<T> IndexMut<PortIndex<T>> for Chunk {
     fn index_mut(&mut self, i: PortIndex<T>) -> &mut Block {
