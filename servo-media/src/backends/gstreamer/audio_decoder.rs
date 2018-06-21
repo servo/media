@@ -1,6 +1,6 @@
 use super::gst_app::{AppSink, AppSinkCallbacks, AppSrc};
 use super::gst_audio;
-use audio::decoder::{AudioDecoder, AudioDecoderCallbacks};
+use audio::decoder::{AudioDecoder, AudioDecoderCallbacks, AudioDecoderOptions};
 use byte_slice_cast::*;
 use gst;
 use gst::buffer::{MappedBuffer, Readable};
@@ -26,7 +26,12 @@ impl GStreamerAudioDecoder {
 }
 
 impl AudioDecoder for GStreamerAudioDecoder {
-    fn decode(&self, data: Vec<u8>, callbacks: AudioDecoderCallbacks) {
+    fn decode(
+        &self,
+        data: Vec<u8>,
+        callbacks: AudioDecoderCallbacks,
+        options: Option<AudioDecoderOptions>,
+    ) {
         let pipeline = gst::Pipeline::new(None);
         let callbacks = Arc::new(callbacks);
 
@@ -57,6 +62,8 @@ impl AudioDecoder for GStreamerAudioDecoder {
                 return callbacks.error();
             }
         };
+
+        let options = options.unwrap_or_default();
 
         let pipeline_ = pipeline.clone();
         let callbacks_ = callbacks.clone();
@@ -97,10 +104,11 @@ impl AudioDecoder for GStreamerAudioDecoder {
                 let sink = gst::ElementFactory::make("appsink", None).ok_or(())?;
                 let appsink = sink.clone().dynamic_cast::<AppSink>().map_err(|_| ())?;
 
-                // XXX Issue #18 channels support.
-                let audio_info = gst_audio::AudioInfo::new(gst_audio::AUDIO_FORMAT_F32, 44100, 1)
-                    .build()
-                    .ok_or(())?;
+                let audio_info = gst_audio::AudioInfo::new(
+                    gst_audio::AUDIO_FORMAT_F32,
+                    options.sample_rate as u32,
+                    options.channels,
+                ).build().ok_or(())?;
                 appsink.set_caps(&audio_info.to_caps().unwrap());
 
                 let pipeline_ = pipeline.clone();
