@@ -3,6 +3,7 @@ use audio::graph_impl::{GraphImpl, InputPort, NodeId, OutputPort, PortId};
 use audio::node::{AudioNodeMessage, AudioNodeType};
 use audio::render_thread::AudioRenderThread;
 use audio::render_thread::AudioRenderThreadMsg;
+use std::cell::Cell;
 use std::sync::mpsc::{self, Sender};
 use std::thread::Builder;
 
@@ -10,10 +11,15 @@ use std::thread::Builder;
 use backends::gstreamer::audio_decoder::GStreamerAudioDecoder;
 
 /// Describes the state of the audio context on the control thread.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ProcessingState {
+    /// The audio context is suspended (context time is not proceeding,
+    /// audio hardware may be powered down/released).
     Suspended,
+    /// Audio is being processed.
     Running,
+    /// The audio context has been released, and can no longer be used
+    /// to process audio.
     Closed,
 }
 
@@ -95,7 +101,7 @@ pub struct AudioGraph {
     /// Rendering thread communication channel.
     sender: Sender<AudioRenderThreadMsg>,
     /// State of the audio context on the control thread.
-    state: ProcessingState,
+    state: Cell<ProcessingState>,
     /// Number of samples that will be played in one second.
     sample_rate: f32,
     /// The identifier of an AudioDestinationNode with a single input
@@ -125,10 +131,14 @@ impl AudioGraph {
         .unwrap();
         Self {
             sender,
-            state: ProcessingState::Suspended,
+            state: Cell::new(ProcessingState::Suspended),
             sample_rate,
             dest_node,
         }
+    }
+
+    pub fn state(&self) -> ProcessingState {
+        self.state.get()
     }
 
     pub fn dest_node(&self) -> NodeId {
@@ -150,21 +160,21 @@ impl AudioGraph {
     }
 
     /// Resume audio processing.
-    pub fn resume(&mut self) {
-        assert_eq!(self.state, ProcessingState::Suspended);
-        self.state = ProcessingState::Running;
+    pub fn resume(&self) {
+        assert_eq!(self.state.get(), ProcessingState::Suspended);
+        self.state.set(ProcessingState::Running);
         let _ = self.sender.send(AudioRenderThreadMsg::Resume);
     }
 
     /// Suspend audio processing.
-    pub fn suspend(&mut self) {
-        self.state = ProcessingState::Suspended;
+    pub fn suspend(&self) {
+        self.state.set(ProcessingState::Suspended);
         let _ = self.sender.send(AudioRenderThreadMsg::Suspend);
     }
 
     /// Stop audio processing and close render thread.
-    pub fn close(&mut self) {
-        self.state = ProcessingState::Closed;
+    pub fn close(&self) {
+        self.state.set(ProcessingState::Closed);
         let _ = self.sender.send(AudioRenderThreadMsg::Close);
     }
 
