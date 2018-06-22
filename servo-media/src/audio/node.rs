@@ -1,3 +1,4 @@
+use audio::channel_node::ChannelNodeOptions;
 use audio::block::{Chunk, Tick};
 use audio::buffer_source_node::{AudioBufferSourceNodeMessage, AudioBufferSourceNodeOptions};
 use audio::gain_node::{GainNodeMessage, GainNodeOptions};
@@ -9,7 +10,7 @@ pub enum AudioNodeType {
     BiquadFilterNode,
     AudioBuffer,
     AudioBufferSourceNode(AudioBufferSourceNodeOptions),
-    ChannelMergerNode,
+    ChannelMergerNode(ChannelNodeOptions),
     ChannelSplitterNode,
     ConstantSourceNode,
     ConvolverNode,

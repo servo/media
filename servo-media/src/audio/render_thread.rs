@@ -1,5 +1,6 @@
 use audio::block::{Chunk, Tick, FRAMES_PER_BLOCK};
 use audio::buffer_source_node::AudioBufferSourceNode;
+use audio::channel_node::ChannelMergerNode;
 use audio::destination_node::DestinationNode;
 use audio::gain_node::GainNode;
 use audio::graph::ProcessingState;
@@ -89,6 +90,7 @@ impl AudioRenderThread {
             AudioNodeType::DestinationNode => Box::new(DestinationNode::new()),
             AudioNodeType::GainNode(options) => Box::new(GainNode::new(options)),
             AudioNodeType::OscillatorNode(options) => Box::new(OscillatorNode::new(options)),
+            AudioNodeType::ChannelMergerNode(options) => Box::new(ChannelMergerNode::new(options)),
             _ => unimplemented!(),
         };
         self.graph.add_node(node)

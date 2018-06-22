@@ -9,10 +9,12 @@ pub enum OscillatorNodeMessage {
     Stop(f64),
 }
 
+#[derive(Copy, Clone)]
 pub struct PeriodicWaveOptions {
     // XXX https://webaudio.github.io/web-audio-api/#dictdef-periodicwaveoptions
 }
 
+#[derive(Copy, Clone)]
 pub enum OscillatorType {
     Sine,
     Square,
@@ -21,6 +23,7 @@ pub enum OscillatorType {
     Custom,
 }
 
+#[derive(Copy, Clone)]
 pub struct OscillatorNodeOptions {
     pub oscillator_type: OscillatorType,
     pub freq: f32,

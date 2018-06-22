@@ -7,7 +7,7 @@ use std::mem;
 // defined by spec
 // https://webaudio.github.io/web-audio-api/#render-quantum
 pub const FRAMES_PER_BLOCK: Tick = Tick(128);
-const FRAMES_PER_BLOCK_USIZE: usize = FRAMES_PER_BLOCK.0 as usize;
+pub const FRAMES_PER_BLOCK_USIZE: usize = FRAMES_PER_BLOCK.0 as usize;
 
 /// A tick, i.e. the time taken for a single frame
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
