@@ -66,6 +66,18 @@ impl Default for OfflineAudioGraphOptions {
     }
 }
 
+impl From<RealTimeAudioGraphOptions> for AudioGraphOptions {
+    fn from(options: RealTimeAudioGraphOptions) -> Self {
+        AudioGraphOptions::RealTimeAudioGraph(options)
+    }
+}
+
+impl From<OfflineAudioGraphOptions> for AudioGraphOptions {
+    fn from(options: OfflineAudioGraphOptions) -> Self {
+        AudioGraphOptions::OfflineAudioGraph(options)
+    }
+}
+
 /// User-specified options for a real time or offline audio context.
 pub enum AudioGraphOptions {
     RealTimeAudioGraph(RealTimeAudioGraphOptions),
@@ -110,7 +122,7 @@ impl AudioGraph {
                 AudioRenderThread::start(receiver, sender_, options.sample_rate, graph_impl)
                     .expect("Could not start AudioRenderThread");
             })
-            .unwrap();
+        .unwrap();
         Self {
             sender,
             state: ProcessingState::Suspended,
@@ -182,7 +194,7 @@ impl AudioGraph {
 
                 audio_decoder.decode(data, callbacks, Some(options));
             })
-            .unwrap();
+        .unwrap();
     }
 }
 
