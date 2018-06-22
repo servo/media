@@ -22,4 +22,10 @@ impl AudioNodeEngine for DestinationNode {
     fn output_count(&self) -> u32 {
         0
     }
+
+    fn channel_count(&self) -> u8 {
+        // currently hardcoded here and in our invocation of
+        // gst_audio::AudioInfo::new
+        2
+    }
 }

@@ -143,11 +143,14 @@ impl GraphImpl {
                     let edge = edge.weight();
                     // XXXManishearth we can have multiple edges
                     // hitting the same input port, we should deal with that
-                    chunk[edge.input_idx] = edge
+                    let mut block = edge
                         .cache
                         .borrow_mut()
                         .take()
                         .expect("Cache should have been filled from traversal");
+                    block.mix(curr.channel_count());
+
+                    chunk[edge.input_idx] = block;
                 }
             }
 

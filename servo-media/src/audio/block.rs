@@ -97,8 +97,8 @@ impl Block {
             }
 
             self.buffer = new;
-        } else {
-            self.explicit_silence()
+        } else if self.is_silence() {
+            self.buffer.resize(FRAMES_PER_BLOCK_USIZE * self.channels as usize, 0.);
         }
     }
 
@@ -124,6 +124,35 @@ impl Block {
 
     pub fn is_silence(&self) -> bool {
         self.buffer.is_empty()
+    }
+
+    /// upmix/downmix the channels if necessary
+    ///
+    /// Currently only supports upmixing from 1
+    pub fn mix(&mut self, channels: u8) {
+        if self.channels == channels {
+            return
+        }
+
+        assert!(self.channels == 1 && channels > 1);
+        self.channels = channels;
+        if !self.is_silence() {
+            self.repeat = true;
+        }
+    }
+
+    pub fn interleave(&mut self) -> Vec<f32> {
+        self.explicit_repeat();
+        let mut vec = Vec::with_capacity(self.buffer.len());
+        // FIXME this isn't too efficient
+        vec.resize(self.buffer.len(), 0.);
+        for frame in 0..FRAMES_PER_BLOCK_USIZE {
+            let channels = self.channels as usize;
+            for chan in 0..channels {
+                vec[frame * channels + chan] = self.buffer[chan * FRAMES_PER_BLOCK_USIZE + frame]
+            }
+        }
+        vec
     }
 }
 

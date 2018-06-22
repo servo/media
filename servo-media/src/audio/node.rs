@@ -54,6 +54,11 @@ pub trait AudioNodeEngine: Send {
         1
     }
 
+    /// Number of input channels for each input port
+    fn channel_count(&self) -> u8 {
+        1
+    }
+
     /// If we're the destination node, extract the contained data
     fn destination_data(&mut self) -> Option<Chunk> {
         None
