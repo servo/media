@@ -8,7 +8,7 @@ use std::sync::Arc;
 use std::{thread, time};
 
 fn run_example(servo_media: Arc<ServoMedia>) {
-    let mut graph = servo_media.create_audio_graph();
+    let graph = servo_media.create_audio_graph(Default::default());
     let buffer_source = graph.create_node(AudioNodeType::AudioBufferSourceNode(Default::default()));
     let dest = graph.dest_node();
     graph.connect_ports(buffer_source.output(0), dest.input(0));

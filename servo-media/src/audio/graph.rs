@@ -3,30 +3,120 @@ use audio::graph_impl::{GraphImpl, InputPort, NodeId, OutputPort, PortId};
 use audio::node::{AudioNodeMessage, AudioNodeType};
 use audio::render_thread::AudioRenderThread;
 use audio::render_thread::AudioRenderThreadMsg;
+use std::cell::Cell;
 use std::sync::mpsc::{self, Sender};
 use std::thread::Builder;
 
 #[cfg(feature = "gst")]
 use backends::gstreamer::audio_decoder::GStreamerAudioDecoder;
 
-#[derive(Debug, PartialEq)]
+/// Describes the state of the audio context on the control thread.
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ProcessingState {
+    /// The audio context is suspended (context time is not proceeding,
+    /// audio hardware may be powered down/released).
     Suspended,
+    /// Audio is being processed.
     Running,
+    /// The audio context has been released, and can no longer be used
+    /// to process audio.
     Closed,
 }
 
+/// Identify the type of playback, which affects tradeoffs between audio output
+/// and power consumption.
+pub enum LatencyCategory {
+    /// Balance audio output latency and power consumption.
+    Balanced,
+    /// Provide the lowest audio output latency possible without glitching.
+    Interactive,
+    /// Prioritize sustained playback without interruption over audio output latency.
+    /// Lowest power consumption.
+    Playback,
+}
+
+/// User-specified options for a real time audio context.
+pub struct RealTimeAudioGraphOptions {
+    /// Number of samples that will play in one second, measured in Hz.
+    pub sample_rate: f32,
+    /// Type of playback.
+    pub latency_hint: LatencyCategory,
+}
+
+impl Default for RealTimeAudioGraphOptions {
+    fn default() -> Self {
+        Self {
+            sample_rate: 48000.,
+            latency_hint: LatencyCategory::Interactive,
+        }
+    }
+}
+
+/// User-specified options for an offline audio context.
+pub struct OfflineAudioGraphOptions {
+    /// The number of channels for this offline audio context.
+    pub channels: u32,
+    /// The length of the rendered audio buffer in sample-frames.
+    pub length: u32,
+    /// Number of samples that will be rendered in one second, measured in Hz.
+    pub sample_rate: f32,
+}
+
+impl Default for OfflineAudioGraphOptions {
+    fn default() -> Self {
+        Self {
+            channels: 1,
+            length: 0,
+            sample_rate: 48000.,
+        }
+    }
+}
+
+impl From<RealTimeAudioGraphOptions> for AudioGraphOptions {
+    fn from(options: RealTimeAudioGraphOptions) -> Self {
+        AudioGraphOptions::RealTimeAudioGraph(options)
+    }
+}
+
+impl From<OfflineAudioGraphOptions> for AudioGraphOptions {
+    fn from(options: OfflineAudioGraphOptions) -> Self {
+        AudioGraphOptions::OfflineAudioGraph(options)
+    }
+}
+
+/// User-specified options for a real time or offline audio context.
+pub enum AudioGraphOptions {
+    RealTimeAudioGraph(RealTimeAudioGraphOptions),
+    OfflineAudioGraph(OfflineAudioGraphOptions),
+}
+
+impl Default for AudioGraphOptions {
+    fn default() -> Self {
+        AudioGraphOptions::RealTimeAudioGraph(Default::default())
+    }
+}
+
+/// Representation of an audio context on the control thread.
 pub struct AudioGraph {
+    /// Rendering thread communication channel.
     sender: Sender<AudioRenderThreadMsg>,
-    state: ProcessingState,
+    /// State of the audio context on the control thread.
+    state: Cell<ProcessingState>,
+    /// Number of samples that will be played in one second.
     sample_rate: f32,
+    /// The identifier of an AudioDestinationNode with a single input
+    /// representing the final destination for all audio.
     dest_node: NodeId,
 }
 
 impl AudioGraph {
-    pub fn new() -> Self {
-        // XXX Get this from AudioContextOptions.
-        let sample_rate = 44100.;
+    /// Constructs a new audio context.
+    pub fn new(options: Option<AudioGraphOptions>) -> Self {
+        let options = match options.unwrap_or_default() {
+            AudioGraphOptions::RealTimeAudioGraph(options) => options,
+            AudioGraphOptions::OfflineAudioGraph(_) => unimplemented!(),
+        };
+        let sample_rate = options.sample_rate;
 
         let (sender, receiver) = mpsc::channel();
         let sender_ = sender.clone();
@@ -35,20 +125,20 @@ impl AudioGraph {
         Builder::new()
             .name("AudioRenderThread".to_owned())
             .spawn(move || {
-                AudioRenderThread::start(receiver, sender_, sample_rate, graph_impl)
+                AudioRenderThread::start(receiver, sender_, options.sample_rate, graph_impl)
                     .expect("Could not start AudioRenderThread");
             })
-            .unwrap();
+        .unwrap();
         Self {
             sender,
-            state: ProcessingState::Suspended,
+            state: Cell::new(ProcessingState::Suspended),
             sample_rate,
             dest_node,
         }
     }
 
-    pub fn sample_rate(&self) -> f32 {
-        self.sample_rate
+    pub fn state(&self) -> ProcessingState {
+        self.state.get()
     }
 
     pub fn dest_node(&self) -> NodeId {
@@ -70,21 +160,21 @@ impl AudioGraph {
     }
 
     /// Resume audio processing.
-    pub fn resume(&mut self) {
-        assert_eq!(self.state, ProcessingState::Suspended);
-        self.state = ProcessingState::Running;
+    pub fn resume(&self) {
+        assert_eq!(self.state.get(), ProcessingState::Suspended);
+        self.state.set(ProcessingState::Running);
         let _ = self.sender.send(AudioRenderThreadMsg::Resume);
     }
 
     /// Suspend audio processing.
-    pub fn suspend(&mut self) {
-        self.state = ProcessingState::Suspended;
+    pub fn suspend(&self) {
+        self.state.set(ProcessingState::Suspended);
         let _ = self.sender.send(AudioRenderThreadMsg::Suspend);
     }
 
     /// Stop audio processing and close render thread.
-    pub fn close(&mut self) {
-        self.state = ProcessingState::Closed;
+    pub fn close(&self) {
+        self.state.set(ProcessingState::Closed);
         let _ = self.sender.send(AudioRenderThreadMsg::Close);
     }
 
@@ -110,7 +200,7 @@ impl AudioGraph {
 
                 audio_decoder.decode(data, callbacks, Some(options));
             })
-            .unwrap();
+        .unwrap();
     }
 }
 
