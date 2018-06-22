@@ -29,20 +29,52 @@ pub enum LatencyCategory {
     Playback,
 }
 
-/// User-specified options for an audio context.
-pub struct AudioGraphOptions {
+/// User-specified options for a real time audio context.
+pub struct RealTimeAudioGraphOptions {
     /// Number of samples that will play in one second, measured in Hz.
     pub sample_rate: f32,
     /// Type of playback.
     pub latency_hint: LatencyCategory,
 }
 
-impl Default for AudioGraphOptions {
+impl Default for RealTimeAudioGraphOptions {
     fn default() -> Self {
         Self {
             sample_rate: 48000.,
             latency_hint: LatencyCategory::Interactive,
         }
+    }
+}
+
+/// User-specified options for an offline audio context.
+pub struct OfflineAudioGraphOptions {
+    /// The number of channels for this offline audio context.
+    pub channels: u32,
+    /// The length of the rendered audio buffer in sample-frames.
+    pub length: u32,
+    /// Number of samples that will be rendered in one second, measured in Hz.
+    pub sample_rate: f32,
+}
+
+impl Default for OfflineAudioGraphOptions {
+    fn default() -> Self {
+        Self {
+            channels: 1,
+            length: 0,
+            sample_rate: 48000.,
+        }
+    }
+}
+
+/// User-specified options for a real time or offline audio context.
+pub enum AudioGraphOptions {
+    RealTimeAudioGraph(RealTimeAudioGraphOptions),
+    OfflineAudioGraph(OfflineAudioGraphOptions),
+}
+
+impl Default for AudioGraphOptions {
+    fn default() -> Self {
+        AudioGraphOptions::RealTimeAudioGraph(Default::default())
     }
 }
 
@@ -62,7 +94,10 @@ pub struct AudioGraph {
 impl AudioGraph {
     /// Constructs a new audio context.
     pub fn new(options: Option<AudioGraphOptions>) -> Self {
-        let options = options.unwrap_or_default();
+        let options = match options.unwrap_or_default() {
+            AudioGraphOptions::RealTimeAudioGraph(options) => options,
+            AudioGraphOptions::OfflineAudioGraph(_) => unimplemented!(),
+        };
         let sample_rate = options.sample_rate;
 
         let (sender, receiver) = mpsc::channel();
