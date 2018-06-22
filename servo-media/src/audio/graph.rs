@@ -131,10 +131,6 @@ impl AudioGraph {
         }
     }
 
-    pub fn sample_rate(&self) -> f32 {
-        self.sample_rate
-    }
-
     pub fn dest_node(&self) -> NodeId {
         self.dest_node
     }
