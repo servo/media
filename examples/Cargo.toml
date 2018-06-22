@@ -26,3 +26,8 @@ path = "play.rs"
 [[bin]]
 name = "play_noise"
 path = "play_noise.rs"
+
+
+[[bin]]
+name = "channels"
+path = "channels.rs"

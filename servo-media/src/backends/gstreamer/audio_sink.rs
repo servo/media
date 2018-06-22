@@ -50,7 +50,7 @@ impl AudioSink for GStreamerAudioSink {
     ) -> Result<(), ()> {
         self.sample_rate.set(sample_rate);
         let audio_info =
-            gst_audio::AudioInfo::new(gst_audio::AUDIO_FORMAT_F32, sample_rate as u32, 1)
+            gst_audio::AudioInfo::new(gst_audio::AUDIO_FORMAT_F32, sample_rate as u32, 2)
                 .build()
                 .ok_or(())?;
         self.appsrc.set_caps(&audio_info.to_caps().unwrap());
@@ -98,8 +98,9 @@ impl AudioSink for GStreamerAudioSink {
         let sample_rate = self.sample_rate.get() as u64;
         let audio_info = self.audio_info.borrow();
         let audio_info = audio_info.as_ref().unwrap();
+        let channels = audio_info.channels();
         let bpf = audio_info.bpf() as usize;
-        assert!(bpf == 4);
+        assert!(bpf == 4 * channels as usize);
         let n_samples = FRAMES_PER_BLOCK.0 as u64;
         let buf_size = (n_samples as usize) * (bpf);
         let mut buffer = gst::Buffer::with_size(buf_size).unwrap();
@@ -123,12 +124,10 @@ impl AudioSink for GStreamerAudioSink {
             // sometimes nothing reaches the output
             if chunk.len() == 0 {
                 chunk.blocks.push(Default::default());
-                audio_info
-                    .format_info()
-                    .fill_silence(chunk.blocks[0].as_mut_byte_slice());
+                chunk.blocks[0].mix(channels as u8);
             }
             debug_assert!(chunk.len() == 1);
-            let data = chunk.blocks[0].data_mut();
+            let mut data = chunk.blocks[0].interleave();
             let data = data.as_mut_byte_slice().expect("casting failed");
 
             // XXXManishearth if we have a safe way to convert

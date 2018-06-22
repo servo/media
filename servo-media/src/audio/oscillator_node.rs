@@ -9,10 +9,12 @@ pub enum OscillatorNodeMessage {
     Stop(f64),
 }
 
+#[derive(Copy, Clone)]
 pub struct PeriodicWaveOptions {
     // XXX https://webaudio.github.io/web-audio-api/#dictdef-periodicwaveoptions
 }
 
+#[derive(Copy, Clone)]
 pub enum OscillatorType {
     Sine,
     Square,
@@ -21,6 +23,7 @@ pub enum OscillatorType {
     Custom,
 }
 
+#[derive(Copy, Clone)]
 pub struct OscillatorNodeOptions {
     pub oscillator_type: OscillatorType,
     pub freq: f32,
@@ -94,7 +97,9 @@ impl AudioNodeEngine for OscillatorNode {
         }
 
         {
-            let data = inputs.blocks[0].data_mut();
+
+            inputs.blocks[0].explicit_silence();
+            let mut iter = inputs.blocks[0].iter();
 
             // Convert all our parameters to the target type for calculations
             let vol: f32 = 1.0;
@@ -108,8 +113,8 @@ impl AudioNodeEngine for OscillatorNode {
             //
             // Also, if the frequency changes the phase should not
             let mut step = two_pi * freq / sample_rate;
-            let mut tick = Tick(0);
-            for sample in data.iter_mut() {
+            while let Some(mut frame) = iter.next() {
+                let tick = frame.tick();
                 let (should_play_at, should_break) = self.should_play_at(info.frame + tick);
                 if !should_play_at {
                     if should_break {
@@ -121,13 +126,12 @@ impl AudioNodeEngine for OscillatorNode {
                     step = two_pi * freq / sample_rate;
                 }
                 let value = vol * f32::sin(NumCast::from(self.phase).unwrap());
-                *sample = value;
+                frame.mutate_with(|sample| *sample = value);
 
                 self.phase += step;
                 if self.phase >= two_pi {
                     self.phase -= two_pi;
                 }
-                tick.advance();
             }
         }
         inputs

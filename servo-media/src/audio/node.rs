@@ -1,3 +1,4 @@
+use audio::channel_node::ChannelNodeOptions;
 use audio::block::{Chunk, Tick};
 use audio::buffer_source_node::{AudioBufferSourceNodeMessage, AudioBufferSourceNodeOptions};
 use audio::gain_node::{GainNodeMessage, GainNodeOptions};
@@ -9,7 +10,7 @@ pub enum AudioNodeType {
     BiquadFilterNode,
     AudioBuffer,
     AudioBufferSourceNode(AudioBufferSourceNodeOptions),
-    ChannelMergerNode,
+    ChannelMergerNode(ChannelNodeOptions),
     ChannelSplitterNode,
     ConstantSourceNode,
     ConvolverNode,
@@ -51,6 +52,11 @@ pub trait AudioNodeEngine: Send {
         1
     }
     fn output_count(&self) -> u32 {
+        1
+    }
+
+    /// Number of input channels for each input port
+    fn channel_count(&self) -> u8 {
         1
     }
 

@@ -44,17 +44,19 @@ impl AudioNodeEngine for GainNode {
     fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
         debug_assert!(inputs.len() == 1);
 
-        {
-            let data = inputs.blocks[0].data_mut();
+        if inputs.blocks[0].is_silence() {
+            return inputs
+        }
 
+        {
+            let mut iter = inputs.blocks[0].iter();
             let mut gain = self.gain.value();
-            let mut tick = Tick(0);
-            for sample in data.iter_mut() {
-                if self.update_parameters(info, tick) {
+
+            while let Some(mut frame) = iter.next() {
+                if self.update_parameters(info, frame.tick()) {
                     gain = self.gain.value();
                 }
-                *sample = *sample * gain;
-                tick.advance();
+                frame.mutate_with(|sample| *sample = *sample * gain);
             }
         }
         inputs
