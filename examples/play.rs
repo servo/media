@@ -9,7 +9,7 @@ use std::sync::Arc;
 use std::{thread, time};
 
 fn run_example(servo_media: Arc<ServoMedia>) {
-    let mut graph = servo_media.create_audio_graph(Default::default());
+    let graph = servo_media.create_audio_graph(Default::default());
     let osc = graph.create_node(AudioNodeType::OscillatorNode(Default::default()));
     let mut options = GainNodeOptions::default();
     options.gain = 0.5;
