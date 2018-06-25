@@ -42,7 +42,7 @@ impl ServoMedia {
         }
     }
 
-    pub fn create_audio_graph(&self, options: Option<AudioGraphOptions>) -> AudioGraph {
+    pub fn create_audio_graph(&self, options: AudioGraphOptions) -> AudioGraph {
         AudioGraph::new(options)
     }
 }

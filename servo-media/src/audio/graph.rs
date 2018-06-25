@@ -111,8 +111,8 @@ pub struct AudioGraph {
 
 impl AudioGraph {
     /// Constructs a new audio context.
-    pub fn new(options: Option<AudioGraphOptions>) -> Self {
-        let options = match options.unwrap_or_default() {
+    pub fn new(options: AudioGraphOptions) -> Self {
+        let options = match options {
             AudioGraphOptions::RealTimeAudioGraph(options) => options,
             AudioGraphOptions::OfflineAudioGraph(_) => unimplemented!(),
         };
