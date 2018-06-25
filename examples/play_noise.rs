@@ -8,25 +8,25 @@ use std::sync::Arc;
 use std::{thread, time};
 
 fn run_example(servo_media: Arc<ServoMedia>) {
-    let graph = servo_media.create_audio_graph(Default::default());
-    let buffer_source = graph.create_node(AudioNodeType::AudioBufferSourceNode(Default::default()));
-    let dest = graph.dest_node();
-    graph.connect_ports(buffer_source.output(0), dest.input(0));
+    let context = servo_media.create_audio_context(Default::default());
+    let buffer_source = context.create_node(AudioNodeType::AudioBufferSourceNode(Default::default()));
+    let dest = context.dest_node();
+    context.connect_ports(buffer_source.output(0), dest.input(0));
     let mut buffer = Vec::with_capacity(4096);
     for _ in 0..4096 {
         buffer.push(rand::random::<f32>());
     }
-    graph.message_node(
+    context.message_node(
         buffer_source,
         AudioNodeMessage::AudioBufferSourceNode(AudioBufferSourceNodeMessage::Start(0.)),
     );
-    graph.message_node(
+    context.message_node(
         buffer_source,
         AudioNodeMessage::AudioBufferSourceNode(AudioBufferSourceNodeMessage::SetBuffer(buffer)),
     );
-    graph.resume();
+    context.resume();
     thread::sleep(time::Duration::from_millis(5000));
-    graph.close();
+    context.close();
 }
 
 fn main() {

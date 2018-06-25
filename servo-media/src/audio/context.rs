@@ -36,14 +36,14 @@ pub enum LatencyCategory {
 }
 
 /// User-specified options for a real time audio context.
-pub struct RealTimeAudioGraphOptions {
+pub struct RealTimeAudioContextOptions {
     /// Number of samples that will play in one second, measured in Hz.
     pub sample_rate: f32,
     /// Type of playback.
     pub latency_hint: LatencyCategory,
 }
 
-impl Default for RealTimeAudioGraphOptions {
+impl Default for RealTimeAudioContextOptions {
     fn default() -> Self {
         Self {
             sample_rate: 48000.,
@@ -53,7 +53,7 @@ impl Default for RealTimeAudioGraphOptions {
 }
 
 /// User-specified options for an offline audio context.
-pub struct OfflineAudioGraphOptions {
+pub struct OfflineAudioContextOptions {
     /// The number of channels for this offline audio context.
     pub channels: u32,
     /// The length of the rendered audio buffer in sample-frames.
@@ -62,7 +62,7 @@ pub struct OfflineAudioGraphOptions {
     pub sample_rate: f32,
 }
 
-impl Default for OfflineAudioGraphOptions {
+impl Default for OfflineAudioContextOptions {
     fn default() -> Self {
         Self {
             channels: 1,
@@ -72,32 +72,32 @@ impl Default for OfflineAudioGraphOptions {
     }
 }
 
-impl From<RealTimeAudioGraphOptions> for AudioGraphOptions {
-    fn from(options: RealTimeAudioGraphOptions) -> Self {
-        AudioGraphOptions::RealTimeAudioGraph(options)
+impl From<RealTimeAudioContextOptions> for AudioContextOptions {
+    fn from(options: RealTimeAudioContextOptions) -> Self {
+        AudioContextOptions::RealTimeAudioContext(options)
     }
 }
 
-impl From<OfflineAudioGraphOptions> for AudioGraphOptions {
-    fn from(options: OfflineAudioGraphOptions) -> Self {
-        AudioGraphOptions::OfflineAudioGraph(options)
+impl From<OfflineAudioContextOptions> for AudioContextOptions {
+    fn from(options: OfflineAudioContextOptions) -> Self {
+        AudioContextOptions::OfflineAudioContext(options)
     }
 }
 
 /// User-specified options for a real time or offline audio context.
-pub enum AudioGraphOptions {
-    RealTimeAudioGraph(RealTimeAudioGraphOptions),
-    OfflineAudioGraph(OfflineAudioGraphOptions),
+pub enum AudioContextOptions {
+    RealTimeAudioContext(RealTimeAudioContextOptions),
+    OfflineAudioContext(OfflineAudioContextOptions),
 }
 
-impl Default for AudioGraphOptions {
+impl Default for AudioContextOptions {
     fn default() -> Self {
-        AudioGraphOptions::RealTimeAudioGraph(Default::default())
+        AudioContextOptions::RealTimeAudioContext(Default::default())
     }
 }
 
 /// Representation of an audio context on the control thread.
-pub struct AudioGraph {
+pub struct AudioContext {
     /// Rendering thread communication channel.
     sender: Sender<AudioRenderThreadMsg>,
     /// State of the audio context on the control thread.
@@ -109,12 +109,12 @@ pub struct AudioGraph {
     dest_node: NodeId,
 }
 
-impl AudioGraph {
+impl AudioContext {
     /// Constructs a new audio context.
-    pub fn new(options: AudioGraphOptions) -> Self {
+    pub fn new(options: AudioContextOptions) -> Self {
         let options = match options {
-            AudioGraphOptions::RealTimeAudioGraph(options) => options,
-            AudioGraphOptions::OfflineAudioGraph(_) => unimplemented!(),
+            AudioContextOptions::RealTimeAudioContext(options) => options,
+            AudioContextOptions::OfflineAudioContext(_) => unimplemented!(),
         };
         let sample_rate = options.sample_rate;
 
@@ -204,7 +204,7 @@ impl AudioGraph {
     }
 }
 
-impl Drop for AudioGraph {
+impl Drop for AudioContext {
     fn drop(&mut self) {
         let _ = self.sender.send(AudioRenderThreadMsg::Close);
     }

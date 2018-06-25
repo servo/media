@@ -1,9 +1,9 @@
 use audio::block::{Chunk, Tick, FRAMES_PER_BLOCK};
 use audio::buffer_source_node::AudioBufferSourceNode;
 use audio::channel_node::ChannelMergerNode;
+use audio::context::ProcessingState;
 use audio::destination_node::DestinationNode;
 use audio::gain_node::GainNode;
-use audio::graph::ProcessingState;
 use audio::graph_impl::{GraphImpl, NodeId, PortId, InputPort, OutputPort};
 use audio::node::BlockInfo;
 use audio::node::{AudioNodeEngine, AudioNodeMessage, AudioNodeType};

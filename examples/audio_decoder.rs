@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex};
 use std::{thread, time};
 
 fn run_example(servo_media: Arc<ServoMedia>) {
-    let graph = servo_media.create_audio_graph(Default::default());
+    let context = servo_media.create_audio_context(Default::default());
     let args: Vec<_> = env::args().collect();
     let filename: &str = if args.len() == 2 {
         args[1].as_ref()
@@ -39,26 +39,26 @@ fn run_example(servo_media: Arc<ServoMedia>) {
                 .extend_from_slice((*buffer).as_ref());
         })
         .build();
-    graph.decode_audio_data(bytes.to_vec(), callbacks);
+    context.decode_audio_data(bytes.to_vec(), callbacks);
     println!("Decoding audio");
     receiver.recv().unwrap();
     println!("Audio decoded");
-    let buffer_source = graph.create_node(AudioNodeType::AudioBufferSourceNode(Default::default()));
-    let dest = graph.dest_node();
-    graph.connect_ports(buffer_source.output(0), dest.input(0));
-    graph.message_node(
+    let buffer_source = context.create_node(AudioNodeType::AudioBufferSourceNode(Default::default()));
+    let dest = context.dest_node();
+    context.connect_ports(buffer_source.output(0), dest.input(0));
+    context.message_node(
         buffer_source,
         AudioNodeMessage::AudioBufferSourceNode(AudioBufferSourceNodeMessage::Start(0.)),
     );
-    graph.message_node(
+    context.message_node(
         buffer_source,
         AudioNodeMessage::AudioBufferSourceNode(AudioBufferSourceNodeMessage::SetBuffer(
             decoded_audio.lock().unwrap().to_vec(),
         )),
     );
-    graph.resume();
+    context.resume();
     thread::sleep(time::Duration::from_millis(5000));
-    graph.close();
+    context.close();
 }
 
 fn main() {

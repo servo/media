@@ -16,7 +16,7 @@ extern crate smallvec;
 pub mod audio;
 mod backends;
 
-use audio::graph::{AudioGraph, AudioGraphOptions};
+use audio::context::{AudioContext, AudioContextOptions};
 
 pub struct ServoMedia {}
 
@@ -42,7 +42,7 @@ impl ServoMedia {
         }
     }
 
-    pub fn create_audio_graph(&self, options: AudioGraphOptions) -> AudioGraph {
-        AudioGraph::new(options)
+    pub fn create_audio_context(&self, options: AudioContextOptions) -> AudioContext {
+        AudioContext::new(options)
     }
 }
