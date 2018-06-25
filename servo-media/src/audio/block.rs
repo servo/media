@@ -141,6 +141,16 @@ impl Block {
         }
     }
 
+    /// Take a single-channel block and repeat the
+    /// channel
+    pub fn repeat(&mut self, channels: u8) {
+        debug_assert!(self.channels == 1);
+        self.channels = channels;
+        if !self.is_silence() {
+            self.repeat = true;
+        }
+    }
+
     pub fn interleave(&mut self) -> Vec<f32> {
         self.explicit_repeat();
         let mut vec = Vec::with_capacity(self.buffer.len());
@@ -155,7 +165,6 @@ impl Block {
         vec
     }
 }
-
 
 /// An iterator over frames in a block
 pub struct FrameIterator<'a> {

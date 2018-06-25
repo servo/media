@@ -1,3 +1,4 @@
+use audio::node::ChannelCountMode;
 use audio::block::FRAMES_PER_BLOCK_USIZE;
 use audio::node::AudioNodeEngine;
 use audio::block::{Block, Chunk};
@@ -24,7 +25,7 @@ impl AudioNodeEngine for ChannelMergerNode {
         debug_assert!(inputs.len() == self.channels as usize);
 
         let mut block = Block::default();
-        block.mix(self.channels);
+        block.repeat(self.channels);
         block.explicit_repeat();
 
         for (i, channel) in block.data_mut().chunks_mut(FRAMES_PER_BLOCK_USIZE).enumerate() {
@@ -39,4 +40,9 @@ impl AudioNodeEngine for ChannelMergerNode {
     fn input_count(&self) -> u32 {
         self.channels as u32
     }
+
+    fn channel_count_mode(&self) -> ChannelCountMode {
+        ChannelCountMode::Explicit
+    }
+
 }

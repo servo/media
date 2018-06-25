@@ -124,7 +124,7 @@ impl AudioSink for GStreamerAudioSink {
             // sometimes nothing reaches the output
             if chunk.len() == 0 {
                 chunk.blocks.push(Default::default());
-                chunk.blocks[0].mix(channels as u8);
+                chunk.blocks[0].repeat(channels as u8);
             }
             debug_assert!(chunk.len() == 1);
             let mut data = chunk.blocks[0].interleave();

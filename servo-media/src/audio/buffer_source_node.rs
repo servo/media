@@ -1,3 +1,4 @@
+use audio::node::ChannelCountMode;
 use audio::block::{Chunk, Tick, FRAMES_PER_BLOCK};
 use audio::node::{AudioNodeEngine, BlockInfo};
 use audio::param::Param;
@@ -105,6 +106,10 @@ impl AudioBufferSourceNode {
 impl AudioNodeEngine for AudioBufferSourceNode {
     fn input_count(&self) -> u32 {
         0
+    }
+
+    fn channel_count_mode(&self) -> ChannelCountMode {
+        ChannelCountMode::Max
     }
 
     fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
