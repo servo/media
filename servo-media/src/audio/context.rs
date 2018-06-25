@@ -23,6 +23,8 @@ pub enum ProcessingState {
     Closed,
 }
 
+pub type StateChangeResult = Result<(), ()>;
+
 /// Identify the type of playback, which affects tradeoffs between audio output
 /// and power consumption.
 pub enum LatencyCategory {
@@ -146,10 +148,10 @@ impl AudioContext {
     }
 
     pub fn current_time(&self) -> f64 {
-        let (sender, receiver) = mpsc::channel();
+        let (tx, rx) = mpsc::channel();
         let _ = self.sender
-            .send(AudioRenderThreadMsg::GetCurrentTime(sender));
-        receiver.recv().unwrap()
+            .send(AudioRenderThreadMsg::GetCurrentTime(tx));
+        rx.recv().unwrap()
     }
 
     pub fn create_node(&self, node_type: AudioNodeType) -> NodeId {
@@ -160,23 +162,13 @@ impl AudioContext {
     }
 
     /// Resume audio processing.
-    pub fn resume(&self) {
-        assert_eq!(self.state.get(), ProcessingState::Suspended);
-        self.state.set(ProcessingState::Running);
-        let _ = self.sender.send(AudioRenderThreadMsg::Resume);
-    }
+    make_state_change!(resume, Running, Resume);
 
     /// Suspend audio processing.
-    pub fn suspend(&self) {
-        self.state.set(ProcessingState::Suspended);
-        let _ = self.sender.send(AudioRenderThreadMsg::Suspend);
-    }
+    make_state_change!(suspend, Suspended, Suspend);
 
     /// Stop audio processing and close render thread.
-    pub fn close(&self) {
-        self.state.set(ProcessingState::Closed);
-        let _ = self.sender.send(AudioRenderThreadMsg::Close);
-    }
+    make_state_change!(close, Closed, Close);
 
     pub fn message_node(&self, id: NodeId, msg: AudioNodeMessage) {
         let _ = self.sender.send(AudioRenderThreadMsg::MessageNode(id, msg));
@@ -206,6 +198,7 @@ impl AudioContext {
 
 impl Drop for AudioContext {
     fn drop(&mut self) {
-        let _ = self.sender.send(AudioRenderThreadMsg::Close);
+        let (tx, _) = mpsc::channel();
+        let _ = self.sender.send(AudioRenderThreadMsg::Close(tx));
     }
 }

@@ -33,10 +33,10 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         osc2,
         AudioNodeMessage::OscillatorNode(OscillatorNodeMessage::Start(0.)),
         );
-    context.resume();
+    let _ = context.resume();
 
     thread::sleep(time::Duration::from_millis(5000));
-    context.close();
+    let _ = context.close();
 
 }
 

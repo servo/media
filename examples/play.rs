@@ -26,7 +26,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         AudioNodeMessage::OscillatorNode(OscillatorNodeMessage::Stop(3.)),
     );
     assert_eq!(context.current_time(), 0.);
-    context.resume();
+    let _ = context.resume();
     // 0.5s: Set frequency to 110Hz
     context.message_node(
         osc,
@@ -50,10 +50,10 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     );
     thread::sleep(time::Duration::from_millis(1200));
     // 1.2s: Suspend processing
-    context.suspend();
+    let _ = context.suspend();
     thread::sleep(time::Duration::from_millis(500));
     // 1.7s: Resume processing
-    context.resume();
+    let _ = context.resume();
     let current_time = context.current_time();
     assert!(current_time > 0.);
     // Leave some time to enjoy the silence after stopping the
@@ -61,7 +61,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     thread::sleep(time::Duration::from_millis(5000));
     // And check that we keep incrementing playback time.
     assert!(current_time < context.current_time());
-    context.close();
+    let _ = context.close();
 }
 
 fn main() {

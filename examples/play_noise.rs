@@ -24,9 +24,9 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         buffer_source,
         AudioNodeMessage::AudioBufferSourceNode(AudioBufferSourceNodeMessage::SetBuffer(buffer)),
     );
-    context.resume();
+    let _ = context.resume();
     thread::sleep(time::Duration::from_millis(5000));
-    context.close();
+    let _ = context.close();
 }
 
 fn main() {

@@ -17,7 +17,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let gain = context.create_node(AudioNodeType::GainNode(options));
     context.connect_ports(osc.output(0), gain.input(0));
     context.connect_ports(gain.output(0), dest.input(0));
-    context.resume();
+    let _ = context.resume();
     context.message_node(
         osc,
         AudioNodeMessage::OscillatorNode(OscillatorNodeMessage::Start(0.)),

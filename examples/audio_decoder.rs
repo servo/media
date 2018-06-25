@@ -56,9 +56,9 @@ fn run_example(servo_media: Arc<ServoMedia>) {
             decoded_audio.lock().unwrap().to_vec(),
         )),
     );
-    context.resume();
+    let _ = context.resume();
     thread::sleep(time::Duration::from_millis(5000));
-    context.close();
+    let _ = context.close();
 }
 
 fn main() {
