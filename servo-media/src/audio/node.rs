@@ -27,7 +27,7 @@ pub enum AudioNodeType {
     WaveShaperNode,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum ChannelCountMode {
     Max,
     ClampedMax,
