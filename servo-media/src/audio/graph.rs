@@ -140,6 +140,10 @@ impl AudioGraph {
                     .resize(curr.input_count() as usize, Default::default());
 
                 let mut max = 0; // max channel count
+                let mode = curr.channel_count_mode();
+                let count = curr.channel_count();
+                let interpretation = curr.channel_interpretation();
+
                 // all edges from this node point to its dependencies
                 for edge in self.graph.edges(ix) {
                     let edge = edge.weight();
@@ -150,8 +154,8 @@ impl AudioGraph {
                         .borrow_mut()
                         .take()
                         .expect("Cache should have been filled from traversal");
-                    if curr.channel_count_mode() == ChannelCountMode::Explicit {
-                        block.mix(curr.channel_count());
+                    if mode == ChannelCountMode::Explicit {
+                        block.mix(count, interpretation);
                     } else {
                         max = cmp::max(max, block.chan_count());
                     }
@@ -159,13 +163,13 @@ impl AudioGraph {
                     chunk[edge.input_idx] = block;
                 }
 
-                if curr.channel_count_mode() != ChannelCountMode::Explicit {
-                    if curr.channel_count_mode() == ChannelCountMode::ClampedMax {
-                        max = cmp::min(max, curr.channel_count());
+                if mode != ChannelCountMode::Explicit {
+                    if mode == ChannelCountMode::ClampedMax {
+                        max = cmp::min(max, count);
                     }
 
                     for block in &mut chunk.blocks {
-                        block.mix(max);
+                        block.mix(max, interpretation);
                     }
                 }
             }

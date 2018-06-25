@@ -1,3 +1,4 @@
+use audio::node::ChannelInterpretation;
 use audio::graph::PortIndex;
 use byte_slice_cast::*;
 use smallvec::SmallVec;
@@ -129,7 +130,7 @@ impl Block {
     /// upmix/downmix the channels if necessary
     ///
     /// Currently only supports upmixing from 1
-    pub fn mix(&mut self, channels: u8) {
+    pub fn mix(&mut self, channels: u8, interpretation: ChannelInterpretation) {
         if self.channels == channels {
             return
         }

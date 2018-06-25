@@ -35,6 +35,12 @@ pub enum ChannelCountMode {
 }
 
 
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum ChannelInterpretation {
+    Discrete,
+    Speakers
+}
+
 #[derive(Copy, Clone)]
 pub struct BlockInfo {
     pub sample_rate: f32,
@@ -68,7 +74,13 @@ pub trait AudioNodeEngine: Send {
         1
     }
 
-    fn channel_count_mode(&self) -> ChannelCountMode;
+    fn channel_count_mode(&self) -> ChannelCountMode {
+        ChannelCountMode::Max
+    }
+
+    fn channel_interpretation(&self) -> ChannelInterpretation {
+        ChannelInterpretation::Speakers
+    }
 
     /// If we're the destination node, extract the contained data
     fn destination_data(&mut self) -> Option<Chunk> {
