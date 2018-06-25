@@ -4,7 +4,7 @@ use audio::channel_node::ChannelMergerNode;
 use audio::context::ProcessingState;
 use audio::destination_node::DestinationNode;
 use audio::gain_node::GainNode;
-use audio::graph_impl::{GraphImpl, NodeId, PortId, InputPort, OutputPort};
+use audio::graph::{AudioGraph, NodeId, PortId, InputPort, OutputPort};
 use audio::node::BlockInfo;
 use audio::node::{AudioNodeEngine, AudioNodeMessage, AudioNodeType};
 use audio::oscillator_node::OscillatorNode;
@@ -26,7 +26,7 @@ pub enum AudioRenderThreadMsg {
 }
 
 pub struct AudioRenderThread {
-    pub graph: GraphImpl,
+    pub graph: AudioGraph,
     pub sink: Box<AudioSink>,
     pub state: ProcessingState,
     pub sample_rate: f32,
@@ -40,7 +40,7 @@ impl AudioRenderThread {
         event_queue: Receiver<AudioRenderThreadMsg>,
         sender: Sender<AudioRenderThreadMsg>,
         sample_rate: f32,
-        graph: GraphImpl,
+        graph: AudioGraph,
     ) -> Result<(), ()> {
         #[cfg(feature = "gst")]
         let sink = GStreamerAudioSink::new()?;

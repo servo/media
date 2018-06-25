@@ -1,5 +1,5 @@
 use audio::decoder::{AudioDecoder, AudioDecoderCallbacks, AudioDecoderOptions};
-use audio::graph_impl::{GraphImpl, InputPort, NodeId, OutputPort, PortId};
+use audio::graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
 use audio::node::{AudioNodeMessage, AudioNodeType};
 use audio::render_thread::AudioRenderThread;
 use audio::render_thread::AudioRenderThreadMsg;
@@ -120,12 +120,12 @@ impl AudioContext {
 
         let (sender, receiver) = mpsc::channel();
         let sender_ = sender.clone();
-        let graph_impl = GraphImpl::new();
-        let dest_node = graph_impl.dest_id();
+        let graph = AudioGraph::new();
+        let dest_node = graph.dest_id();
         Builder::new()
             .name("AudioRenderThread".to_owned())
             .spawn(move || {
-                AudioRenderThread::start(receiver, sender_, options.sample_rate, graph_impl)
+                AudioRenderThread::start(receiver, sender_, options.sample_rate, graph)
                     .expect("Could not start AudioRenderThread");
             })
         .unwrap();

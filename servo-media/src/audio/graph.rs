@@ -54,7 +54,7 @@ pub struct InputPort;
 /// of the node it is connected to
 pub struct OutputPort;
 
-pub struct GraphImpl {
+pub struct AudioGraph {
     graph: StableGraph<Node, Edge>,
     dest_id: NodeId,
 }
@@ -79,11 +79,11 @@ pub struct Edge {
     cache: RefCell<Option<Block>>,
 }
 
-impl GraphImpl {
+impl AudioGraph {
     pub fn new() -> Self {
         let mut graph = StableGraph::new();
         let dest_id = NodeId(graph.add_node(Node::new(Box::new(DestinationNode::new()))));
-        GraphImpl { graph, dest_id }
+        AudioGraph { graph, dest_id }
     }
 
     /// Create a node, obtain its id

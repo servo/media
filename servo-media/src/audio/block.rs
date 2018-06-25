@@ -1,4 +1,4 @@
-use audio::graph_impl::PortIndex;
+use audio::graph::PortIndex;
 use byte_slice_cast::*;
 use smallvec::SmallVec;
 use std::ops::*;

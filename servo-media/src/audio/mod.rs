@@ -8,7 +8,7 @@ pub mod context;
 pub mod decoder;
 pub mod destination_node;
 pub mod gain_node;
-pub mod graph_impl;
+pub mod graph;
 pub mod node;
 pub mod oscillator_node;
 pub mod param;
