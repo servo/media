@@ -1,211 +1,207 @@
-use audio::decoder::{AudioDecoder, AudioDecoderCallbacks, AudioDecoderOptions};
-use audio::graph_impl::{GraphImpl, InputPort, NodeId, OutputPort, PortId};
-use audio::node::{AudioNodeMessage, AudioNodeType};
-use audio::render_thread::AudioRenderThread;
-use audio::render_thread::AudioRenderThreadMsg;
-use std::cell::Cell;
-use std::sync::mpsc::{self, Sender};
-use std::thread::Builder;
+use audio::block::{Block, Chunk};
+use audio::destination_node::DestinationNode;
+use audio::node::AudioNodeEngine;
+use audio::node::BlockInfo;
+use petgraph::Direction;
+use petgraph::graph::DefaultIx;
+use petgraph::stable_graph::NodeIndex;
+use petgraph::stable_graph::StableGraph;
+use petgraph::visit::{DfsPostOrder, EdgeRef};
+use std::cell::{Ref, RefCell, RefMut};
 
-#[cfg(feature = "gst")]
-use backends::gstreamer::audio_decoder::GStreamerAudioDecoder;
+#[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash, Debug)]
+/// A unique identifier for nodes in the graph. Stable
+/// under graph mutation.
+pub struct NodeId(NodeIndex<DefaultIx>);
 
-/// Describes the state of the audio context on the control thread.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum ProcessingState {
-    /// The audio context is suspended (context time is not proceeding,
-    /// audio hardware may be powered down/released).
-    Suspended,
-    /// Audio is being processed.
-    Running,
-    /// The audio context has been released, and can no longer be used
-    /// to process audio.
-    Closed,
-}
-
-/// Identify the type of playback, which affects tradeoffs between audio output
-/// and power consumption.
-pub enum LatencyCategory {
-    /// Balance audio output latency and power consumption.
-    Balanced,
-    /// Provide the lowest audio output latency possible without glitching.
-    Interactive,
-    /// Prioritize sustained playback without interruption over audio output latency.
-    /// Lowest power consumption.
-    Playback,
-}
-
-/// User-specified options for a real time audio context.
-pub struct RealTimeAudioGraphOptions {
-    /// Number of samples that will play in one second, measured in Hz.
-    pub sample_rate: f32,
-    /// Type of playback.
-    pub latency_hint: LatencyCategory,
-}
-
-impl Default for RealTimeAudioGraphOptions {
-    fn default() -> Self {
-        Self {
-            sample_rate: 48000.,
-            latency_hint: LatencyCategory::Interactive,
-        }
+impl NodeId {
+    pub fn input(self, port: u32) -> PortId<InputPort> {
+        PortId(self, PortIndex(port, InputPort))
+    }
+    pub fn output(self, port: u32) -> PortId<OutputPort> {
+        PortId(self, PortIndex(port, OutputPort))
     }
 }
 
-/// User-specified options for an offline audio context.
-pub struct OfflineAudioGraphOptions {
-    /// The number of channels for this offline audio context.
-    pub channels: u32,
-    /// The length of the rendered audio buffer in sample-frames.
-    pub length: u32,
-    /// Number of samples that will be rendered in one second, measured in Hz.
-    pub sample_rate: f32,
-}
+/// A zero-indexed "port" for a node. Most nodes have one
+/// input and one output port, but some may have more.
+/// For example, a channel splitter node will have one output
+/// port for each channel.
+///
+/// These are essentially indices into the Chunks
+///
+/// Kind is a zero sized type and is useful for distinguishing
+/// between input and output ports (which may otherwise share indices)
+#[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash)]
+pub struct PortIndex<Kind>(pub u32, pub Kind);
 
-impl Default for OfflineAudioGraphOptions {
-    fn default() -> Self {
-        Self {
-            channels: 1,
-            length: 0,
-            sample_rate: 48000.,
-        }
+impl<Kind> PortId<Kind> {
+    pub fn node(&self) -> NodeId {
+        self.0
     }
 }
 
-impl From<RealTimeAudioGraphOptions> for AudioGraphOptions {
-    fn from(options: RealTimeAudioGraphOptions) -> Self {
-        AudioGraphOptions::RealTimeAudioGraph(options)
-    }
-}
+/// An identifier for a port.
+#[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash)]
+pub struct PortId<Kind>(NodeId, PortIndex<Kind>);
 
-impl From<OfflineAudioGraphOptions> for AudioGraphOptions {
-    fn from(options: OfflineAudioGraphOptions) -> Self {
-        AudioGraphOptions::OfflineAudioGraph(options)
-    }
-}
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+/// Marker type for denoting that the port is an input port
+/// of the node it is connected to
+pub struct InputPort;
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+/// Marker type for denoting that the port is an output port
+/// of the node it is connected to
+pub struct OutputPort;
 
-/// User-specified options for a real time or offline audio context.
-pub enum AudioGraphOptions {
-    RealTimeAudioGraph(RealTimeAudioGraphOptions),
-    OfflineAudioGraph(OfflineAudioGraphOptions),
-}
-
-impl Default for AudioGraphOptions {
-    fn default() -> Self {
-        AudioGraphOptions::RealTimeAudioGraph(Default::default())
-    }
-}
-
-/// Representation of an audio context on the control thread.
 pub struct AudioGraph {
-    /// Rendering thread communication channel.
-    sender: Sender<AudioRenderThreadMsg>,
-    /// State of the audio context on the control thread.
-    state: Cell<ProcessingState>,
-    /// Number of samples that will be played in one second.
-    sample_rate: f32,
-    /// The identifier of an AudioDestinationNode with a single input
-    /// representing the final destination for all audio.
-    dest_node: NodeId,
+    graph: StableGraph<Node, Edge>,
+    dest_id: NodeId,
+}
+
+pub struct Node {
+    node: RefCell<Box<AudioNodeEngine>>,
+}
+
+/// Edges go *to* the output port from the input port,
+///
+/// The edge direction is the *reverse* of the direction of sound
+/// since we need to do a postorder DFS traversal starting at the output
+pub struct Edge {
+    /// The index of the port on the input node
+    /// This is actually the /output/ of this edge
+    input_idx: PortIndex<InputPort>,
+    /// The index of the port on the output node
+    /// This is actually the /input/ of this edge
+    output_idx: PortIndex<OutputPort>,
+    /// When the from node finishes processing, it will push
+    /// its data into this cache for the input node to read
+    cache: RefCell<Option<Block>>,
 }
 
 impl AudioGraph {
-    /// Constructs a new audio context.
-    pub fn new(options: Option<AudioGraphOptions>) -> Self {
-        let options = match options.unwrap_or_default() {
-            AudioGraphOptions::RealTimeAudioGraph(options) => options,
-            AudioGraphOptions::OfflineAudioGraph(_) => unimplemented!(),
-        };
-        let sample_rate = options.sample_rate;
+    pub fn new() -> Self {
+        let mut graph = StableGraph::new();
+        let dest_id = NodeId(graph.add_node(Node::new(Box::new(DestinationNode::new()))));
+        AudioGraph { graph, dest_id }
+    }
 
-        let (sender, receiver) = mpsc::channel();
-        let sender_ = sender.clone();
-        let graph_impl = GraphImpl::new();
-        let dest_node = graph_impl.dest_id();
-        Builder::new()
-            .name("AudioRenderThread".to_owned())
-            .spawn(move || {
-                AudioRenderThread::start(receiver, sender_, options.sample_rate, graph_impl)
-                    .expect("Could not start AudioRenderThread");
-            })
-        .unwrap();
-        Self {
-            sender,
-            state: Cell::new(ProcessingState::Suspended),
-            sample_rate,
-            dest_node,
+    /// Create a node, obtain its id
+    pub fn add_node(&mut self, node: Box<AudioNodeEngine>) -> NodeId {
+        NodeId(self.graph.add_node(Node::new(node)))
+    }
+
+    /// Connect an output port to an input port
+    ///
+    /// While conceptually the edge goes *from* the output port *to* the input port,
+    /// the internal implementation reverses the direction of the edge
+    pub fn add_edge(&mut self, out: PortId<OutputPort>, inp: PortId<InputPort>) {
+        // Output ports can only have a single edge associated with them.
+        // Remove all others
+        let old = self
+            .graph
+            .edges_directed(out.node().0, Direction::Incoming)
+            .find(|e| e.weight().input_idx == inp.1)
+            .map(|e| e.id());
+        if let Some(old) = old {
+            self.graph.remove_edge(old);
+        }
+        // add a new edge
+        // XXXManishearth it is actually possible for two nodes to have
+        // multiple edges between them between
+        // different ports. We should represent this somehow.
+        self.graph.add_edge(inp.node().0, out.node().0, Edge::new(inp.1, out.1));
+    }
+
+    /// Get the id of the destination node in this graph
+    ///
+    /// All graphs have a destination node, with one input port
+    pub fn dest_id(&self) -> NodeId {
+        self.dest_id
+    }
+
+    /// For a given block, process all the data on this graph
+    pub fn process(&mut self, info: &BlockInfo) -> Chunk {
+        // DFS post order: Children are processed before their parent,
+        // which is exactly what we need since the parent depends on the
+        // children's output
+        //
+        // This will only visit each node once
+        let mut visit = DfsPostOrder::new(&self.graph, self.dest_id.0);
+        while let Some(ix) = visit.next(&self.graph) {
+            let mut curr = self.graph[ix].node.borrow_mut();
+            let mut chunk = Chunk::default();
+            // if we have inputs, collect all the computed blocks
+            // and construct a Chunk
+            if curr.input_count() > 0 {
+                // set the chunk to the correct size
+                chunk
+                    .blocks
+                    .resize(curr.input_count() as usize, Default::default());
+                // all edges from this node point to its dependencies
+                for edge in self.graph.edges(ix) {
+                    let edge = edge.weight();
+                    // XXXManishearth we can have multiple edges
+                    // hitting the same input port, we should deal with that
+                    let mut block = edge
+                        .cache
+                        .borrow_mut()
+                        .take()
+                        .expect("Cache should have been filled from traversal");
+                    block.mix(curr.channel_count());
+
+                    chunk[edge.input_idx] = block;
+                }
+            }
+
+            // actually run the node engine
+            let mut out = curr.process(chunk, info);
+
+            assert_eq!(out.len(), curr.output_count() as usize);
+            if curr.output_count() == 0 {
+                continue;
+            }
+
+            // all the edges to this node come from nodes which depend on it,
+            // i.e. the nodes it outputs to. Store the blocks for retrieval.
+            for edge in self.graph.edges_directed(ix, Direction::Incoming) {
+                let edge = edge.weight();
+                *edge.cache.borrow_mut() = Some(out[edge.output_idx].take());
+            }
+        }
+
+        // The destination node stores its output on itself, extract it.
+        self.graph[self.dest_id.0].node.borrow_mut()
+            .destination_data().expect("Destination node should have data cached")
+    }
+
+
+    /// Obtain a mutable reference to a node
+    pub fn node_mut(&self, ix: NodeId) -> RefMut<Box<AudioNodeEngine>> {
+        self.graph[ix.0].node.borrow_mut()
+    }
+
+    /// Obtain an immutable reference to a node
+    pub fn node(&self, ix: NodeId) -> Ref<Box<AudioNodeEngine>> {
+        self.graph[ix.0].node.borrow()
+    }
+}
+
+impl Node {
+    pub fn new(node: Box<AudioNodeEngine>) -> Self {
+        Node {
+            node: RefCell::new(node),
         }
     }
+}
 
-    pub fn state(&self) -> ProcessingState {
-        self.state.get()
-    }
-
-    pub fn dest_node(&self) -> NodeId {
-        self.dest_node
-    }
-
-    pub fn current_time(&self) -> f64 {
-        let (sender, receiver) = mpsc::channel();
-        let _ = self.sender
-            .send(AudioRenderThreadMsg::GetCurrentTime(sender));
-        receiver.recv().unwrap()
-    }
-
-    pub fn create_node(&self, node_type: AudioNodeType) -> NodeId {
-        let (tx, rx) = mpsc::channel();
-        let _ = self.sender
-            .send(AudioRenderThreadMsg::CreateNode(node_type, tx));
-        rx.recv().unwrap()
-    }
-
-    /// Resume audio processing.
-    pub fn resume(&self) {
-        assert_eq!(self.state.get(), ProcessingState::Suspended);
-        self.state.set(ProcessingState::Running);
-        let _ = self.sender.send(AudioRenderThreadMsg::Resume);
-    }
-
-    /// Suspend audio processing.
-    pub fn suspend(&self) {
-        self.state.set(ProcessingState::Suspended);
-        let _ = self.sender.send(AudioRenderThreadMsg::Suspend);
-    }
-
-    /// Stop audio processing and close render thread.
-    pub fn close(&self) {
-        self.state.set(ProcessingState::Closed);
-        let _ = self.sender.send(AudioRenderThreadMsg::Close);
-    }
-
-    pub fn message_node(&self, id: NodeId, msg: AudioNodeMessage) {
-        let _ = self.sender.send(AudioRenderThreadMsg::MessageNode(id, msg));
-    }
-
-    pub fn connect_ports(&self, from: PortId<OutputPort>, to: PortId<InputPort>) {
-        let _ = self.sender
-            .send(AudioRenderThreadMsg::ConnectPorts(from, to));
-    }
-
-    /// Asynchronously decodes the audio file data contained in the given
-    /// buffer.
-    pub fn decode_audio_data(&self, data: Vec<u8>, callbacks: AudioDecoderCallbacks) {
-        let mut options = AudioDecoderOptions::default();
-        options.sample_rate = self.sample_rate;
-        Builder::new()
-            .name("AudioDecoder".to_owned())
-            .spawn(move || {
-                #[cfg(feature = "gst")]
-                let audio_decoder = GStreamerAudioDecoder::new();
-
-                audio_decoder.decode(data, callbacks, Some(options));
-            })
-        .unwrap();
+impl Edge {
+    pub fn new(input_idx: PortIndex<InputPort>, output_idx: PortIndex<OutputPort>) -> Self {
+        Edge {
+            input_idx,
+            output_idx,
+            cache: RefCell::new(None),
+        }
     }
 }
 
-impl Drop for AudioGraph {
-    fn drop(&mut self) {
-        let _ = self.sender.send(AudioRenderThreadMsg::Close);
-    }
-}

@@ -1,10 +1,10 @@
 use audio::block::{Chunk, Tick, FRAMES_PER_BLOCK};
 use audio::buffer_source_node::AudioBufferSourceNode;
 use audio::channel_node::ChannelMergerNode;
+use audio::context::{ProcessingState, StateChangeResult};
 use audio::destination_node::DestinationNode;
 use audio::gain_node::GainNode;
-use audio::graph::ProcessingState;
-use audio::graph_impl::{GraphImpl, NodeId, PortId, InputPort, OutputPort};
+use audio::graph::{AudioGraph, NodeId, PortId, InputPort, OutputPort};
 use audio::node::BlockInfo;
 use audio::node::{AudioNodeEngine, AudioNodeMessage, AudioNodeType};
 use audio::oscillator_node::OscillatorNode;
@@ -18,15 +18,15 @@ pub enum AudioRenderThreadMsg {
     CreateNode(AudioNodeType, Sender<NodeId>),
     ConnectPorts(PortId<OutputPort>, PortId<InputPort>),
     MessageNode(NodeId, AudioNodeMessage),
-    Resume,
-    Suspend,
-    Close,
+    Resume(Sender<StateChangeResult>),
+    Suspend(Sender<StateChangeResult>),
+    Close(Sender<StateChangeResult>),
     SinkNeedData,
     GetCurrentTime(Sender<f64>),
 }
 
 pub struct AudioRenderThread {
-    pub graph: GraphImpl,
+    pub graph: AudioGraph,
     pub sink: Box<AudioSink>,
     pub state: ProcessingState,
     pub sample_rate: f32,
@@ -40,8 +40,8 @@ impl AudioRenderThread {
         event_queue: Receiver<AudioRenderThreadMsg>,
         sender: Sender<AudioRenderThreadMsg>,
         sample_rate: f32,
-        graph: GraphImpl,
-    ) -> Result<(), ()> {
+        graph: AudioGraph,
+        ) -> Result<(), ()> {
         #[cfg(feature = "gst")]
         let sink = GStreamerAudioSink::new()?;
 
@@ -60,29 +60,11 @@ impl AudioRenderThread {
         Ok(())
     }
 
-    fn resume(&mut self) {
-        if self.state == ProcessingState::Running {
-            return;
-        }
-        self.state = ProcessingState::Running;
-        self.sink.play();
-    }
+    make_render_thread_state_change!(resume, Running, play);
 
-    fn suspend(&mut self) {
-        if self.state == ProcessingState::Suspended {
-            return;
-        }
-        self.state = ProcessingState::Suspended;
-        self.sink.stop();
-    }
+    make_render_thread_state_change!(suspend, Suspended, stop);
 
-    fn close(&mut self) {
-        if self.state == ProcessingState::Closed {
-            return;
-        }
-        self.state = ProcessingState::Closed;
-        self.sink.stop();
-    }
+    make_render_thread_state_change!(close, Closed, stop);
 
     fn create_node(&mut self, node_type: AudioNodeType) -> NodeId {
         let node: Box<AudioNodeEngine> = match node_type {
@@ -121,14 +103,14 @@ impl AudioRenderThread {
                 AudioRenderThreadMsg::ConnectPorts(output, input) => {
                     context.connect_ports(output, input);
                 }
-                AudioRenderThreadMsg::Resume => {
-                    context.resume();
+                AudioRenderThreadMsg::Resume(tx) => {
+                    let _ = tx.send(context.resume());
                 }
-                AudioRenderThreadMsg::Suspend => {
-                    context.suspend();
+                AudioRenderThreadMsg::Suspend(tx) => {
+                    let _ = tx.send(context.suspend());
                 }
-                AudioRenderThreadMsg::Close => {
-                    context.close();
+                AudioRenderThreadMsg::Close(tx) => {
+                    let _ = tx.send(context.close());
                     break_loop = true;
                 }
                 AudioRenderThreadMsg::GetCurrentTime(response) => {

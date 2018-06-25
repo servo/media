@@ -47,12 +47,12 @@ impl AudioSink for GStreamerAudioSink {
         &self,
         sample_rate: f32,
         graph_thread_channel: Sender<AudioRenderThreadMsg>,
-    ) -> Result<(), ()> {
+        ) -> Result<(), ()> {
         self.sample_rate.set(sample_rate);
         let audio_info =
             gst_audio::AudioInfo::new(gst_audio::AUDIO_FORMAT_F32, sample_rate as u32, 2)
-                .build()
-                .ok_or(())?;
+            .build()
+            .ok_or(())?;
         self.appsrc.set_caps(&audio_info.to_caps().unwrap());
         *self.audio_info.borrow_mut() = Some(audio_info);
         self.appsrc.set_property_format(gst::Format::Time);
@@ -68,7 +68,7 @@ impl AudioSink for GStreamerAudioSink {
                 };
                 appsrc.set_callbacks(AppSrcCallbacks::new().need_data(need_data).build());
             })
-            .unwrap();
+        .unwrap();
 
         let appsrc = self.appsrc.as_ref().clone().upcast();
         let resample = gst::ElementFactory::make("audioresample", None).ok_or(())?;
@@ -82,12 +82,12 @@ impl AudioSink for GStreamerAudioSink {
         Ok(())
     }
 
-    fn play(&self) {
-        let _ = self.pipeline.set_state(gst::State::Playing);
+    fn play(&self) -> Result<(), ()> {
+        self.pipeline.set_state(gst::State::Playing).into_result().map(|_| ()).map_err(|_| ())
     }
 
-    fn stop(&self) {
-        let _ = self.pipeline.set_state(gst::State::Paused);
+    fn stop(&self) -> Result<(), ()> {
+        self.pipeline.set_state(gst::State::Paused).into_result().map(|_| ()).map_err(|_| ())
     }
 
     fn has_enough_data(&self) -> bool {
@@ -149,6 +149,6 @@ impl AudioSink for GStreamerAudioSink {
 
 impl Drop for GStreamerAudioSink {
     fn drop(&mut self) {
-        self.stop();
+        let _ = self.stop();
     }
 }
