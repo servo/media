@@ -129,7 +129,13 @@ impl Block {
     }
 
     pub fn data_chan_frame(&self, frame: usize, chan: u8) -> f32 {
-        self.buffer[frame + chan as usize * FRAMES_PER_BLOCK_USIZE]
+        let offset = if self.repeat {
+            0
+        } else {
+            chan as usize * FRAMES_PER_BLOCK_USIZE
+        };
+
+        self.buffer[frame + offset]
     }
 
     /// upmix/downmix the channels if necessary
@@ -171,7 +177,6 @@ impl Block {
             // - Quad: [L, R, SL, SR]
             // - 5.1: [L, R, C, LFE, SL, SR]
 
-            self.explicit_repeat();
             match (self.channels, channels) {
                 // Upmixing
                 // https://webaudio.github.io/web-audio-api/#UpMix-sub
@@ -208,6 +213,11 @@ impl Block {
 
                 // quad
                 (4, 6) => {
+                    // we can avoid this and instead calculate offsets
+                    // based off whether or not this is `repeat`, but
+                    // a `repeat` quad block should be rare
+                    self.explicit_repeat();
+
                     let mut v = Vec::with_capacity(6 * FRAMES_PER_BLOCK_USIZE);
                     // output.{L, R} = input.{L, R}
                     v.extend(&self.buffer[0 .. 2 * FRAMES_PER_BLOCK_USIZE]);
@@ -231,6 +241,7 @@ impl Block {
                     }
                     self.buffer = v;
                     self.channels = 1;
+                    self.repeat = false;
                 }
                 (4, 1) => {
                     let mut v = Vec::with_capacity(FRAMES_PER_BLOCK_USIZE);
@@ -243,6 +254,7 @@ impl Block {
                     }
                     self.buffer = v;
                     self.channels = 1;
+                    self.repeat = false;
                 }
                 (6, 1) => {
                     let mut v = Vec::with_capacity(FRAMES_PER_BLOCK_USIZE);
@@ -262,6 +274,7 @@ impl Block {
                     }
                     self.buffer = v;
                     self.channels = 1;
+                    self.repeat = false;
                 }
 
                 // stereo
@@ -277,6 +290,7 @@ impl Block {
                     }
                     self.buffer = v;
                     self.channels = 2;
+                    self.repeat = false;
                 }
                 (6, 2) => {
                     let mut v = Vec::with_capacity(2 * FRAMES_PER_BLOCK_USIZE);
@@ -292,6 +306,7 @@ impl Block {
                     }
                     self.buffer = v;
                     self.channels = 2;
+                    self.repeat = false;
                 }
 
                 // quad
@@ -315,6 +330,7 @@ impl Block {
                     }
                     self.buffer = v;
                     self.channels = 4;
+                    self.repeat = false;
                 }
 
                 // If it's not a known kind of speaker configuration, treat as
