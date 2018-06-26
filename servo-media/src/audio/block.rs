@@ -135,11 +135,75 @@ impl Block {
             return
         }
 
-        assert!(self.channels == 1 && channels > 1);
-        self.channels = channels;
-        if !self.is_silence() {
-            self.repeat = true;
+        if self.is_silence() {
+            self.channels = channels;
+            return;
         }
+
+        if interpretation == ChannelInterpretation::Discrete {
+            // truncate repeats
+            if self.repeat && self.channels > channels {
+                self.channels = channels;
+                return;
+            }
+            self.resize_silence(channels);
+        } else {
+            match (self.channels, channels) {
+                // Upmixing
+
+                // mono
+                (1, 2) => {
+                    // output.{L, R} = input
+                    self.repeat(2);
+                }
+                (1, 4) => {
+                    // output.{L, R} = input
+                    self.repeat(2);
+                    // output.{SL, SR} = 0
+                    self.resize_silence(4);
+                }
+                (1, 6) => {
+                    let mut v = Vec::with_capacity(channels as usize * FRAMES_PER_BLOCK_USIZE);
+                    // output.{L, R} = 0
+                    v.resize(2 * FRAMES_PER_BLOCK_USIZE, 0.);
+                    // output.C = input
+                    v.extend(&self.buffer);
+                    self.buffer = v;
+                    // output.{LFE, SL, SR} = 0
+                    self.resize_silence(6);
+                }
+
+                // stereo
+                (2, 4) | (2, 6) => {
+                    // output.{L, R} = input.{L, R}
+                    // (5.1) output.{C, LFE} = 0
+                    // output.{SL, SR} = 0
+                    self.resize_silence(channels);
+                }
+
+                // quad
+                (4, 6) => {
+                    let mut v = Vec::with_capacity(6 * FRAMES_PER_BLOCK_USIZE);
+                    // output.{L, R} = input.{L, R}
+                    v.extend(&self.buffer[0 .. 2 * FRAMES_PER_BLOCK_USIZE]);
+                    // output.{C, LFE} = 0
+                    v.resize(4 * FRAMES_PER_BLOCK_USIZE, 0.);
+                    // output.{SL, R} = input.{SL, SR}
+                    v.extend(&self.buffer[2 * FRAMES_PER_BLOCK_USIZE ..]);
+                    self.buffer = v;
+                    self.channels = channels;
+                }
+                _ => ()
+            }
+            debug_assert!(self.channels == channels);
+        }
+    }
+
+    /// Resize to add or remove channels, fill extra channels with silence
+    fn resize_silence(&mut self, channels: u8) {
+        self.explicit_repeat();
+        self.buffer.resize(FRAMES_PER_BLOCK_USIZE * channels as usize, 0.);
+        self.channels = channels;
     }
 
     /// Take a single-channel block and repeat the
