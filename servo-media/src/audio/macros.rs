@@ -2,15 +2,22 @@
 macro_rules! make_message_handler(
     (
         $(
-                $node:ident: $handler:ident
-        ),+
+            $node:ident: $handler:ident
+         ),+
     ) => (
         fn message(&mut self, msg: ::audio::node::AudioNodeMessage, sample_rate: f32) {
             match msg {
                 $(::audio::node::AudioNodeMessage::$node(m) => self.$handler(m, sample_rate)),+,
-                ::audio::node::AudioNodeMessage::GetInputCount(tx) => tx.send(self.input_count()).unwrap(),
-                ::audio::node::AudioNodeMessage::GetOutputCount(tx) => tx.send(self.output_count()).unwrap(),
-                ::audio::node::AudioNodeMessage::GetChannelCount(tx) => tx.send(self.channel_count()).unwrap(),
+                ::audio::node::AudioNodeMessage::GetInputCount(tx) =>
+                    tx.send(self.input_count()).unwrap(),
+                ::audio::node::AudioNodeMessage::GetOutputCount(tx) =>
+                    tx.send(self.output_count()).unwrap(),
+                ::audio::node::AudioNodeMessage::GetChannelCount(tx) =>
+                    tx.send(self.channel_count()).unwrap(),
+                ::audio::node::AudioNodeMessage::GetChannelCountMode(tx) =>
+                    tx.send(self.channel_count_mode()).unwrap(),
+                ::audio::node::AudioNodeMessage::GetChannelInterpretation(tx) =>
+                    tx.send(self.channel_interpretation()).unwrap(),
                 _ => (),
             }
         });
@@ -37,5 +44,5 @@ macro_rules! make_render_thread_state_change(
             self.state = ProcessingState::$state;
             self.sink.$sink_method()
         }
+        );
     );
-);

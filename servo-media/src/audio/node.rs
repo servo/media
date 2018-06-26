@@ -94,6 +94,8 @@ pub enum AudioNodeMessage {
     AudioScheduledSourceNode(AudioScheduledSourceNodeMessage),
     GainNode(GainNodeMessage),
     GetChannelCount(Sender<u8>),
+    GetChannelCountMode(Sender<ChannelCountMode>),
+    GetChannelInterpretation(Sender<ChannelInterpretation>),
     GetInputCount(Sender<u32>),
     GetOutputCount(Sender<u32>),
     OscillatorNode(OscillatorNodeMessage),
