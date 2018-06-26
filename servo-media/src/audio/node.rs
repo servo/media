@@ -90,11 +90,12 @@ pub trait AudioNodeEngine: Send {
 }
 
 pub enum AudioNodeMessage {
+    AudioBufferSourceNode(AudioBufferSourceNodeMessage),
+    AudioScheduledSourceNode(AudioScheduledSourceNodeMessage),
+    GainNode(GainNodeMessage),
+    GetChannelCount(Sender<u8>),
     GetInputCount(Sender<u32>),
     GetOutputCount(Sender<u32>),
-    GetChannelCount(Sender<u8>),
-    AudioBufferSourceNode(AudioBufferSourceNodeMessage),
-    GainNode(GainNodeMessage),
     OscillatorNode(OscillatorNodeMessage),
 }
 
@@ -108,4 +109,11 @@ pub trait AudioScheduledSourceNode {
     /// Schedules a sound to stop playback at an exact time.
     /// Returns true if the scheduling request is processed successfully.
     fn stop(&mut self, tick: Tick) -> bool;
+}
+
+pub enum AudioScheduledSourceNodeMessage {
+    /// Schedules a sound to playback at an exact time.
+    Start(f64),
+    /// Schedules a sound to stop playback at an exact time.
+    Stop(f64),
 }

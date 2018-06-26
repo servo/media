@@ -1,9 +1,13 @@
 #[macro_export]
 macro_rules! make_message_handler(
-    ($node:ident) => (
+    (
+        $(
+                $node:ident: $handler:ident
+        ),+
+    ) => (
         fn message(&mut self, msg: ::audio::node::AudioNodeMessage, sample_rate: f32) {
             match msg {
-                ::audio::node::AudioNodeMessage::$node(m) => self.handle_message(m, sample_rate),
+                $(::audio::node::AudioNodeMessage::$node(m) => self.$handler(m, sample_rate)),+,
                 ::audio::node::AudioNodeMessage::GetInputCount(tx) => tx.send(self.input_count()).unwrap(),
                 ::audio::node::AudioNodeMessage::GetOutputCount(tx) => tx.send(self.output_count()).unwrap(),
                 ::audio::node::AudioNodeMessage::GetChannelCount(tx) => tx.send(self.channel_count()).unwrap(),
