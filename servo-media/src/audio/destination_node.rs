@@ -1,3 +1,4 @@
+use audio::node::ChannelCountMode;
 use audio::node::{AudioNodeEngine, BlockInfo};
 use audio::block::Chunk;
 
@@ -27,5 +28,9 @@ impl AudioNodeEngine for DestinationNode {
         // currently hardcoded here and in our invocation of
         // gst_audio::AudioInfo::new
         2
+    }
+
+    fn channel_count_mode(&self) -> ChannelCountMode {
+        ChannelCountMode::Explicit
     }
 }

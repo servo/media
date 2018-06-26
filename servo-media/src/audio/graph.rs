@@ -1,13 +1,13 @@
 use audio::block::{Block, Chunk};
 use audio::destination_node::DestinationNode;
-use audio::node::AudioNodeEngine;
-use audio::node::BlockInfo;
+use audio::node::{AudioNodeEngine, BlockInfo, ChannelCountMode};
 use petgraph::Direction;
 use petgraph::graph::DefaultIx;
 use petgraph::stable_graph::NodeIndex;
 use petgraph::stable_graph::StableGraph;
 use petgraph::visit::{DfsPostOrder, EdgeRef};
 use std::cell::{Ref, RefCell, RefMut};
+use std::cmp;
 
 #[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash, Debug)]
 /// A unique identifier for nodes in the graph. Stable
@@ -138,6 +138,12 @@ impl AudioGraph {
                 chunk
                     .blocks
                     .resize(curr.input_count() as usize, Default::default());
+
+                let mut max = 0; // max channel count
+                let mode = curr.channel_count_mode();
+                let count = curr.channel_count();
+                let interpretation = curr.channel_interpretation();
+
                 // all edges from this node point to its dependencies
                 for edge in self.graph.edges(ix) {
                     let edge = edge.weight();
@@ -148,11 +154,26 @@ impl AudioGraph {
                         .borrow_mut()
                         .take()
                         .expect("Cache should have been filled from traversal");
-                    block.mix(curr.channel_count());
+                    if mode == ChannelCountMode::Explicit {
+                        block.mix(count, interpretation);
+                    } else {
+                        max = cmp::max(max, block.chan_count());
+                    }
 
                     chunk[edge.input_idx] = block;
                 }
+
+                if mode != ChannelCountMode::Explicit {
+                    if mode == ChannelCountMode::ClampedMax {
+                        max = cmp::min(max, count);
+                    }
+
+                    for block in &mut chunk.blocks {
+                        block.mix(max, interpretation);
+                    }
+                }
             }
+
 
             // actually run the node engine
             let mut out = curr.process(chunk, info);

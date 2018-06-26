@@ -1,3 +1,4 @@
+use audio::node::ChannelCountMode;
 use audio::block::{Chunk, Tick};
 use audio::node::{AudioNodeEngine, BlockInfo};
 use audio::param::{Param, UserAutomationEvent};
@@ -139,6 +140,10 @@ impl AudioNodeEngine for OscillatorNode {
 
     fn input_count(&self) -> u32 {
         0
+    }
+
+    fn channel_count_mode(&self) -> ChannelCountMode {
+        ChannelCountMode::Max
     }
 
     make_message_handler!(OscillatorNode);

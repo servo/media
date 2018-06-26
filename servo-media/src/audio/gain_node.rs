@@ -1,3 +1,4 @@
+use audio::node::ChannelCountMode;
 use audio::block::Chunk;
 use audio::block::Tick;
 use audio::node::AudioNodeEngine;
@@ -60,6 +61,10 @@ impl AudioNodeEngine for GainNode {
             }
         }
         inputs
+    }
+
+    fn channel_count_mode(&self) -> ChannelCountMode {
+        ChannelCountMode::Max
     }
 
     make_message_handler!(GainNode);

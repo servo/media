@@ -1,3 +1,5 @@
+use std::f32::consts::SQRT_2;
+use audio::node::ChannelInterpretation;
 use audio::graph::PortIndex;
 use byte_slice_cast::*;
 use smallvec::SmallVec;
@@ -126,15 +128,232 @@ impl Block {
         self.buffer.is_empty()
     }
 
+    pub fn data_chan_frame(&self, frame: usize, chan: u8) -> f32 {
+        let offset = if self.repeat {
+            0
+        } else {
+            chan as usize * FRAMES_PER_BLOCK_USIZE
+        };
+
+        self.buffer[frame + offset]
+    }
+
     /// upmix/downmix the channels if necessary
     ///
     /// Currently only supports upmixing from 1
-    pub fn mix(&mut self, channels: u8) {
+    pub fn mix(&mut self, channels: u8, interpretation: ChannelInterpretation) {
+        // If we're not changing the number of channels, we
+        // don't actually need to mix
         if self.channels == channels {
             return
         }
 
-        assert!(self.channels == 1 && channels > 1);
+        // Silent buffers stay silent
+        if self.is_silence() {
+            self.channels = channels;
+            return
+        }
+
+        if interpretation == ChannelInterpretation::Discrete {
+            // discrete downmixes by truncation, upmixes by adding
+            // silent channels
+
+            // If we're discrete, have a repeat, and are downmixing,
+            // just truncate by changing the channel value
+            if self.repeat && self.channels > channels {
+                self.channels = channels;
+            } else {
+                // otherwise resize the buffer, silent-filling when necessary
+                self.resize_silence(channels);
+            }
+        } else {
+            // For speakers, we have to do special things based on the
+            // interpretation of the channels for each kind of speakers
+
+            // The layout of each speaker kind is:
+            //
+            // - Mono: [The mono channel]
+            // - Stereo: [L, R]
+            // - Quad: [L, R, SL, SR]
+            // - 5.1: [L, R, C, LFE, SL, SR]
+
+            match (self.channels, channels) {
+                // Upmixing
+                // https://webaudio.github.io/web-audio-api/#UpMix-sub
+
+                // mono
+                (1, 2) => {
+                    // output.{L, R} = input
+                    self.repeat(2);
+                }
+                (1, 4) => {
+                    // output.{L, R} = input
+                    self.repeat(2);
+                    // output.{SL, SR} = 0
+                    self.resize_silence(4);
+                }
+                (1, 6) => {
+                    let mut v = Vec::with_capacity(channels as usize * FRAMES_PER_BLOCK_USIZE);
+                    // output.{L, R} = 0
+                    v.resize(2 * FRAMES_PER_BLOCK_USIZE, 0.);
+                    // output.C = input
+                    v.extend(&self.buffer);
+                    self.buffer = v;
+                    // output.{LFE, SL, SR} = 0
+                    self.resize_silence(6);
+                }
+
+                // stereo
+                (2, 4) | (2, 6) => {
+                    // output.{L, R} = input.{L, R}
+                    // (5.1) output.{C, LFE} = 0
+                    // output.{SL, SR} = 0
+                    self.resize_silence(channels);
+                }
+
+                // quad
+                (4, 6) => {
+                    // we can avoid this and instead calculate offsets
+                    // based off whether or not this is `repeat`, but
+                    // a `repeat` quad block should be rare
+                    self.explicit_repeat();
+
+                    let mut v = Vec::with_capacity(6 * FRAMES_PER_BLOCK_USIZE);
+                    // output.{L, R} = input.{L, R}
+                    v.extend(&self.buffer[0 .. 2 * FRAMES_PER_BLOCK_USIZE]);
+                    // output.{C, LFE} = 0
+                    v.resize(4 * FRAMES_PER_BLOCK_USIZE, 0.);
+                    // output.{SL, R} = input.{SL, SR}
+                    v.extend(&self.buffer[2 * FRAMES_PER_BLOCK_USIZE ..]);
+                    self.buffer = v;
+                    self.channels = channels;
+                }
+
+                // Downmixing
+                // https://webaudio.github.io/web-audio-api/#down-mix
+
+                // mono
+                (2, 1) => {
+                    let mut v = Vec::with_capacity(FRAMES_PER_BLOCK_USIZE);
+                    for frame in 0..FRAMES_PER_BLOCK_USIZE {
+                        // output = 0.5 * (input.L + input.R);
+                        v[frame] = 0.5 * (self.data_chan_frame(frame, 0) + self.data_chan_frame(frame, 1));
+                    }
+                    self.buffer = v;
+                    self.channels = 1;
+                    self.repeat = false;
+                }
+                (4, 1) => {
+                    let mut v = Vec::with_capacity(FRAMES_PER_BLOCK_USIZE);
+                    for frame in 0..FRAMES_PER_BLOCK_USIZE {
+                        // output = 0.5 * (input.L + input.R + input.SL + input.SR);
+                        v[frame] = 0.25 * (self.data_chan_frame(frame, 0) +
+                                           self.data_chan_frame(frame, 1) +
+                                           self.data_chan_frame(frame, 2) +
+                                           self.data_chan_frame(frame, 3));
+                    }
+                    self.buffer = v;
+                    self.channels = 1;
+                    self.repeat = false;
+                }
+                (6, 1) => {
+                    let mut v = Vec::with_capacity(FRAMES_PER_BLOCK_USIZE);
+                    for frame in 0..FRAMES_PER_BLOCK_USIZE {
+                        // output = sqrt(0.5) * (input.L + input.R) + input.C + 0.5 * (input.SL + input.SR)
+                        v[frame] =
+                            // sqrt(0.5) * (input.L + input.R)
+                            SQRT_2 * (self.data_chan_frame(frame, 0) +
+                                      self.data_chan_frame(frame, 1)) +
+                            // input.C
+                            self.data_chan_frame(frame, 2) +
+                            // (ignore LFE)
+                            // + 0 * self.buffer[frame + 3 * FRAMES_PER_BLOCK_USIZE]
+                            // 0.5 * (input.SL + input.SR)
+                            0.5 * (self.data_chan_frame(frame, 4) +
+                                   self.data_chan_frame(frame, 5));
+                    }
+                    self.buffer = v;
+                    self.channels = 1;
+                    self.repeat = false;
+                }
+
+                // stereo
+                (4, 2) => {
+                    let mut v = Vec::with_capacity(2 * FRAMES_PER_BLOCK_USIZE);
+                    for frame in 0..FRAMES_PER_BLOCK_USIZE {
+                        // output.L = 0.5 * (input.L + input.SL)
+                        v[frame] =
+                            0.5 * (self.data_chan_frame(frame, 0) + self.data_chan_frame(frame, 2));
+                        // output.R = 0.5 * (input.R + input.SR)
+                        v[frame + FRAMES_PER_BLOCK_USIZE] =
+                            0.5 * (self.data_chan_frame(frame, 1) + self.data_chan_frame(frame, 3));
+                    }
+                    self.buffer = v;
+                    self.channels = 2;
+                    self.repeat = false;
+                }
+                (6, 2) => {
+                    let mut v = Vec::with_capacity(2 * FRAMES_PER_BLOCK_USIZE);
+                    for frame in 0..FRAMES_PER_BLOCK_USIZE {
+                        // output.L = L + sqrt(0.5) * (input.C + input.SL)
+                        v[frame] =
+                            self.data_chan_frame(frame, 0) +
+                            SQRT_2 * (self.data_chan_frame(frame, 2) + self.data_chan_frame(frame, 4));
+                        // output.R = R + sqrt(0.5) * (input.C + input.SR)
+                        v[frame + FRAMES_PER_BLOCK_USIZE] =
+                            self.data_chan_frame(frame, 1) +
+                            SQRT_2 * (self.data_chan_frame(frame, 2) + self.data_chan_frame(frame, 5));
+                    }
+                    self.buffer = v;
+                    self.channels = 2;
+                    self.repeat = false;
+                }
+
+                // quad
+                (6, 4) => {
+                    let mut v = Vec::with_capacity(6 * FRAMES_PER_BLOCK_USIZE);
+                    for frame in 0..FRAMES_PER_BLOCK_USIZE {
+                        // output.L = L + sqrt(0.5) * input.C
+                        v[frame] =
+                            self.data_chan_frame(frame, 0) +
+                            SQRT_2 * self.data_chan_frame(frame, 2);
+                        // output.R = R + sqrt(0.5) * input.C
+                        v[frame + FRAMES_PER_BLOCK_USIZE] =
+                            self.data_chan_frame(frame, 1) +
+                            SQRT_2 * self.data_chan_frame(frame, 2);
+                        // output.SL = input.SL
+                        v[frame + 2 * FRAMES_PER_BLOCK_USIZE] =
+                            self.data_chan_frame(frame, 4);
+                        // output.SR = input.SR
+                     v[frame + 3 * FRAMES_PER_BLOCK_USIZE] =
+                            self.data_chan_frame(frame, 5);
+                    }
+                    self.buffer = v;
+                    self.channels = 4;
+                    self.repeat = false;
+                }
+
+                // If it's not a known kind of speaker configuration, treat as
+                // discrete
+                _ => {
+                    self.mix(channels, ChannelInterpretation::Discrete);
+                }
+            }
+            debug_assert!(self.channels == channels);
+        }
+    }
+
+    /// Resize to add or remove channels, fill extra channels with silence
+    fn resize_silence(&mut self, channels: u8) {
+        self.explicit_repeat();
+        self.buffer.resize(FRAMES_PER_BLOCK_USIZE * channels as usize, 0.);
+        self.channels = channels;
+    }
+
+    /// Take a single-channel block and repeat the
+    /// channel
+    pub fn repeat(&mut self, channels: u8) {
+        debug_assert!(self.channels == 1);
         self.channels = channels;
         if !self.is_silence() {
             self.repeat = true;
@@ -155,7 +374,6 @@ impl Block {
         vec
     }
 }
-
 
 /// An iterator over frames in a block
 pub struct FrameIterator<'a> {

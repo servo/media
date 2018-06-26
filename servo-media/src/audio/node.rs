@@ -27,6 +27,20 @@ pub enum AudioNodeType {
     WaveShaperNode,
 }
 
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum ChannelCountMode {
+    Max,
+    ClampedMax,
+    Explicit
+}
+
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum ChannelInterpretation {
+    Discrete,
+    Speakers
+}
+
 #[derive(Copy, Clone)]
 pub struct BlockInfo {
     pub sample_rate: f32,
@@ -58,6 +72,14 @@ pub trait AudioNodeEngine: Send {
     /// Number of input channels for each input port
     fn channel_count(&self) -> u8 {
         1
+    }
+
+    fn channel_count_mode(&self) -> ChannelCountMode {
+        ChannelCountMode::Max
+    }
+
+    fn channel_interpretation(&self) -> ChannelInterpretation {
+        ChannelInterpretation::Speakers
     }
 
     /// If we're the destination node, extract the contained data
