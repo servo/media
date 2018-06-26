@@ -64,8 +64,6 @@ impl AudioRenderThread {
 
     make_render_thread_state_change!(suspend, Suspended, stop);
 
-    make_render_thread_state_change!(close, Closed, stop);
-
     fn create_node(&mut self, node_type: AudioNodeType) -> NodeId {
         let node: Box<AudioNodeEngine> = match node_type {
             AudioNodeType::AudioBufferSourceNode(options) => Box::new(AudioBufferSourceNode::new(options)),
@@ -110,7 +108,7 @@ impl AudioRenderThread {
                     let _ = tx.send(context.suspend());
                 }
                 AudioRenderThreadMsg::Close(tx) => {
-                    let _ = tx.send(context.close());
+                    let _ = tx.send(context.suspend());
                     break_loop = true;
                 }
                 AudioRenderThreadMsg::GetCurrentTime(response) => {

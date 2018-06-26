@@ -3,6 +3,7 @@ use audio::block::{Chunk, Tick};
 use audio::buffer_source_node::{AudioBufferSourceNodeMessage, AudioBufferSourceNodeOptions};
 use audio::gain_node::{GainNodeMessage, GainNodeOptions};
 use audio::oscillator_node::{OscillatorNodeMessage, OscillatorNodeOptions};
+use std::sync::mpsc::Sender;
 
 /// Type of AudioNodeEngine.
 pub enum AudioNodeType {
@@ -90,7 +91,13 @@ pub trait AudioNodeEngine: Send {
 
 pub enum AudioNodeMessage {
     AudioBufferSourceNode(AudioBufferSourceNodeMessage),
+    AudioScheduledSourceNode(AudioScheduledSourceNodeMessage),
     GainNode(GainNodeMessage),
+    GetChannelCount(Sender<u8>),
+    GetChannelCountMode(Sender<ChannelCountMode>),
+    GetChannelInterpretation(Sender<ChannelInterpretation>),
+    GetInputCount(Sender<u32>),
+    GetOutputCount(Sender<u32>),
     OscillatorNode(OscillatorNodeMessage),
 }
 
@@ -104,4 +111,11 @@ pub trait AudioScheduledSourceNode {
     /// Schedules a sound to stop playback at an exact time.
     /// Returns true if the scheduling request is processed successfully.
     fn stop(&mut self, tick: Tick) -> bool;
+}
+
+pub enum AudioScheduledSourceNodeMessage {
+    /// Schedules a sound to playback at an exact time.
+    Start(f64),
+    /// Schedules a sound to stop playback at an exact time.
+    Stop(f64),
 }

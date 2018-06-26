@@ -67,5 +67,5 @@ impl AudioNodeEngine for GainNode {
         ChannelCountMode::Max
     }
 
-    make_message_handler!(GainNode);
+    make_message_handler!(GainNode: handle_message);
 }
