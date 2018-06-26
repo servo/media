@@ -149,9 +149,9 @@ impl Block {
             // truncate repeats
             if self.repeat && self.channels > channels {
                 self.channels = channels;
-                return;
+            } else {
+                self.resize_silence(channels);
             }
-            self.resize_silence(channels);
         } else {
             self.explicit_repeat();
             match (self.channels, channels) {
@@ -245,7 +245,65 @@ impl Block {
                     self.buffer = v;
                     self.channels = 1;
                 }
-                _ => ()
+
+                // stereo
+                (4, 2) => {
+                    let mut v = Vec::with_capacity(2 * FRAMES_PER_BLOCK_USIZE);
+                    for frame in 0..FRAMES_PER_BLOCK_USIZE {
+                        // output.L = 0.5 * (input.L + input.SL)
+                        v[frame] =
+                            0.5 * (self.data_chan_frame(frame, 0) + self.data_chan_frame(frame, 2));
+                        // output.R = 0.5 * (input.R + input.SR)
+                        v[frame + FRAMES_PER_BLOCK_USIZE] =
+                            0.5 * (self.data_chan_frame(frame, 1) + self.data_chan_frame(frame, 3));
+                    }
+                    self.buffer = v;
+                    self.channels = 2;
+                }
+                (6, 2) => {
+                    let mut v = Vec::with_capacity(2 * FRAMES_PER_BLOCK_USIZE);
+                    for frame in 0..FRAMES_PER_BLOCK_USIZE {
+                        // output.L = L + sqrt(0.5) * (input.C + input.SL)
+                        v[frame] =
+                            self.data_chan_frame(frame, 0) +
+                            SQRT_2 * (self.data_chan_frame(frame, 2) + self.data_chan_frame(frame, 4));
+                        // output.R = R + sqrt(0.5) * (input.C + input.SR)
+                        v[frame + FRAMES_PER_BLOCK_USIZE] =
+                            self.data_chan_frame(frame, 1) +
+                            SQRT_2 * (self.data_chan_frame(frame, 2) + self.data_chan_frame(frame, 5));
+                    }
+                    self.buffer = v;
+                    self.channels = 2;
+                }
+
+                // quad
+                (6, 4) => {
+                    let mut v = Vec::with_capacity(6 * FRAMES_PER_BLOCK_USIZE);
+                    for frame in 0..FRAMES_PER_BLOCK_USIZE {
+                        // output.L = L + sqrt(0.5) * input.C
+                        v[frame] =
+                            self.data_chan_frame(frame, 0) +
+                            SQRT_2 * self.data_chan_frame(frame, 2);
+                        // output.R = R + sqrt(0.5) * input.C
+                        v[frame + FRAMES_PER_BLOCK_USIZE] =
+                            self.data_chan_frame(frame, 1) +
+                            SQRT_2 * self.data_chan_frame(frame, 2);
+                        // output.SL = input.SL
+                        v[frame + 2 * FRAMES_PER_BLOCK_USIZE] =
+                            self.data_chan_frame(frame, 4);
+                        // output.SR = input.SR
+                     v[frame + 3 * FRAMES_PER_BLOCK_USIZE] =
+                            self.data_chan_frame(frame, 5);
+                    }
+                    self.buffer = v;
+                    self.channels = 4;
+                }
+
+                // If it's not a known kind of speaker configuration, treat as
+                // discrete
+                _ => {
+                    self.mix(channels, ChannelInterpretation::Discrete);
+                }
             }
             debug_assert!(self.channels == channels);
         }
