@@ -37,6 +37,43 @@ impl AudioNodeEngine for ChannelMergerNode {
         inputs
     }
 
+    fn output_count(&self) -> u32 {
+        self.channels as u32
+    }
+
+    fn channel_count_mode(&self) -> ChannelCountMode {
+        ChannelCountMode::Explicit
+    }
+
+}
+
+pub struct ChannelSplitterNode {
+    channels: u8
+}
+
+impl ChannelSplitterNode {
+    pub fn new(params: ChannelNodeOptions) -> Self {
+        ChannelSplitterNode {
+            channels: params.channels
+        }
+    }
+}
+
+impl AudioNodeEngine for ChannelSplitterNode {
+    fn process(&mut self, mut inputs: Chunk, _: &BlockInfo) -> Chunk {
+        debug_assert!(inputs.len() == 1);
+
+        let original = inputs.blocks.pop().unwrap();
+
+        for chan in 0..original.chan_count() {
+            let mut block = Block::empty();
+            block.push_chan(original.data_chan(chan));
+            inputs.blocks.push(block);
+        }
+
+        inputs
+    }
+
     fn input_count(&self) -> u32 {
         self.channels as u32
     }

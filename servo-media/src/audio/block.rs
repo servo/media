@@ -122,6 +122,16 @@ impl Block {
         &mut self.buffer[start..start + FRAMES_PER_BLOCK_USIZE]
     }
 
+    #[inline]
+    pub fn data_chan(&self, chan: u8) -> &[f32] {
+        let offset = if self.repeat {
+            0
+        } else {
+            chan as usize * FRAMES_PER_BLOCK_USIZE
+        };
+        &self.buffer[offset..offset + FRAMES_PER_BLOCK_USIZE]
+    }
+
     pub fn take(&mut self) -> Block {
         let mut new = Block::default();
         new.channels = self.channels;
@@ -141,13 +151,7 @@ impl Block {
     }
 
     pub fn data_chan_frame(&self, frame: usize, chan: u8) -> f32 {
-        let offset = if self.repeat {
-            0
-        } else {
-            chan as usize * FRAMES_PER_BLOCK_USIZE
-        };
-
-        self.buffer[frame + offset]
+        self.data_chan(chan)[frame]
     }
 
     pub fn push_chan(&mut self, data: &[f32]) {
