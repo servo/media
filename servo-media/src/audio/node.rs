@@ -3,6 +3,7 @@ use audio::block::{Chunk, Tick};
 use audio::buffer_source_node::{AudioBufferSourceNodeMessage, AudioBufferSourceNodeOptions};
 use audio::gain_node::{GainNodeMessage, GainNodeOptions};
 use audio::oscillator_node::{OscillatorNodeMessage, OscillatorNodeOptions};
+use std::sync::mpsc::Sender;
 
 /// Type of AudioNodeEngine.
 pub enum AudioNodeType {
@@ -89,6 +90,9 @@ pub trait AudioNodeEngine: Send {
 }
 
 pub enum AudioNodeMessage {
+    GetInputCount(Sender<u32>),
+    GetOutputCount(Sender<u32>),
+    GetChannelCount(Sender<u8>),
     AudioBufferSourceNode(AudioBufferSourceNodeMessage),
     GainNode(GainNodeMessage),
     OscillatorNode(OscillatorNodeMessage),
