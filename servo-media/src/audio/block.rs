@@ -136,23 +136,41 @@ impl Block {
     ///
     /// Currently only supports upmixing from 1
     pub fn mix(&mut self, channels: u8, interpretation: ChannelInterpretation) {
+        // If we're not changing the number of channels, we
+        // don't actually need to mix
         if self.channels == channels {
             return
         }
 
+        // Silent buffers stay silent
         if self.is_silence() {
             self.channels = channels;
-            return;
+            return
         }
 
         if interpretation == ChannelInterpretation::Discrete {
-            // truncate repeats
+            // discrete downmixes by truncation, upmixes by adding
+            // silent channels
+
+            // If we're discrete, have a repeat, and are downmixing,
+            // just truncate by changing the channel value
             if self.repeat && self.channels > channels {
                 self.channels = channels;
             } else {
+                // otherwise resize the buffer, silent-filling when necessary
                 self.resize_silence(channels);
             }
         } else {
+            // For speakers, we have to do special things based on the
+            // interpretation of the channels for each kind of speakers
+
+            // The layout of each speaker kind is:
+            //
+            // - Mono: [The mono channel]
+            // - Stereo: [L, R]
+            // - Quad: [L, R, SL, SR]
+            // - 5.1: [L, R, C, LFE, SL, SR]
+
             self.explicit_repeat();
             match (self.channels, channels) {
                 // Upmixing
