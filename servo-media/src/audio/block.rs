@@ -1,3 +1,4 @@
+use std::f32::consts::SQRT_2;
 use audio::node::ChannelInterpretation;
 use audio::graph::PortIndex;
 use byte_slice_cast::*;
@@ -127,6 +128,10 @@ impl Block {
         self.buffer.is_empty()
     }
 
+    pub fn data_chan_frame(&self, frame: usize, chan: u8) -> f32 {
+        self.buffer[frame + chan as usize * FRAMES_PER_BLOCK_USIZE]
+    }
+
     /// upmix/downmix the channels if necessary
     ///
     /// Currently only supports upmixing from 1
@@ -148,8 +153,10 @@ impl Block {
             }
             self.resize_silence(channels);
         } else {
+            self.explicit_repeat();
             match (self.channels, channels) {
                 // Upmixing
+                // https://webaudio.github.io/web-audio-api/#UpMix-sub
 
                 // mono
                 (1, 2) => {
@@ -192,6 +199,51 @@ impl Block {
                     v.extend(&self.buffer[2 * FRAMES_PER_BLOCK_USIZE ..]);
                     self.buffer = v;
                     self.channels = channels;
+                }
+
+                // Downmixing
+                // https://webaudio.github.io/web-audio-api/#down-mix
+
+                // mono
+                (2, 1) => {
+                    let mut v = Vec::with_capacity(FRAMES_PER_BLOCK_USIZE);
+                    for frame in 0..FRAMES_PER_BLOCK_USIZE {
+                        // output = 0.5 * (input.L + input.R);
+                        v[frame] = 0.5 * (self.data_chan_frame(frame, 0) + self.data_chan_frame(frame, 1));
+                    }
+                    self.buffer = v;
+                    self.channels = 1;
+                }
+                (4, 1) => {
+                    let mut v = Vec::with_capacity(FRAMES_PER_BLOCK_USIZE);
+                    for frame in 0..FRAMES_PER_BLOCK_USIZE {
+                        // output = 0.5 * (input.L + input.R + input.SL + input.SR);
+                        v[frame] = 0.25 * (self.data_chan_frame(frame, 0) +
+                                           self.data_chan_frame(frame, 1) +
+                                           self.data_chan_frame(frame, 2) +
+                                           self.data_chan_frame(frame, 3));
+                    }
+                    self.buffer = v;
+                    self.channels = 1;
+                }
+                (6, 1) => {
+                    let mut v = Vec::with_capacity(FRAMES_PER_BLOCK_USIZE);
+                    for frame in 0..FRAMES_PER_BLOCK_USIZE {
+                        // output = sqrt(0.5) * (input.L + input.R) + input.C + 0.5 * (input.SL + input.SR)
+                        v[frame] =
+                            // sqrt(0.5) * (input.L + input.R)
+                            SQRT_2 * (self.data_chan_frame(frame, 0) +
+                                      self.data_chan_frame(frame, 1)) +
+                            // input.C
+                            self.data_chan_frame(frame, 2) +
+                            // (ignore LFE)
+                            // + 0 * self.buffer[frame + 3 * FRAMES_PER_BLOCK_USIZE]
+                            // 0.5 * (input.SL + input.SR)
+                            0.5 * (self.data_chan_frame(frame, 4) +
+                                   self.data_chan_frame(frame, 5));
+                    }
+                    self.buffer = v;
+                    self.channels = 1;
                 }
                 _ => ()
             }
