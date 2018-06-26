@@ -72,6 +72,18 @@ impl Default for Block {
 }
 
 impl Block {
+
+    /// Empty block with no channels, for pushing
+    /// new channels to.
+    ///
+    /// Must be used with push_chan
+    pub fn empty() -> Self {
+        Block {
+            channels: 0,
+            ..Default::default()
+        }
+    }
+
     /// This provides the entire buffer as a mutable slice of u8
     pub fn as_mut_byte_slice(&mut self) -> &mut [u8] {
         self.data_mut().as_mut_byte_slice().expect("casting failed")
@@ -136,6 +148,14 @@ impl Block {
         };
 
         self.buffer[frame + offset]
+    }
+
+    pub fn push_chan(&mut self, data: &[f32]) {
+        assert!(!self.repeat);
+        assert!(!self.is_silence() || self.channels == 0);
+        assert!(data.len() == FRAMES_PER_BLOCK_USIZE);
+        self.buffer.extend(data);
+        self.channels += 1;
     }
 
     /// upmix/downmix the channels if necessary
