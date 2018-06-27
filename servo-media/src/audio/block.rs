@@ -151,7 +151,11 @@ impl Block {
     }
 
     pub fn data_chan_frame(&self, frame: usize, chan: u8) -> f32 {
-        self.data_chan(chan)[frame]
+        if self.is_silence() {
+            0.
+        } else {
+           self.data_chan(chan)[frame]
+       }
     }
 
     pub fn push_chan(&mut self, data: &[f32]) {
@@ -261,7 +265,8 @@ impl Block {
                     let mut v = Vec::with_capacity(FRAMES_PER_BLOCK_USIZE);
                     for frame in 0..FRAMES_PER_BLOCK_USIZE {
                         // output = 0.5 * (input.L + input.R);
-                        v[frame] = 0.5 * (self.data_chan_frame(frame, 0) + self.data_chan_frame(frame, 1));
+                        let o = 0.5 * (self.data_chan_frame(frame, 0) + self.data_chan_frame(frame, 1));
+                        v.push(o);
                     }
                     self.buffer = v;
                     self.channels = 1;
@@ -271,10 +276,11 @@ impl Block {
                     let mut v = Vec::with_capacity(FRAMES_PER_BLOCK_USIZE);
                     for frame in 0..FRAMES_PER_BLOCK_USIZE {
                         // output = 0.5 * (input.L + input.R + input.SL + input.SR);
-                        v[frame] = 0.25 * (self.data_chan_frame(frame, 0) +
-                                           self.data_chan_frame(frame, 1) +
-                                           self.data_chan_frame(frame, 2) +
-                                           self.data_chan_frame(frame, 3));
+                        let o = 0.25 * (self.data_chan_frame(frame, 0) +
+                                        self.data_chan_frame(frame, 1) +
+                                        self.data_chan_frame(frame, 2) +
+                                        self.data_chan_frame(frame, 3));
+                        v.push(o);
                     }
                     self.buffer = v;
                     self.channels = 1;
@@ -284,7 +290,7 @@ impl Block {
                     let mut v = Vec::with_capacity(FRAMES_PER_BLOCK_USIZE);
                     for frame in 0..FRAMES_PER_BLOCK_USIZE {
                         // output = sqrt(0.5) * (input.L + input.R) + input.C + 0.5 * (input.SL + input.SR)
-                        v[frame] =
+                        let o =
                             // sqrt(0.5) * (input.L + input.R)
                             SQRT_2 * (self.data_chan_frame(frame, 0) +
                                       self.data_chan_frame(frame, 1)) +
@@ -295,6 +301,7 @@ impl Block {
                             // 0.5 * (input.SL + input.SR)
                             0.5 * (self.data_chan_frame(frame, 4) +
                                    self.data_chan_frame(frame, 5));
+                        v.push(o);
                     }
                     self.buffer = v;
                     self.channels = 1;
@@ -304,6 +311,7 @@ impl Block {
                 // stereo
                 (4, 2) => {
                     let mut v = Vec::with_capacity(2 * FRAMES_PER_BLOCK_USIZE);
+                    v.resize(2 * FRAMES_PER_BLOCK_USIZE, 0.);
                     for frame in 0..FRAMES_PER_BLOCK_USIZE {
                         // output.L = 0.5 * (input.L + input.SL)
                         v[frame] =
@@ -318,6 +326,7 @@ impl Block {
                 }
                 (6, 2) => {
                     let mut v = Vec::with_capacity(2 * FRAMES_PER_BLOCK_USIZE);
+                    v.resize(2 * FRAMES_PER_BLOCK_USIZE, 0.);
                     for frame in 0..FRAMES_PER_BLOCK_USIZE {
                         // output.L = L + sqrt(0.5) * (input.C + input.SL)
                         v[frame] =
@@ -336,6 +345,7 @@ impl Block {
                 // quad
                 (6, 4) => {
                     let mut v = Vec::with_capacity(6 * FRAMES_PER_BLOCK_USIZE);
+                    v.resize(6 * FRAMES_PER_BLOCK_USIZE, 0.);
                     for frame in 0..FRAMES_PER_BLOCK_USIZE {
                         // output.L = L + sqrt(0.5) * input.C
                         v[frame] =
