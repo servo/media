@@ -12,9 +12,10 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let buffer_source = context.create_node(AudioNodeType::AudioBufferSourceNode(Default::default()));
     let dest = context.dest_node();
     context.connect_ports(buffer_source.output(0), dest.input(0));
-    let mut buffer = Vec::with_capacity(4096);
+    let mut buffers = vec![Vec::with_capacity(4096), Vec::with_capacity(4096)];
     for _ in 0..4096 {
-        buffer.push(rand::random::<f32>());
+        buffers[0].push(rand::random::<f32>());
+        buffers[1].push(rand::random::<f32>());
     }
     context.message_node(
         buffer_source,
@@ -22,7 +23,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     );
     context.message_node(
         buffer_source,
-        AudioNodeMessage::AudioBufferSourceNode(AudioBufferSourceNodeMessage::SetBuffer(buffer)),
+        AudioNodeMessage::AudioBufferSourceNode(AudioBufferSourceNodeMessage::SetBuffer(buffers.into())),
     );
     let _ = context.resume();
     thread::sleep(time::Duration::from_millis(5000));

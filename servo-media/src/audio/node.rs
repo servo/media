@@ -11,7 +11,7 @@ pub enum AudioNodeType {
     AudioBuffer,
     AudioBufferSourceNode(AudioBufferSourceNodeOptions),
     ChannelMergerNode(ChannelNodeOptions),
-    ChannelSplitterNode,
+    ChannelSplitterNode(ChannelNodeOptions),
     ConstantSourceNode,
     ConvolverNode,
     DelayNode,

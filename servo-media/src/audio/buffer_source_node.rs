@@ -1,5 +1,5 @@
 use audio::node::ChannelCountMode;
-use audio::block::{Chunk, Tick, FRAMES_PER_BLOCK};
+use audio::block::{Block, Chunk, Tick, FRAMES_PER_BLOCK};
 use audio::node::{AudioNodeEngine, BlockInfo};
 use audio::param::Param;
 
@@ -7,7 +7,7 @@ use audio::param::Param;
 pub enum AudioBufferSourceNodeMessage {
     /// Set the data block holding the audio sample data to be played.
     // XXX handle channels
-    SetBuffer(Vec<f32>),
+    SetBuffer(AudioBuffer),
     /// Schedules a sound to playback at an exact time.
     Start(f64),
     /// Schedules a sound to stop playback at an exact time.
@@ -17,7 +17,7 @@ pub enum AudioBufferSourceNodeMessage {
 /// This specifies options for constructing an AudioBufferSourceNode.
 pub struct AudioBufferSourceNodeOptions {
     /// The audio asset to be played.
-    pub buffer: Option<Vec<f32>>,
+    pub buffer: Option<AudioBuffer>,
     /// The initial value for the detune AudioParam.
     pub detune: f32,
     /// The initial value for the loop_enabled attribute.
@@ -51,7 +51,7 @@ impl Default for AudioBufferSourceNodeOptions {
 #[allow(dead_code)]
 pub struct AudioBufferSourceNode {
     /// A data block holding the audio sample data to be played.
-    buffer: Option<Vec<f32>>,
+    buffer: Option<AudioBuffer>,
     /// AudioParam to modulate the speed at which is rendered the audio stream.
     detune: Param,
     /// Indicates if the region of audio data designated by loopStart and loopEnd
@@ -115,40 +115,103 @@ impl AudioNodeEngine for AudioBufferSourceNode {
     fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
         debug_assert!(inputs.len() == 0);
 
-        inputs.blocks.push(Default::default());
+        let buffer = if let Some(buffer) = self.buffer.as_ref() {
+            buffer
+        } else {
+            inputs.blocks.push(Default::default());
+            return inputs;
+        };
 
-        if self.buffer.is_none() {
+        if self.playback_offset >= buffer.len() ||
+                self.should_play_at(info.frame) == (false, true) {
+            inputs.blocks.push(Default::default());
             return inputs;
         }
 
-        let buffer = self.buffer.as_ref().unwrap();
-
-        if self.playback_offset >= buffer.len() || self.should_play_at(info.frame) == (false, true)
-        {
-            return inputs;
-        }
-
-        {
-            let samples_to_copy = match self.stop_at {
-                Some(stop_at) => {
-                    let ticks_to_stop = stop_at - info.frame;
-                    (if ticks_to_stop > FRAMES_PER_BLOCK {
-                        FRAMES_PER_BLOCK
-                    } else {
-                        ticks_to_stop
-                    }).0 as usize
+        let samples_to_copy = match self.stop_at {
+            Some(stop_at) => {
+                let ticks_to_stop = stop_at - info.frame;
+                if ticks_to_stop > FRAMES_PER_BLOCK {
+                    FRAMES_PER_BLOCK.0 as usize
+                } else {
+                    ticks_to_stop.0 as usize
                 }
-                None => FRAMES_PER_BLOCK.0 as usize,
-            };
-            let data = inputs.blocks[0].data_mut();
-            let (data, _) = data.split_at_mut(samples_to_copy);
-            let next_offset = self.playback_offset + samples_to_copy;
-            data.copy_from_slice(&buffer[self.playback_offset..next_offset]);
-            self.playback_offset = next_offset;
+            }
+            None => FRAMES_PER_BLOCK.0 as usize,
+        };
+
+        let next_offset = self.playback_offset + samples_to_copy;
+
+
+        if samples_to_copy == FRAMES_PER_BLOCK.0 as usize {
+            // copy entire chan
+            let mut block = Block::empty();
+            for chan in 0..buffer.chans() {
+                block.push_chan(&buffer.buffers[chan as usize][self.playback_offset..next_offset]);
+            }
+            inputs.blocks.push(block)
+        } else {
+            // silent fill and copy
+            let mut block = Block::default();
+            block.repeat(buffer.chans());
+            block.explicit_repeat();
+            for chan in 0..buffer.chans() {
+                let data = block.data_chan_mut(chan);
+                data.copy_from_slice(&buffer.buffers[chan as usize][self.playback_offset..next_offset]);
+            }
+            inputs.blocks.push(block)
         }
 
+        self.playback_offset = next_offset;
         inputs
     }
 
     make_message_handler!(AudioBufferSourceNode);
+}
+
+pub struct AudioBuffer {
+    /// Invariant: all buffers must be of the same length
+    pub buffers: Vec<Vec<f32>>
+}
+
+impl AudioBuffer {
+    pub fn new(chan: u8, len: usize) -> Self {
+        assert!(chan > 0);
+        let mut buffers = Vec::with_capacity(chan as usize);
+        let single = vec![0.; len];
+        buffers.resize(chan as usize, single);
+        AudioBuffer { buffers }
+    }
+
+    pub fn from_buffers(buffers: Vec<Vec<f32>>) -> Self {
+        for buf in &buffers {
+            assert!(buf.len() == buffers[0].len())
+        }
+
+        Self {
+            buffers
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.buffers[0].len()
+    }
+
+    pub fn chans(&self) -> u8 {
+        self.buffers.len() as u8
+    }
+}
+
+impl From<Vec<f32>> for AudioBuffer {
+    fn from(vec: Vec<f32>) -> Self {
+        Self {
+            buffers: vec![vec]
+        }
+    }
+}
+
+impl From<Vec<Vec<f32>>> for AudioBuffer {
+    fn from(vec: Vec<Vec<f32>>) -> Self {
+        AudioBuffer::from_buffers(vec)
+    }
 }
