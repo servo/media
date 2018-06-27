@@ -1,6 +1,5 @@
-use audio::node::ChannelCountMode;
 use audio::block::FRAMES_PER_BLOCK_USIZE;
-use audio::node::AudioNodeEngine;
+use audio::node::{AudioNodeEngine, ChannelCountMode, ChannelInfo, ChannelInterpretation};
 use audio::block::{Block, Chunk};
 use audio::node::BlockInfo;
 
@@ -10,12 +9,18 @@ pub struct ChannelNodeOptions {
 
 #[derive(AudioNodeCommon)]
 pub struct ChannelMergerNode {
+    channel_info: ChannelInfo,
     channels: u8
 }
 
 impl ChannelMergerNode {
     pub fn new(params: ChannelNodeOptions) -> Self {
         ChannelMergerNode {
+            channel_info: ChannelInfo {
+                count: 1,
+                mode: ChannelCountMode::Explicit,
+                ..Default::default()
+            },
             channels: params.channels
         }
     }
@@ -43,21 +48,28 @@ impl AudioNodeEngine for ChannelMergerNode {
         self.channels as u32
     }
 
-    fn channel_count_mode(&self) -> ChannelCountMode {
-        ChannelCountMode::Explicit
+    fn set_channel_count_mode(&mut self, _: ChannelCountMode) {
+        panic!("channel merger nodes cannot have their mode changed");
     }
 
+    fn set_channel_count(&mut self, _: u8) {
+        panic!("channel merger nodes cannot have their channel count changed");
+    }
 }
 
 #[derive(AudioNodeCommon)]
 pub struct ChannelSplitterNode {
-    channels: u8
+    channel_info: ChannelInfo,
 }
 
 impl ChannelSplitterNode {
     pub fn new(params: ChannelNodeOptions) -> Self {
         ChannelSplitterNode {
-            channels: params.channels
+            channel_info: ChannelInfo {
+                count: params.channels,
+                mode: ChannelCountMode::Explicit,
+                interpretation: ChannelInterpretation::Discrete,
+            },
         }
     }
 }
@@ -78,11 +90,18 @@ impl AudioNodeEngine for ChannelSplitterNode {
     }
 
     fn output_count(&self) -> u32 {
-        self.channels as u32
+        self.channel_count() as u32
     }
 
-    fn channel_count_mode(&self) -> ChannelCountMode {
-        ChannelCountMode::Explicit
+    fn set_channel_count_mode(&mut self, _: ChannelCountMode) {
+        panic!("channel splitter nodes cannot have their mode changed");
     }
 
+    fn set_channel_interpretation(&mut self, _: ChannelInterpretation) {
+        panic!("channel splitter nodes cannot have their channel interpretation changed");
+    }
+
+    fn set_channel_count(&mut self, _: u8) {
+        panic!("channel splitter nodes cannot have their channel count changed");
+    }
 }

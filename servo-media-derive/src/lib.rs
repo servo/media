@@ -70,11 +70,11 @@ pub fn channel_info(input: TokenStream) -> TokenStream {
     let gen = quote! {
         impl ::audio::node::AudioNodeCommon for #name {
             fn channel_info(&self) -> &::audio::node::ChannelInfo {
-                panic!()
+                &self.channel_info
             }
 
             fn channel_info_mut(&mut self) -> &mut ::audio::node::ChannelInfo {
-                panic!()
+                &mut self.channel_info
             }
         }
     };

@@ -1,5 +1,6 @@
+use audio::node::ChannelInfo;
 use audio::block::{Block, Chunk, Tick, FRAMES_PER_BLOCK};
-use audio::node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, BlockInfo, ChannelCountMode};
+use audio::node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, BlockInfo};
 use audio::param::Param;
 
 /// Control messages directed to AudioBufferSourceNodes.
@@ -45,6 +46,7 @@ impl Default for AudioBufferSourceNodeOptions {
 #[derive(AudioScheduledSourceNode, AudioNodeCommon)]
 #[allow(dead_code)]
 pub struct AudioBufferSourceNode {
+    channel_info: ChannelInfo,
     /// A data block holding the audio sample data to be played.
     buffer: Option<AudioBuffer>,
     /// AudioParam to modulate the speed at which is rendered the audio stream.
@@ -71,6 +73,7 @@ pub struct AudioBufferSourceNode {
 impl AudioBufferSourceNode {
     pub fn new(options: AudioBufferSourceNodeOptions) -> Self {
         Self {
+            channel_info: Default::default(),
             buffer: options.buffer,
             detune: Param::new(options.detune),
             loop_enabled: options.loop_enabled,
@@ -106,10 +109,6 @@ impl AudioBufferSourceNode {
 impl AudioNodeEngine for AudioBufferSourceNode {
     fn input_count(&self) -> u32 {
         0
-    }
-
-    fn channel_count_mode(&self) -> ChannelCountMode {
-        ChannelCountMode::Max
     }
 
     fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {

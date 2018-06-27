@@ -87,7 +87,7 @@ pub trait AudioNodeEngine: Send + AudioNodeCommon {
     fn message(&mut self, msg: AudioNodeMessage, sample_rate: f32) {
         match msg {
             AudioNodeMessage::SetChannelCount(c) => self.set_channel_count(c),
-            AudioNodeMessage::SetChannelMode(c) => self.set_channel_mode(c),
+            AudioNodeMessage::SetChannelMode(c) => self.set_channel_count_mode(c),
             AudioNodeMessage::SetChannelInterpretation(c) => self.set_channel_interpretation(c),
             _ => self.message_specific(msg, sample_rate),
         }
@@ -116,9 +116,15 @@ pub trait AudioNodeEngine: Send + AudioNodeCommon {
         self.channel_info().interpretation
     }
 
-    fn set_channel_interpretation(&mut self, _: ChannelInterpretation) {}
-    fn set_channel_count(&mut self, _: u8) {}
-    fn set_channel_mode(&mut self, _: ChannelCountMode) {}
+    fn set_channel_interpretation(&mut self, i: ChannelInterpretation) {
+        self.channel_info_mut().interpretation = i
+    }
+    fn set_channel_count(&mut self, c: u8) {
+        self.channel_info_mut().count = c;
+    }
+    fn set_channel_count_mode(&mut self, m: ChannelCountMode) {
+        self.channel_info_mut().mode = m;
+    }
 
     /// If we're the destination node, extract the contained data
     fn destination_data(&mut self) -> Option<Chunk> {
