@@ -42,6 +42,30 @@ impl GStreamerAudioSink {
     }
 }
 
+impl GStreamerAudioSink {
+    fn set_audio_info(&self, sample_rate: f32, channels: u8) -> Result<(), ()> {
+        let audio_info =
+            gst_audio::AudioInfo::new(gst_audio::AUDIO_FORMAT_F32, sample_rate as u32, channels.into())
+            .build()
+            .ok_or(())?;
+        self.appsrc.set_caps(&audio_info.to_caps().unwrap());
+        *self.audio_info.borrow_mut() = Some(audio_info);
+        Ok(())
+    }
+
+    fn set_channels_if_changed(&self, channels: u8) -> Result<(), ()> {
+        let curr_channels = if let Some(ch) = self.audio_info.borrow().as_ref() {
+            ch.channels()
+        } else {
+            return Ok(())
+        };
+        if channels != curr_channels as u8 {
+            self.set_audio_info(self.sample_rate.get(), channels)?
+        }
+        Ok(())
+    }
+}
+
 impl AudioSink for GStreamerAudioSink {
     fn init(
         &self,
@@ -49,12 +73,7 @@ impl AudioSink for GStreamerAudioSink {
         graph_thread_channel: Sender<AudioRenderThreadMsg>,
         ) -> Result<(), ()> {
         self.sample_rate.set(sample_rate);
-        let audio_info =
-            gst_audio::AudioInfo::new(gst_audio::AUDIO_FORMAT_F32, sample_rate as u32, 2)
-            .build()
-            .ok_or(())?;
-        self.appsrc.set_caps(&audio_info.to_caps().unwrap());
-        *self.audio_info.borrow_mut() = Some(audio_info);
+        self.set_audio_info(sample_rate, 2)?;
         self.appsrc.set_property_format(gst::Format::Time);
 
         let appsrc = self.appsrc.clone();
@@ -95,6 +114,10 @@ impl AudioSink for GStreamerAudioSink {
     }
 
     fn push_data(&self, mut chunk: Chunk) -> Result<(), ()> {
+        if let Some(block) = chunk.blocks.get(0) {
+            self.set_channels_if_changed(block.chan_count())?;
+        }
+
         let sample_rate = self.sample_rate.get() as u64;
         let audio_info = self.audio_info.borrow();
         let audio_info = audio_info.as_ref().unwrap();
