@@ -5,10 +5,12 @@ use audio::node::AudioNodeEngine;
 use audio::node::BlockInfo;
 use audio::param::{Param, UserAutomationEvent};
 
+#[derive(Debug, Clone)]
 pub enum GainNodeMessage {
     SetGain(UserAutomationEvent),
 }
 
+#[derive(Copy, Clone, Debug)]
 pub struct GainNodeOptions {
     pub gain: f32,
 }

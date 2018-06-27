@@ -5,6 +5,7 @@ use audio::gain_node::{GainNodeMessage, GainNodeOptions};
 use audio::oscillator_node::{OscillatorNodeMessage, OscillatorNodeOptions};
 
 /// Type of AudioNodeEngine.
+#[derive(Debug, Clone)]
 pub enum AudioNodeType {
     AnalyserNode,
     BiquadFilterNode,
@@ -27,7 +28,7 @@ pub enum AudioNodeType {
     WaveShaperNode,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum ChannelCountMode {
     Max,
     ClampedMax,
@@ -35,7 +36,7 @@ pub enum ChannelCountMode {
 }
 
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum ChannelInterpretation {
     Discrete,
     Speakers
@@ -132,6 +133,7 @@ pub trait AudioNodeEngine: Send + AudioNodeCommon {
     }
 }
 
+#[derive(Clone, Debug)]
 pub enum AudioNodeMessage {
     AudioBufferSourceNode(AudioBufferSourceNodeMessage),
     AudioScheduledSourceNode(AudioScheduledSourceNodeMessage),
@@ -155,6 +157,7 @@ pub trait AudioScheduledSourceNode {
 }
 
 /// Type of message directed to AudioScheduledSourceNodes.
+#[derive(Debug, Clone)]
 pub enum AudioScheduledSourceNodeMessage {
     /// Schedules a sound to playback at an exact time.
     Start(f64),

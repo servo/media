@@ -3,6 +3,7 @@ use audio::node::{AudioNodeEngine, ChannelCountMode, ChannelInfo, ChannelInterpr
 use audio::block::{Block, Chunk};
 use audio::node::BlockInfo;
 
+#[derive(Copy, Clone, Debug)]
 pub struct ChannelNodeOptions {
     pub channels: u8,
 }

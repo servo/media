@@ -60,7 +60,7 @@ impl GStreamerAudioSink {
             return Ok(())
         };
         if channels != curr_channels as u8 {
-            self.set_audio_info(self.sample_rate.get(), channels)?
+            self.set_audio_info(self.sample_rate.get(), channels)?;
         }
         Ok(())
     }

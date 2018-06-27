@@ -4,6 +4,7 @@ use audio::node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, BlockInfo};
 use audio::param::Param;
 
 /// Control messages directed to AudioBufferSourceNodes.
+#[derive(Debug, Clone)]
 pub enum AudioBufferSourceNodeMessage {
     /// Set the data block holding the audio sample data to be played.
     // XXX handle channels
@@ -11,6 +12,7 @@ pub enum AudioBufferSourceNodeMessage {
 }
 
 /// This specifies options for constructing an AudioBufferSourceNode.
+#[derive(Debug, Clone)]
 pub struct AudioBufferSourceNodeOptions {
     /// The audio asset to be played.
     pub buffer: Option<AudioBuffer>,
@@ -169,6 +171,7 @@ impl AudioNodeEngine for AudioBufferSourceNode {
                           AudioScheduledSourceNode: handle_source_node_message);
 }
 
+#[derive(Debug, Clone)]
 pub struct AudioBuffer {
     /// Invariant: all buffers must be of the same length
     pub buffers: Vec<Vec<f32>>

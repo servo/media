@@ -14,6 +14,7 @@ use std::sync::mpsc::{Receiver, Sender};
 #[cfg(feature = "gst")]
 use backends::gstreamer::audio_sink::GStreamerAudioSink;
 
+#[derive(Debug)]
 pub enum AudioRenderThreadMsg {
     CreateNode(AudioNodeType, Sender<NodeId>),
     ConnectPorts(PortId<OutputPort>, PortId<InputPort>),

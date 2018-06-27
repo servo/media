@@ -4,16 +4,17 @@ use audio::node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, BlockInfo};
 use audio::param::{Param, UserAutomationEvent};
 use num_traits::cast::NumCast;
 
+#[derive(Copy, Clone, Debug)]
 pub enum OscillatorNodeMessage {
     SetFrequency(UserAutomationEvent),
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct PeriodicWaveOptions {
     // XXX https://webaudio.github.io/web-audio-api/#dictdef-periodicwaveoptions
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum OscillatorType {
     Sine,
     Square,
@@ -22,7 +23,7 @@ pub enum OscillatorType {
     Custom,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct OscillatorNodeOptions {
     pub oscillator_type: OscillatorType,
     pub freq: f32,

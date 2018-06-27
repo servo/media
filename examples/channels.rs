@@ -34,9 +34,9 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         );
     let _ = context.resume();
 
-    thread::sleep(time::Duration::from_millis(5000));
+    thread::sleep(time::Duration::from_millis(2000));
     context.message_node(dest, AudioNodeMessage::SetChannelCount(1));
-    thread::sleep(time::Duration::from_millis(5000));
+    thread::sleep(time::Duration::from_millis(2000));
     let _ = context.close();
 
 }
