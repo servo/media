@@ -37,7 +37,8 @@ impl AudioNodeEngine for ChannelMergerNode {
         inputs
     }
 
-    fn output_count(&self) -> u32 {
+
+    fn input_count(&self) -> u32 {
         self.channels as u32
     }
 
@@ -74,7 +75,7 @@ impl AudioNodeEngine for ChannelSplitterNode {
         inputs
     }
 
-    fn input_count(&self) -> u32 {
+    fn output_count(&self) -> u32 {
         self.channels as u32
     }
 
