@@ -19,6 +19,7 @@ impl Default for GainNodeOptions {
     }
 }
 
+#[derive(AudioNodeCommon)]
 pub struct GainNode {
     gain: Param,
 }

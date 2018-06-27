@@ -8,6 +8,7 @@ pub struct ChannelNodeOptions {
     pub channels: u8,
 }
 
+#[derive(AudioNodeCommon)]
 pub struct ChannelMergerNode {
     channels: u8
 }
@@ -48,6 +49,7 @@ impl AudioNodeEngine for ChannelMergerNode {
 
 }
 
+#[derive(AudioNodeCommon)]
 pub struct ChannelSplitterNode {
     channels: u8
 }

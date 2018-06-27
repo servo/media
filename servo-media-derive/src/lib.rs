@@ -61,3 +61,22 @@ fn impl_audio_scheduled_source_node(ast: &syn::DeriveInput) -> quote::Tokens {
         }
     }
 }
+
+#[proc_macro_derive(AudioNodeCommon)]
+pub fn channel_info(input: TokenStream) -> TokenStream {
+    let s = input.to_string();
+    let ast = syn::parse_derive_input(&s).unwrap();
+    let name = &ast.ident;
+    let gen = quote! {
+        impl ::audio::node::AudioNodeCommon for #name {
+            fn channel_info(&self) -> &::audio::node::ChannelInfo {
+                panic!()
+            }
+
+            fn channel_info_mut(&mut self) -> &mut ::audio::node::ChannelInfo {
+                panic!()
+            }
+        }
+    };
+    gen.parse().unwrap()
+}

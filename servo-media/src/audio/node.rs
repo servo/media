@@ -56,11 +56,45 @@ impl BlockInfo {
     }
 }
 
+
+pub struct ChannelInfo {
+    pub count: u8,
+    pub mode: ChannelCountMode,
+    pub interpretation: ChannelInterpretation,
+}
+
+impl Default for ChannelInfo {
+    fn default() -> Self {
+        ChannelInfo {
+            count: 2,
+            mode: ChannelCountMode::Max,
+            interpretation: ChannelInterpretation::Speakers,
+        }
+    }
+}
+
+
+pub trait AudioNodeCommon {
+    fn channel_info(&self) -> &ChannelInfo;
+
+    fn channel_info_mut(&mut self) -> &mut ChannelInfo;
+}
+
 /// This trait represents the common features of all audio nodes.
-pub trait AudioNodeEngine: Send {
+pub trait AudioNodeEngine: Send + AudioNodeCommon {
     fn process(&mut self, inputs: Chunk, info: &BlockInfo) -> Chunk;
 
-    fn message(&mut self, _: AudioNodeMessage, _sample_rate: f32) {}
+    fn message(&mut self, msg: AudioNodeMessage, sample_rate: f32) {
+        match msg {
+            AudioNodeMessage::SetChannelCount(c) => self.set_channel_count(c),
+            AudioNodeMessage::SetChannelMode(c) => self.set_channel_mode(c),
+            AudioNodeMessage::SetChannelInterpretation(c) => self.set_channel_interpretation(c),
+            _ => self.message_specific(msg, sample_rate),
+        }
+    }
+
+    /// Messages specific to this node
+    fn message_specific(&mut self, _: AudioNodeMessage, _sample_rate: f32) {}
 
     fn input_count(&self) -> u32 {
         1
@@ -71,16 +105,20 @@ pub trait AudioNodeEngine: Send {
 
     /// Number of input channels for each input port
     fn channel_count(&self) -> u8 {
-        1
+        self.channel_info().count
     }
 
     fn channel_count_mode(&self) -> ChannelCountMode {
-        ChannelCountMode::Max
+        self.channel_info().mode
     }
 
     fn channel_interpretation(&self) -> ChannelInterpretation {
-        ChannelInterpretation::Speakers
+        self.channel_info().interpretation
     }
+
+    fn set_channel_interpretation(&mut self, _: ChannelInterpretation) {}
+    fn set_channel_count(&mut self, _: u8) {}
+    fn set_channel_mode(&mut self, _: ChannelCountMode) {}
 
     /// If we're the destination node, extract the contained data
     fn destination_data(&mut self) -> Option<Chunk> {
@@ -93,6 +131,9 @@ pub enum AudioNodeMessage {
     AudioScheduledSourceNode(AudioScheduledSourceNodeMessage),
     GainNode(GainNodeMessage),
     OscillatorNode(OscillatorNodeMessage),
+    SetChannelCount(u8),
+    SetChannelMode(ChannelCountMode),
+    SetChannelInterpretation(ChannelInterpretation),
 }
 
 /// This trait represents the common features of the source nodes such as

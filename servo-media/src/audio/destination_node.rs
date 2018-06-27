@@ -2,6 +2,7 @@ use audio::node::ChannelCountMode;
 use audio::node::{AudioNodeEngine, BlockInfo};
 use audio::block::Chunk;
 
+#[derive(AudioNodeCommon)]
 pub struct DestinationNode(Option<Chunk>);
 
 impl DestinationNode {

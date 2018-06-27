@@ -42,7 +42,7 @@ impl Default for AudioBufferSourceNodeOptions {
 /// https://webaudio.github.io/web-audio-api/#AudioBufferSourceNode
 /// XXX Implement looping
 /// XXX Implement playbackRate and related bits
-#[derive(AudioScheduledSourceNode)]
+#[derive(AudioScheduledSourceNode, AudioNodeCommon)]
 #[allow(dead_code)]
 pub struct AudioBufferSourceNode {
     /// A data block holding the audio sample data to be played.

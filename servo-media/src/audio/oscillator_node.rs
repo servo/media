@@ -40,7 +40,7 @@ impl Default for OscillatorNodeOptions {
     }
 }
 
-#[derive(AudioScheduledSourceNode)]
+#[derive(AudioScheduledSourceNode, AudioNodeCommon)]
 pub struct OscillatorNode {
     frequency: Param,
     phase: f64,
@@ -49,6 +49,7 @@ pub struct OscillatorNode {
     /// Time at which the source should stop playing.
     stop_at: Option<Tick>,
 }
+
 
 impl OscillatorNode {
     pub fn new(options: OscillatorNodeOptions) -> Self {

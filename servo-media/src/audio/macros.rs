@@ -5,13 +5,14 @@ macro_rules! make_message_handler(
             $node:ident: $handler:ident
          ),+
     ) => (
-        fn message(&mut self, msg: ::audio::node::AudioNodeMessage, sample_rate: f32) {
+        fn message_specific(&mut self, msg: ::audio::node::AudioNodeMessage, sample_rate: f32) {
             match msg {
                 $(::audio::node::AudioNodeMessage::$node(m) => self.$handler(m, sample_rate)),+,
                 _ => (),
             }
-        });
+        }
     );
+);
 
 #[macro_export]
 macro_rules! make_state_change(
@@ -21,8 +22,9 @@ macro_rules! make_state_change(
             let (tx, rx) = mpsc::channel();
             let _ = self.sender.send(AudioRenderThreadMsg::$render_msg(tx));
             rx.recv().unwrap()
-        });
+        }
     );
+);
 
 #[macro_export]
 macro_rules! make_render_thread_state_change(
@@ -34,5 +36,5 @@ macro_rules! make_render_thread_state_change(
             self.state = ProcessingState::$state;
             self.sink.$sink_method()
         }
-        );
     );
+);
