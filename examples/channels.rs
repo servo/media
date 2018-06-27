@@ -11,10 +11,10 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let context = servo_media.create_audio_context(Default::default());
     let mut options = Default::default();
     let osc = context.create_node(AudioNodeType::OscillatorNode(options));
-    options.freq = 400.;
+    options.freq = 213.;
     let osc2 = context.create_node(AudioNodeType::OscillatorNode(options));
     let mut options = GainNodeOptions::default();
-    options.gain = 0.5;
+    options.gain = 0.7;
     let gain = context.create_node(AudioNodeType::GainNode(options));
     let options = ChannelNodeOptions { channels: 2 };
     let merger = context.create_node(AudioNodeType::ChannelMergerNode(options));
@@ -34,6 +34,8 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         );
     let _ = context.resume();
 
+    thread::sleep(time::Duration::from_millis(5000));
+    context.message_node(dest, AudioNodeMessage::SetChannelCount(1));
     thread::sleep(time::Duration::from_millis(5000));
     let _ = context.close();
 
