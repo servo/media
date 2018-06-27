@@ -1,6 +1,6 @@
 extern crate servo_media;
 
-use servo_media::audio::node::{AudioNodeMessage, AudioNodeType};
+use servo_media::audio::node::{AudioNodeMessage, AudioNodeType, AudioScheduledSourceNodeMessage};
 use servo_media::audio::oscillator_node::OscillatorNodeMessage;
 use servo_media::audio::param::{RampKind, UserAutomationEvent};
 use servo_media::ServoMedia;
@@ -15,7 +15,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let _ = context.resume();
     context.message_node(
         osc,
-        AudioNodeMessage::OscillatorNode(OscillatorNodeMessage::Start(0.)),
+        AudioNodeMessage::AudioScheduledSourceNode(AudioScheduledSourceNodeMessage::Start(0.)),
     );
     // 0.1s: Set frequency to 110Hz
     context.message_node(

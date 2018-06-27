@@ -2,8 +2,7 @@ extern crate servo_media;
 
 use servo_media::audio::channel_node::ChannelNodeOptions;
 use servo_media::audio::gain_node::GainNodeOptions;
-use servo_media::audio::node::{AudioNodeMessage, AudioNodeType};
-use servo_media::audio::oscillator_node::OscillatorNodeMessage;
+use servo_media::audio::node::{AudioNodeMessage, AudioNodeType, AudioScheduledSourceNodeMessage};
 use servo_media::ServoMedia;
 use std::sync::Arc;
 use std::{thread, time};
@@ -27,11 +26,11 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     context.connect_ports(merger.output(0), dest.input(0));
     context.message_node(
         osc,
-        AudioNodeMessage::OscillatorNode(OscillatorNodeMessage::Start(0.)),
+        AudioNodeMessage::AudioScheduledSourceNode(AudioScheduledSourceNodeMessage::Start(0.)),
         );
     context.message_node(
         osc2,
-        AudioNodeMessage::OscillatorNode(OscillatorNodeMessage::Start(0.)),
+        AudioNodeMessage::AudioScheduledSourceNode(AudioScheduledSourceNodeMessage::Start(0.)),
         );
     let _ = context.resume();
 

@@ -1,13 +1,10 @@
-use audio::node::ChannelCountMode;
 use audio::block::{Chunk, Tick};
-use audio::node::{AudioNodeEngine, BlockInfo};
+use audio::node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, BlockInfo, ChannelCountMode};
 use audio::param::{Param, UserAutomationEvent};
 use num_traits::cast::NumCast;
 
 pub enum OscillatorNodeMessage {
     SetFrequency(UserAutomationEvent),
-    Start(f64),
-    Stop(f64),
 }
 
 #[derive(Copy, Clone)]
@@ -72,10 +69,15 @@ impl OscillatorNode {
             OscillatorNodeMessage::SetFrequency(event) => {
                 self.frequency.insert_event(event.to_event(sample_rate))
             }
-            OscillatorNodeMessage::Start(when) => {
+        }
+    }
+
+    pub fn handle_source_node_message(&mut self, message: AudioScheduledSourceNodeMessage, sample_rate: f32) {
+        match message {
+            AudioScheduledSourceNodeMessage::Start(when) => {
                 self.start(Tick::from_time(when, sample_rate));
             }
-            OscillatorNodeMessage::Stop(when) => {
+            AudioScheduledSourceNodeMessage::Stop(when) => {
                 self.stop(Tick::from_time(when, sample_rate));
             }
         }
@@ -146,5 +148,6 @@ impl AudioNodeEngine for OscillatorNode {
         ChannelCountMode::Max
     }
 
-    make_message_handler!(OscillatorNode);
+    make_message_handler!(AudioScheduledSourceNode: handle_source_node_message,
+                          OscillatorNode: handle_message);
 }

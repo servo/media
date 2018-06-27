@@ -1,6 +1,5 @@
-use audio::node::ChannelCountMode;
 use audio::block::{Block, Chunk, Tick, FRAMES_PER_BLOCK};
-use audio::node::{AudioNodeEngine, BlockInfo};
+use audio::node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, BlockInfo, ChannelCountMode};
 use audio::param::Param;
 
 /// Control messages directed to AudioBufferSourceNodes.
@@ -8,10 +7,6 @@ pub enum AudioBufferSourceNodeMessage {
     /// Set the data block holding the audio sample data to be played.
     // XXX handle channels
     SetBuffer(AudioBuffer),
-    /// Schedules a sound to playback at an exact time.
-    Start(f64),
-    /// Schedules a sound to stop playback at an exact time.
-    Stop(f64),
 }
 
 /// This specifies options for constructing an AudioBufferSourceNode.
@@ -88,15 +83,20 @@ impl AudioBufferSourceNode {
         }
     }
 
-    pub fn handle_message(&mut self, message: AudioBufferSourceNodeMessage, sample_rate: f32) {
+    pub fn handle_message(&mut self, message: AudioBufferSourceNodeMessage, _: f32) {
         match message {
             AudioBufferSourceNodeMessage::SetBuffer(buffer) => {
                 self.buffer = Some(buffer);
             }
-            AudioBufferSourceNodeMessage::Start(when) => {
+        }
+    }
+
+    pub fn handle_source_node_message(&mut self, message: AudioScheduledSourceNodeMessage, sample_rate: f32) {
+        match message {
+            AudioScheduledSourceNodeMessage::Start(when) => {
                 self.start(Tick::from_time(when, sample_rate));
             }
-            AudioBufferSourceNodeMessage::Stop(when) => {
+            AudioScheduledSourceNodeMessage::Stop(when) => {
                 self.stop(Tick::from_time(when, sample_rate));
             }
         }
@@ -123,10 +123,10 @@ impl AudioNodeEngine for AudioBufferSourceNode {
         };
 
         if self.playback_offset >= buffer.len() ||
-                self.should_play_at(info.frame) == (false, true) {
-            inputs.blocks.push(Default::default());
-            return inputs;
-        }
+            self.should_play_at(info.frame) == (false, true) {
+                inputs.blocks.push(Default::default());
+                return inputs;
+            }
 
         let samples_to_copy = match self.stop_at {
             Some(stop_at) => {
@@ -166,7 +166,8 @@ impl AudioNodeEngine for AudioBufferSourceNode {
         inputs
     }
 
-    make_message_handler!(AudioBufferSourceNode);
+    make_message_handler!(AudioBufferSourceNode: handle_message,
+                          AudioScheduledSourceNode: handle_source_node_message);
 }
 
 pub struct AudioBuffer {
