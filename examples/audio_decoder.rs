@@ -2,7 +2,7 @@ extern crate servo_media;
 
 use servo_media::audio::buffer_source_node::AudioBufferSourceNodeMessage;
 use servo_media::audio::decoder::AudioDecoderCallbacks;
-use servo_media::audio::node::{AudioNodeMessage, AudioNodeType};
+use servo_media::audio::node::{AudioNodeMessage, AudioNodeType, AudioScheduledSourceNodeMessage};
 use servo_media::ServoMedia;
 use std::env;
 use std::fs::File;
@@ -48,7 +48,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     context.connect_ports(buffer_source.output(0), dest.input(0));
     context.message_node(
         buffer_source,
-        AudioNodeMessage::AudioBufferSourceNode(AudioBufferSourceNodeMessage::Start(0.)),
+        AudioNodeMessage::AudioScheduledSourceNode(AudioScheduledSourceNodeMessage::Start(0.)),
     );
     context.message_node(
         buffer_source,

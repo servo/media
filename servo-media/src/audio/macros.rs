@@ -1,9 +1,13 @@
 #[macro_export]
 macro_rules! make_message_handler(
-    ($node:ident) => (
+    (
+        $(
+            $node:ident: $handler:ident
+         ),+
+    ) => (
         fn message(&mut self, msg: ::audio::node::AudioNodeMessage, sample_rate: f32) {
             match msg {
-                ::audio::node::AudioNodeMessage::$node(m) => self.handle_message(m, sample_rate),
+                $(::audio::node::AudioNodeMessage::$node(m) => self.$handler(m, sample_rate)),+,
                 _ => (),
             }
         });
@@ -30,5 +34,5 @@ macro_rules! make_render_thread_state_change(
             self.state = ProcessingState::$state;
             self.sink.$sink_method()
         }
+        );
     );
-);
