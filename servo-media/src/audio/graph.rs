@@ -113,6 +113,79 @@ impl AudioGraph {
         self.graph.add_edge(inp.node().0, out.node().0, Edge::new(inp.1, out.1));
     }
 
+    /// Disconnect all outgoing connections from a node
+    ///
+    /// https://webaudio.github.io/web-audio-api/#dom-audionode-disconnect
+    pub fn disconnect_all(&mut self, node: NodeId) {
+        let edges = self.graph
+                        .edges_directed(node.0, Direction::Incoming)
+                        .map(|e| e.id())
+                        .collect::<Vec<_>>();
+        for edge in edges {
+            self.graph.remove_edge(edge);
+        }
+    }
+
+    /// Disconnect all outgoing connections from a node's output
+    ///
+    /// https://webaudio.github.io/web-audio-api/#dom-audionode-disconnect-output
+    pub fn disconnect_output(&mut self, out: PortId<OutputPort>) {
+        // XXXManishearth we don't support multiple connections through
+        // a single output yet
+        let edge = self
+            .graph
+            .edges_directed(out.node().0, Direction::Incoming)
+            .find(|e| e.weight().output_idx == out.1)
+            .map(|e| e.id());
+        if let Some(edge) = edge {
+            self.graph.remove_edge(edge);
+        }
+    }
+
+    /// Disconnect connections from a node to another node
+    ///
+    /// https://webaudio.github.io/web-audio-api/#dom-audionode-disconnect-destinationnode
+    pub fn disconnect_between(&mut self, from: NodeId, to: NodeId) {
+        let edges = self.graph
+                        .edges(to.0)
+                        .filter(|e| e.target() == from.0)
+                        .map(|e| e.id())
+                        .collect::<Vec<_>>();
+        for edge in edges {
+            self.graph.remove_edge(edge);
+        }
+    }
+
+    /// Disconnect all outgoing connections from a node's output to another node
+    ///
+    /// https://webaudio.github.io/web-audio-api/#dom-audionode-disconnect-destinationnode-output
+    pub fn disconnect_output_between(&mut self, out: PortId<OutputPort>, to: NodeId) {
+        let edge = self
+            .graph
+            .edges_directed(out.node().0, Direction::Incoming)
+            .find(|e| e.weight().output_idx == out.1 && e.source() == to.0)
+            .map(|e| e.id());
+        if let Some(edge) = edge {
+            self.graph.remove_edge(edge);
+        }
+    }
+
+    /// Disconnect all outgoing connections from a node's output to another node's input
+    ///
+    /// https://webaudio.github.io/web-audio-api/#dom-audionode-disconnect-destinationnode-output-input
+    pub fn disconnect_output_between_to(&mut self, out: PortId<OutputPort>, inp: PortId<InputPort>) {
+        let edge = self
+            .graph
+            .edges_directed(out.node().0, Direction::Incoming)
+            .find(|e| e.weight().output_idx == out.1 &&
+                      e.source() == inp.node().0 &&
+                      e.weight().input_idx == inp.1)
+            .map(|e| e.id());
+        if let Some(edge) = edge {
+            self.graph.remove_edge(edge);
+        }
+    }
+
     /// Get the id of the destination node in this graph
     ///
     /// All graphs have a destination node, with one input port
