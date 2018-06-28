@@ -1,14 +1,16 @@
-use audio::node::ChannelCountMode;
+use audio::node::ChannelInfo;
 use audio::block::Chunk;
 use audio::block::Tick;
 use audio::node::AudioNodeEngine;
 use audio::node::BlockInfo;
 use audio::param::{Param, UserAutomationEvent};
 
+#[derive(Debug, Clone)]
 pub enum GainNodeMessage {
     SetGain(UserAutomationEvent),
 }
 
+#[derive(Copy, Clone, Debug)]
 pub struct GainNodeOptions {
     pub gain: f32,
 }
@@ -19,13 +21,16 @@ impl Default for GainNodeOptions {
     }
 }
 
+#[derive(AudioNodeCommon)]
 pub struct GainNode {
+    channel_info: ChannelInfo,
     gain: Param,
 }
 
 impl GainNode {
     pub fn new(options: GainNodeOptions) -> Self {
         Self {
+            channel_info: Default::default(),
             gain: Param::new(options.gain),
         }
     }
@@ -61,10 +66,6 @@ impl AudioNodeEngine for GainNode {
             }
         }
         inputs
-    }
-
-    fn channel_count_mode(&self) -> ChannelCountMode {
-        ChannelCountMode::Max
     }
 
     make_message_handler!(GainNode: handle_message);

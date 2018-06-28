@@ -1,8 +1,10 @@
+use audio::node::ChannelInfo;
 use audio::block::{Block, Chunk, Tick, FRAMES_PER_BLOCK};
-use audio::node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, BlockInfo, ChannelCountMode};
+use audio::node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, BlockInfo};
 use audio::param::Param;
 
 /// Control messages directed to AudioBufferSourceNodes.
+#[derive(Debug, Clone)]
 pub enum AudioBufferSourceNodeMessage {
     /// Set the data block holding the audio sample data to be played.
     // XXX handle channels
@@ -10,6 +12,7 @@ pub enum AudioBufferSourceNodeMessage {
 }
 
 /// This specifies options for constructing an AudioBufferSourceNode.
+#[derive(Debug, Clone)]
 pub struct AudioBufferSourceNodeOptions {
     /// The audio asset to be played.
     pub buffer: Option<AudioBuffer>,
@@ -42,9 +45,10 @@ impl Default for AudioBufferSourceNodeOptions {
 /// https://webaudio.github.io/web-audio-api/#AudioBufferSourceNode
 /// XXX Implement looping
 /// XXX Implement playbackRate and related bits
-#[derive(AudioScheduledSourceNode)]
+#[derive(AudioScheduledSourceNode, AudioNodeCommon)]
 #[allow(dead_code)]
 pub struct AudioBufferSourceNode {
+    channel_info: ChannelInfo,
     /// A data block holding the audio sample data to be played.
     buffer: Option<AudioBuffer>,
     /// AudioParam to modulate the speed at which is rendered the audio stream.
@@ -71,6 +75,7 @@ pub struct AudioBufferSourceNode {
 impl AudioBufferSourceNode {
     pub fn new(options: AudioBufferSourceNodeOptions) -> Self {
         Self {
+            channel_info: Default::default(),
             buffer: options.buffer,
             detune: Param::new(options.detune),
             loop_enabled: options.loop_enabled,
@@ -106,10 +111,6 @@ impl AudioBufferSourceNode {
 impl AudioNodeEngine for AudioBufferSourceNode {
     fn input_count(&self) -> u32 {
         0
-    }
-
-    fn channel_count_mode(&self) -> ChannelCountMode {
-        ChannelCountMode::Max
     }
 
     fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
@@ -170,6 +171,7 @@ impl AudioNodeEngine for AudioBufferSourceNode {
                           AudioScheduledSourceNode: handle_source_node_message);
 }
 
+#[derive(Debug, Clone)]
 pub struct AudioBuffer {
     /// Invariant: all buffers must be of the same length
     pub buffers: Vec<Vec<f32>>

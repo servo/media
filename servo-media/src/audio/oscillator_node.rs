@@ -1,18 +1,20 @@
+use audio::node::ChannelInfo;
 use audio::block::{Chunk, Tick};
-use audio::node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, BlockInfo, ChannelCountMode};
+use audio::node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, BlockInfo};
 use audio::param::{Param, UserAutomationEvent};
 use num_traits::cast::NumCast;
 
+#[derive(Copy, Clone, Debug)]
 pub enum OscillatorNodeMessage {
     SetFrequency(UserAutomationEvent),
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct PeriodicWaveOptions {
     // XXX https://webaudio.github.io/web-audio-api/#dictdef-periodicwaveoptions
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum OscillatorType {
     Sine,
     Square,
@@ -21,7 +23,7 @@ pub enum OscillatorType {
     Custom,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct OscillatorNodeOptions {
     pub oscillator_type: OscillatorType,
     pub freq: f32,
@@ -40,8 +42,9 @@ impl Default for OscillatorNodeOptions {
     }
 }
 
-#[derive(AudioScheduledSourceNode)]
+#[derive(AudioScheduledSourceNode, AudioNodeCommon)]
 pub struct OscillatorNode {
+    channel_info: ChannelInfo,
     frequency: Param,
     phase: f64,
     /// Time at which the source should start playing.
@@ -50,9 +53,11 @@ pub struct OscillatorNode {
     stop_at: Option<Tick>,
 }
 
+
 impl OscillatorNode {
     pub fn new(options: OscillatorNodeOptions) -> Self {
         Self {
+            channel_info: Default::default(),
             frequency: Param::new(options.freq.into()),
             phase: 0.,
             start_at: None,
@@ -142,10 +147,6 @@ impl AudioNodeEngine for OscillatorNode {
 
     fn input_count(&self) -> u32 {
         0
-    }
-
-    fn channel_count_mode(&self) -> ChannelCountMode {
-        ChannelCountMode::Max
     }
 
     make_message_handler!(AudioScheduledSourceNode: handle_source_node_message,

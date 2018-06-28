@@ -32,7 +32,7 @@ impl NodeId {
 ///
 /// Kind is a zero sized type and is useful for distinguishing
 /// between input and output ports (which may otherwise share indices)
-#[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash, Debug)]
 pub struct PortIndex<Kind>(pub u32, pub Kind);
 
 impl<Kind> PortId<Kind> {
@@ -42,14 +42,14 @@ impl<Kind> PortId<Kind> {
 }
 
 /// An identifier for a port.
-#[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash, Debug)]
 pub struct PortId<Kind>(NodeId, PortIndex<Kind>);
 
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
 /// Marker type for denoting that the port is an input port
 /// of the node it is connected to
 pub struct InputPort;
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
 /// Marker type for denoting that the port is an output port
 /// of the node it is connected to
 pub struct OutputPort;
