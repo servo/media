@@ -6,6 +6,7 @@ use num_traits::cast::NumCast;
 
 #[derive(Copy, Clone, Debug)]
 pub enum OscillatorNodeMessage {
+    SetDetune(UserAutomationEvent),
     SetFrequency(UserAutomationEvent),
 }
 
@@ -74,6 +75,7 @@ impl OscillatorNode {
             OscillatorNodeMessage::SetFrequency(event) => {
                 self.frequency.insert_event(event.to_event(sample_rate))
             }
+            _ => ()
         }
     }
 
