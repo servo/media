@@ -1,14 +1,15 @@
 use audio::node::ChannelInfo;
 use audio::block::{Block, Chunk, Tick, FRAMES_PER_BLOCK};
 use audio::node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, BlockInfo};
-use audio::param::Param;
+use audio::param::{Param, UserAutomationEvent};
 
 /// Control messages directed to AudioBufferSourceNodes.
 #[derive(Debug, Clone)]
 pub enum AudioBufferSourceNodeMessage {
     /// Set the data block holding the audio sample data to be played.
-    // XXX handle channels
     SetBuffer(AudioBuffer),
+    SetPlaybackRate(UserAutomationEvent),
+    SetDetune(UserAutomationEvent),
 }
 
 /// This specifies options for constructing an AudioBufferSourceNode.
@@ -88,10 +89,16 @@ impl AudioBufferSourceNode {
         }
     }
 
-    pub fn handle_message(&mut self, message: AudioBufferSourceNodeMessage, _: f32) {
+    pub fn handle_message(&mut self, message: AudioBufferSourceNodeMessage, sample_rate: f32) {
         match message {
             AudioBufferSourceNodeMessage::SetBuffer(buffer) => {
                 self.buffer = Some(buffer);
+            },
+            AudioBufferSourceNodeMessage::SetPlaybackRate(event) => {
+                self.playback_rate.insert_event(event.to_event(sample_rate));
+            },
+            AudioBufferSourceNodeMessage::SetDetune(event) => {
+                self.detune.insert_event(event.to_event(sample_rate));
             }
         }
     }
