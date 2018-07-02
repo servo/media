@@ -76,6 +76,9 @@ impl AudioSink for GStreamerAudioSink {
         self.set_audio_info(sample_rate, 2)?;
         self.appsrc.set_property_format(gst::Format::Time);
 
+        // Allow only a single chunk.
+        self.appsrc.set_max_bytes(1);
+
         let appsrc = self.appsrc.clone();
         Builder::new()
             .name("GstAppSrcCallbacks".to_owned())
