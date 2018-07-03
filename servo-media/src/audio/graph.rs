@@ -5,7 +5,7 @@ use petgraph::Direction;
 use petgraph::graph::DefaultIx;
 use petgraph::stable_graph::NodeIndex;
 use petgraph::stable_graph::StableGraph;
-use petgraph::visit::{DfsPostOrder, EdgeRef};
+use petgraph::visit::{DfsPostOrder, EdgeRef, Reversed};
 use std::cell::{Ref, RefCell, RefMut};
 use std::cmp;
 
@@ -65,8 +65,7 @@ pub struct Node {
 
 /// Edges go *to* the output port from the input port,
 ///
-/// The edge direction is the *reverse* of the direction of sound
-/// since we need to do a postorder DFS traversal starting at the output
+/// The edge direction is the direction of sound
 pub struct Edge {
     /// The index of the port on the input node
     /// This is actually the /output/ of this edge
@@ -93,14 +92,13 @@ impl AudioGraph {
 
     /// Connect an output port to an input port
     ///
-    /// While conceptually the edge goes *from* the output port *to* the input port,
-    /// the internal implementation reverses the direction of the edge
+    /// The edge goes *from* the output port *to* the input port, connecting two nodes
     pub fn add_edge(&mut self, out: PortId<OutputPort>, inp: PortId<InputPort>) {
         // Output ports can only have a single edge associated with them.
         // Remove all others
         let old = self
             .graph
-            .edges_directed(out.node().0, Direction::Incoming)
+            .edges(out.node().0)
             .find(|e| e.weight().input_idx == inp.1)
             .map(|e| e.id());
         if let Some(old) = old {
@@ -110,7 +108,7 @@ impl AudioGraph {
         // XXXManishearth it is actually possible for two nodes to have
         // multiple edges between them between
         // different ports. We should represent this somehow.
-        self.graph.add_edge(inp.node().0, out.node().0, Edge::new(inp.1, out.1));
+        self.graph.add_edge(out.node().0, inp.node().0, Edge::new(inp.1, out.1));
     }
 
     /// Disconnect all outgoing connections from a node
@@ -118,7 +116,7 @@ impl AudioGraph {
     /// https://webaudio.github.io/web-audio-api/#dom-audionode-disconnect
     pub fn disconnect_all(&mut self, node: NodeId) {
         let edges = self.graph
-                        .edges_directed(node.0, Direction::Incoming)
+                        .edges(node.0)
                         .map(|e| e.id())
                         .collect::<Vec<_>>();
         for edge in edges {
@@ -134,7 +132,7 @@ impl AudioGraph {
         // a single output yet
         let edge = self
             .graph
-            .edges_directed(out.node().0, Direction::Incoming)
+            .edges(out.node().0)
             .find(|e| e.weight().output_idx == out.1)
             .map(|e| e.id());
         if let Some(edge) = edge {
@@ -147,7 +145,7 @@ impl AudioGraph {
     /// https://webaudio.github.io/web-audio-api/#dom-audionode-disconnect-destinationnode
     pub fn disconnect_between(&mut self, from: NodeId, to: NodeId) {
         let edges = self.graph
-                        .edges(to.0)
+                        .edges_directed(to.0, Direction::Incoming)
                         .filter(|e| e.target() == from.0)
                         .map(|e| e.id())
                         .collect::<Vec<_>>();
@@ -162,7 +160,7 @@ impl AudioGraph {
     pub fn disconnect_output_between(&mut self, out: PortId<OutputPort>, to: NodeId) {
         let edge = self
             .graph
-            .edges_directed(out.node().0, Direction::Incoming)
+            .edges(out.node().0)
             .find(|e| e.weight().output_idx == out.1 && e.source() == to.0)
             .map(|e| e.id());
         if let Some(edge) = edge {
@@ -176,7 +174,7 @@ impl AudioGraph {
     pub fn disconnect_output_between_to(&mut self, out: PortId<OutputPort>, inp: PortId<InputPort>) {
         let edge = self
             .graph
-            .edges_directed(out.node().0, Direction::Incoming)
+            .edges(out.node().0)
             .find(|e| e.weight().output_idx == out.1 &&
                       e.source() == inp.node().0 &&
                       e.weight().input_idx == inp.1)
@@ -200,8 +198,9 @@ impl AudioGraph {
         // children's output
         //
         // This will only visit each node once
-        let mut visit = DfsPostOrder::new(&self.graph, self.dest_id.0);
-        while let Some(ix) = visit.next(&self.graph) {
+        let reversed = Reversed(&self.graph);
+        let mut visit = DfsPostOrder::new(reversed, self.dest_id.0);
+        while let Some(ix) = visit.next(reversed) {
             let mut curr = self.graph[ix].node.borrow_mut();
             let mut chunk = Chunk::default();
             // if we have inputs, collect all the computed blocks
@@ -217,8 +216,8 @@ impl AudioGraph {
                 let count = curr.channel_count();
                 let interpretation = curr.channel_interpretation();
 
-                // all edges from this node point to its dependencies
-                for edge in self.graph.edges(ix) {
+                // all edges to this node are from its dependencies
+                for edge in self.graph.edges_directed(ix, Direction::Incoming) {
                     let edge = edge.weight();
                     // XXXManishearth we can have multiple edges
                     // hitting the same input port, we should deal with that
@@ -256,9 +255,9 @@ impl AudioGraph {
                 continue;
             }
 
-            // all the edges to this node come from nodes which depend on it,
+            // all the edges from this node go to nodes which depend on it,
             // i.e. the nodes it outputs to. Store the blocks for retrieval.
-            for edge in self.graph.edges_directed(ix, Direction::Incoming) {
+            for edge in self.graph.edges(ix) {
                 let edge = edge.weight();
                 *edge.cache.borrow_mut() = Some(out[edge.output_idx].take());
             }
