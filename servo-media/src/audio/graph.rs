@@ -1,3 +1,4 @@
+use smallvec::SmallVec;
 use audio::block::{Block, Chunk};
 use audio::destination_node::DestinationNode;
 use audio::node::{AudioNodeEngine, BlockInfo, ChannelCountMode};
@@ -63,10 +64,41 @@ pub struct Node {
     node: RefCell<Box<AudioNodeEngine>>,
 }
 
-/// Edges go *to* the output port from the input port,
+/// An edge in the graph
 ///
-/// The edge direction is the direction of sound
+/// This connects one or more pair of ports between two
+/// nodes, each connection represented by a `Connection`.
+/// WebAudio allows for multiple connections to/from the same port
+/// however it does not allow for duplicate connections between pairs
+/// of ports
 pub struct Edge {
+    connections: SmallVec<[Connection; 1]>
+}
+
+impl Edge {
+    /// Find if there are connections between two given ports, return the index
+    fn has_between(&self,
+               output_idx: PortIndex<OutputPort>,
+               input_idx: PortIndex<InputPort>) -> bool {
+        self.connections.iter()
+            .find(|e| e.input_idx == input_idx && e.output_idx == output_idx)
+            .is_some()
+    }
+
+    fn remove_by_output(&mut self, output_idx: PortIndex<OutputPort>) {
+        self.connections.retain(|i| i.output_idx != output_idx)
+    }
+
+    fn remove_by_pair(&mut self,
+                      output_idx: PortIndex<OutputPort>,
+                      input_idx: PortIndex<InputPort>) {
+        self.connections
+            .retain(|i| i.output_idx != output_idx || i.input_idx != input_idx)
+    }
+}
+
+/// A single connection between ports
+struct Connection {
     /// The index of the port on the input node
     /// This is actually the /output/ of this edge
     input_idx: PortIndex<InputPort>,
@@ -94,21 +126,20 @@ impl AudioGraph {
     ///
     /// The edge goes *from* the output port *to* the input port, connecting two nodes
     pub fn add_edge(&mut self, out: PortId<OutputPort>, inp: PortId<InputPort>) {
-        // Output ports can only have a single edge associated with them.
-        // Remove all others
-        let old = self
-            .graph
-            .edges(out.node().0)
-            .find(|e| e.weight().input_idx == inp.1)
-            .map(|e| e.id());
-        if let Some(old) = old {
-            self.graph.remove_edge(old);
+        let edge = self.graph.edges(out.node().0)
+                       .find(|e| e.target() == inp.node().0)
+                       .map(|e| e.id());
+        if let Some(e) = edge {
+            // .find(|e| e.weight().has_between(out.1, inp.1));
+            let w = self.graph.edge_weight_mut(e).expect("This edge is known to exist");
+            if w.has_between(out.1, inp.1) {
+                return;
+            }
+            w.connections.push(Connection::new(inp.1, out.1))
+        } else {
+            // add a new edge
+            self.graph.add_edge(out.node().0, inp.node().0, Edge::new(inp.1, out.1));
         }
-        // add a new edge
-        // XXXManishearth it is actually possible for two nodes to have
-        // multiple edges between them between
-        // different ports. We should represent this somehow.
-        self.graph.add_edge(out.node().0, inp.node().0, Edge::new(inp.1, out.1));
     }
 
     /// Disconnect all outgoing connections from a node
@@ -124,19 +155,18 @@ impl AudioGraph {
         }
     }
 
-    /// Disconnect all outgoing connections from a node's output
-    ///
-    /// https://webaudio.github.io/web-audio-api/#dom-audionode-disconnect-output
+    // /// Disconnect all outgoing connections from a node's output
+    // ///
+    // /// https://webaudio.github.io/web-audio-api/#dom-audionode-disconnect-output
     pub fn disconnect_output(&mut self, out: PortId<OutputPort>) {
-        // XXXManishearth we don't support multiple connections through
-        // a single output yet
-        let edge = self
-            .graph
-            .edges(out.node().0)
-            .find(|e| e.weight().output_idx == out.1)
-            .map(|e| e.id());
-        if let Some(edge) = edge {
-            self.graph.remove_edge(edge);
+        let candidates: Vec<_> = self.graph.edges(out.node().0)
+                                     .map(|e| (e.id(), e.target())).collect();
+        for (edge, to) in candidates {
+            let mut e = self.graph.remove_edge(edge).expect("Edge index is known to exist");
+            e.remove_by_output(out.1);
+            if !e.connections.is_empty() {
+                self.graph.add_edge(out.node().0, to, e);
+            }
         }
     }
 
@@ -144,13 +174,12 @@ impl AudioGraph {
     ///
     /// https://webaudio.github.io/web-audio-api/#dom-audionode-disconnect-destinationnode
     pub fn disconnect_between(&mut self, from: NodeId, to: NodeId) {
-        let edges = self.graph
-                        .edges_directed(to.0, Direction::Incoming)
-                        .filter(|e| e.target() == from.0)
-                        .map(|e| e.id())
-                        .collect::<Vec<_>>();
-        for edge in edges {
-            self.graph.remove_edge(edge);
+        let edge = self.graph
+                       .edges(from.0)
+                       .find(|e| e.target() == to.0)
+                       .map(|e| e.id());
+        if let Some(i) = edge {
+            self.graph.remove_edge(i);
         }
     }
 
@@ -161,26 +190,32 @@ impl AudioGraph {
         let edge = self
             .graph
             .edges(out.node().0)
-            .find(|e| e.weight().output_idx == out.1 && e.source() == to.0)
+            .find(|e| e.target() == to.0)
             .map(|e| e.id());
         if let Some(edge) = edge {
-            self.graph.remove_edge(edge);
+            let mut e = self.graph.remove_edge(edge).expect("Edge index is known to exist");
+            e.remove_by_output(out.1);
+            if !e.connections.is_empty() {
+                self.graph.add_edge(out.node().0, to.0, e);
+            }
         }
     }
 
-    /// Disconnect all outgoing connections from a node's output to another node's input
-    ///
-    /// https://webaudio.github.io/web-audio-api/#dom-audionode-disconnect-destinationnode-output-input
+    // /// Disconnect all outgoing connections from a node's output to another node's input
+    // ///
+    // /// https://webaudio.github.io/web-audio-api/#dom-audionode-disconnect-destinationnode-output-input
     pub fn disconnect_output_between_to(&mut self, out: PortId<OutputPort>, inp: PortId<InputPort>) {
         let edge = self
             .graph
             .edges(out.node().0)
-            .find(|e| e.weight().output_idx == out.1 &&
-                      e.source() == inp.node().0 &&
-                      e.weight().input_idx == inp.1)
+            .find(|e| e.target() == inp.node().0)
             .map(|e| e.id());
         if let Some(edge) = edge {
-            self.graph.remove_edge(edge);
+            let mut e = self.graph.remove_edge(edge).expect("Edge index is known to exist");
+            e.remove_by_pair(out.1, inp.1);
+            if !e.connections.is_empty() {
+                self.graph.add_edge(out.node().0, inp.node().0, e);
+            }
         }
     }
 
@@ -200,18 +235,24 @@ impl AudioGraph {
         // This will only visit each node once
         let reversed = Reversed(&self.graph);
         let mut visit = DfsPostOrder::new(reversed, self.dest_id.0);
+
+        let mut blocks: SmallVec<[SmallVec<[Block; 1]>; 1]> = SmallVec::new();
+        let mut output_counts: SmallVec<[u32; 1]> = SmallVec::new();
+
         while let Some(ix) = visit.next(reversed) {
             let mut curr = self.graph[ix].node.borrow_mut();
+
             let mut chunk = Chunk::default();
+            chunk
+                .blocks
+                .resize(curr.input_count() as usize, Default::default());
             // if we have inputs, collect all the computed blocks
             // and construct a Chunk
             if curr.input_count() > 0 {
-                // set the chunk to the correct size
-                chunk
-                    .blocks
-                    .resize(curr.input_count() as usize, Default::default());
+                // set up scratch space to store all the blocks
+                blocks.clear();
+                blocks.resize(curr.input_count() as usize, Default::default());
 
-                let mut max = 0; // max channel count
                 let mode = curr.channel_count_mode();
                 let count = curr.channel_count();
                 let interpretation = curr.channel_interpretation();
@@ -219,29 +260,56 @@ impl AudioGraph {
                 // all edges to this node are from its dependencies
                 for edge in self.graph.edges_directed(ix, Direction::Incoming) {
                     let edge = edge.weight();
-                    // XXXManishearth we can have multiple edges
-                    // hitting the same input port, we should deal with that
-                    let mut block = edge
-                        .cache
-                        .borrow_mut()
-                        .take()
-                        .expect("Cache should have been filled from traversal");
-                    if mode == ChannelCountMode::Explicit {
-                        block.mix(count, interpretation);
-                    } else {
-                        max = cmp::max(max, block.chan_count());
+                    for connection in &edge.connections {
+                        let block = connection
+                            .cache
+                            .borrow_mut()
+                            .take()
+                            .expect("Cache should have been filled from traversal");
+                        blocks[connection.input_idx.0 as usize].push(block);
                     }
 
-                    chunk[edge.input_idx] = block;
                 }
 
-                if mode != ChannelCountMode::Explicit {
-                    if mode == ChannelCountMode::ClampedMax {
-                        max = cmp::min(max, count);
-                    }
-
-                    for block in &mut chunk.blocks {
-                        block.mix(max, interpretation);
+                for (i, mut blocks) in blocks.drain().enumerate() {
+                    if blocks.len() == 0 {
+                        if mode == ChannelCountMode::Explicit {
+                            // It's silence, but mix it anyway
+                            chunk.blocks[i].mix(count, interpretation);
+                        }
+                    } else if blocks.len() == 1 {
+                        chunk.blocks[i] = blocks.pop().expect("`blocks` had length 1");
+                        match mode {
+                            ChannelCountMode::Explicit => {
+                                chunk.blocks[i].mix(count, interpretation);
+                            }
+                            ChannelCountMode::ClampedMax => {
+                                if chunk.blocks[i].chan_count() > count {
+                                    chunk.blocks[i].mix(count, interpretation);
+                                }
+                            }
+                            // It's one channel, it maxes itself
+                            ChannelCountMode::Max => ()
+                        }
+                    } else {
+                        let mix_count = match mode {
+                            ChannelCountMode::Explicit => count,
+                            _ => {
+                                let mut max = 0; // max channel count
+                                for block in &blocks {
+                                    max = cmp::max(max, block.chan_count());
+                                }
+                                if mode == ChannelCountMode::ClampedMax {
+                                    max = cmp::min(max, count);
+                                }
+                                max
+                            }
+                        };
+                        let block = blocks.into_iter().fold(Block::default(), |acc, mut block| {
+                            block.mix(mix_count, interpretation);
+                            acc.sum(block)
+                        });
+                        chunk.blocks[i] = block;
                     }
                 }
             }
@@ -255,11 +323,34 @@ impl AudioGraph {
                 continue;
             }
 
+            // Count how many output connections fan out from each port
+            // This is so that we don't have to needlessly clone audio buffers
+            //
+            // If this is inefficient, we can instead maintain this data
+            // cached on the node
+            output_counts.clear();
+            output_counts.resize(curr.output_count() as usize, 0);
+            for edge in self.graph.edges(ix) {
+                let edge = edge.weight();
+                for conn in &edge.connections {
+                    output_counts[conn.output_idx.0 as usize] += 1;
+                }
+            }
+
             // all the edges from this node go to nodes which depend on it,
             // i.e. the nodes it outputs to. Store the blocks for retrieval.
             for edge in self.graph.edges(ix) {
                 let edge = edge.weight();
-                *edge.cache.borrow_mut() = Some(out[edge.output_idx].take());
+                for conn in &edge.connections {
+                    output_counts[conn.output_idx.0 as usize] -= 1;
+                    // if there are no consumers left after this, take the data
+                    let block = if output_counts[conn.output_idx.0 as usize] == 0 {
+                        out[conn.output_idx].take()
+                    } else {
+                        out[conn.output_idx].clone()
+                    };
+                    *conn.cache.borrow_mut() = Some(block);
+                }
             }
         }
 
@@ -291,10 +382,17 @@ impl Node {
 impl Edge {
     pub fn new(input_idx: PortIndex<InputPort>, output_idx: PortIndex<OutputPort>) -> Self {
         Edge {
+            connections: SmallVec::from_buf([Connection::new(input_idx, output_idx)])
+        }
+    }
+}
+
+impl Connection {
+    pub fn new(input_idx: PortIndex<InputPort>, output_idx: PortIndex<OutputPort>) -> Self {
+        Connection {
             input_idx,
             output_idx,
             cache: RefCell::new(None),
         }
     }
 }
-

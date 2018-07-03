@@ -89,6 +89,26 @@ impl Block {
         self.data_mut().as_mut_byte_slice().expect("casting failed")
     }
 
+    /// Zero-gain sum with another buffer
+    ///
+    /// Used after mixing multiple inputs to a single port
+    pub fn sum(mut self, mut other: Self) -> Self {
+        if self.is_silence() {
+            other
+        } else {
+            debug_assert!(self.channels == other.channels);
+            if self.repeat ^ other.repeat {
+                self.explicit_repeat();
+                other.explicit_repeat();
+            }
+            debug_assert!(self.buffer.len() == other.buffer.len());
+            for (a, b) in self.buffer.iter_mut().zip(other.buffer.iter()) {
+                *a += b
+            }
+            self
+        }
+    }
+
     /// If this is in "silence" mode without a buffer, allocate a silent buffer
     pub fn explicit_silence(&mut self) {
         if self.buffer.is_empty() {
