@@ -1,14 +1,17 @@
-use audio::node::ChannelInfo;
 use audio::block::{Block, Chunk, Tick, FRAMES_PER_BLOCK};
+use audio::node::ChannelInfo;
 use audio::node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, BlockInfo};
 use audio::param::{Param, UserAutomationEvent};
+use std::sync::{Arc, Mutex};
 
 /// Control messages directed to AudioBufferSourceNodes.
 #[derive(Debug, Clone)]
 pub enum AudioBufferSourceNodeMessage {
     /// Set the data block holding the audio sample data to be played.
-    SetBuffer(AudioBuffer),
+    SetBuffer(Option<Arc<Mutex<AudioBuffer>>>),
+    /// Set the speed at which to render the audio stream.
     SetPlaybackRate(UserAutomationEvent),
+    /// Set detune, to modulate the speed at which is rendered the audio stream.
     SetDetune(UserAutomationEvent),
 }
 
@@ -51,7 +54,7 @@ impl Default for AudioBufferSourceNodeOptions {
 pub struct AudioBufferSourceNode {
     channel_info: ChannelInfo,
     /// A data block holding the audio sample data to be played.
-    buffer: Option<AudioBuffer>,
+    buffer: Option<Arc<Mutex<AudioBuffer>>>,
     /// AudioParam to modulate the speed at which is rendered the audio stream.
     detune: Param,
     /// Indicates if the region of audio data designated by loopStart and loopEnd
@@ -75,9 +78,13 @@ pub struct AudioBufferSourceNode {
 
 impl AudioBufferSourceNode {
     pub fn new(options: AudioBufferSourceNodeOptions) -> Self {
+        let buffer = match options.buffer {
+            Some(buffer) => Some(Arc::new(Mutex::new(buffer))),
+            None => None,
+        };
         Self {
             channel_info: Default::default(),
-            buffer: options.buffer,
+            buffer,
             detune: Param::new(options.detune),
             loop_enabled: options.loop_enabled,
             loop_end: options.loop_end,
@@ -92,18 +99,22 @@ impl AudioBufferSourceNode {
     pub fn handle_message(&mut self, message: AudioBufferSourceNodeMessage, sample_rate: f32) {
         match message {
             AudioBufferSourceNodeMessage::SetBuffer(buffer) => {
-                self.buffer = Some(buffer);
-            },
+                self.buffer = buffer;
+            }
             AudioBufferSourceNodeMessage::SetPlaybackRate(event) => {
                 self.playback_rate.insert_event(event.to_event(sample_rate));
-            },
+            }
             AudioBufferSourceNodeMessage::SetDetune(event) => {
                 self.detune.insert_event(event.to_event(sample_rate));
             }
         }
     }
 
-    pub fn handle_source_node_message(&mut self, message: AudioScheduledSourceNodeMessage, sample_rate: f32) {
+    pub fn handle_source_node_message(
+        &mut self,
+        message: AudioScheduledSourceNodeMessage,
+        sample_rate: f32,
+    ) {
         match message {
             AudioScheduledSourceNodeMessage::Start(when) => {
                 self.start(Tick::from_time(when, sample_rate));
@@ -130,11 +141,12 @@ impl AudioNodeEngine for AudioBufferSourceNode {
             return inputs;
         };
 
-        if self.playback_offset >= buffer.len() ||
-            self.should_play_at(info.frame) == (false, true) {
-                inputs.blocks.push(Default::default());
-                return inputs;
-            }
+        if self.playback_offset >= buffer.lock().unwrap().len()
+            || self.should_play_at(info.frame) == (false, true)
+        {
+            inputs.blocks.push(Default::default());
+            return inputs;
+        }
 
         let samples_to_copy = match self.stop_at {
             Some(stop_at) => {
@@ -150,10 +162,10 @@ impl AudioNodeEngine for AudioBufferSourceNode {
 
         let next_offset = self.playback_offset + samples_to_copy;
 
-
         if samples_to_copy == FRAMES_PER_BLOCK.0 as usize {
             // copy entire chan
             let mut block = Block::empty();
+            let buffer = buffer.lock().unwrap();
             for chan in 0..buffer.chans() {
                 block.push_chan(&buffer.buffers[chan as usize][self.playback_offset..next_offset]);
             }
@@ -161,11 +173,14 @@ impl AudioNodeEngine for AudioBufferSourceNode {
         } else {
             // silent fill and copy
             let mut block = Block::default();
+            let buffer = buffer.lock().unwrap();
             block.repeat(buffer.chans());
             block.explicit_repeat();
             for chan in 0..buffer.chans() {
                 let data = block.data_chan_mut(chan);
-                data.copy_from_slice(&buffer.buffers[chan as usize][self.playback_offset..next_offset]);
+                data.copy_from_slice(
+                    &buffer.buffers[chan as usize][self.playback_offset..next_offset],
+                );
             }
             inputs.blocks.push(block)
         }
@@ -174,14 +189,16 @@ impl AudioNodeEngine for AudioBufferSourceNode {
         inputs
     }
 
-    make_message_handler!(AudioBufferSourceNode: handle_message,
-                          AudioScheduledSourceNode: handle_source_node_message);
+    make_message_handler!(
+        AudioBufferSourceNode: handle_message,
+        AudioScheduledSourceNode: handle_source_node_message
+    );
 }
 
 #[derive(Debug, Clone)]
 pub struct AudioBuffer {
     /// Invariant: all buffers must be of the same length
-    pub buffers: Vec<Vec<f32>>
+    pub buffers: Vec<Vec<f32>>,
 }
 
 impl AudioBuffer {
@@ -198,9 +215,7 @@ impl AudioBuffer {
             assert!(buf.len() == buffers[0].len())
         }
 
-        Self {
-            buffers
-        }
+        Self { buffers }
     }
 
     pub fn len(&self) -> usize {
@@ -214,9 +229,7 @@ impl AudioBuffer {
 
 impl From<Vec<f32>> for AudioBuffer {
     fn from(vec: Vec<f32>) -> Self {
-        Self {
-            buffers: vec![vec]
-        }
+        Self { buffers: vec![vec] }
     }
 }
 

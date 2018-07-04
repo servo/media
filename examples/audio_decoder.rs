@@ -1,6 +1,6 @@
 extern crate servo_media;
 
-use servo_media::audio::buffer_source_node::AudioBufferSourceNodeMessage;
+use servo_media::audio::buffer_source_node::{AudioBuffer, AudioBufferSourceNodeMessage};
 use servo_media::audio::decoder::AudioDecoderCallbacks;
 use servo_media::audio::node::{AudioNodeMessage, AudioNodeType, AudioScheduledSourceNodeMessage};
 use servo_media::ServoMedia;
@@ -22,7 +22,8 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let mut file = File::open(filename).unwrap();
     let mut bytes = vec![];
     file.read_to_end(&mut bytes).unwrap();
-    let decoded_audio: Arc<Mutex<Vec<f32>>> = Arc::new(Mutex::new(Vec::new()));
+    // XXX Support multiple channels #55.
+    let decoded_audio: Arc<Mutex<AudioBuffer>> = Arc::new(Mutex::new(AudioBuffer::new(1, 0)));
     let progress = decoded_audio.clone();
     let (sender, receiver) = mpsc::channel();
     let callbacks = AudioDecoderCallbacks::new()
@@ -36,6 +37,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
             progress
                 .lock()
                 .unwrap()
+                .buffers[0]
                 .extend_from_slice((*buffer).as_ref());
         })
         .build();
@@ -53,7 +55,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     context.message_node(
         buffer_source,
         AudioNodeMessage::AudioBufferSourceNode(AudioBufferSourceNodeMessage::SetBuffer(
-            decoded_audio.lock().unwrap().to_vec().into(),
+            Some(decoded_audio),
         )),
     );
     let _ = context.resume();
