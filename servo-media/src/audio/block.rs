@@ -131,6 +131,7 @@ impl Block {
             }
 
             self.buffer = new;
+            self.repeat = false;
         } else if self.is_silence() {
             self.buffer.resize(FRAMES_PER_BLOCK_USIZE * self.channels as usize, 0.);
         }
