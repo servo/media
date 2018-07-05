@@ -4,7 +4,7 @@ extern crate servo_media;
 use servo_media::audio::buffer_source_node::AudioBufferSourceNodeMessage;
 use servo_media::audio::node::{AudioNodeMessage, AudioNodeType, AudioScheduledSourceNodeMessage};
 use servo_media::ServoMedia;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::{thread, time};
 
 fn run_example(servo_media: Arc<ServoMedia>) {
@@ -23,7 +23,8 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     );
     context.message_node(
         buffer_source,
-        AudioNodeMessage::AudioBufferSourceNode(AudioBufferSourceNodeMessage::SetBuffer(buffers.into())),
+        AudioNodeMessage::AudioBufferSourceNode(
+            AudioBufferSourceNodeMessage::SetBuffer(Some(Arc::new(Mutex::new(buffers.into()))))),
     );
     let _ = context.resume();
     thread::sleep(time::Duration::from_millis(5000));
