@@ -145,7 +145,7 @@ impl AudioGraph {
     /// Disconnect all outgoing connections from a node
     ///
     /// https://webaudio.github.io/web-audio-api/#dom-audionode-disconnect
-    pub fn disconnect_all(&mut self, node: NodeId) {
+    pub fn disconnect_all_from(&mut self, node: NodeId) {
         let edges = self.graph
                         .edges(node.0)
                         .map(|e| e.id())
