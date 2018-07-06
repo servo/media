@@ -7,7 +7,7 @@ use audio::param::{Param, UserAutomationEvent};
 #[derive(Debug, Clone)]
 pub enum AudioBufferSourceNodeMessage {
     /// Set the data block holding the audio sample data to be played.
-    SetBuffer(AudioBuffer),
+    SetBuffer(Option<AudioBuffer>),
     SetPlaybackRate(UserAutomationEvent),
     SetDetune(UserAutomationEvent),
 }
@@ -92,7 +92,7 @@ impl AudioBufferSourceNode {
     pub fn handle_message(&mut self, message: AudioBufferSourceNodeMessage, sample_rate: f32) {
         match message {
             AudioBufferSourceNodeMessage::SetBuffer(buffer) => {
-                self.buffer = Some(buffer);
+                self.buffer = buffer;
             },
             AudioBufferSourceNodeMessage::SetPlaybackRate(event) => {
                 self.playback_rate.insert_event(event.to_event(sample_rate));
