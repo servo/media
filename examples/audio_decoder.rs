@@ -53,7 +53,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     context.message_node(
         buffer_source,
         AudioNodeMessage::AudioBufferSourceNode(AudioBufferSourceNodeMessage::SetBuffer(
-            decoded_audio.lock().unwrap().to_vec().into(),
+            Some(decoded_audio.lock().unwrap().to_vec().into()),
         )),
     );
     let _ = context.resume();
