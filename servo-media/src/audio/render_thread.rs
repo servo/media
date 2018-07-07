@@ -24,6 +24,12 @@ pub enum AudioRenderThreadMsg {
     Close(Sender<StateChangeResult>),
     SinkNeedData,
     GetCurrentTime(Sender<f64>),
+
+    DisconnectAllFrom(NodeId),
+    DisconnectOutput(PortId<OutputPort>),
+    DisconnectBetween(NodeId, NodeId),
+    DisconnectOutputBetween(PortId<OutputPort>, NodeId),
+    DisconnectOutputBetweenTo(PortId<OutputPort>, PortId<InputPort>),
 }
 
 pub struct AudioRenderThread {
@@ -122,6 +128,22 @@ impl AudioRenderThread {
                 AudioRenderThreadMsg::SinkNeedData => {
                     // Do nothing. This will simply unblock the thread so we
                     // can restart the non-blocking event loop.
+                }
+
+                AudioRenderThreadMsg::DisconnectAllFrom(id) => {
+                    context.graph.disconnect_all_from(id)
+                }
+                AudioRenderThreadMsg::DisconnectOutput(out) => {
+                    context.graph.disconnect_output(out)
+                }
+                AudioRenderThreadMsg::DisconnectBetween(from, to) => {
+                    context.graph.disconnect_between(from, to)
+                }
+                AudioRenderThreadMsg::DisconnectOutputBetween(from, to) => {
+                    context.graph.disconnect_output_between(from, to)
+                }
+                AudioRenderThreadMsg::DisconnectOutputBetweenTo(from, to) => {
+                    context.graph.disconnect_output_between_to(from, to)
                 }
             };
 

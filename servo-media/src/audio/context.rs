@@ -179,6 +179,43 @@ impl AudioContext {
             .send(AudioRenderThreadMsg::ConnectPorts(from, to));
     }
 
+    pub fn disconnect_all_from(&self, node: NodeId) {
+        let _ = self.sender
+            .send(AudioRenderThreadMsg::DisconnectAllFrom(node));
+    }
+
+    // /// Disconnect all outgoing connections from a node's output
+    // ///
+    // /// https://webaudio.github.io/web-audio-api/#dom-audionode-disconnect-output
+    pub fn disconnect_output(&self, out: PortId<OutputPort>) {
+        let _ = self.sender
+            .send(AudioRenderThreadMsg::DisconnectOutput(out));
+    }
+
+    /// Disconnect connections from a node to another node
+    ///
+    /// https://webaudio.github.io/web-audio-api/#dom-audionode-disconnect-destinationnode
+    pub fn disconnect_between(&self, from: NodeId, to: NodeId) {
+        let _ = self.sender
+            .send(AudioRenderThreadMsg::DisconnectBetween(from, to));
+    }
+
+    /// Disconnect all outgoing connections from a node's output to another node
+    ///
+    /// https://webaudio.github.io/web-audio-api/#dom-audionode-disconnect-destinationnode-output
+    pub fn disconnect_output_between(&self, out: PortId<OutputPort>, to: NodeId) {
+        let _ = self.sender
+            .send(AudioRenderThreadMsg::DisconnectOutputBetween(out, to));
+    }
+
+    // /// Disconnect all outgoing connections from a node's output to another node's input
+    // ///
+    // /// https://webaudio.github.io/web-audio-api/#dom-audionode-disconnect-destinationnode-output-input
+    pub fn disconnect_output_between_to(&self, out: PortId<OutputPort>, inp: PortId<InputPort>) {
+        let _ = self.sender
+            .send(AudioRenderThreadMsg::DisconnectOutputBetweenTo(out, inp));
+    }
+
     /// Asynchronously decodes the audio file data contained in the given
     /// buffer.
     pub fn decode_audio_data(&self, data: Vec<u8>, callbacks: AudioDecoderCallbacks) {
