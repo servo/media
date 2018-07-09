@@ -1,15 +1,13 @@
 use audio::node::{AudioNodeType, ChannelInfo};
 use audio::block::{Block, Chunk, Tick, FRAMES_PER_BLOCK};
 use audio::node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, BlockInfo};
-use audio::param::{Param, UserAutomationEvent};
+use audio::param::{Param, ParamType};
 
 /// Control messages directed to AudioBufferSourceNodes.
 #[derive(Debug, Clone)]
 pub enum AudioBufferSourceNodeMessage {
     /// Set the data block holding the audio sample data to be played.
     SetBuffer(Option<AudioBuffer>),
-    SetPlaybackRate(UserAutomationEvent),
-    SetDetune(UserAutomationEvent),
 }
 
 /// This specifies options for constructing an AudioBufferSourceNode.
@@ -89,17 +87,11 @@ impl AudioBufferSourceNode {
         }
     }
 
-    pub fn handle_message(&mut self, message: AudioBufferSourceNodeMessage, sample_rate: f32) {
+    pub fn handle_message(&mut self, message: AudioBufferSourceNodeMessage, _: f32) {
         match message {
             AudioBufferSourceNodeMessage::SetBuffer(buffer) => {
                 self.buffer = buffer;
             },
-            AudioBufferSourceNodeMessage::SetPlaybackRate(event) => {
-                self.playback_rate.insert_event(event.to_event(sample_rate));
-            },
-            AudioBufferSourceNodeMessage::SetDetune(event) => {
-                self.detune.insert_event(event.to_event(sample_rate));
-            }
         }
     }
 
@@ -174,6 +166,14 @@ impl AudioNodeEngine for AudioBufferSourceNode {
 
         self.playback_offset = next_offset;
         inputs
+    }
+
+    fn get_param(&mut self, id: ParamType) -> &mut Param {
+        match id {
+            ParamType::PlaybackRate => &mut self.playback_rate,
+            ParamType::Detune => &mut self.detune,
+            _ => panic!("Unknown param {:?} for AudioBufferSourceNode", id)
+        }
     }
 
     make_message_handler!(AudioBufferSourceNode: handle_message,

@@ -6,6 +6,7 @@ pub enum ParamType {
     Frequency,
     Detune,
     Gain,
+    PlaybackRate
 }
 
 /// An AudioParam. 
