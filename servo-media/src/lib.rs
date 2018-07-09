@@ -1,3 +1,5 @@
+#![feature(fnbox)]
+
 use std::sync::{self, Once};
 use std::sync::{Arc, Mutex};
 
