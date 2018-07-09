@@ -1,15 +1,23 @@
+#![feature(extern_prelude)]
+
+extern crate byte_slice_cast;
+extern crate num_traits;
+
+extern crate glib;
 extern crate gstreamer as gst;
 extern crate gstreamer_app as gst_app;
 extern crate gstreamer_audio as gst_audio;
+extern crate gstreamer_player as gst_player;
 
 extern crate servo_media_audio;
-
-extern crate byte_slice_cast;
+extern crate servo_media_player;
 
 use servo_media_audio::AudioBackend;
+use servo_media_player::PlayerBackend;
 
 pub mod audio_decoder;
 pub mod audio_sink;
+pub mod player;
 
 pub struct GStreamerBackend;
 
@@ -24,5 +32,12 @@ impl AudioBackend for GStreamerBackend {
     }
     fn init() {
         gst::init().unwrap();
+    }
+}
+
+impl PlayerBackend for GStreamerBackend {
+    type Player = player::GStreamerPlayer;
+    fn make_player() -> Result<Self::Player, ()> {
+        player::GStreamerPlayer::new()
     }
 }
