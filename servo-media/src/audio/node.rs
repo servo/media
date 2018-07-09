@@ -1,3 +1,4 @@
+use audio::param::{Param, ParamType};
 use audio::channel_node::ChannelNodeOptions;
 use audio::block::{Chunk, Tick};
 use audio::buffer_source_node::{AudioBufferSourceNodeMessage, AudioBufferSourceNodeOptions};
@@ -83,6 +84,8 @@ pub trait AudioNodeCommon {
 
 /// This trait represents the common features of all audio nodes.
 pub trait AudioNodeEngine: Send + AudioNodeCommon {
+    fn node_type(&self) -> &'static str;
+
     fn process(&mut self, inputs: Chunk, info: &BlockInfo) -> Chunk;
 
     fn message(&mut self, msg: AudioNodeMessage, sample_rate: f32) {
@@ -130,6 +133,10 @@ pub trait AudioNodeEngine: Send + AudioNodeCommon {
     /// If we're the destination node, extract the contained data
     fn destination_data(&mut self) -> Option<Chunk> {
         None
+    }
+
+    fn get_param(&mut self, _: ParamType) -> &mut Param {
+        panic!("No params on node {}", self.node_type())
     }
 }
 

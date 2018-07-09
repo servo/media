@@ -116,6 +116,8 @@ impl AudioBufferSourceNode {
 }
 
 impl AudioNodeEngine for AudioBufferSourceNode {
+    fn node_type(&self) -> &'static str { "AudioBufferSourceNode" }
+
     fn input_count(&self) -> u32 {
         0
     }

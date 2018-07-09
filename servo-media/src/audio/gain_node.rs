@@ -47,6 +47,9 @@ impl GainNode {
 }
 
 impl AudioNodeEngine for GainNode {
+
+    fn node_type(&self) -> &'static str { "GainNode" }
+
     fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
         debug_assert!(inputs.len() == 1);
 

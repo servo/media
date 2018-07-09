@@ -22,6 +22,8 @@ impl DestinationNode {
 }
 
 impl AudioNodeEngine for DestinationNode {
+    fn node_type(&self) -> &'static str { "DestinationNode" }
+
     fn process(&mut self, inputs: Chunk, _: &BlockInfo) -> Chunk {
         self.chunk = Some(inputs);
         Chunk::default()

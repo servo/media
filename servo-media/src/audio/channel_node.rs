@@ -28,6 +28,8 @@ impl ChannelMergerNode {
 }
 
 impl AudioNodeEngine for ChannelMergerNode {
+    fn node_type(&self) -> &'static str { "ChannelMergerNode" }
+
     fn process(&mut self, mut inputs: Chunk, _: &BlockInfo) -> Chunk {
         debug_assert!(inputs.len() == self.channels as usize);
 
@@ -76,6 +78,8 @@ impl ChannelSplitterNode {
 }
 
 impl AudioNodeEngine for ChannelSplitterNode {
+    fn node_type(&self) -> &'static str { "ChannelSplitterNode" }
+
     fn process(&mut self, mut inputs: Chunk, _: &BlockInfo) -> Chunk {
         debug_assert!(inputs.len() == 1);
 

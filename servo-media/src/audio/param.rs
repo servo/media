@@ -1,6 +1,13 @@
 use audio::block::Tick;
 use audio::node::BlockInfo;
 
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
+pub enum ParamType {
+    Frequency,
+    Detune,
+    Gain,
+}
+
 /// An AudioParam. 
 ///
 /// https://webaudio.github.io/web-audio-api/#AudioParam

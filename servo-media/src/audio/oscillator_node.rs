@@ -56,6 +56,7 @@ pub struct OscillatorNode {
 
 
 impl OscillatorNode {
+
     pub fn new(options: OscillatorNodeOptions) -> Self {
         Self {
             channel_info: Default::default(),
@@ -92,6 +93,9 @@ impl OscillatorNode {
 }
 
 impl AudioNodeEngine for OscillatorNode {
+
+    fn node_type(&self) -> &'static str { "OscillatorNode" }
+
     fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
         // XXX Implement this properly and according to self.options
         // as defined in https://webaudio.github.io/web-audio-api/#oscillatornode
