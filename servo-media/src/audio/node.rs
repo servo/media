@@ -7,7 +7,7 @@ use audio::oscillator_node::OscillatorNodeOptions;
 
 /// Type of AudioNodeEngine.
 #[derive(Debug, Clone)]
-pub enum AudioNodeType {
+pub enum AudioNodeInit {
     AnalyserNode,
     BiquadFilterNode,
     AudioBuffer,

@@ -2,7 +2,7 @@ extern crate servo_media;
 
 use servo_media::audio::gain_node::GainNodeOptions;
 use servo_media::audio::graph::AudioGraph;
-use servo_media::audio::node::{AudioNodeMessage, AudioNodeType};
+use servo_media::audio::node::{AudioNodeMessage, AudioNodeInit};
 use servo_media::audio::oscillator_node::OscillatorNodeMessage;
 use servo_media::ServoMedia;
 
@@ -13,14 +13,14 @@ struct AudioStream {
 impl AudioStream {
     pub fn new() -> Self {
         let graph = ServoMedia::get().unwrap().create_audio_graph();
-        graph.create_node(AudioNodeType::OscillatorNode(Default::default()));
+        graph.create_node(AudioNodeInit::OscillatorNode(Default::default()));
         graph.message_node(
             0,
             AudioNodeMessage::OscillatorNode(OscillatorNodeMessage::Start(0.)),
         );
         let mut options = GainNodeOptions::default();
         options.gain = 0.5;
-        graph.create_node(AudioNodeType::GainNode(options));
+        graph.create_node(AudioNodeInit::GainNode(options));
         Self { graph }
     }
 
