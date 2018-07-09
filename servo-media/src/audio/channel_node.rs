@@ -1,4 +1,5 @@
 use audio::block::FRAMES_PER_BLOCK_USIZE;
+use audio::node::AudioNodeType;
 use audio::node::{AudioNodeEngine, ChannelCountMode, ChannelInfo, ChannelInterpretation};
 use audio::block::{Block, Chunk};
 use audio::node::BlockInfo;
@@ -28,7 +29,7 @@ impl ChannelMergerNode {
 }
 
 impl AudioNodeEngine for ChannelMergerNode {
-    fn node_type(&self) -> &'static str { "ChannelMergerNode" }
+    fn node_type(&self) -> AudioNodeType { AudioNodeType::ChannelMergerNode }
 
     fn process(&mut self, mut inputs: Chunk, _: &BlockInfo) -> Chunk {
         debug_assert!(inputs.len() == self.channels as usize);
@@ -78,7 +79,7 @@ impl ChannelSplitterNode {
 }
 
 impl AudioNodeEngine for ChannelSplitterNode {
-    fn node_type(&self) -> &'static str { "ChannelSplitterNode" }
+    fn node_type(&self) -> AudioNodeType { AudioNodeType::ChannelSplitterNode }
 
     fn process(&mut self, mut inputs: Chunk, _: &BlockInfo) -> Chunk {
         debug_assert!(inputs.len() == 1);

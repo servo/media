@@ -1,5 +1,4 @@
-use audio::node::ChannelInfo;
-use audio::node::ChannelCountMode;
+use audio::node::{AudioNodeType, ChannelCountMode, ChannelInfo};
 use audio::node::{AudioNodeEngine, BlockInfo};
 use audio::block::Chunk;
 
@@ -22,7 +21,7 @@ impl DestinationNode {
 }
 
 impl AudioNodeEngine for DestinationNode {
-    fn node_type(&self) -> &'static str { "DestinationNode" }
+    fn node_type(&self) -> AudioNodeType { AudioNodeType::DestinationNode }
 
     fn process(&mut self, inputs: Chunk, _: &BlockInfo) -> Chunk {
         self.chunk = Some(inputs);

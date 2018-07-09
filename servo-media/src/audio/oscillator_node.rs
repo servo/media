@@ -1,4 +1,4 @@
-use audio::node::ChannelInfo;
+use audio::node::{AudioNodeType, ChannelInfo};
 use audio::block::{Chunk, Tick};
 use audio::node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, BlockInfo};
 use audio::param::{Param, ParamType};
@@ -80,7 +80,7 @@ impl OscillatorNode {
 
 impl AudioNodeEngine for OscillatorNode {
 
-    fn node_type(&self) -> &'static str { "OscillatorNode" }
+    fn node_type(&self) -> AudioNodeType { AudioNodeType::OscillatorNode }
 
     fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
         // XXX Implement this properly and according to self.options

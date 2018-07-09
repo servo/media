@@ -1,4 +1,4 @@
-use audio::node::ChannelInfo;
+use audio::node::{AudioNodeType, ChannelInfo};
 use audio::block::Chunk;
 use audio::block::Tick;
 use audio::node::AudioNodeEngine;
@@ -37,7 +37,7 @@ impl GainNode {
 
 impl AudioNodeEngine for GainNode {
 
-    fn node_type(&self) -> &'static str { "GainNode" }
+    fn node_type(&self) -> AudioNodeType { AudioNodeType::GainNode }
 
     fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
         debug_assert!(inputs.len() == 1);

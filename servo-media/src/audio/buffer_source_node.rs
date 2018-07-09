@@ -1,4 +1,4 @@
-use audio::node::ChannelInfo;
+use audio::node::{AudioNodeType, ChannelInfo};
 use audio::block::{Block, Chunk, Tick, FRAMES_PER_BLOCK};
 use audio::node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, BlockInfo};
 use audio::param::{Param, UserAutomationEvent};
@@ -116,7 +116,7 @@ impl AudioBufferSourceNode {
 }
 
 impl AudioNodeEngine for AudioBufferSourceNode {
-    fn node_type(&self) -> &'static str { "AudioBufferSourceNode" }
+    fn node_type(&self) -> AudioNodeType { AudioNodeType::AudioBufferSourceNode }
 
     fn input_count(&self) -> u32 {
         0

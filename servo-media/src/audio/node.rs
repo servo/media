@@ -5,7 +5,7 @@ use audio::buffer_source_node::{AudioBufferSourceNodeMessage, AudioBufferSourceN
 use audio::gain_node::GainNodeOptions;
 use audio::oscillator_node::OscillatorNodeOptions;
 
-/// Type of AudioNodeEngine.
+/// Information required to construct an audio node
 #[derive(Debug, Clone)]
 pub enum AudioNodeInit {
     AnalyserNode,
@@ -28,6 +28,31 @@ pub enum AudioNodeInit {
     StereoPannerNode,
     WaveShaperNode,
 }
+
+/// Type of AudioNodeEngine.
+#[derive(Debug, Clone, Copy)]
+pub enum AudioNodeType {
+    AnalyserNode,
+    BiquadFilterNode,
+    AudioBuffer,
+    AudioBufferSourceNode,
+    ChannelMergerNode,
+    ChannelSplitterNode,
+    ConstantSourceNode,
+    ConvolverNode,
+    DelayNode,
+    DestinationNode,
+    DynamicsCompressionNode,
+    GainNode,
+    IIRFilterNode,
+    OscillatorNode,
+    PannerNode,
+    PeriodicWave,
+    ScriptProcessorNode,
+    StereoPannerNode,
+    WaveShaperNode,
+}
+
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum ChannelCountMode {
@@ -84,7 +109,7 @@ pub(crate) trait AudioNodeCommon {
 
 /// This trait represents the common features of all audio nodes.
 pub(crate) trait AudioNodeEngine: Send + AudioNodeCommon {
-    fn node_type(&self) -> &'static str;
+    fn node_type(&self) -> AudioNodeType;
 
     fn process(&mut self, inputs: Chunk, info: &BlockInfo) -> Chunk;
 
@@ -139,7 +164,7 @@ pub(crate) trait AudioNodeEngine: Send + AudioNodeCommon {
     }
 
     fn get_param(&mut self, _: ParamType) -> &mut Param {
-        panic!("No params on node {}", self.node_type())
+        panic!("No params on node {:?}", self.node_type())
     }
 }
 
