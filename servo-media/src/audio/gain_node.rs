@@ -3,12 +3,7 @@ use audio::block::Chunk;
 use audio::block::Tick;
 use audio::node::AudioNodeEngine;
 use audio::node::BlockInfo;
-use audio::param::{Param, UserAutomationEvent};
-
-#[derive(Debug, Clone)]
-pub enum GainNodeMessage {
-    SetGain(UserAutomationEvent),
-}
+use audio::param::{Param, ParamType};
 
 #[derive(Copy, Clone, Debug)]
 pub struct GainNodeOptions {
@@ -38,12 +33,6 @@ impl GainNode {
     pub fn update_parameters(&mut self, info: &BlockInfo, tick: Tick) -> bool {
         self.gain.update(info, tick)
     }
-
-    pub fn handle_message(&mut self, message: GainNodeMessage, sample_rate: f32) {
-        match message {
-            GainNodeMessage::SetGain(event) => self.gain.insert_event(event.to_event(sample_rate)),
-        }
-    }
 }
 
 impl AudioNodeEngine for GainNode {
@@ -71,5 +60,11 @@ impl AudioNodeEngine for GainNode {
         inputs
     }
 
-    make_message_handler!(GainNode: handle_message);
+
+    fn get_param(&mut self, id: ParamType) -> &mut Param {
+        match id {
+            ParamType::Gain => &mut self.gain,
+            _ => panic!("Unknown param {:?} for GainNode", id)
+        }
+    }
 }

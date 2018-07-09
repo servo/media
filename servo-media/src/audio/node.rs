@@ -1,9 +1,9 @@
-use audio::param::{Param, ParamType};
+use audio::param::{Param, ParamType, UserAutomationEvent};
 use audio::channel_node::ChannelNodeOptions;
 use audio::block::{Chunk, Tick};
 use audio::buffer_source_node::{AudioBufferSourceNodeMessage, AudioBufferSourceNodeOptions};
-use audio::gain_node::{GainNodeMessage, GainNodeOptions};
-use audio::oscillator_node::{OscillatorNodeMessage, OscillatorNodeOptions};
+use audio::gain_node::GainNodeOptions;
+use audio::oscillator_node::OscillatorNodeOptions;
 
 /// Type of AudioNodeEngine.
 #[derive(Debug, Clone)]
@@ -93,6 +93,9 @@ pub trait AudioNodeEngine: Send + AudioNodeCommon {
             AudioNodeMessage::SetChannelCount(c) => self.set_channel_count(c),
             AudioNodeMessage::SetChannelMode(c) => self.set_channel_count_mode(c),
             AudioNodeMessage::SetChannelInterpretation(c) => self.set_channel_interpretation(c),
+            AudioNodeMessage::SetParam(id, event) => {
+                self.get_param(id).insert_event(event.to_event(sample_rate))
+            }
             _ => self.message_specific(msg, sample_rate),
         }
     }
@@ -144,11 +147,10 @@ pub trait AudioNodeEngine: Send + AudioNodeCommon {
 pub enum AudioNodeMessage {
     AudioBufferSourceNode(AudioBufferSourceNodeMessage),
     AudioScheduledSourceNode(AudioScheduledSourceNodeMessage),
-    GainNode(GainNodeMessage),
-    OscillatorNode(OscillatorNodeMessage),
     SetChannelCount(u8),
     SetChannelMode(ChannelCountMode),
     SetChannelInterpretation(ChannelInterpretation),
+    SetParam(ParamType, UserAutomationEvent)
 }
 
 /// This trait represents the common features of the source nodes such as

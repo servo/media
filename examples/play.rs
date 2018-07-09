@@ -1,9 +1,8 @@
 extern crate servo_media;
 
-use servo_media::audio::gain_node::{GainNodeMessage, GainNodeOptions};
+use servo_media::audio::gain_node::{GainNodeOptions};
 use servo_media::audio::node::{AudioNodeMessage, AudioNodeType, AudioScheduledSourceNodeMessage};
-use servo_media::audio::oscillator_node::OscillatorNodeMessage;
-use servo_media::audio::param::UserAutomationEvent;
+use servo_media::audio::param::{ParamType, UserAutomationEvent};
 use servo_media::ServoMedia;
 use std::sync::Arc;
 use std::{thread, time};
@@ -30,23 +29,26 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     // 0.5s: Set frequency to 110Hz
     context.message_node(
         osc,
-        AudioNodeMessage::OscillatorNode(OscillatorNodeMessage::SetFrequency(
+        AudioNodeMessage::SetParam(
+            ParamType::Frequency,
             UserAutomationEvent::SetValueAtTime(110., 0.5),
-        )),
+        ),
     );
     // 1s: Set frequency to 220Hz
     context.message_node(
         osc,
-        AudioNodeMessage::OscillatorNode(OscillatorNodeMessage::SetFrequency(
+        AudioNodeMessage::SetParam(
+            ParamType::Frequency,
             UserAutomationEvent::SetValueAtTime(220., 1.),
-        )),
+        ),
     );
     // 0.75s: Set gain to 0.25
     context.message_node(
         gain,
-        AudioNodeMessage::GainNode(GainNodeMessage::SetGain(
+        AudioNodeMessage::SetParam(
+            ParamType::Gain,
             UserAutomationEvent::SetValueAtTime(0.25, 0.75),
-        )),
+        ),
     );
     thread::sleep(time::Duration::from_millis(1200));
     // 1.2s: Suspend processing

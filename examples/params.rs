@@ -1,9 +1,8 @@
 extern crate servo_media;
 
-use servo_media::audio::gain_node::{GainNodeMessage, GainNodeOptions};
+use servo_media::audio::gain_node::GainNodeOptions;
 use servo_media::audio::node::{AudioNodeMessage, AudioNodeType, AudioScheduledSourceNodeMessage};
-use servo_media::audio::oscillator_node::OscillatorNodeMessage;
-use servo_media::audio::param::{RampKind, UserAutomationEvent};
+use servo_media::audio::param::{ParamType, RampKind, UserAutomationEvent};
 use servo_media::ServoMedia;
 use std::sync::Arc;
 use std::{thread, time};
@@ -25,59 +24,67 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     // 0.5s: Set frequency to 110Hz
     context.message_node(
         osc,
-        AudioNodeMessage::OscillatorNode(OscillatorNodeMessage::SetFrequency(
+        AudioNodeMessage::SetParam(
+            ParamType::Frequency,
             UserAutomationEvent::SetValueAtTime(110., 0.5),
-        )),
+        ),
     );
     // 1s: Set frequency to 220Hz
     context.message_node(
         osc,
-        AudioNodeMessage::OscillatorNode(OscillatorNodeMessage::SetFrequency(
+        AudioNodeMessage::SetParam(
+            ParamType::Frequency,
             UserAutomationEvent::SetValueAtTime(220., 1.),
-        )),
+        ),
     );
     // 0.75s: Set gain to 0.25
     context.message_node(
         gain,
-        AudioNodeMessage::GainNode(GainNodeMessage::SetGain(
+        AudioNodeMessage::SetParam(
+            ParamType::Gain,
             UserAutomationEvent::SetValueAtTime(0.25, 0.75),
-        )),
+        ),
     );
     // 0.75s - 1.5s: Exponentially ramp gain to 1
     context.message_node(
         gain,
-        AudioNodeMessage::GainNode(GainNodeMessage::SetGain(
+        AudioNodeMessage::SetParam(
+            ParamType::Gain,
             UserAutomationEvent::RampToValueAtTime(RampKind::Exponential, 1., 1.5),
-        )),
+        ),
     );
     // 0.75s - 1.75s: Linearly ramp frequency to 880Hz
     context.message_node(
         osc,
-        AudioNodeMessage::OscillatorNode(OscillatorNodeMessage::SetFrequency(
+        AudioNodeMessage::SetParam(
+            ParamType::Frequency,
             UserAutomationEvent::RampToValueAtTime(RampKind::Linear, 880., 1.75),
-        )),
+        ),
     );
     // 1.75s - 2.5s: Exponentially ramp frequency to 110Hz
     context.message_node(
         osc,
-        AudioNodeMessage::OscillatorNode(OscillatorNodeMessage::SetFrequency(
+        AudioNodeMessage::SetParam(
+            ParamType::Frequency,
             UserAutomationEvent::RampToValueAtTime(RampKind::Exponential, 110., 2.5),
-        )),
+        ),
     );
 
     // 2.75s: Exponentially approach 110Hz
     context.message_node(
         osc,
-        AudioNodeMessage::OscillatorNode(OscillatorNodeMessage::SetFrequency(
+        AudioNodeMessage::SetParam(
+            ParamType::Frequency,
             UserAutomationEvent::SetTargetAtTime(1100., 2.75, 1.1),
-        )),
+        ),
     );
     // 3.3s: But actually stop at 3.3Hz and hold
     context.message_node(
         osc,
-        AudioNodeMessage::OscillatorNode(OscillatorNodeMessage::SetFrequency(
+        AudioNodeMessage::SetParam(
+            ParamType::Frequency,
             UserAutomationEvent::CancelAndHoldAtTime(3.3),
-        )),
+        ),
     );
     thread::sleep(time::Duration::from_millis(5000));
 }
