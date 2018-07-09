@@ -48,7 +48,7 @@ impl Default for AudioBufferSourceNodeOptions {
 /// XXX Implement playbackRate and related bits
 #[derive(AudioScheduledSourceNode, AudioNodeCommon)]
 #[allow(dead_code)]
-pub struct AudioBufferSourceNode {
+pub(crate) struct AudioBufferSourceNode {
     channel_info: ChannelInfo,
     /// A data block holding the audio sample data to be played.
     buffer: Option<AudioBuffer>,

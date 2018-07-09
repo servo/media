@@ -76,14 +76,14 @@ impl Default for ChannelInfo {
 }
 
 
-pub trait AudioNodeCommon {
+pub(crate) trait AudioNodeCommon {
     fn channel_info(&self) -> &ChannelInfo;
 
     fn channel_info_mut(&mut self) -> &mut ChannelInfo;
 }
 
 /// This trait represents the common features of all audio nodes.
-pub trait AudioNodeEngine: Send + AudioNodeCommon {
+pub(crate) trait AudioNodeEngine: Send + AudioNodeCommon {
     fn node_type(&self) -> &'static str;
 
     fn process(&mut self, inputs: Chunk, info: &BlockInfo) -> Chunk;

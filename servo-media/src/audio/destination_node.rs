@@ -4,7 +4,7 @@ use audio::node::{AudioNodeEngine, BlockInfo};
 use audio::block::Chunk;
 
 #[derive(AudioNodeCommon)]
-pub struct DestinationNode {
+pub(crate) struct DestinationNode {
     channel_info: ChannelInfo,
     chunk: Option<Chunk>
 }

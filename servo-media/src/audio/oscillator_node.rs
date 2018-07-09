@@ -38,7 +38,7 @@ impl Default for OscillatorNodeOptions {
 }
 
 #[derive(AudioScheduledSourceNode, AudioNodeCommon)]
-pub struct OscillatorNode {
+pub(crate) struct OscillatorNode {
     channel_info: ChannelInfo,
     frequency: Param,
     detune: Param,
