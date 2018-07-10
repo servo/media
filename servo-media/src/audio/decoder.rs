@@ -1,6 +1,8 @@
+use std::boxed::FnBox;
+use std::sync::Mutex;
 pub struct AudioDecoderCallbacks {
-    pub eos: Option<Box<Fn() + Send + 'static>>,
-    pub error: Option<Box<Fn() + Send + 'static>>,
+    pub eos: Mutex<Option<Box<FnBox() + Send + 'static>>>,
+    pub error: Mutex<Option<Box<FnBox() + Send + 'static>>>,
     pub progress: Option<Box<Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>>,
 }
 
@@ -14,16 +16,18 @@ impl AudioDecoderCallbacks {
     }
 
     pub fn eos(&self) {
-        match self.eos {
+        let eos = self.eos.lock().unwrap().take();
+        match eos {
             None => return,
-            Some(ref callback) => callback(),
+            Some(callback) => callback(),
         };
     }
 
     pub fn error(&self) {
-        match self.error {
+        let error = self.error.lock().unwrap().take();
+        match error {
             None => return,
-            Some(ref callback) => callback(),
+            Some(callback) => callback(),
         };
     }
 
@@ -39,20 +43,20 @@ unsafe impl Send for AudioDecoderCallbacks {}
 unsafe impl Sync for AudioDecoderCallbacks {}
 
 pub struct AudioDecoderCallbacksBuilder {
-    eos: Option<Box<Fn() + Send + 'static>>,
-    error: Option<Box<Fn() + Send + 'static>>,
+    eos: Option<Box<FnBox() + Send + 'static>>,
+    error: Option<Box<FnBox() + Send + 'static>>,
     progress: Option<Box<Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>>,
 }
 
 impl AudioDecoderCallbacksBuilder {
-    pub fn eos<F: Fn() + Send + 'static>(self, eos: F) -> Self {
+    pub fn eos<F: FnOnce() + Send + 'static>(self, eos: F) -> Self {
         Self {
             eos: Some(Box::new(eos)),
             ..self
         }
     }
 
-    pub fn error<F: Fn() + Send + 'static>(self, error: F) -> Self {
+    pub fn error<F: FnOnce() + Send + 'static>(self, error: F) -> Self {
         Self {
             error: Some(Box::new(error)),
             ..self
@@ -68,8 +72,8 @@ impl AudioDecoderCallbacksBuilder {
 
     pub fn build(self) -> AudioDecoderCallbacks {
         AudioDecoderCallbacks {
-            eos: self.eos,
-            error: self.error,
+            eos: Mutex::new(self.eos),
+            error: Mutex::new(self.error),
             progress: self.progress,
         }
     }
