@@ -15,7 +15,7 @@ pub enum ParamType {
 #[derive(Debug)]
 pub struct Param {
     val: f32,
-    kind: ParamKind,
+    kind: ParamRate,
     events: Vec<AutomationEvent>,
     current_event: usize,
     event_start_time: Tick,
@@ -23,7 +23,7 @@ pub struct Param {
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub enum ParamKind {
+pub enum ParamRate {
     /// Value is held for entire block
     KRate,
     /// Value is updated each frame
@@ -35,7 +35,7 @@ impl Param {
     pub fn new(val: f32) -> Self{
         Param {
             val,
-            kind: ParamKind::ARate,
+            kind: ParamRate::ARate,
             events: vec![],
             current_event: 0,
             event_start_time: Tick(0),
@@ -47,7 +47,7 @@ impl Param {
     ///
     /// Returns true if anything changed
     pub fn update(&mut self, block: &BlockInfo, tick: Tick) -> bool {
-        if tick.0 != 0 && self.kind == ParamKind::KRate {
+        if tick.0 != 0 && self.kind == ParamRate::KRate {
             return false;
         }
 
@@ -116,7 +116,7 @@ impl Param {
         self.val
     }
 
-    pub fn set_rate(&mut self, rate: ParamKind) {
+    pub fn set_rate(&mut self, rate: ParamRate) {
         self.kind = rate;
     }
 

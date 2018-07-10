@@ -1,4 +1,4 @@
-use audio::param::{Param, ParamType, ParamKind, UserAutomationEvent};
+use audio::param::{Param, ParamType, ParamRate, UserAutomationEvent};
 use audio::channel_node::ChannelNodeOptions;
 use audio::block::{Chunk, Tick};
 use audio::buffer_source_node::{AudioBufferSourceNodeMessage, AudioBufferSourceNodeOptions};
@@ -179,7 +179,7 @@ pub enum AudioNodeMessage {
     SetChannelMode(ChannelCountMode),
     SetChannelInterpretation(ChannelInterpretation),
     SetParam(ParamType, UserAutomationEvent),
-    SetParamRate(ParamType, ParamKind),
+    SetParamRate(ParamType, ParamRate),
 }
 
 /// This trait represents the common features of the source nodes such as
