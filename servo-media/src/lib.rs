@@ -11,6 +11,7 @@ extern crate gstreamer as gst;
 
 extern crate byte_slice_cast;
 extern crate num_traits;
+
 extern crate petgraph;
 extern crate smallvec;
 
