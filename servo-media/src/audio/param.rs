@@ -116,6 +116,10 @@ impl Param {
         self.val
     }
 
+    pub fn set_rate(&mut self, rate: ParamKind) {
+        self.kind = rate;
+    }
+
     pub(crate) fn insert_event(&mut self, event: AutomationEvent) {
         if let AutomationEvent::SetValue(val) = event {
             self.val = val;
