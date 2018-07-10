@@ -10,6 +10,9 @@ use std::thread::Builder;
 #[cfg(feature = "gst")]
 use backends::gstreamer::audio_decoder::GStreamerAudioDecoder;
 
+#[cfg(not(feature = "gst"))]
+use backends::dummy::audio_decoder::DummyAudioDecoder;
+
 /// Describes the state of the audio context on the control thread.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ProcessingState {
@@ -224,6 +227,9 @@ impl AudioContext {
         Builder::new()
             .name("AudioDecoder".to_owned())
             .spawn(move || {
+                #[cfg(not(feature = "gst"))]
+                let audio_decoder = DummyAudioDecoder {};
+
                 #[cfg(feature = "gst")]
                 let audio_decoder = GStreamerAudioDecoder::new();
 
