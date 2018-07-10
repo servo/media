@@ -1,6 +1,14 @@
 use audio::block::Tick;
 use audio::node::BlockInfo;
 
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
+pub enum ParamType {
+    Frequency,
+    Detune,
+    Gain,
+    PlaybackRate
+}
+
 /// An AudioParam. 
 ///
 /// https://webaudio.github.io/web-audio-api/#AudioParam
@@ -109,6 +117,12 @@ impl Param {
     }
 
     pub(crate) fn insert_event(&mut self, event: AutomationEvent) {
+        if let AutomationEvent::SetValue(val) = event {
+            self.val = val;
+            self.event_start_value = val;
+            return;
+        }
+
         let time = event.time();
 
         let result = self.events.binary_search_by(|e| e.time().cmp(&time));
@@ -148,6 +162,7 @@ pub enum RampKind {
 /// https://webaudio.github.io/web-audio-api/#dfn-automation-event
 pub(crate) enum AutomationEvent {
 
+    SetValue(f32),
     SetValueAtTime(f32, Tick),
     RampToValueAtTime(RampKind, f32, Tick),
     SetTargetAtTime(f32, Tick, /* time constant, units of Tick */ f64),
@@ -160,6 +175,7 @@ pub(crate) enum AutomationEvent {
 /// An AutomationEvent that uses times in s instead of Ticks
 pub enum UserAutomationEvent {
 
+    SetValue(f32),
     SetValueAtTime(f32, /* time */ f64),
     RampToValueAtTime(RampKind, f32, /* time */ f64),
     SetTargetAtTime(f32, f64, /* time constant, units of s */ f64),
@@ -171,6 +187,7 @@ pub enum UserAutomationEvent {
 impl UserAutomationEvent {
     pub(crate) fn to_event(self, rate: f32) -> AutomationEvent {
         match self {
+            UserAutomationEvent::SetValue(val) => AutomationEvent::SetValue(val),
             UserAutomationEvent::SetValueAtTime(val, time) =>
                 AutomationEvent::SetValueAtTime(val, Tick::from_time(time, rate)),
             UserAutomationEvent::RampToValueAtTime(kind, val, time) =>
@@ -194,8 +211,8 @@ impl AutomationEvent {
             AutomationEvent::RampToValueAtTime(_, _, tick) => tick,
             AutomationEvent::SetTargetAtTime(_, start, _) => start,
             AutomationEvent::CancelAndHoldAtTime(t) => t,
-            AutomationEvent::CancelScheduledValues(..) =>
-                unreachable!("CancelScheduledValues should never appear in the timeline"),
+            AutomationEvent::CancelScheduledValues(..) | AutomationEvent::SetValue(..) =>
+                unreachable!("CancelScheduledValues/SetValue should never appear in the timeline"),
         }
     }
 
@@ -205,8 +222,8 @@ impl AutomationEvent {
             AutomationEvent::RampToValueAtTime(_, _, tick) => Some(tick),
             AutomationEvent::SetTargetAtTime(..) => None,
             AutomationEvent::CancelAndHoldAtTime(t) => Some(t),
-            AutomationEvent::CancelScheduledValues(..) =>
-                unreachable!("CancelScheduledValues should never appear in the timeline"),
+            AutomationEvent::CancelScheduledValues(..) | AutomationEvent::SetValue(..) =>
+                unreachable!("CancelScheduledValues/SetValue should never appear in the timeline"),
         }
     }
 
@@ -216,8 +233,8 @@ impl AutomationEvent {
             AutomationEvent::RampToValueAtTime(..) => None,
             AutomationEvent::SetTargetAtTime(_, start, _) => Some(start),
             AutomationEvent::CancelAndHoldAtTime(t) => Some(t),
-            AutomationEvent::CancelScheduledValues(..) =>
-                unreachable!("CancelScheduledValues should never appear in the timeline"),
+            AutomationEvent::CancelScheduledValues(..) | AutomationEvent::SetValue(..) =>
+                unreachable!("CancelScheduledValues/SetValue should never appear in the timeline"),
         }
     }
 
@@ -276,8 +293,8 @@ impl AutomationEvent {
             AutomationEvent::CancelAndHoldAtTime(..) => {
                 false
             }
-            AutomationEvent::CancelScheduledValues(..) =>
-                unreachable!("CancelScheduledValues should never appear in the timeline"),
+            AutomationEvent::CancelScheduledValues(..) | AutomationEvent::SetValue(..) =>
+                unreachable!("CancelScheduledValues/SetValue should never appear in the timeline"),
         }
     }
 }

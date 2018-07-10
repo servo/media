@@ -7,7 +7,7 @@ use petgraph::graph::DefaultIx;
 use petgraph::stable_graph::NodeIndex;
 use petgraph::stable_graph::StableGraph;
 use petgraph::visit::{DfsPostOrder, EdgeRef, Reversed};
-use std::cell::{Ref, RefCell, RefMut};
+use std::cell::{RefCell, RefMut};
 use std::cmp;
 
 #[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash, Debug)]
@@ -60,7 +60,7 @@ pub struct AudioGraph {
     dest_id: NodeId,
 }
 
-pub struct Node {
+pub(crate) struct Node {
     node: RefCell<Box<AudioNodeEngine>>,
 }
 
@@ -71,7 +71,7 @@ pub struct Node {
 /// WebAudio allows for multiple connections to/from the same port
 /// however it does not allow for duplicate connections between pairs
 /// of ports
-pub struct Edge {
+pub(crate) struct Edge {
     connections: SmallVec<[Connection; 1]>
 }
 
@@ -118,7 +118,7 @@ impl AudioGraph {
     }
 
     /// Create a node, obtain its id
-    pub fn add_node(&mut self, node: Box<AudioNodeEngine>) -> NodeId {
+    pub(crate) fn add_node(&mut self, node: Box<AudioNodeEngine>) -> NodeId {
         NodeId(self.graph.add_node(Node::new(node)))
     }
 
@@ -361,13 +361,8 @@ impl AudioGraph {
 
 
     /// Obtain a mutable reference to a node
-    pub fn node_mut(&self, ix: NodeId) -> RefMut<Box<AudioNodeEngine>> {
+    pub(crate) fn node_mut(&self, ix: NodeId) -> RefMut<Box<AudioNodeEngine>> {
         self.graph[ix.0].node.borrow_mut()
-    }
-
-    /// Obtain an immutable reference to a node
-    pub fn node(&self, ix: NodeId) -> Ref<Box<AudioNodeEngine>> {
-        self.graph[ix.0].node.borrow()
     }
 }
 

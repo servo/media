@@ -6,7 +6,7 @@ use audio::destination_node::DestinationNode;
 use audio::gain_node::GainNode;
 use audio::graph::{AudioGraph, NodeId, PortId, InputPort, OutputPort};
 use audio::node::BlockInfo;
-use audio::node::{AudioNodeEngine, AudioNodeMessage, AudioNodeType};
+use audio::node::{AudioNodeEngine, AudioNodeMessage, AudioNodeInit};
 use audio::oscillator_node::OscillatorNode;
 use audio::sink::AudioSink;
 use std::sync::mpsc::{Receiver, Sender};
@@ -16,7 +16,7 @@ use backends::gstreamer::audio_sink::GStreamerAudioSink;
 
 #[derive(Debug)]
 pub enum AudioRenderThreadMsg {
-    CreateNode(AudioNodeType, Sender<NodeId>),
+    CreateNode(AudioNodeInit, Sender<NodeId>),
     ConnectPorts(PortId<OutputPort>, PortId<InputPort>),
     MessageNode(NodeId, AudioNodeMessage),
     Resume(Sender<StateChangeResult>),
@@ -71,14 +71,14 @@ impl AudioRenderThread {
 
     make_render_thread_state_change!(suspend, Suspended, stop);
 
-    fn create_node(&mut self, node_type: AudioNodeType) -> NodeId {
+    fn create_node(&mut self, node_type: AudioNodeInit) -> NodeId {
         let node: Box<AudioNodeEngine> = match node_type {
-            AudioNodeType::AudioBufferSourceNode(options) => Box::new(AudioBufferSourceNode::new(options)),
-            AudioNodeType::DestinationNode => Box::new(DestinationNode::new()),
-            AudioNodeType::GainNode(options) => Box::new(GainNode::new(options)),
-            AudioNodeType::OscillatorNode(options) => Box::new(OscillatorNode::new(options)),
-            AudioNodeType::ChannelMergerNode(options) => Box::new(ChannelMergerNode::new(options)),
-            AudioNodeType::ChannelSplitterNode(options) => Box::new(ChannelSplitterNode::new(options)),
+            AudioNodeInit::AudioBufferSourceNode(options) => Box::new(AudioBufferSourceNode::new(options)),
+            AudioNodeInit::DestinationNode => Box::new(DestinationNode::new()),
+            AudioNodeInit::GainNode(options) => Box::new(GainNode::new(options)),
+            AudioNodeInit::OscillatorNode(options) => Box::new(OscillatorNode::new(options)),
+            AudioNodeInit::ChannelMergerNode(options) => Box::new(ChannelMergerNode::new(options)),
+            AudioNodeInit::ChannelSplitterNode(options) => Box::new(ChannelSplitterNode::new(options)),
             _ => unimplemented!(),
         };
         self.graph.add_node(node)

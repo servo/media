@@ -1,12 +1,13 @@
+use audio::param::{Param, ParamType, UserAutomationEvent};
 use audio::channel_node::ChannelNodeOptions;
 use audio::block::{Chunk, Tick};
 use audio::buffer_source_node::{AudioBufferSourceNodeMessage, AudioBufferSourceNodeOptions};
-use audio::gain_node::{GainNodeMessage, GainNodeOptions};
-use audio::oscillator_node::{OscillatorNodeMessage, OscillatorNodeOptions};
+use audio::gain_node::GainNodeOptions;
+use audio::oscillator_node::OscillatorNodeOptions;
 
-/// Type of AudioNodeEngine.
+/// Information required to construct an audio node
 #[derive(Debug, Clone)]
-pub enum AudioNodeType {
+pub enum AudioNodeInit {
     AnalyserNode,
     BiquadFilterNode,
     AudioBuffer,
@@ -27,6 +28,31 @@ pub enum AudioNodeType {
     StereoPannerNode,
     WaveShaperNode,
 }
+
+/// Type of AudioNodeEngine.
+#[derive(Debug, Clone, Copy)]
+pub enum AudioNodeType {
+    AnalyserNode,
+    BiquadFilterNode,
+    AudioBuffer,
+    AudioBufferSourceNode,
+    ChannelMergerNode,
+    ChannelSplitterNode,
+    ConstantSourceNode,
+    ConvolverNode,
+    DelayNode,
+    DestinationNode,
+    DynamicsCompressionNode,
+    GainNode,
+    IIRFilterNode,
+    OscillatorNode,
+    PannerNode,
+    PeriodicWave,
+    ScriptProcessorNode,
+    StereoPannerNode,
+    WaveShaperNode,
+}
+
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum ChannelCountMode {
@@ -75,14 +101,16 @@ impl Default for ChannelInfo {
 }
 
 
-pub trait AudioNodeCommon {
+pub(crate) trait AudioNodeCommon {
     fn channel_info(&self) -> &ChannelInfo;
 
     fn channel_info_mut(&mut self) -> &mut ChannelInfo;
 }
 
 /// This trait represents the common features of all audio nodes.
-pub trait AudioNodeEngine: Send + AudioNodeCommon {
+pub(crate) trait AudioNodeEngine: Send + AudioNodeCommon {
+    fn node_type(&self) -> AudioNodeType;
+
     fn process(&mut self, inputs: Chunk, info: &BlockInfo) -> Chunk;
 
     fn message(&mut self, msg: AudioNodeMessage, sample_rate: f32) {
@@ -90,6 +118,9 @@ pub trait AudioNodeEngine: Send + AudioNodeCommon {
             AudioNodeMessage::SetChannelCount(c) => self.set_channel_count(c),
             AudioNodeMessage::SetChannelMode(c) => self.set_channel_count_mode(c),
             AudioNodeMessage::SetChannelInterpretation(c) => self.set_channel_interpretation(c),
+            AudioNodeMessage::SetParam(id, event) => {
+                self.get_param(id).insert_event(event.to_event(sample_rate))
+            }
             _ => self.message_specific(msg, sample_rate),
         }
     }
@@ -131,17 +162,20 @@ pub trait AudioNodeEngine: Send + AudioNodeCommon {
     fn destination_data(&mut self) -> Option<Chunk> {
         None
     }
+
+    fn get_param(&mut self, _: ParamType) -> &mut Param {
+        panic!("No params on node {:?}", self.node_type())
+    }
 }
 
 #[derive(Clone, Debug)]
 pub enum AudioNodeMessage {
     AudioBufferSourceNode(AudioBufferSourceNodeMessage),
     AudioScheduledSourceNode(AudioScheduledSourceNodeMessage),
-    GainNode(GainNodeMessage),
-    OscillatorNode(OscillatorNodeMessage),
     SetChannelCount(u8),
     SetChannelMode(ChannelCountMode),
     SetChannelInterpretation(ChannelInterpretation),
+    SetParam(ParamType, UserAutomationEvent)
 }
 
 /// This trait represents the common features of the source nodes such as
