@@ -4,6 +4,7 @@ use audio::block::{Chunk, Tick};
 use audio::buffer_source_node::{AudioBufferSourceNodeMessage, AudioBufferSourceNodeOptions};
 use audio::gain_node::GainNodeOptions;
 use audio::oscillator_node::OscillatorNodeOptions;
+use std::sync::mpsc::Sender;
 
 /// Information required to construct an audio node
 #[derive(Debug, Clone)]
@@ -115,6 +116,9 @@ pub(crate) trait AudioNodeEngine: Send + AudioNodeCommon {
 
     fn message(&mut self, msg: AudioNodeMessage, sample_rate: f32) {
         match msg {
+            AudioNodeMessage::GetParamValue(id, tx) => {
+                let _ = tx.send(self.get_param(id).value());
+            }
             AudioNodeMessage::SetChannelCount(c) => self.set_channel_count(c),
             AudioNodeMessage::SetChannelMode(c) => self.set_channel_count_mode(c),
             AudioNodeMessage::SetChannelInterpretation(c) => self.set_channel_interpretation(c),
@@ -175,6 +179,7 @@ pub(crate) trait AudioNodeEngine: Send + AudioNodeCommon {
 pub enum AudioNodeMessage {
     AudioBufferSourceNode(AudioBufferSourceNodeMessage),
     AudioScheduledSourceNode(AudioScheduledSourceNodeMessage),
+    GetParamValue(ParamType, Sender<f32>),
     SetChannelCount(u8),
     SetChannelMode(ChannelCountMode),
     SetChannelInterpretation(ChannelInterpretation),
