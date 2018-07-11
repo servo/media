@@ -9,7 +9,7 @@ extern crate servo_media_audio;
 extern crate num_traits;
 extern crate byte_slice_cast;
 
-use servo_media_audio::context::AudioBackend;
+use servo_media_audio::AudioBackend;
 
 pub mod audio_decoder;
 pub mod audio_sink;

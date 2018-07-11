@@ -1,4 +1,4 @@
-use context::AudioBackend;
+use AudioBackend;
 use block::{Chunk, Tick, FRAMES_PER_BLOCK};
 use buffer_source_node::AudioBufferSourceNode;
 use channel_node::{ChannelMergerNode, ChannelSplitterNode};

@@ -5,7 +5,8 @@ use std::sync::{self, Once};
 use std::sync::{Arc, Mutex};
 
 
-use audio::context::{AudioBackend, AudioContext, AudioContextOptions};
+use audio::AudioBackend;
+use audio::context::{AudioContext, AudioContextOptions};
 
 pub struct ServoMedia {}
 

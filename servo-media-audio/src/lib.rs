@@ -23,3 +23,12 @@ pub mod oscillator_node;
 pub mod param;
 pub mod render_thread;
 pub mod sink;
+
+
+pub trait AudioBackend {
+    type Decoder: decoder::AudioDecoder;
+    type Sink: sink::AudioSink;
+    fn make_decoder() -> Self::Decoder;
+    fn make_sink() -> Result<Self::Sink, ()>;
+    fn init();
+}

@@ -1,5 +1,5 @@
+use AudioBackend;
 use std::marker::PhantomData;
-use sink::AudioSink;
 use decoder::{AudioDecoder, AudioDecoderCallbacks, AudioDecoderOptions};
 use graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
 use node::{AudioNodeMessage, AudioNodeInit};
@@ -241,12 +241,4 @@ impl<T> Drop for AudioContext<T> {
         let (tx, _) = mpsc::channel();
         let _ = self.sender.send(AudioRenderThreadMsg::Close(tx));
     }
-}
-
-pub trait AudioBackend {
-    type Decoder: AudioDecoder;
-    type Sink: AudioSink;
-    fn make_decoder() -> Self::Decoder;
-    fn make_sink() -> Result<Self::Sink, ()>;
-    fn init();
 }
