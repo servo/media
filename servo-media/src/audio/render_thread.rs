@@ -1,3 +1,4 @@
+use audio::context::AudioBackend;
 use audio::block::{Chunk, Tick, FRAMES_PER_BLOCK};
 use audio::buffer_source_node::AudioBufferSourceNode;
 use audio::channel_node::{ChannelMergerNode, ChannelSplitterNode};
@@ -32,16 +33,16 @@ pub enum AudioRenderThreadMsg {
     DisconnectOutputBetweenTo(PortId<OutputPort>, PortId<InputPort>),
 }
 
-pub struct AudioRenderThread {
+pub struct AudioRenderThread<B: AudioBackend> {
     pub graph: AudioGraph,
-    pub sink: Box<AudioSink>,
+    pub sink: B::Sink,
     pub state: ProcessingState,
     pub sample_rate: f32,
     pub current_time: f64,
     pub current_frame: Tick,
 }
 
-impl AudioRenderThread {
+impl<B: AudioBackend> AudioRenderThread<B> {
     /// Start the audio render thread
     pub fn start(
         event_queue: Receiver<AudioRenderThreadMsg>,
@@ -49,12 +50,11 @@ impl AudioRenderThread {
         sample_rate: f32,
         graph: AudioGraph,
         ) -> Result<(), ()> {
-        #[cfg(feature = "gst")]
-        let sink = GStreamerAudioSink::new()?;
+        let sink = B::make_sink()?;
 
         let mut graph = Self {
             graph,
-            sink: Box::new(sink),
+            sink,
             state: ProcessingState::Suspended,
             sample_rate,
             current_time: 0.,

@@ -420,13 +420,22 @@ dependencies = [
 ]
 
 [[package]]
-name = "servo_media"
+name = "servo-media-gstreamer"
 version = "0.1.0"
 dependencies = [
  "byte-slice-cast 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer 0.11.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer-app 0.11.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer-audio 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num-traits 0.1.43 (registry+https://github.com/rust-lang/crates.io-index)",
+ "servo_media 0.1.0",
+]
+
+[[package]]
+name = "servo_media"
+version = "0.1.0"
+dependencies = [
+ "byte-slice-cast 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "num-traits 0.1.43 (registry+https://github.com/rust-lang/crates.io-index)",
  "petgraph 0.4.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",

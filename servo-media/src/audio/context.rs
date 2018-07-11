@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+use audio::sink::AudioSink;
 use audio::decoder::{AudioDecoder, AudioDecoderCallbacks, AudioDecoderOptions};
 use audio::graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
 use audio::node::{AudioNodeMessage, AudioNodeInit};
@@ -99,7 +101,7 @@ impl Default for AudioContextOptions {
 }
 
 /// Representation of an audio context on the control thread.
-pub struct AudioContext {
+pub struct AudioContext<B> {
     /// Rendering thread communication channel.
     sender: Sender<AudioRenderThreadMsg>,
     /// State of the audio context on the control thread.
@@ -109,9 +111,10 @@ pub struct AudioContext {
     /// The identifier of an AudioDestinationNode with a single input
     /// representing the final destination for all audio.
     dest_node: NodeId,
+    backend: PhantomData<B>,
 }
 
-impl AudioContext {
+impl<B: AudioBackend> AudioContext<B> {
     /// Constructs a new audio context.
     pub fn new(options: AudioContextOptions) -> Self {
         let options = match options {
@@ -127,7 +130,7 @@ impl AudioContext {
         Builder::new()
             .name("AudioRenderThread".to_owned())
             .spawn(move || {
-                AudioRenderThread::start(receiver, sender_, options.sample_rate, graph)
+                AudioRenderThread::<B>::start(receiver, sender_, options.sample_rate, graph)
                     .expect("Could not start AudioRenderThread");
             })
         .unwrap();
@@ -136,6 +139,7 @@ impl AudioContext {
             state: Cell::new(ProcessingState::Suspended),
             sample_rate,
             dest_node,
+            backend: PhantomData,
         }
     }
 
@@ -224,8 +228,7 @@ impl AudioContext {
         Builder::new()
             .name("AudioDecoder".to_owned())
             .spawn(move || {
-                #[cfg(feature = "gst")]
-                let audio_decoder = GStreamerAudioDecoder::new();
+                let audio_decoder = B::make_decoder();
 
                 audio_decoder.decode(data, callbacks, Some(options));
             })
@@ -233,9 +236,16 @@ impl AudioContext {
     }
 }
 
-impl Drop for AudioContext {
+impl<T> Drop for AudioContext<T> {
     fn drop(&mut self) {
         let (tx, _) = mpsc::channel();
         let _ = self.sender.send(AudioRenderThreadMsg::Close(tx));
     }
+}
+
+pub trait AudioBackend {
+    type Decoder: AudioDecoder;
+    type Sink: AudioSink;
+    fn make_decoder() -> Self::Decoder;
+    fn make_sink() -> Result<Self::Sink, ()>;
 }

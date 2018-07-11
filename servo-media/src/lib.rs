@@ -1,13 +1,11 @@
 #![feature(fnbox)]
 
+use audio::context::AudioBackend;
 use std::sync::{self, Once};
 use std::sync::{Arc, Mutex};
 
 #[macro_use]
 extern crate servo_media_derive;
-
-#[cfg(feature = "gst")]
-extern crate gstreamer as gst;
 
 extern crate byte_slice_cast;
 extern crate num_traits;
@@ -16,7 +14,6 @@ extern crate smallvec;
 
 #[macro_use]
 pub mod audio;
-mod backends;
 
 use audio::context::{AudioContext, AudioContextOptions};
 
@@ -44,7 +41,7 @@ impl ServoMedia {
         }
     }
 
-    pub fn create_audio_context(&self, options: AudioContextOptions) -> AudioContext {
+    pub fn create_audio_context<T: AudioBackend>(&self, options: AudioContextOptions) -> AudioContext<T> {
         AudioContext::new(options)
     }
 }
