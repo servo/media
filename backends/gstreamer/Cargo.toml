@@ -24,4 +24,4 @@ version = "0.11"
 version = "0.1"
 
 [dependencies.servo-media-audio]
-path = "../servo-media-audio"
+path = "../../audio"

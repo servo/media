@@ -1,3 +1,3 @@
 [workspace]
-members = ["servo-media", "servo-media-derive", "servo-media-audio", "servo-media-gstreamer", "examples"]
+members = ["servo-media", "servo-media-derive", "audio", "backends/gstreamer", "examples"]
 license = "MPL-2.0"

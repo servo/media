@@ -7,8 +7,8 @@ authors = ["Manish Goregaokar <manishsmail@gmail.com>"]
 name = "servo_media"
 
 [dependencies.servo-media-audio]
-path = "../servo-media-audio"
+path = "../audio"
 
 
 [target.'cfg(not(target_os = "android"))'.dependencies.servo-media-gstreamer]
-path = "../servo-media-gstreamer"
+path = "../backends/gstreamer"
