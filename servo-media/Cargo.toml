@@ -10,5 +10,5 @@ name = "servo_media"
 path = "../servo-media-audio"
 
 
-[dependencies.servo-media-gstreamer]
+[target.'cfg(not(target_os = "android"))'.dependencies.servo-media-gstreamer]
 path = "../servo-media-gstreamer"
