@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex};
 use audio::AudioBackend;
 use audio::context::{AudioContext, AudioContextOptions};
 
-pub struct ServoMedia {}
+pub struct ServoMedia;
 
 static INITIALIZER: Once = sync::ONCE_INIT;
 static mut INSTANCE: *mut Mutex<Option<Arc<ServoMedia>>> = 0 as *mut _;

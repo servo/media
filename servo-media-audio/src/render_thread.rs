@@ -5,15 +5,12 @@ use channel_node::{ChannelMergerNode, ChannelSplitterNode};
 use context::{ProcessingState, StateChangeResult};
 use destination_node::DestinationNode;
 use gain_node::GainNode;
-use graph::{AudioGraph, NodeId, PortId, InputPort, OutputPort};
+use graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
 use node::BlockInfo;
-use node::{AudioNodeEngine, AudioNodeMessage, AudioNodeInit};
+use node::{AudioNodeEngine, AudioNodeInit, AudioNodeMessage};
 use oscillator_node::OscillatorNode;
 use sink::AudioSink;
 use std::sync::mpsc::{Receiver, Sender};
-
-#[cfg(feature = "gst")]
-use backends::gstreamer::audio_sink::GStreamerAudioSink;
 
 #[derive(Debug)]
 pub enum AudioRenderThreadMsg {
@@ -49,7 +46,8 @@ impl<B: AudioBackend> AudioRenderThread<B> {
         sender: Sender<AudioRenderThreadMsg>,
         sample_rate: f32,
         graph: AudioGraph,
-        ) -> Result<(), ()> {
+    ) -> Result<(), ()> {
+
         let sink = B::make_sink()?;
 
         let mut graph = Self {
@@ -73,19 +71,22 @@ impl<B: AudioBackend> AudioRenderThread<B> {
 
     fn create_node(&mut self, node_type: AudioNodeInit) -> NodeId {
         let node: Box<AudioNodeEngine> = match node_type {
-            AudioNodeInit::AudioBufferSourceNode(options) => Box::new(AudioBufferSourceNode::new(options)),
+            AudioNodeInit::AudioBufferSourceNode(options) => {
+                Box::new(AudioBufferSourceNode::new(options))
+            }
             AudioNodeInit::DestinationNode => Box::new(DestinationNode::new()),
             AudioNodeInit::GainNode(options) => Box::new(GainNode::new(options)),
             AudioNodeInit::OscillatorNode(options) => Box::new(OscillatorNode::new(options)),
             AudioNodeInit::ChannelMergerNode(options) => Box::new(ChannelMergerNode::new(options)),
-            AudioNodeInit::ChannelSplitterNode(options) => Box::new(ChannelSplitterNode::new(options)),
+            AudioNodeInit::ChannelSplitterNode(options) => {
+                Box::new(ChannelSplitterNode::new(options))
+            }
             _ => unimplemented!(),
         };
         self.graph.add_node(node)
     }
 
-    fn connect_ports(&mut self, output: PortId<OutputPort>,
-                     input: PortId<InputPort>) {
+    fn connect_ports(&mut self, output: PortId<OutputPort>, input: PortId<InputPort>) {
         self.graph.add_edge(output, input)
     }
 
@@ -133,9 +134,7 @@ impl<B: AudioBackend> AudioRenderThread<B> {
                 AudioRenderThreadMsg::DisconnectAllFrom(id) => {
                     context.graph.disconnect_all_from(id)
                 }
-                AudioRenderThreadMsg::DisconnectOutput(out) => {
-                    context.graph.disconnect_output(out)
-                }
+                AudioRenderThreadMsg::DisconnectOutput(out) => context.graph.disconnect_output(out),
                 AudioRenderThreadMsg::DisconnectBetween(from, to) => {
                     context.graph.disconnect_between(from, to)
                 }

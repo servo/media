@@ -1,4 +1,5 @@
-use param::{Param, ParamType, UserAutomationEvent};
+use std::sync::mpsc::Sender;
+use param::{Param, ParamRate, ParamType, UserAutomationEvent};
 use channel_node::ChannelNodeOptions;
 use block::{Chunk, Tick};
 use buffer_source_node::{AudioBufferSourceNodeMessage, AudioBufferSourceNodeOptions};
@@ -115,11 +116,17 @@ pub(crate) trait AudioNodeEngine: Send + AudioNodeCommon {
 
     fn message(&mut self, msg: AudioNodeMessage, sample_rate: f32) {
         match msg {
+            AudioNodeMessage::GetParamValue(id, tx) => {
+                let _ = tx.send(self.get_param(id).value());
+            }
             AudioNodeMessage::SetChannelCount(c) => self.set_channel_count(c),
             AudioNodeMessage::SetChannelMode(c) => self.set_channel_count_mode(c),
             AudioNodeMessage::SetChannelInterpretation(c) => self.set_channel_interpretation(c),
             AudioNodeMessage::SetParam(id, event) => {
                 self.get_param(id).insert_event(event.to_event(sample_rate))
+            }
+            AudioNodeMessage::SetParamRate(id, rate) => {
+                self.get_param(id).set_rate(rate)
             }
             _ => self.message_specific(msg, sample_rate),
         }
@@ -172,10 +179,12 @@ pub(crate) trait AudioNodeEngine: Send + AudioNodeCommon {
 pub enum AudioNodeMessage {
     AudioBufferSourceNode(AudioBufferSourceNodeMessage),
     AudioScheduledSourceNode(AudioScheduledSourceNodeMessage),
+    GetParamValue(ParamType, Sender<f32>),
     SetChannelCount(u8),
     SetChannelMode(ChannelCountMode),
     SetChannelInterpretation(ChannelInterpretation),
-    SetParam(ParamType, UserAutomationEvent)
+    SetParam(ParamType, UserAutomationEvent),
+    SetParamRate(ParamType, ParamRate),
 }
 
 /// This trait represents the common features of the source nodes such as

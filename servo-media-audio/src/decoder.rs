@@ -96,3 +96,9 @@ impl Default for AudioDecoderOptions {
 pub trait AudioDecoder {
     fn decode(&self, data: Vec<u8>, callbacks: AudioDecoderCallbacks, options: Option<AudioDecoderOptions>);
 }
+
+pub struct DummyAudioDecoder;
+
+impl AudioDecoder for DummyAudioDecoder {
+    fn decode(&self, _: Vec<u8>, _: AudioDecoderCallbacks, _: Option<AudioDecoderOptions>) {}
+}

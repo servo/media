@@ -9,9 +9,6 @@ use std::cell::Cell;
 use std::sync::mpsc::{self, Sender};
 use std::thread::Builder;
 
-#[cfg(feature = "gst")]
-use backends::gstreamer::audio_decoder::GStreamerAudioDecoder;
-
 /// Describes the state of the audio context on the control thread.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ProcessingState {
