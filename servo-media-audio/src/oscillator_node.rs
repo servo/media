@@ -1,7 +1,7 @@
-use audio::node::{AudioNodeType, ChannelInfo};
-use audio::block::{Chunk, Tick};
-use audio::node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, BlockInfo};
-use audio::param::{Param, ParamType};
+use node::{AudioNodeType, ChannelInfo};
+use block::{Chunk, Tick};
+use node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, BlockInfo};
+use param::{Param, ParamType};
 use num_traits::cast::NumCast;
 
 #[derive(Copy, Clone, Debug)]

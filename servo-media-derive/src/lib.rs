@@ -16,7 +16,7 @@ pub fn audio_scheduled_source_node(input: TokenStream) -> TokenStream {
 fn impl_audio_scheduled_source_node(ast: &syn::DeriveInput) -> quote::Tokens {
     let name = &ast.ident;
     quote! {
-        use audio::node::AudioScheduledSourceNode;
+        use node::AudioScheduledSourceNode;
 
         impl #name {
             pub fn should_play_at(&self, tick: Tick) -> (bool, bool) {
@@ -68,12 +68,12 @@ pub fn channel_info(input: TokenStream) -> TokenStream {
     let ast = syn::parse_derive_input(&s).unwrap();
     let name = &ast.ident;
     let gen = quote! {
-        impl ::audio::node::AudioNodeCommon for #name {
-            fn channel_info(&self) -> &::audio::node::ChannelInfo {
+        impl ::node::AudioNodeCommon for #name {
+            fn channel_info(&self) -> &::node::ChannelInfo {
                 &self.channel_info
             }
 
-            fn channel_info_mut(&mut self) -> &mut ::audio::node::ChannelInfo {
+            fn channel_info_mut(&mut self) -> &mut ::node::ChannelInfo {
                 &mut self.channel_info
             }
         }

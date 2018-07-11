@@ -5,9 +5,9 @@ macro_rules! make_message_handler(
             $node:ident: $handler:ident
          ),+
     ) => (
-        fn message_specific(&mut self, msg: ::audio::node::AudioNodeMessage, sample_rate: f32) {
+        fn message_specific(&mut self, msg: ::node::AudioNodeMessage, sample_rate: f32) {
             match msg {
-                $(::audio::node::AudioNodeMessage::$node(m) => self.$handler(m, sample_rate)),+,
+                $(::node::AudioNodeMessage::$node(m) => self.$handler(m, sample_rate)),+,
                 _ => (),
             }
         }

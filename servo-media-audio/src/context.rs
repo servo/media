@@ -1,10 +1,10 @@
 use std::marker::PhantomData;
-use audio::sink::AudioSink;
-use audio::decoder::{AudioDecoder, AudioDecoderCallbacks, AudioDecoderOptions};
-use audio::graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
-use audio::node::{AudioNodeMessage, AudioNodeInit};
-use audio::render_thread::AudioRenderThread;
-use audio::render_thread::AudioRenderThreadMsg;
+use sink::AudioSink;
+use decoder::{AudioDecoder, AudioDecoderCallbacks, AudioDecoderOptions};
+use graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
+use node::{AudioNodeMessage, AudioNodeInit};
+use render_thread::AudioRenderThread;
+use render_thread::AudioRenderThreadMsg;
 use std::cell::Cell;
 use std::sync::mpsc::{self, Sender};
 use std::thread::Builder;
@@ -248,4 +248,5 @@ pub trait AudioBackend {
     type Sink: AudioSink;
     fn make_decoder() -> Self::Decoder;
     fn make_sink() -> Result<Self::Sink, ()>;
+    fn init();
 }

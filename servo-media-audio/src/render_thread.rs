@@ -1,15 +1,15 @@
-use audio::context::AudioBackend;
-use audio::block::{Chunk, Tick, FRAMES_PER_BLOCK};
-use audio::buffer_source_node::AudioBufferSourceNode;
-use audio::channel_node::{ChannelMergerNode, ChannelSplitterNode};
-use audio::context::{ProcessingState, StateChangeResult};
-use audio::destination_node::DestinationNode;
-use audio::gain_node::GainNode;
-use audio::graph::{AudioGraph, NodeId, PortId, InputPort, OutputPort};
-use audio::node::BlockInfo;
-use audio::node::{AudioNodeEngine, AudioNodeMessage, AudioNodeInit};
-use audio::oscillator_node::OscillatorNode;
-use audio::sink::AudioSink;
+use context::AudioBackend;
+use block::{Chunk, Tick, FRAMES_PER_BLOCK};
+use buffer_source_node::AudioBufferSourceNode;
+use channel_node::{ChannelMergerNode, ChannelSplitterNode};
+use context::{ProcessingState, StateChangeResult};
+use destination_node::DestinationNode;
+use gain_node::GainNode;
+use graph::{AudioGraph, NodeId, PortId, InputPort, OutputPort};
+use node::BlockInfo;
+use node::{AudioNodeEngine, AudioNodeMessage, AudioNodeInit};
+use oscillator_node::OscillatorNode;
+use sink::AudioSink;
 use std::sync::mpsc::{Receiver, Sender};
 
 #[cfg(feature = "gst")]

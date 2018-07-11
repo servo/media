@@ -1,7 +1,7 @@
-use audio::node::{AudioNodeType, ChannelInfo};
-use audio::block::{Block, Chunk, Tick, FRAMES_PER_BLOCK};
-use audio::node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, BlockInfo};
-use audio::param::{Param, ParamType};
+use node::{AudioNodeType, ChannelInfo};
+use block::{Block, Chunk, Tick, FRAMES_PER_BLOCK};
+use node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, BlockInfo};
+use param::{Param, ParamType};
 
 /// Control messages directed to AudioBufferSourceNodes.
 #[derive(Debug, Clone)]

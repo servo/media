@@ -1,7 +1,7 @@
 use smallvec::SmallVec;
-use audio::block::{Block, Chunk};
-use audio::destination_node::DestinationNode;
-use audio::node::{AudioNodeEngine, BlockInfo, ChannelCountMode};
+use block::{Block, Chunk};
+use destination_node::DestinationNode;
+use node::{AudioNodeEngine, BlockInfo, ChannelCountMode};
 use petgraph::Direction;
 use petgraph::graph::DefaultIx;
 use petgraph::stable_graph::NodeIndex;

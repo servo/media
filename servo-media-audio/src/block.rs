@@ -1,6 +1,6 @@
 use std::f32::consts::SQRT_2;
-use audio::node::ChannelInterpretation;
-use audio::graph::PortIndex;
+use node::ChannelInterpretation;
+use graph::PortIndex;
 use byte_slice_cast::*;
 use smallvec::SmallVec;
 use std::ops::*;

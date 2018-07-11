@@ -1,3 +1,12 @@
+#![feature(fnbox)]
+
+#[macro_use]
+extern crate servo_media_derive;
+
+extern crate byte_slice_cast;
+extern crate num_traits;
+extern crate petgraph;
+extern crate smallvec;
 #[macro_use]
 pub mod macros;
 

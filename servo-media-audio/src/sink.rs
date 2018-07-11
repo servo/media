@@ -1,5 +1,5 @@
-use audio::block::Chunk;
-use audio::render_thread::AudioRenderThreadMsg;
+use block::Chunk;
+use render_thread::AudioRenderThreadMsg;
 use std::sync::mpsc::Sender;
 
 pub trait AudioSink {

@@ -1,8 +1,8 @@
 use gst_app::{AppSrc, AppSrcCallbacks};
 use gst_audio;
-use servo_media::audio::block::{Chunk, FRAMES_PER_BLOCK};
-use servo_media::audio::render_thread::AudioRenderThreadMsg;
-use servo_media::audio::sink::AudioSink;
+use servo_media_audio::block::{Chunk, FRAMES_PER_BLOCK};
+use servo_media_audio::render_thread::AudioRenderThreadMsg;
+use servo_media_audio::sink::AudioSink;
 use byte_slice_cast::*;
 use gst;
 use gst::prelude::*;

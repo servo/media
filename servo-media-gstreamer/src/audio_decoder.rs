@@ -1,6 +1,6 @@
 use super::gst_app::{AppSink, AppSinkCallbacks, AppSrc};
 use super::gst_audio;
-use servo_media::audio::decoder::{AudioDecoder, AudioDecoderCallbacks, AudioDecoderOptions};
+use servo_media_audio::decoder::{AudioDecoder, AudioDecoderCallbacks, AudioDecoderOptions};
 use byte_slice_cast::*;
 use gst;
 use gst::buffer::{MappedBuffer, Readable};

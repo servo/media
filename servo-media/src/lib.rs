@@ -1,21 +1,11 @@
-#![feature(fnbox)]
-
-use audio::context::AudioBackend;
+pub extern crate servo_media_audio as audio;
+extern crate servo_media_gstreamer;
+use servo_media_gstreamer::GStreamerBackend;
 use std::sync::{self, Once};
 use std::sync::{Arc, Mutex};
 
-#[macro_use]
-extern crate servo_media_derive;
 
-extern crate byte_slice_cast;
-extern crate num_traits;
-extern crate petgraph;
-extern crate smallvec;
-
-#[macro_use]
-pub mod audio;
-
-use audio::context::{AudioContext, AudioContextOptions};
+use audio::context::{AudioBackend, AudioContext, AudioContextOptions};
 
 pub struct ServoMedia {}
 
@@ -24,8 +14,7 @@ static mut INSTANCE: *mut Mutex<Option<Arc<ServoMedia>>> = 0 as *mut _;
 
 impl ServoMedia {
     pub fn new() -> Self {
-        #[cfg(feature = "gst")]
-        gst::init().unwrap();
+        GStreamerBackend::init();
 
         Self {}
     }
@@ -41,7 +30,7 @@ impl ServoMedia {
         }
     }
 
-    pub fn create_audio_context<T: AudioBackend>(&self, options: AudioContextOptions) -> AudioContext<T> {
+    pub fn create_audio_context(&self, options: AudioContextOptions) -> AudioContext<GStreamerBackend> {
         AudioContext::new(options)
     }
 }

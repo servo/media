@@ -1,5 +1,5 @@
-use audio::block::Tick;
-use audio::node::BlockInfo;
+use block::Tick;
+use node::BlockInfo;
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 pub enum ParamType {

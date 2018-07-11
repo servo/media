@@ -1,0 +1,29 @@
+[package]
+authors = ["Fernando Jiménez Moreno <ferjmoreno@gmail.com>"]
+license = "MPL-2.0"
+name = "servo-media-audio"
+version = "0.1.0"
+
+
+[lib]
+name = "servo_media_audio"
+
+
+[build-dependencies]
+regex = "1.0"
+zip = "0.3.1"
+
+[dependencies]
+smallvec = "0.6.1"
+servo_media_derive = { path = "../servo-media-derive" }
+
+[dependencies.petgraph]
+version = "0.4.12"
+features = ["stable_graph"]
+
+[dependencies.byte-slice-cast]
+version = "0.1"
+
+
+[dependencies.num-traits]
+version = "0.1"
