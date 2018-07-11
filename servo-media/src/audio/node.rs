@@ -1,4 +1,4 @@
-use audio::param::{Param, ParamType, UserAutomationEvent};
+use audio::param::{Param, ParamType, ParamRate, UserAutomationEvent};
 use audio::channel_node::ChannelNodeOptions;
 use audio::block::{Chunk, Tick};
 use audio::buffer_source_node::{AudioBufferSourceNodeMessage, AudioBufferSourceNodeOptions};
@@ -121,6 +121,9 @@ pub(crate) trait AudioNodeEngine: Send + AudioNodeCommon {
             AudioNodeMessage::SetParam(id, event) => {
                 self.get_param(id).insert_event(event.to_event(sample_rate))
             }
+            AudioNodeMessage::SetParamRate(id, rate) => {
+                self.get_param(id).set_rate(rate)
+            }
             _ => self.message_specific(msg, sample_rate),
         }
     }
@@ -175,7 +178,8 @@ pub enum AudioNodeMessage {
     SetChannelCount(u8),
     SetChannelMode(ChannelCountMode),
     SetChannelInterpretation(ChannelInterpretation),
-    SetParam(ParamType, UserAutomationEvent)
+    SetParam(ParamType, UserAutomationEvent),
+    SetParamRate(ParamType, ParamRate),
 }
 
 /// This trait represents the common features of the source nodes such as
