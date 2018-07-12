@@ -1,10 +1,10 @@
-use audio::param::{Param, ParamType, ParamRate, UserAutomationEvent};
-use audio::channel_node::ChannelNodeOptions;
-use audio::block::{Chunk, Tick};
-use audio::buffer_source_node::{AudioBufferSourceNodeMessage, AudioBufferSourceNodeOptions};
-use audio::gain_node::GainNodeOptions;
-use audio::oscillator_node::OscillatorNodeOptions;
 use std::sync::mpsc::Sender;
+use param::{Param, ParamRate, ParamType, UserAutomationEvent};
+use channel_node::ChannelNodeOptions;
+use block::{Chunk, Tick};
+use buffer_source_node::{AudioBufferSourceNodeMessage, AudioBufferSourceNodeOptions};
+use gain_node::GainNodeOptions;
+use oscillator_node::OscillatorNodeOptions;
 
 /// Information required to construct an audio node
 #[derive(Debug, Clone)]

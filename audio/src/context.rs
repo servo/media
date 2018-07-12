@@ -1,17 +1,13 @@
-use audio::decoder::{AudioDecoder, AudioDecoderCallbacks, AudioDecoderOptions};
-use audio::graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
-use audio::node::{AudioNodeMessage, AudioNodeInit};
-use audio::render_thread::AudioRenderThread;
-use audio::render_thread::AudioRenderThreadMsg;
+use AudioBackend;
+use std::marker::PhantomData;
+use decoder::{AudioDecoder, AudioDecoderCallbacks, AudioDecoderOptions};
+use graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
+use node::{AudioNodeMessage, AudioNodeInit};
+use render_thread::AudioRenderThread;
+use render_thread::AudioRenderThreadMsg;
 use std::cell::Cell;
 use std::sync::mpsc::{self, Sender};
 use std::thread::Builder;
-
-#[cfg(feature = "gst")]
-use backends::gstreamer::audio_decoder::GStreamerAudioDecoder;
-
-#[cfg(not(feature = "gst"))]
-use backends::dummy::audio_decoder::DummyAudioDecoder;
 
 /// Describes the state of the audio context on the control thread.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -102,7 +98,7 @@ impl Default for AudioContextOptions {
 }
 
 /// Representation of an audio context on the control thread.
-pub struct AudioContext {
+pub struct AudioContext<B> {
     /// Rendering thread communication channel.
     sender: Sender<AudioRenderThreadMsg>,
     /// State of the audio context on the control thread.
@@ -112,9 +108,10 @@ pub struct AudioContext {
     /// The identifier of an AudioDestinationNode with a single input
     /// representing the final destination for all audio.
     dest_node: NodeId,
+    backend: PhantomData<B>,
 }
 
-impl AudioContext {
+impl<B: AudioBackend> AudioContext<B> {
     /// Constructs a new audio context.
     pub fn new(options: AudioContextOptions) -> Self {
         let options = match options {
@@ -130,7 +127,7 @@ impl AudioContext {
         Builder::new()
             .name("AudioRenderThread".to_owned())
             .spawn(move || {
-                AudioRenderThread::start(receiver, sender_, options.sample_rate, graph)
+                AudioRenderThread::<B>::start(receiver, sender_, options.sample_rate, graph)
                     .expect("Could not start AudioRenderThread");
             })
         .unwrap();
@@ -139,6 +136,7 @@ impl AudioContext {
             state: Cell::new(ProcessingState::Suspended),
             sample_rate,
             dest_node,
+            backend: PhantomData,
         }
     }
 
@@ -227,11 +225,7 @@ impl AudioContext {
         Builder::new()
             .name("AudioDecoder".to_owned())
             .spawn(move || {
-                #[cfg(not(feature = "gst"))]
-                let audio_decoder = DummyAudioDecoder {};
-
-                #[cfg(feature = "gst")]
-                let audio_decoder = GStreamerAudioDecoder::new();
+                let audio_decoder = B::make_decoder();
 
                 audio_decoder.decode(data, callbacks, Some(options));
             })
@@ -239,7 +233,7 @@ impl AudioContext {
     }
 }
 
-impl Drop for AudioContext {
+impl<T> Drop for AudioContext<T> {
     fn drop(&mut self) {
         let (tx, _) = mpsc::channel();
         let _ = self.sender.send(AudioRenderThreadMsg::Close(tx));

@@ -1,38 +1,14 @@
 [package]
-authors = ["Fernando Jiménez Moreno <ferjmoreno@gmail.com>"]
-license = "MPL-2.0"
-name = "servo_media"
+name = "servo-media"
 version = "0.1.0"
-
-[build-dependencies]
-regex = "1.0"
-zip = "0.3.1"
-
-[dependencies]
-byte-slice-cast = "0.1"
-num-traits = "0.1"
-smallvec = "0.6.1"
-servo_media_derive = { path = "../servo-media-derive" }
-
-[dependencies.petgraph]
-version = "0.4.12"
-features = ["stable_graph"]
-
-[dependencies.gstreamer]
-optional = true
-version = "0.11"
-
-[dependencies.gstreamer-app]
-optional = true
-version = "0.11.2"
-
-[dependencies.gstreamer-audio]
-optional = true
-version = "0.11"
-
-[features]
-default = []
-gst = ["gstreamer", "gstreamer-audio", "gstreamer-app"]
+authors = ["Manish Goregaokar <manishsmail@gmail.com>"]
 
 [lib]
 name = "servo_media"
+
+[dependencies.servo-media-audio]
+path = "../audio"
+
+
+[target.'cfg(not(target_os = "android"))'.dependencies.servo-media-gstreamer]
+path = "../backends/gstreamer"

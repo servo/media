@@ -1,9 +1,9 @@
-use audio::node::{AudioNodeType, ChannelInfo};
-use audio::block::Chunk;
-use audio::block::Tick;
-use audio::node::AudioNodeEngine;
-use audio::node::BlockInfo;
-use audio::param::{Param, ParamType};
+use node::{AudioNodeType, ChannelInfo};
+use block::Chunk;
+use block::Tick;
+use node::AudioNodeEngine;
+use node::BlockInfo;
+use param::{Param, ParamType};
 
 #[derive(Copy, Clone, Debug)]
 pub struct GainNodeOptions {

@@ -1,21 +1,16 @@
-use audio::block::{Chunk, Tick, FRAMES_PER_BLOCK};
-use audio::buffer_source_node::AudioBufferSourceNode;
-use audio::channel_node::{ChannelMergerNode, ChannelSplitterNode};
-use audio::context::{ProcessingState, StateChangeResult};
-use audio::destination_node::DestinationNode;
-use audio::gain_node::GainNode;
-use audio::graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
-use audio::node::BlockInfo;
-use audio::node::{AudioNodeEngine, AudioNodeInit, AudioNodeMessage};
-use audio::oscillator_node::OscillatorNode;
-use audio::sink::AudioSink;
+use AudioBackend;
+use block::{Chunk, Tick, FRAMES_PER_BLOCK};
+use buffer_source_node::AudioBufferSourceNode;
+use channel_node::{ChannelMergerNode, ChannelSplitterNode};
+use context::{ProcessingState, StateChangeResult};
+use destination_node::DestinationNode;
+use gain_node::GainNode;
+use graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
+use node::BlockInfo;
+use node::{AudioNodeEngine, AudioNodeInit, AudioNodeMessage};
+use oscillator_node::OscillatorNode;
+use sink::AudioSink;
 use std::sync::mpsc::{Receiver, Sender};
-
-#[cfg(feature = "gst")]
-use backends::gstreamer::audio_sink::GStreamerAudioSink;
-
-#[cfg(not(feature = "gst"))]
-use backends::dummy::audio_sink::DummyAudioSink;
 
 #[derive(Debug)]
 pub enum AudioRenderThreadMsg {
@@ -35,16 +30,16 @@ pub enum AudioRenderThreadMsg {
     DisconnectOutputBetweenTo(PortId<OutputPort>, PortId<InputPort>),
 }
 
-pub struct AudioRenderThread {
+pub struct AudioRenderThread<B: AudioBackend> {
     pub graph: AudioGraph,
-    pub sink: Box<AudioSink>,
+    pub sink: B::Sink,
     pub state: ProcessingState,
     pub sample_rate: f32,
     pub current_time: f64,
     pub current_frame: Tick,
 }
 
-impl AudioRenderThread {
+impl<B: AudioBackend> AudioRenderThread<B> {
     /// Start the audio render thread
     pub fn start(
         event_queue: Receiver<AudioRenderThreadMsg>,
@@ -52,15 +47,12 @@ impl AudioRenderThread {
         sample_rate: f32,
         graph: AudioGraph,
     ) -> Result<(), ()> {
-        #[cfg(not(feature = "gst"))]
-        let sink = DummyAudioSink {};
 
-        #[cfg(feature = "gst")]
-        let sink = GStreamerAudioSink::new()?;
+        let sink = B::make_sink()?;
 
         let mut graph = Self {
             graph,
-            sink: Box::new(sink),
+            sink,
             state: ProcessingState::Suspended,
             sample_rate,
             current_time: 0.,
