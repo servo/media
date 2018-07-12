@@ -4,7 +4,6 @@ extern crate servo_media_gstreamer;
 use std::sync::{self, Once};
 use std::sync::{Arc, Mutex};
 
-
 use audio::AudioBackend;
 use audio::context::{AudioContext, AudioContextOptions};
 
@@ -35,7 +34,6 @@ impl ServoMedia {
             None => Err(()),
         }
     }
-
 
     pub fn create_audio_context(&self, options: AudioContextOptions) -> AudioContext<Backend> {
         AudioContext::new(options)
