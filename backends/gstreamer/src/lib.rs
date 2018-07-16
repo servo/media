@@ -1,7 +1,6 @@
-
+extern crate gstreamer as gst;
 extern crate gstreamer_app as gst_app;
 extern crate gstreamer_audio as gst_audio;
-extern crate gstreamer as gst;
 
 extern crate servo_media_audio;
 
