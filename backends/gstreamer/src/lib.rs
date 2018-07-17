@@ -1,12 +1,10 @@
 
-
 extern crate gstreamer_app as gst_app;
 extern crate gstreamer_audio as gst_audio;
 extern crate gstreamer as gst;
 
 extern crate servo_media_audio;
 
-extern crate num_traits;
 extern crate byte_slice_cast;
 
 use servo_media_audio::AudioBackend;
