@@ -1,4 +1,3 @@
-use AudioBackend;
 use block::{Chunk, Tick, FRAMES_PER_BLOCK};
 use buffer_source_node::AudioBufferSourceNode;
 use channel_node::{ChannelMergerNode, ChannelSplitterNode};
@@ -11,8 +10,8 @@ use node::{AudioNodeEngine, AudioNodeInit, AudioNodeMessage};
 use oscillator_node::OscillatorNode;
 use sink::AudioSink;
 use std::sync::mpsc::{Receiver, Sender};
+use AudioBackend;
 
-#[derive(Debug)]
 pub enum AudioRenderThreadMsg {
     CreateNode(AudioNodeInit, Sender<NodeId>),
     ConnectPorts(PortId<OutputPort>, PortId<InputPort>),
@@ -47,7 +46,6 @@ impl<B: AudioBackend> AudioRenderThread<B> {
         sample_rate: f32,
         graph: AudioGraph,
     ) -> Result<(), ()> {
-
         let sink = B::make_sink()?;
 
         let mut graph = Self {

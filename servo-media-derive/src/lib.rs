@@ -1,3 +1,5 @@
+#![recursion_limit = "128"]
+
 extern crate proc_macro;
 extern crate syn;
 #[macro_use]
@@ -15,10 +17,8 @@ pub fn audio_scheduled_source_node(input: TokenStream) -> TokenStream {
 fn impl_audio_scheduled_source_node(ast: &syn::DeriveInput) -> quote::Tokens {
     let name = &ast.ident;
     quote! {
-        use node::AudioScheduledSourceNode;
-
         impl #name {
-            pub fn should_play_at(&self, tick: Tick) -> (bool, bool) {
+            fn should_play_at(&self, tick: Tick) -> (bool, bool) {
                 if self.start_at.is_none() {
                     return (false, true);
                 }
@@ -34,9 +34,7 @@ fn impl_audio_scheduled_source_node(ast: &syn::DeriveInput) -> quote::Tokens {
                     (true, false)
                 }
             }
-        }
 
-        impl AudioScheduledSourceNode for #name {
             fn start(&mut self, tick: Tick) -> bool {
                 // We can only allow a single call to `start` and always before
                 // any `stop` calls.
@@ -57,13 +55,34 @@ fn impl_audio_scheduled_source_node(ast: &syn::DeriveInput) -> quote::Tokens {
                 self.stop_at = Some(tick);
                 true
             }
+
+            fn maybe_trigger_onended_callback(&mut self) {
+                // We cannot have an end without a start.
+                if self.start_at.is_none() || self.onended_callback.is_none() {
+                    return;
+                }
+                self.onended_callback.take().unwrap().0();
+            }
+
+            fn handle_source_node_message(&mut self, message: AudioScheduledSourceNodeMessage, sample_rate: f32) {
+                match message {
+                    AudioScheduledSourceNodeMessage::Start(when) => {
+                        self.start(Tick::from_time(when, sample_rate));
+                    }
+                    AudioScheduledSourceNodeMessage::Stop(when) => {
+                        self.stop(Tick::from_time(when, sample_rate));
+                    }
+                    AudioScheduledSourceNodeMessage::RegisterOnEndedCallback(callback) => {
+                        self.onended_callback = Some(callback);
+                    }
+                }
+            }
         }
     }
 }
 
 #[proc_macro_derive(AudioNodeCommon)]
 pub fn channel_info(input: TokenStream) -> TokenStream {
-
     let ast: syn::DeriveInput = syn::parse(input).unwrap();
     let name = &ast.ident;
     let gen = quote! {

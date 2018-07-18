@@ -1,8 +1,8 @@
-use node::{AudioNodeType, ChannelInfo};
 use block::{Chunk, Tick};
-use node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, BlockInfo};
-use param::{Param, ParamType};
+use node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, BlockInfo, OnEndedCallback};
+use node::{AudioNodeType, ChannelInfo};
 use num_traits::cast::NumCast;
+use param::{Param, ParamType};
 
 #[derive(Copy, Clone, Debug)]
 pub struct PeriodicWaveOptions {
@@ -47,8 +47,9 @@ pub(crate) struct OscillatorNode {
     start_at: Option<Tick>,
     /// Time at which the source should stop playing.
     stop_at: Option<Tick>,
+    /// The ended event callback.
+    onended_callback: Option<OnEndedCallback>,
 }
-
 
 impl OscillatorNode {
     pub fn new(options: OscillatorNodeOptions) -> Self {
@@ -59,28 +60,19 @@ impl OscillatorNode {
             phase: 0.,
             start_at: None,
             stop_at: None,
+            onended_callback: None,
         }
     }
 
     pub fn update_parameters(&mut self, info: &BlockInfo, tick: Tick) -> bool {
         self.frequency.update(info, tick)
     }
-
-    pub fn handle_source_node_message(&mut self, message: AudioScheduledSourceNodeMessage, sample_rate: f32) {
-        match message {
-            AudioScheduledSourceNodeMessage::Start(when) => {
-                self.start(Tick::from_time(when, sample_rate));
-            }
-            AudioScheduledSourceNodeMessage::Stop(when) => {
-                self.stop(Tick::from_time(when, sample_rate));
-            }
-        }
-    }
 }
 
 impl AudioNodeEngine for OscillatorNode {
-
-    fn node_type(&self) -> AudioNodeType { AudioNodeType::OscillatorNode }
+    fn node_type(&self) -> AudioNodeType {
+        AudioNodeType::OscillatorNode
+    }
 
     fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
         // XXX Implement this properly and according to self.options
@@ -93,11 +85,11 @@ impl AudioNodeEngine for OscillatorNode {
         inputs.blocks.push(Default::default());
 
         if self.should_play_at(info.frame) == (false, true) {
+            self.maybe_trigger_onended_callback();
             return inputs;
         }
 
         {
-
             inputs.blocks[0].explicit_silence();
             let mut iter = inputs.blocks[0].iter();
 
@@ -118,6 +110,7 @@ impl AudioNodeEngine for OscillatorNode {
                 let (should_play_at, should_break) = self.should_play_at(info.frame + tick);
                 if !should_play_at {
                     if should_break {
+                        self.maybe_trigger_onended_callback();
                         break;
                     }
                     continue;
@@ -145,7 +138,7 @@ impl AudioNodeEngine for OscillatorNode {
         match id {
             ParamType::Frequency => &mut self.frequency,
             ParamType::Detune => &mut self.detune,
-            _ => panic!("Unknown param {:?} for OscillatorNode", id)
+            _ => panic!("Unknown param {:?} for OscillatorNode", id),
         }
     }
 

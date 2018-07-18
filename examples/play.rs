@@ -1,7 +1,9 @@
 extern crate servo_media;
 
-use servo_media::audio::gain_node::{GainNodeOptions};
-use servo_media::audio::node::{AudioNodeMessage, AudioNodeInit, AudioScheduledSourceNodeMessage};
+use servo_media::audio::gain_node::GainNodeOptions;
+use servo_media::audio::node::{
+    AudioNodeInit, AudioNodeMessage, AudioScheduledSourceNodeMessage, OnEndedCallback,
+};
 use servo_media::audio::param::{ParamType, UserAutomationEvent};
 use servo_media::ServoMedia;
 use std::sync::Arc;
@@ -23,6 +25,15 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     context.message_node(
         osc,
         AudioNodeMessage::AudioScheduledSourceNode(AudioScheduledSourceNodeMessage::Stop(3.)),
+    );
+    let callback = OnEndedCallback::new(|| {
+        println!("Playback ended");
+    });
+    context.message_node(
+        osc,
+        AudioNodeMessage::AudioScheduledSourceNode(
+            AudioScheduledSourceNodeMessage::RegisterOnEndedCallback(callback),
+        ),
     );
     assert_eq!(context.current_time(), 0.);
     let _ = context.resume();

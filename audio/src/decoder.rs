@@ -1,5 +1,6 @@
 use std::boxed::FnBox;
 use std::sync::Mutex;
+
 pub struct AudioDecoderCallbacks {
     pub eos: Mutex<Option<Box<FnBox() + Send + 'static>>>,
     pub error: Mutex<Option<Box<FnBox() + Send + 'static>>>,
@@ -94,7 +95,12 @@ impl Default for AudioDecoderOptions {
 }
 
 pub trait AudioDecoder {
-    fn decode(&self, data: Vec<u8>, callbacks: AudioDecoderCallbacks, options: Option<AudioDecoderOptions>);
+    fn decode(
+        &self,
+        data: Vec<u8>,
+        callbacks: AudioDecoderCallbacks,
+        options: Option<AudioDecoderOptions>,
+    );
 }
 
 pub struct DummyAudioDecoder;

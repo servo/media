@@ -1,10 +1,11 @@
-use std::sync::mpsc::Sender;
-use param::{Param, ParamRate, ParamType, UserAutomationEvent};
-use channel_node::ChannelNodeOptions;
 use block::{Chunk, Tick};
 use buffer_source_node::{AudioBufferSourceNodeMessage, AudioBufferSourceNodeOptions};
+use channel_node::ChannelNodeOptions;
 use gain_node::GainNodeOptions;
 use oscillator_node::OscillatorNodeOptions;
+use param::{Param, ParamRate, ParamType, UserAutomationEvent};
+use std::boxed::FnBox;
+use std::sync::mpsc::Sender;
 
 /// Information required to construct an audio node
 #[derive(Debug, Clone)]
@@ -54,19 +55,17 @@ pub enum AudioNodeType {
     WaveShaperNode,
 }
 
-
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum ChannelCountMode {
     Max,
     ClampedMax,
-    Explicit
+    Explicit,
 }
-
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum ChannelInterpretation {
     Discrete,
-    Speakers
+    Speakers,
 }
 
 #[derive(Copy, Clone)]
@@ -84,7 +83,6 @@ impl BlockInfo {
     }
 }
 
-
 pub struct ChannelInfo {
     pub count: u8,
     pub mode: ChannelCountMode,
@@ -100,7 +98,6 @@ impl Default for ChannelInfo {
         }
     }
 }
-
 
 pub(crate) trait AudioNodeCommon {
     fn channel_info(&self) -> &ChannelInfo;
@@ -125,9 +122,7 @@ pub(crate) trait AudioNodeEngine: Send + AudioNodeCommon {
             AudioNodeMessage::SetParam(id, event) => {
                 self.get_param(id).insert_event(event.to_event(sample_rate))
             }
-            AudioNodeMessage::SetParamRate(id, rate) => {
-                self.get_param(id).set_rate(rate)
-            }
+            AudioNodeMessage::SetParamRate(id, rate) => self.get_param(id).set_rate(rate),
             _ => self.message_specific(msg, sample_rate),
         }
     }
@@ -175,7 +170,6 @@ pub(crate) trait AudioNodeEngine: Send + AudioNodeCommon {
     }
 }
 
-#[derive(Clone, Debug)]
 pub enum AudioNodeMessage {
     AudioBufferSourceNode(AudioBufferSourceNodeMessage),
     AudioScheduledSourceNode(AudioScheduledSourceNodeMessage),
@@ -187,23 +181,20 @@ pub enum AudioNodeMessage {
     SetParamRate(ParamType, ParamRate),
 }
 
-/// This trait represents the common features of the source nodes such as
-/// AudioBufferSourceNode, ConstantSourceNode and OscillatorNode.
-/// https://webaudio.github.io/web-audio-api/#AudioScheduledSourceNode
-pub trait AudioScheduledSourceNode {
-    /// Schedules a sound to playback at an exact time.
-    /// Returns true if the scheduling request is processed succesfully.
-    fn start(&mut self, tick: Tick) -> bool;
-    /// Schedules a sound to stop playback at an exact time.
-    /// Returns true if the scheduling request is processed successfully.
-    fn stop(&mut self, tick: Tick) -> bool;
+pub struct OnEndedCallback(pub Box<FnBox() + Send + 'static>);
+
+impl OnEndedCallback {
+    pub fn new<F: FnOnce() + Send + 'static>(callback: F) -> Self {
+        OnEndedCallback(Box::new(callback))
+    }
 }
 
 /// Type of message directed to AudioScheduledSourceNodes.
-#[derive(Debug, Clone)]
 pub enum AudioScheduledSourceNodeMessage {
     /// Schedules a sound to playback at an exact time.
     Start(f64),
     /// Schedules a sound to stop playback at an exact time.
     Stop(f64),
+    /// Register onended event callback.
+    RegisterOnEndedCallback(OnEndedCallback),
 }
