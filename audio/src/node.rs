@@ -6,7 +6,6 @@ use oscillator_node::OscillatorNodeOptions;
 use param::{Param, ParamRate, ParamType, UserAutomationEvent};
 use std::boxed::FnBox;
 use std::sync::mpsc::Sender;
-use std::sync::Mutex;
 
 /// Information required to construct an audio node
 #[derive(Debug, Clone)]
@@ -182,11 +181,11 @@ pub enum AudioNodeMessage {
     SetParamRate(ParamType, ParamRate),
 }
 
-pub struct OnEndedCallback(pub Mutex<Option<Box<FnBox() + Send + 'static>>>);
+pub struct OnEndedCallback(pub Box<FnBox() + Send + 'static>);
 
 impl OnEndedCallback {
     pub fn new<F: FnOnce() + Send + 'static>(callback: F) -> Self {
-        OnEndedCallback(Mutex::new(Some(Box::new(callback))))
+        OnEndedCallback(Box::new(callback))
     }
 }
 
