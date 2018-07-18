@@ -1,7 +1,7 @@
 use param::ParamType;
 use block::{Block, Chunk};
 use destination_node::DestinationNode;
-use node::{AudioNodeEngine, BlockInfo, ChannelCountMode};
+use node::{AudioNodeEngine, BlockInfo, ChannelCountMode, ChannelInterpretation};
 use petgraph::graph::DefaultIx;
 use petgraph::stable_graph::NodeIndex;
 use petgraph::stable_graph::StableGraph;
@@ -311,7 +311,7 @@ impl AudioGraph {
                 for edge in self.graph.edges_directed(ix, Direction::Incoming) {
                     let edge = edge.weight();
                     for connection in &edge.connections {
-                        let block = connection
+                        let mut block = connection
                             .cache
                             .borrow_mut()
                             .take()
@@ -321,9 +321,11 @@ impl AudioGraph {
                             PortIndex::Port(idx) => {
                                 blocks[idx as usize].push(block);
                             }
-                            PortIndex::Param(_) => {
-                                // XXXManishearth do something here
-
+                            PortIndex::Param(param) => {
+                                // param inputs are downmixed to mono
+                                // https://webaudio.github.io/web-audio-api/#dom-audionode-connect-destinationparam-output
+                                block.mix(1, ChannelInterpretation::Speakers);
+                                curr.get_param(param).add_block(block)
                             }
                         }
 
