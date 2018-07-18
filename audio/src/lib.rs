@@ -1,4 +1,4 @@
-#![feature(fnbox)]
+#![feature(fnbox, never_type)]
 
 #[macro_use]
 extern crate servo_media_derive;

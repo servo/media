@@ -1,3 +1,4 @@
+use param::ParamType;
 use block::{Block, Chunk};
 use destination_node::DestinationNode;
 use node::{AudioNodeEngine, BlockInfo, ChannelCountMode};
@@ -8,7 +9,7 @@ use petgraph::visit::{DfsPostOrder, EdgeRef, Reversed};
 use petgraph::Direction;
 use smallvec::SmallVec;
 use std::cell::{RefCell, RefMut};
-use std::cmp;
+use std::{cmp, fmt, hash};
 
 #[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash, Debug)]
 /// A unique identifier for nodes in the graph. Stable
@@ -17,10 +18,13 @@ pub struct NodeId(NodeIndex<DefaultIx>);
 
 impl NodeId {
     pub fn input(self, port: u32) -> PortId<InputPort> {
-        PortId(self, PortIndex(port, InputPort))
+        PortId(self, PortIndex::Port(port))
+    }
+    pub fn param(self, param: ParamType) -> PortId<InputPort> {
+        PortId(self, PortIndex::Param(param))
     }
     pub fn output(self, port: u32) -> PortId<OutputPort> {
-        PortId(self, PortIndex(port, OutputPort))
+        PortId(self, PortIndex::Port(port))
     }
 }
 
@@ -34,17 +38,25 @@ impl NodeId {
 /// Kind is a zero sized type and is useful for distinguishing
 /// between input and output ports (which may otherwise share indices)
 #[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash, Debug)]
-pub struct PortIndex<Kind>(pub u32, pub Kind);
+pub enum PortIndex<Kind: PortKind> {
+    Port(u32),
+    Param(Kind::ParamId)
+}
 
-impl<Kind> PortId<Kind> {
+impl<Kind: PortKind> PortId<Kind> {
     pub fn node(&self) -> NodeId {
         self.0
     }
 }
 
+pub trait PortKind {
+    type ParamId: Copy + Eq + PartialEq + Ord
+                       + PartialOrd + hash::Hash + fmt::Debug;
+}
+
 /// An identifier for a port.
 #[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash, Debug)]
-pub struct PortId<Kind>(NodeId, PortIndex<Kind>);
+pub struct PortId<Kind: PortKind>(NodeId, PortIndex<Kind>);
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
 /// Marker type for denoting that the port is an input port
@@ -54,6 +66,19 @@ pub struct InputPort;
 /// Marker type for denoting that the port is an output port
 /// of the node it is connected to
 pub struct OutputPort;
+
+impl PortKind for InputPort {
+    type ParamId = ParamType;
+}
+
+impl PortKind for OutputPort {
+    // Params are only a feature of input ports. By using a never type here
+    // we ensure that the PortIndex enum has zero overhead for outputs,
+    // taking up no extra discriminant space and eliminating PortIndex::Param
+    // branches entirely from the compiled code
+    type ParamId = !;
+}
+
 
 pub struct AudioGraph {
     graph: StableGraph<Node, Edge>,
@@ -291,7 +316,18 @@ impl AudioGraph {
                             .borrow_mut()
                             .take()
                             .expect("Cache should have been filled from traversal");
-                        blocks[connection.input_idx.0 as usize].push(block);
+
+                        match connection.input_idx {
+                            PortIndex::Port(idx) => {
+                                blocks[idx as usize].push(block);
+                            }
+                            PortIndex::Param(_) => {
+                                // XXXManishearth do something here
+
+                            }
+                        }
+
+                        
                     }
                 }
 
@@ -356,7 +392,11 @@ impl AudioGraph {
             for edge in self.graph.edges(ix) {
                 let edge = edge.weight();
                 for conn in &edge.connections {
-                    output_counts[conn.output_idx.0 as usize] += 1;
+                    if let PortIndex::Port(idx) = conn.output_idx {
+                        output_counts[idx as usize] += 1;
+                    } else {
+                        unreachable!()
+                    }
                 }
             }
 
@@ -365,14 +405,18 @@ impl AudioGraph {
             for edge in self.graph.edges(ix) {
                 let edge = edge.weight();
                 for conn in &edge.connections {
-                    output_counts[conn.output_idx.0 as usize] -= 1;
-                    // if there are no consumers left after this, take the data
-                    let block = if output_counts[conn.output_idx.0 as usize] == 0 {
-                        out[conn.output_idx].take()
+                    if let PortIndex::Port(idx) = conn.output_idx {
+                        output_counts[idx as usize] -= 1;
+                        // if there are no consumers left after this, take the data
+                        let block = if output_counts[idx as usize] == 0 {
+                            out[conn.output_idx].take()
+                        } else {
+                            out[conn.output_idx].clone()
+                        };
+                        *conn.cache.borrow_mut() = Some(block);
                     } else {
-                        out[conn.output_idx].clone()
-                    };
-                    *conn.cache.borrow_mut() = Some(block);
+                        unreachable!()
+                    }
                 }
             }
         }

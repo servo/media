@@ -1,7 +1,7 @@
 use block::Tick;
 use node::BlockInfo;
 
-#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub enum ParamType {
     Frequency,
     Detune,
