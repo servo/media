@@ -1,7 +1,8 @@
+use block::Block;
 use block::Tick;
 use node::BlockInfo;
 
-#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub enum ParamType {
     Frequency,
     Detune,
@@ -12,7 +13,6 @@ pub enum ParamType {
 /// An AudioParam.
 ///
 /// https://webaudio.github.io/web-audio-api/#AudioParam
-#[derive(Debug)]
 pub struct Param {
     val: f32,
     kind: ParamRate,
@@ -20,6 +20,12 @@ pub struct Param {
     current_event: usize,
     event_start_time: Tick,
     event_start_value: f32,
+    /// Cache of inputs from connect()ed nodes
+    blocks: Vec<Block>,
+    /// The value of all connect()ed inputs mixed together, for this frame
+    block_mix_val: f32,
+    /// If true, `blocks` has been summed together into a single block
+    summed: bool,
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
@@ -39,19 +45,48 @@ impl Param {
             current_event: 0,
             event_start_time: Tick(0),
             event_start_value: val,
+            blocks: Vec::new(),
+            block_mix_val: 0.,
+            summed: false,
         }
     }
 
     /// Update the value of this param to the next
     ///
+    /// Invariant: This should be called with monotonically increasing
+    /// ticks, and Tick(0) should never be skipped.
+    ///
     /// Returns true if anything changed
     pub fn update(&mut self, block: &BlockInfo, tick: Tick) -> bool {
-        if tick.0 != 0 && self.kind == ParamRate::KRate {
+        if tick.0 == 0 {
+            self.summed = true;
+            if let Some(first) = self.blocks.pop() {
+                // first sum them together
+                // https://webaudio.github.io/web-audio-api/#dom-audionode-connect-destinationparam-output
+                let block = self.blocks.drain(..)
+                                .fold(first, |acc, block| acc.sum(block));
+                self.blocks.push(block);
+
+            }
+        } else if self.kind == ParamRate::KRate {
             return false;
         }
 
+
+        // Even if the timeline does nothing, it's still possible
+        // that there were connected inputs, so we should not
+        // directly return `false` after this point, instead returning
+        // `changed`
+        let changed = if let Some(block) = self.blocks.get(0) {
+            // store to be summed with `val` later
+            self.block_mix_val = block.data_chan(0)[tick.0 as usize];
+            true
+        } else {
+            false
+        };
+
         if self.events.len() <= self.current_event {
-            return false;
+            return changed;
         }
 
         let current_tick = block.absolute_tick(tick);
@@ -86,7 +121,7 @@ impl Param {
                         move_next = true;
                     } else {
                         // This is a SetTarget event before its start time, ignore
-                        return false;
+                        return changed;
                     }
                 }
             }
@@ -99,7 +134,7 @@ impl Param {
                     // may need to move multiple times
                     continue;
                 } else {
-                    return false;
+                    return changed;
                 }
             }
             break;
@@ -114,7 +149,10 @@ impl Param {
     }
 
     pub fn value(&self) -> f32 {
-        self.val
+        // the data from connect()ed audionodes is first mixed
+        // together in update(), and then mixed with the actual param value
+        // https://webaudio.github.io/web-audio-api/#dom-audionode-connect-destinationparam-output
+        self.val + self.block_mix_val
     }
 
     pub fn set_rate(&mut self, rate: ParamRate) {
@@ -155,6 +193,18 @@ impl Param {
         self.events.insert(idx, event);
         // XXXManishearth handle inserting events with a time before that
         // of the current one
+    }
+
+    pub(crate) fn add_block(&mut self, block: Block) {
+        debug_assert!(block.chan_count() == 1);
+        // summed only becomes true during a node's process() call,
+        // but add_block is called during graph traversal before processing,
+        // so if summed is true that means we've moved on to the next block
+        // and should clear our inputs
+        if self.summed {
+            self.blocks.clear();
+        }
+        self.blocks.push(block)
     }
 }
 

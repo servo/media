@@ -20,6 +20,10 @@ name = "params_settarget"
 path = "params_settarget.rs"
 
 [[bin]]
+name = "params_connect"
+path = "params_connect.rs"
+
+[[bin]]
 name = "play"
 path = "play.rs"
 

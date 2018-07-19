@@ -25,6 +25,7 @@ pub enum AudioRenderThreadMsg {
     DisconnectAllFrom(NodeId),
     DisconnectOutput(PortId<OutputPort>),
     DisconnectBetween(NodeId, NodeId),
+    DisconnectTo(NodeId, PortId<InputPort>),
     DisconnectOutputBetween(PortId<OutputPort>, NodeId),
     DisconnectOutputBetweenTo(PortId<OutputPort>, PortId<InputPort>),
 }
@@ -135,6 +136,9 @@ impl<B: AudioBackend> AudioRenderThread<B> {
                 AudioRenderThreadMsg::DisconnectOutput(out) => context.graph.disconnect_output(out),
                 AudioRenderThreadMsg::DisconnectBetween(from, to) => {
                     context.graph.disconnect_between(from, to)
+                }
+                AudioRenderThreadMsg::DisconnectTo(from, to) => {
+                    context.graph.disconnect_to(from, to)
                 }
                 AudioRenderThreadMsg::DisconnectOutputBetween(from, to) => {
                     context.graph.disconnect_output_between(from, to)

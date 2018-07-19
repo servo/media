@@ -1,5 +1,5 @@
 use byte_slice_cast::*;
-use graph::PortIndex;
+use graph::{PortIndex, PortKind};
 use node::ChannelInterpretation;
 use smallvec::SmallVec;
 use std::f32::consts::SQRT_2;
@@ -503,16 +503,24 @@ impl<'a> FrameRef<'a> {
 
 // operator impls
 
-impl<T> IndexMut<PortIndex<T>> for Chunk {
+impl<T: PortKind> IndexMut<PortIndex<T>> for Chunk {
     fn index_mut(&mut self, i: PortIndex<T>) -> &mut Block {
-        &mut self.blocks[i.0 as usize]
+        if let PortIndex::Port(i) = i {
+            &mut self.blocks[i as usize]
+        } else {
+            panic!("attempted to index chunk with param")
+        }
     }
 }
 
-impl<T> Index<PortIndex<T>> for Chunk {
+impl<T: PortKind> Index<PortIndex<T>> for Chunk {
     type Output = Block;
     fn index(&self, i: PortIndex<T>) -> &Block {
-        &self.blocks[i.0 as usize]
+        if let PortIndex::Port(i) = i {
+            &self.blocks[i as usize]
+        } else {
+            panic!("attempted to index chunk with param")
+        }
     }
 }
 
