@@ -205,6 +205,15 @@ impl<B: AudioBackend> AudioContext<B> {
             .send(AudioRenderThreadMsg::DisconnectBetween(from, to));
     }
 
+    /// Disconnect connections from a node to another node's input
+    ///
+    /// https://webaudio.github.io/web-audio-api/#dom-audionode-disconnect-destinationparam
+    pub fn disconnect_to(&self, from: NodeId, to: PortId<InputPort>) {
+        let _ = self
+            .sender
+            .send(AudioRenderThreadMsg::DisconnectTo(from, to));
+    }
+
     /// Disconnect all outgoing connections from a node's output to another node
     ///
     /// https://webaudio.github.io/web-audio-api/#dom-audionode-disconnect-destinationnode-output
