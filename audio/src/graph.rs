@@ -117,6 +117,10 @@ impl Edge {
         self.connections.retain(|i| i.output_idx != output_idx)
     }
 
+    fn remove_by_input(&mut self, input_idx: PortIndex<InputPort>) {
+        self.connections.retain(|i| i.input_idx != input_idx)
+    }
+
     fn remove_by_pair(
         &mut self,
         output_idx: PortIndex<OutputPort>,
@@ -244,9 +248,37 @@ impl AudioGraph {
         }
     }
 
-    // /// Disconnect all outgoing connections from a node's output to another node's input
-    // ///
-    // /// https://webaudio.github.io/web-audio-api/#dom-audionode-disconnect-destinationnode-output-input
+    /// Disconnect all outgoing connections from a node to another node's input
+    ///
+    /// Only used in WebAudio for disconnecting audio params
+    ///
+    /// https://webaudio.github.io/web-audio-api/#dom-audionode-disconnect-destinationparam
+    pub fn disconnect_to(
+        &mut self,
+        node: NodeId,
+        inp: PortId<InputPort>,
+    ) {
+        let edge = self
+            .graph
+            .edges(node.0)
+            .find(|e| e.target() == inp.node().0)
+            .map(|e| e.id());
+        if let Some(edge) = edge {
+            let mut e = self
+                .graph
+                .remove_edge(edge)
+                .expect("Edge index is known to exist");
+            e.remove_by_input(inp.1);
+            if !e.connections.is_empty() {
+                self.graph.add_edge(node.0, inp.node().0, e);
+            }
+        }
+    }
+
+    /// Disconnect all outgoing connections from a node's output to another node's input
+    ///
+    /// https://webaudio.github.io/web-audio-api/#dom-audionode-disconnect-destinationnode-output-input
+    /// https://webaudio.github.io/web-audio-api/#dom-audionode-disconnect-destinationparam-output
     pub fn disconnect_output_between_to(
         &mut self,
         out: PortId<OutputPort>,
