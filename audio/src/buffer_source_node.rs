@@ -135,7 +135,13 @@ impl AudioNodeEngine for AudioBufferSourceNode {
                     ticks_to_stop.0 as usize
                 }
             }
-            None => FRAMES_PER_BLOCK.0 as usize,
+            None => {
+                if self.playback_offset + (FRAMES_PER_BLOCK.0 as usize) < len {
+                    FRAMES_PER_BLOCK.0 as usize
+                } else {
+                    len - self.playback_offset
+                }
+            },
         };
 
         let next_offset = self.playback_offset + samples_to_copy;
@@ -154,6 +160,7 @@ impl AudioNodeEngine for AudioBufferSourceNode {
             block.explicit_repeat();
             for chan in 0..buffer.chans() {
                 let data = block.data_chan_mut(chan);
+                let (data, _) = data.split_at_mut(samples_to_copy);
                 data.copy_from_slice(
                     &buffer.buffers[chan as usize][self.playback_offset..next_offset],
                 );
