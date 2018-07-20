@@ -328,83 +328,81 @@ impl AudioGraph {
             chunk
                 .blocks
                 .resize(curr.input_count() as usize, Default::default());
+
             // if we have inputs, collect all the computed blocks
             // and construct a Chunk
-            if curr.input_count() > 0 {
-                // set up scratch space to store all the blocks
-                blocks.clear();
-                blocks.resize(curr.input_count() as usize, Default::default());
 
-                let mode = curr.channel_count_mode();
-                let count = curr.channel_count();
-                let interpretation = curr.channel_interpretation();
+            // set up scratch space to store all the blocks
+            blocks.clear();
+            blocks.resize(curr.input_count() as usize, Default::default());
 
-                // all edges to this node are from its dependencies
-                for edge in self.graph.edges_directed(ix, Direction::Incoming) {
-                    let edge = edge.weight();
-                    for connection in &edge.connections {
-                        let mut block = connection
-                            .cache
-                            .borrow_mut()
-                            .take()
-                            .expect("Cache should have been filled from traversal");
+            let mode = curr.channel_count_mode();
+            let count = curr.channel_count();
+            let interpretation = curr.channel_interpretation();
 
-                        match connection.input_idx {
-                            PortIndex::Port(idx) => {
-                                blocks[idx as usize].push(block);
-                            }
-                            PortIndex::Param(param) => {
-                                // param inputs are downmixed to mono
-                                // https://webaudio.github.io/web-audio-api/#dom-audionode-connect-destinationparam-output
-                                block.mix(1, ChannelInterpretation::Speakers);
-                                curr.get_param(param).add_block(block)
-                            }
+            // all edges to this node are from its dependencies
+            for edge in self.graph.edges_directed(ix, Direction::Incoming) {
+                let edge = edge.weight();
+                for connection in &edge.connections {
+                    let mut block = connection
+                        .cache
+                        .borrow_mut()
+                        .take()
+                        .expect("Cache should have been filled from traversal");
+
+                    match connection.input_idx {
+                        PortIndex::Port(idx) => {
+                            blocks[idx as usize].push(block);
                         }
-
-                        
+                        PortIndex::Param(param) => {
+                            // param inputs are downmixed to mono
+                            // https://webaudio.github.io/web-audio-api/#dom-audionode-connect-destinationparam-output
+                            block.mix(1, ChannelInterpretation::Speakers);
+                            curr.get_param(param).add_block(block)
+                        }
                     }
                 }
+            }
 
-                for (i, mut blocks) in blocks.drain().enumerate() {
-                    if blocks.len() == 0 {
-                        if mode == ChannelCountMode::Explicit {
-                            // It's silence, but mix it anyway
+            for (i, mut blocks) in blocks.drain().enumerate() {
+                if blocks.len() == 0 {
+                    if mode == ChannelCountMode::Explicit {
+                        // It's silence, but mix it anyway
+                        chunk.blocks[i].mix(count, interpretation);
+                    }
+                } else if blocks.len() == 1 {
+                    chunk.blocks[i] = blocks.pop().expect("`blocks` had length 1");
+                    match mode {
+                        ChannelCountMode::Explicit => {
                             chunk.blocks[i].mix(count, interpretation);
                         }
-                    } else if blocks.len() == 1 {
-                        chunk.blocks[i] = blocks.pop().expect("`blocks` had length 1");
-                        match mode {
-                            ChannelCountMode::Explicit => {
+                        ChannelCountMode::ClampedMax => {
+                            if chunk.blocks[i].chan_count() > count {
                                 chunk.blocks[i].mix(count, interpretation);
                             }
-                            ChannelCountMode::ClampedMax => {
-                                if chunk.blocks[i].chan_count() > count {
-                                    chunk.blocks[i].mix(count, interpretation);
-                                }
-                            }
-                            // It's one channel, it maxes itself
-                            ChannelCountMode::Max => (),
                         }
-                    } else {
-                        let mix_count = match mode {
-                            ChannelCountMode::Explicit => count,
-                            _ => {
-                                let mut max = 0; // max channel count
-                                for block in &blocks {
-                                    max = cmp::max(max, block.chan_count());
-                                }
-                                if mode == ChannelCountMode::ClampedMax {
-                                    max = cmp::min(max, count);
-                                }
-                                max
-                            }
-                        };
-                        let block = blocks.into_iter().fold(Block::default(), |acc, mut block| {
-                            block.mix(mix_count, interpretation);
-                            acc.sum(block)
-                        });
-                        chunk.blocks[i] = block;
+                        // It's one channel, it maxes itself
+                        ChannelCountMode::Max => (),
                     }
+                } else {
+                    let mix_count = match mode {
+                        ChannelCountMode::Explicit => count,
+                        _ => {
+                            let mut max = 0; // max channel count
+                            for block in &blocks {
+                                max = cmp::max(max, block.chan_count());
+                            }
+                            if mode == ChannelCountMode::ClampedMax {
+                                max = cmp::min(max, count);
+                            }
+                            max
+                        }
+                    };
+                    let block = blocks.into_iter().fold(Block::default(), |acc, mut block| {
+                        block.mix(mix_count, interpretation);
+                        acc.sum(block)
+                    });
+                    chunk.blocks[i] = block;
                 }
             }
 
