@@ -95,7 +95,6 @@ impl AudioNodeEngine for OscillatorNode {
 
             // Convert all our parameters to the target type for calculations
             let vol: f32 = 1.0;
-            let freq = self.frequency.value() as f64;
             let sample_rate = info.sample_rate as f64;
             let two_pi = 2.0 * PI;
 
@@ -104,7 +103,7 @@ impl AudioNodeEngine for OscillatorNode {
             // converted to floating point numbers and then iterated over in 1-steps
             //
             // Also, if the frequency changes the phase should not
-            let mut step = two_pi * freq / sample_rate;
+            let mut step = two_pi * self.frequency.value() as f64 / sample_rate;
             while let Some(mut frame) = iter.next() {
                 let tick = frame.tick();
                 let (should_play_at, should_break) = self.should_play_at(info.frame + tick);
@@ -116,7 +115,7 @@ impl AudioNodeEngine for OscillatorNode {
                     continue;
                 }
                 if self.update_parameters(info, tick) {
-                    step = two_pi * freq / sample_rate;
+                    step = two_pi * self.frequency.value() as f64 / sample_rate;
                 }
                 let value = vol * f32::sin(NumCast::from(self.phase).unwrap());
                 frame.mutate_with(|sample| *sample = value);
