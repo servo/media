@@ -1,3 +1,4 @@
+#![feature(cell_update)]
 #![feature(fnbox, never_type)]
 
 #[macro_use]
