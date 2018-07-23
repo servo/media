@@ -56,9 +56,9 @@ impl Default for RealTimeAudioContextOptions {
 /// User-specified options for an offline audio context.
 pub struct OfflineAudioContextOptions {
     /// The number of channels for this offline audio context.
-    pub channels: u32,
+    pub channels: u8,
     /// The length of the rendered audio buffer in sample-frames.
-    pub length: u32,
+    pub length: usize,
     /// Number of samples that will be rendered in one second, measured in Hz.
     pub sample_rate: f32,
 }

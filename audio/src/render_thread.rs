@@ -56,7 +56,7 @@ impl<B: AudioBackend + 'static> AudioRenderThread<B> {
                 Box::new(B::make_sink()?)
             },
             AudioContextOptions::OfflineAudioContext(options) => {
-                Box::new(OfflineAudioContext::new(options.length as usize))
+                Box::new(OfflineAudioContext::new(options.channels, options.length))
             },
         };
 
