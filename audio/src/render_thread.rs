@@ -52,12 +52,13 @@ impl<B: AudioBackend + 'static> AudioRenderThread<B> {
         options: AudioContextOptions,
     ) -> Result<(), ()> {
         let sink: Box<AudioSink> = match options {
-            AudioContextOptions::RealTimeAudioContext(_) => {
-                Box::new(B::make_sink()?)
-            },
+            AudioContextOptions::RealTimeAudioContext(_) => Box::new(B::make_sink()?),
             AudioContextOptions::OfflineAudioContext(options) => {
-                Box::new(OfflineAudioContext::new(options.channels, options.length))
-            },
+                Box::new(OfflineAudioContext::new(
+                    options.channels as usize,
+                    options.length,
+                ))
+            }
         };
 
         let mut graph = Self {

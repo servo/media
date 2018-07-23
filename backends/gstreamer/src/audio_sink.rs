@@ -181,6 +181,8 @@ impl AudioSink for GStreamerAudioSink {
             .map(|_| ())
             .map_err(|_| ())
     }
+
+    fn set_eos_callback(&self, _: Box<Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>) {}
 }
 
 impl Drop for GStreamerAudioSink {

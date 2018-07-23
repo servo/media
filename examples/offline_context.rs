@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 fn run_example(servo_media: Arc<ServoMedia>) {
     let mut options = <OfflineAudioContextOptions>::default();
+    options.channels = 2;
     options.length = 10 * FRAMES_PER_BLOCK_USIZE;
     let options = AudioContextOptions::OfflineAudioContext(options);
     let context = servo_media.create_audio_context(options);

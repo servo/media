@@ -12,6 +12,7 @@ pub trait AudioSink {
     fn stop(&self) -> Result<(), ()>;
     fn has_enough_data(&self) -> bool;
     fn push_data(&self, chunk: Chunk) -> Result<(), ()>;
+    fn set_eos_callback(&self, callback: Box<Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>);
 }
 
 pub struct DummyAudioSink;
@@ -32,4 +33,5 @@ impl AudioSink for DummyAudioSink {
     fn push_data(&self, _: Chunk) -> Result<(), ()> {
         Ok(())
     }
+    fn set_eos_callback(&self, _: Box<Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>) {}
 }
