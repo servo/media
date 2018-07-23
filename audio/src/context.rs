@@ -1,3 +1,4 @@
+use AudioBackend;
 use decoder::{AudioDecoder, AudioDecoderCallbacks, AudioDecoderOptions};
 use graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
 use node::{AudioNodeInit, AudioNodeMessage};
@@ -7,7 +8,6 @@ use std::cell::Cell;
 use std::marker::PhantomData;
 use std::sync::mpsc::{self, Sender};
 use std::thread::Builder;
-use AudioBackend;
 
 /// Describes the state of the audio context on the control thread.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -111,14 +111,13 @@ pub struct AudioContext<B> {
     backend: PhantomData<B>,
 }
 
-impl<B: AudioBackend> AudioContext<B> {
+impl<B: AudioBackend + 'static> AudioContext<B> {
     /// Constructs a new audio context.
     pub fn new(options: AudioContextOptions) -> Self {
-        let options = match options {
-            AudioContextOptions::RealTimeAudioContext(options) => options,
-            AudioContextOptions::OfflineAudioContext(_) => unimplemented!(),
+        let sample_rate = match options {
+            AudioContextOptions::RealTimeAudioContext(ref options) => options.sample_rate,
+            AudioContextOptions::OfflineAudioContext(ref options) => options.sample_rate
         };
-        let sample_rate = options.sample_rate;
 
         let (sender, receiver) = mpsc::channel();
         let sender_ = sender.clone();
@@ -127,7 +126,7 @@ impl<B: AudioBackend> AudioContext<B> {
         Builder::new()
             .name("AudioRenderThread".to_owned())
             .spawn(move || {
-                AudioRenderThread::<B>::start(receiver, sender_, options.sample_rate, graph)
+                AudioRenderThread::<B>::start(receiver, sender_, sample_rate, graph, options)
                     .expect("Could not start AudioRenderThread");
             })
             .unwrap();

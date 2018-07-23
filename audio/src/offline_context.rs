@@ -4,6 +4,15 @@ use sink::AudioSink;
 use std::sync::mpsc::Sender;
 
 pub struct OfflineAudioContext {
+    length: usize,
+}
+
+impl OfflineAudioContext {
+    pub fn new(length: usize) -> Self {
+        Self {
+            length
+        }
+    }
 }
 
 impl AudioSink for OfflineAudioContext {

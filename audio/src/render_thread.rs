@@ -1,14 +1,16 @@
 use block::{Chunk, Tick, FRAMES_PER_BLOCK};
 use buffer_source_node::AudioBufferSourceNode;
 use channel_node::{ChannelMergerNode, ChannelSplitterNode};
-use context::{ProcessingState, StateChangeResult};
+use context::{AudioContextOptions, ProcessingState, StateChangeResult};
 use destination_node::DestinationNode;
 use gain_node::GainNode;
 use graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
 use node::BlockInfo;
 use node::{AudioNodeEngine, AudioNodeInit, AudioNodeMessage};
+use offline_context::OfflineAudioContext;
 use oscillator_node::OscillatorNode;
 use sink::AudioSink;
+use std::marker::PhantomData;
 use std::sync::mpsc::{Receiver, Sender};
 use AudioBackend;
 
@@ -32,22 +34,31 @@ pub enum AudioRenderThreadMsg {
 
 pub struct AudioRenderThread<B: AudioBackend> {
     pub graph: AudioGraph,
-    pub sink: B::Sink,
+    pub sink: Box<AudioSink>,
     pub state: ProcessingState,
     pub sample_rate: f32,
     pub current_time: f64,
     pub current_frame: Tick,
+    pub backend: PhantomData<B>,
 }
 
-impl<B: AudioBackend> AudioRenderThread<B> {
+impl<B: AudioBackend + 'static> AudioRenderThread<B> {
     /// Start the audio render thread
     pub fn start(
         event_queue: Receiver<AudioRenderThreadMsg>,
         sender: Sender<AudioRenderThreadMsg>,
         sample_rate: f32,
         graph: AudioGraph,
+        options: AudioContextOptions,
     ) -> Result<(), ()> {
-        let sink = B::make_sink()?;
+        let sink: Box<AudioSink> = match options {
+            AudioContextOptions::RealTimeAudioContext(_) => {
+                Box::new(B::make_sink()?)
+            },
+            AudioContextOptions::OfflineAudioContext(options) => {
+                Box::new(OfflineAudioContext::new(options.length as usize))
+            },
+        };
 
         let mut graph = Self {
             graph,
@@ -56,6 +67,7 @@ impl<B: AudioBackend> AudioRenderThread<B> {
             sample_rate,
             current_time: 0.,
             current_frame: Tick(0),
+            backend: PhantomData,
         };
 
         graph.sink.init(sample_rate, sender)?;
