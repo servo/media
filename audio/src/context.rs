@@ -245,6 +245,12 @@ impl<B: AudioBackend + 'static> AudioContext<B> {
             })
             .unwrap();
     }
+
+    pub fn set_eos_callback(&self, callback: Box<Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>) {
+        let _ = self
+            .sender
+            .send(AudioRenderThreadMsg::SetSinkEosCallback(callback));
+    }
 }
 
 impl<T> Drop for AudioContext<T> {

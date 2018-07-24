@@ -30,6 +30,8 @@ pub enum AudioRenderThreadMsg {
     DisconnectTo(NodeId, PortId<InputPort>),
     DisconnectOutputBetween(PortId<OutputPort>, NodeId),
     DisconnectOutputBetweenTo(PortId<OutputPort>, PortId<InputPort>),
+
+    SetSinkEosCallback(Box<Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>),
 }
 
 pub struct AudioRenderThread<B: AudioBackend> {
@@ -142,7 +144,6 @@ impl<B: AudioBackend + 'static> AudioRenderThread<B> {
                     // Do nothing. This will simply unblock the thread so we
                     // can restart the non-blocking event loop.
                 }
-
                 AudioRenderThreadMsg::DisconnectAllFrom(id) => {
                     context.graph.disconnect_all_from(id)
                 }
@@ -158,6 +159,9 @@ impl<B: AudioBackend + 'static> AudioRenderThread<B> {
                 }
                 AudioRenderThreadMsg::DisconnectOutputBetweenTo(from, to) => {
                     context.graph.disconnect_output_between_to(from, to)
+                }
+                AudioRenderThreadMsg::SetSinkEosCallback(callback) => {
+                    context.sink.set_eos_callback(callback);
                 }
             };
 
