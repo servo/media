@@ -10,7 +10,6 @@ use node::{AudioNodeEngine, AudioNodeInit, AudioNodeMessage};
 use offline_sink::OfflineAudioSink;
 use oscillator_node::OscillatorNode;
 use sink::AudioSink;
-use std::marker::PhantomData;
 use std::sync::mpsc::{Receiver, Sender};
 use AudioBackend;
 
@@ -34,14 +33,62 @@ pub enum AudioRenderThreadMsg {
     SetSinkEosCallback(Box<Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>),
 }
 
+pub enum Sink<B: AudioBackend> {
+    RealTime(B::Sink),
+    Offline(OfflineAudioSink),
+}
+
+impl<B: AudioBackend> AudioSink for Sink<B> {
+    fn init(&self, sample_rate: f32, sender: Sender<AudioRenderThreadMsg>) -> Result<(), ()> {
+        match *self {
+            Sink::RealTime(ref sink) => sink.init(sample_rate, sender),
+            Sink::Offline(ref sink) => sink.init(sample_rate, sender),
+        }
+    }
+
+    fn play(&self) -> Result<(), ()> {
+        match *self {
+            Sink::RealTime(ref sink) => sink.play(),
+            Sink::Offline(ref sink) => sink.play(),
+        }
+    }
+
+    fn stop(&self) -> Result<(), ()> {
+        match *self {
+            Sink::RealTime(ref sink) => sink.stop(),
+            Sink::Offline(ref sink) => sink.stop(),
+        }
+    }
+
+    fn has_enough_data(&self) -> bool {
+        match *self {
+            Sink::RealTime(ref sink) => sink.has_enough_data(),
+            Sink::Offline(ref sink) => sink.has_enough_data(),
+        }
+    }
+
+    fn push_data(&self, chunk: Chunk) -> Result<(), ()> {
+        match *self {
+            Sink::RealTime(ref sink) => sink.push_data(chunk),
+            Sink::Offline(ref sink) => sink.push_data(chunk),
+        }
+    }
+
+    fn set_eos_callback(&self, callback: Box<Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>) {
+        match *self {
+            Sink::RealTime(ref sink) => sink.set_eos_callback(callback),
+            Sink::Offline(ref sink) => sink.set_eos_callback(callback),
+        }
+    }
+}
+
 pub struct AudioRenderThread<B: AudioBackend> {
     pub graph: AudioGraph,
-    pub sink: Box<AudioSink>,
+    pub sink: Sink<B>,
     pub state: ProcessingState,
     pub sample_rate: f32,
     pub current_time: f64,
     pub current_frame: Tick,
-    pub backend: PhantomData<B>,
 }
 
 impl<B: AudioBackend + 'static> AudioRenderThread<B> {
@@ -53,14 +100,11 @@ impl<B: AudioBackend + 'static> AudioRenderThread<B> {
         graph: AudioGraph,
         options: AudioContextOptions,
     ) -> Result<(), ()> {
-        let sink: Box<AudioSink> = match options {
-            AudioContextOptions::RealTimeAudioContext(_) => Box::new(B::make_sink()?),
-            AudioContextOptions::OfflineAudioContext(options) => {
-                Box::new(OfflineAudioSink::new(
-                    options.channels as usize,
-                    options.length,
-                ))
-            }
+        let sink = match options {
+            AudioContextOptions::RealTimeAudioContext(_) => Sink::RealTime(B::make_sink()?),
+            AudioContextOptions::OfflineAudioContext(options) => Sink::Offline(
+                OfflineAudioSink::new(options.channels as usize, options.length),
+            ),
         };
 
         let mut graph = Self {
@@ -70,7 +114,6 @@ impl<B: AudioBackend + 'static> AudioRenderThread<B> {
             sample_rate,
             current_time: 0.,
             current_frame: Tick(0),
-            backend: PhantomData,
         };
 
         graph.sink.init(sample_rate, sender)?;
