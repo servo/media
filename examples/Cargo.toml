@@ -12,6 +12,18 @@ name = "audio_decoder"
 path = "audio_decoder.rs"
 
 [[bin]]
+name = "channels"
+path = "channels.rs"
+
+[[bin]]
+name = "channelsum"
+path = "channelsum.rs"
+
+[[bin]]
+name = "offline"
+path = "offline_context.rs"
+
+[[bin]]
 name = "params"
 path = "params.rs"
 
@@ -30,11 +42,3 @@ path = "play.rs"
 [[bin]]
 name = "play_noise"
 path = "play_noise.rs"
-
-[[bin]]
-name = "channels"
-path = "channels.rs"
-
-[[bin]]
-name = "channelsum"
-path = "channelsum.rs"

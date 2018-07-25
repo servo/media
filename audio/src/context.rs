@@ -1,3 +1,4 @@
+use AudioBackend;
 use decoder::{AudioDecoder, AudioDecoderCallbacks, AudioDecoderOptions};
 use graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
 use node::{AudioNodeInit, AudioNodeMessage};
@@ -7,7 +8,6 @@ use std::cell::Cell;
 use std::marker::PhantomData;
 use std::sync::mpsc::{self, Sender};
 use std::thread::Builder;
-use AudioBackend;
 
 /// Describes the state of the audio context on the control thread.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -56,9 +56,9 @@ impl Default for RealTimeAudioContextOptions {
 /// User-specified options for an offline audio context.
 pub struct OfflineAudioContextOptions {
     /// The number of channels for this offline audio context.
-    pub channels: u32,
+    pub channels: u8,
     /// The length of the rendered audio buffer in sample-frames.
-    pub length: u32,
+    pub length: usize,
     /// Number of samples that will be rendered in one second, measured in Hz.
     pub sample_rate: f32,
 }
@@ -111,14 +111,13 @@ pub struct AudioContext<B> {
     backend: PhantomData<B>,
 }
 
-impl<B: AudioBackend> AudioContext<B> {
+impl<B: AudioBackend + 'static> AudioContext<B> {
     /// Constructs a new audio context.
     pub fn new(options: AudioContextOptions) -> Self {
-        let options = match options {
-            AudioContextOptions::RealTimeAudioContext(options) => options,
-            AudioContextOptions::OfflineAudioContext(_) => unimplemented!(),
+        let sample_rate = match options {
+            AudioContextOptions::RealTimeAudioContext(ref options) => options.sample_rate,
+            AudioContextOptions::OfflineAudioContext(ref options) => options.sample_rate
         };
-        let sample_rate = options.sample_rate;
 
         let (sender, receiver) = mpsc::channel();
         let sender_ = sender.clone();
@@ -127,7 +126,7 @@ impl<B: AudioBackend> AudioContext<B> {
         Builder::new()
             .name("AudioRenderThread".to_owned())
             .spawn(move || {
-                AudioRenderThread::<B>::start(receiver, sender_, options.sample_rate, graph)
+                AudioRenderThread::<B>::start(receiver, sender_, sample_rate, graph, options)
                     .expect("Could not start AudioRenderThread");
             })
             .unwrap();
@@ -245,6 +244,12 @@ impl<B: AudioBackend> AudioContext<B> {
                 audio_decoder.decode(data, callbacks, Some(options));
             })
             .unwrap();
+    }
+
+    pub fn set_eos_callback(&self, callback: Box<Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>) {
+        let _ = self
+            .sender
+            .send(AudioRenderThreadMsg::SetSinkEosCallback(callback));
     }
 }
 
