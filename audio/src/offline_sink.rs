@@ -12,7 +12,7 @@ impl AsRef<[f32]> for ProcessedAudio {
     }
 }
 
-pub struct OfflineAudioContext {
+pub struct OfflineAudioSink {
     buffer: RefCell<Option<Vec<f32>>>,
     channel_count: usize,
     has_enough_data: Cell<bool>,
@@ -21,7 +21,7 @@ pub struct OfflineAudioContext {
     eos_callback: RefCell<Option<Box<Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>>>,
 }
 
-impl OfflineAudioContext {
+impl OfflineAudioSink {
     pub fn new(channel_count: usize, length: usize) -> Self {
         Self {
             buffer: RefCell::new(None),
@@ -34,7 +34,7 @@ impl OfflineAudioContext {
     }
 }
 
-impl AudioSink for OfflineAudioContext {
+impl AudioSink for OfflineAudioSink {
     fn init(&self, _: f32, _: Sender<AudioRenderThreadMsg>) -> Result<(), ()> {
         Ok(())
     }

@@ -7,7 +7,7 @@ use gain_node::GainNode;
 use graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
 use node::BlockInfo;
 use node::{AudioNodeEngine, AudioNodeInit, AudioNodeMessage};
-use offline_context::OfflineAudioContext;
+use offline_sink::OfflineAudioSink;
 use oscillator_node::OscillatorNode;
 use sink::AudioSink;
 use std::marker::PhantomData;
@@ -56,7 +56,7 @@ impl<B: AudioBackend + 'static> AudioRenderThread<B> {
         let sink: Box<AudioSink> = match options {
             AudioContextOptions::RealTimeAudioContext(_) => Box::new(B::make_sink()?),
             AudioContextOptions::OfflineAudioContext(options) => {
-                Box::new(OfflineAudioContext::new(
+                Box::new(OfflineAudioSink::new(
                     options.channels as usize,
                     options.length,
                 ))
