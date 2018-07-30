@@ -425,6 +425,10 @@ impl Block {
         }
         vec
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.buffer.is_empty()
+    }
 }
 
 /// An iterator over frames in a block

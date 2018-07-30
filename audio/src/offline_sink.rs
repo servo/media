@@ -54,12 +54,18 @@ impl AudioSink for OfflineAudioSink {
             || (self.rendered_blocks.get() >= (self.length / FRAMES_PER_BLOCK_USIZE))
     }
 
-    fn push_data(&self, chunk: Chunk) -> Result<(), ()> {
+    fn push_data(&self, mut chunk: Chunk) -> Result<(), ()> {
         {
             let offset = self.rendered_blocks.get() * FRAMES_PER_BLOCK_USIZE;
             let mut buffer = self.buffer.borrow_mut();
             if buffer.is_none() {
                 *buffer = Some(vec![0.; self.channel_count * self.length]);
+            }
+            if chunk.len() == 0 {
+                chunk.blocks.push(Default::default());
+            }
+            if chunk.blocks[0].is_empty() {
+                chunk.blocks[0].explicit_silence();
             }
             if let Some(ref mut buffer) = *buffer {
                 for channel_number in 0..self.channel_count {
