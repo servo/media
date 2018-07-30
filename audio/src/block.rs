@@ -571,7 +571,7 @@ impl Div<f64> for Tick {
 
 impl Tick {
     pub fn from_time(time: f64, rate: f32) -> Tick {
-        Tick((time * rate as f64) as u64)
+        Tick((0.5 + time * rate as f64).floor() as u64)
     }
 
     pub fn advance(&mut self) {

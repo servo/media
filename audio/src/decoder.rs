@@ -88,7 +88,7 @@ pub struct AudioDecoderOptions {
 impl Default for AudioDecoderOptions {
     fn default() -> Self {
         AudioDecoderOptions {
-            sample_rate: 48000.,
+            sample_rate: 44100.,
             channels: 1,
         }
     }
