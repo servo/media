@@ -47,7 +47,7 @@ pub struct RealTimeAudioContextOptions {
 impl Default for RealTimeAudioContextOptions {
     fn default() -> Self {
         Self {
-            sample_rate: 48000.,
+            sample_rate: 44100.,
             latency_hint: LatencyCategory::Interactive,
         }
     }
@@ -68,7 +68,7 @@ impl Default for OfflineAudioContextOptions {
         Self {
             channels: 1,
             length: 0,
-            sample_rate: 48000.,
+            sample_rate: 44100.,
         }
     }
 }
