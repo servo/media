@@ -1,35 +1,38 @@
 extern crate servo_media;
 
 use servo_media::audio::gain_node::GainNodeOptions;
-use servo_media::audio::graph::AudioGraph;
+use servo_media::audio::context::AudioContext;
 use servo_media::audio::node::{AudioNodeInit, AudioNodeMessage};
-use servo_media::audio::oscillator_node::OscillatorNodeMessage;
-use servo_media::ServoMedia;
+use servo_media::audio::node::AudioScheduledSourceNodeMessage;
+use servo_media::{Backend, ServoMedia};
 
 struct AudioStream {
-    graph: AudioGraph,
+    context: AudioContext<Backend>,
 }
 
 impl AudioStream {
     pub fn new() -> Self {
-        let graph = ServoMedia::get().unwrap().create_audio_graph();
-        graph.create_node(AudioNodeInit::OscillatorNode(Default::default()));
-        graph.message_node(
-            0,
-            AudioNodeMessage::OscillatorNode(OscillatorNodeMessage::Start(0.)),
-        );
+        let context = ServoMedia::get().unwrap().create_audio_context(Default::default());
+        let osc = context.create_node(AudioNodeInit::OscillatorNode(Default::default()));
         let mut options = GainNodeOptions::default();
         options.gain = 0.5;
-        graph.create_node(AudioNodeInit::GainNode(options));
-        Self { graph }
+        let gain = context.create_node(AudioNodeInit::GainNode(options));
+        let dest = context.dest_node();
+        context.connect_ports(osc.output(0), gain.input(0));
+        context.connect_ports(gain.output(0), dest.input(0));
+        context.message_node(
+            osc,
+            AudioNodeMessage::AudioScheduledSourceNode(AudioScheduledSourceNodeMessage::Start(0.)),
+        );
+        Self { context }
     }
 
     pub fn play(&mut self) {
-        self.graph.resume()
+        let _ = self.context.resume();
     }
 
     pub fn stop(&mut self) {
-        self.graph.suspend()
+        let _ = self.context.suspend();
     }
 }
 
