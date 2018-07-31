@@ -3,6 +3,7 @@ members = [
   "audio",
   "backends/gstreamer",
   "examples",
+  "examples/android/lib",
   "player",
   "servo-media",
   "servo-media-derive"
