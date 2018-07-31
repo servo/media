@@ -54,7 +54,7 @@ a tool to generate the required `libgstreamer_android.so` library with all
 GStreamer dependencies for Android and some Java code required to initialize
 GStreamer on Android. If you want to generate your own `libgstreamer_android.so`
 bundle, check the documentation from that repo and tweak the
-[build script](https://github.com/ferjm/media/blob/master/build.rs#L19) accordingly.
+[build script](https://github.com/servo/media/blob/master/backends/gstreamer/build.rs#L48) accordingly.
 
 ## Build
 For macOS, Windows, and Linux, simply run:
