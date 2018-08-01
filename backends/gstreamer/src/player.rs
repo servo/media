@@ -82,7 +82,7 @@ struct PlayerInner {
     appsink: gst_app::AppSink,
     input_size: u64,
     subscribers: Vec<Sender<PlayerEvent>>,
-    renderers: Vec<Box<FrameRenderer>>,
+    renderers: Vec<Arc<FrameRenderer>>,
     last_metadata: Option<Metadata>,
 }
 
@@ -91,7 +91,7 @@ impl PlayerInner {
         self.subscribers.push(sender);
     }
 
-    pub fn register_frame_renderer(&mut self, renderer: Box<FrameRenderer>) {
+    pub fn register_frame_renderer(&mut self, renderer: Arc<FrameRenderer>) {
         self.renderers.push(renderer);
     }
 
@@ -187,7 +187,7 @@ impl Player for GStreamerPlayer {
         self.inner.lock().unwrap().register_event_handler(sender);
     }
 
-    fn register_frame_renderer(&self, renderer: Box<FrameRenderer>) {
+    fn register_frame_renderer(&self, renderer: Arc<FrameRenderer>) {
         self.inner.lock().unwrap().register_frame_renderer(renderer);
     }
 
