@@ -1,6 +1,7 @@
 use param::ParamType;
 use block::{Block, Chunk};
 use destination_node::DestinationNode;
+use listener::AudioListenerNode;
 use node::{AudioNodeEngine, BlockInfo, ChannelCountMode, ChannelInterpretation};
 use petgraph::graph::DefaultIx;
 use petgraph::stable_graph::NodeIndex;
@@ -26,6 +27,9 @@ impl NodeId {
     pub fn output(self, port: u32) -> PortId<OutputPort> {
         PortId(self, PortIndex::Port(port))
     }
+    pub(crate) fn listener(self) -> PortId<InputPort> {
+        PortId(self, PortIndex::Listener(()))
+    }
 }
 
 /// A zero-indexed "port" for a node. Most nodes have one
@@ -40,7 +44,10 @@ impl NodeId {
 #[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash, Debug)]
 pub enum PortIndex<Kind: PortKind> {
     Port(u32),
-    Param(Kind::ParamId)
+    Param(Kind::ParamId),
+    /// special variant only used for the implicit connection
+    /// from listeners to params
+    Listener(Kind::Listener)
 }
 
 impl<Kind: PortKind> PortId<Kind> {
@@ -51,6 +58,8 @@ impl<Kind: PortKind> PortId<Kind> {
 
 pub trait PortKind {
     type ParamId: Copy + Eq + PartialEq + Ord
+                       + PartialOrd + hash::Hash + fmt::Debug;
+    type Listener: Copy + Eq + PartialEq + Ord
                        + PartialOrd + hash::Hash + fmt::Debug;
 }
 
@@ -69,6 +78,7 @@ pub struct OutputPort;
 
 impl PortKind for InputPort {
     type ParamId = ParamType;
+    type Listener = ();
 }
 
 impl PortKind for OutputPort {
@@ -77,12 +87,14 @@ impl PortKind for OutputPort {
     // taking up no extra discriminant space and eliminating PortIndex::Param
     // branches entirely from the compiled code
     type ParamId = !;
+    type Listener = !;
 }
 
 
 pub struct AudioGraph {
     graph: StableGraph<Node, Edge>,
     dest_id: NodeId,
+    listener_id: NodeId,
 }
 
 pub(crate) struct Node {
@@ -148,7 +160,8 @@ impl AudioGraph {
     pub fn new(channel_count: u8) -> Self {
         let mut graph = StableGraph::new();
         let dest_id = NodeId(graph.add_node(Node::new(Box::new(DestinationNode::new(channel_count)))));
-        AudioGraph { graph, dest_id }
+        let listener_id = NodeId(graph.add_node(Node::new(Box::new(AudioListenerNode::new()))));
+        AudioGraph { graph, dest_id, listener_id }
     }
 
     /// Create a node, obtain its id
@@ -308,6 +321,18 @@ impl AudioGraph {
         self.dest_id
     }
 
+    /// Get the id of the AudioListener in this graph
+    ///
+    /// All graphs have a single listener, with no ports (but nine AudioParams)
+    ///
+    /// N.B. The listener actually has a single output port containing
+    /// its position data for the block, however this should
+    /// not be exposed to the DOM.
+    pub fn listener_id(&self) -> NodeId {
+        self.listener_id
+    }
+
+
     /// For a given block, process all the data on this graph
     pub fn process(&mut self, info: &BlockInfo) -> Chunk {
         // DFS post order: Children are processed before their parent,
@@ -359,6 +384,9 @@ impl AudioGraph {
                             // https://webaudio.github.io/web-audio-api/#dom-audionode-connect-destinationparam-output
                             block.mix(1, ChannelInterpretation::Speakers);
                             curr.get_param(param).add_block(block)
+                        }
+                        PortIndex::Listener(_) => {
+                            curr.set_listenerdata(block)
                         }
                     }
                 }

@@ -82,6 +82,14 @@ impl Block {
         }
     }
 
+    pub fn for_channels_explicit(channels: u8) -> Self {
+        Block {
+            channels,
+            repeat: true,
+            buffer: vec![0.; FRAMES_PER_BLOCK_USIZE * channels as usize]
+        }
+    }
+
     /// This provides the entire buffer as a mutable slice of u8
     pub fn as_mut_byte_slice(&mut self) -> &mut [u8] {
         self.data_mut().as_mut_byte_slice().expect("casting failed")
