@@ -1,6 +1,7 @@
 pub mod frame;
 pub mod metadata;
 
+use std::sync::Arc;
 use std::sync::mpsc::Sender;
 
 #[derive(Clone, Debug)]
@@ -22,7 +23,7 @@ pub enum PlayerEvent {
 
 pub trait Player: Send {
     fn register_event_handler(&self, sender: Sender<PlayerEvent>);
-    fn register_frame_renderer(&self, renderer: Box<frame::FrameRenderer>);
+    fn register_frame_renderer(&self, renderer: Arc<frame::FrameRenderer>);
 
     fn setup(&self) -> Result<(), ()>;
     fn play(&self);
@@ -37,9 +38,10 @@ pub struct DummyPlayer {}
 
 impl Player for DummyPlayer {
     fn register_event_handler(&self, _: Sender<PlayerEvent>) {}
-    fn register_frame_renderer(&self, _: Box<frame::FrameRenderer>) {}
+    fn register_frame_renderer(&self, _: Arc<frame::FrameRenderer>) {}
 
     fn setup(&self) -> Result<(), ()> {
+        println!("You are using the DummyPlayer");
         Err(())
     }
     fn play(&self) {}
