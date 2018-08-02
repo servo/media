@@ -92,6 +92,9 @@ pub trait Example {
     ) -> bool {
         false
     }
+    fn needs_repaint(&self) -> bool {
+        false
+    }
     fn get_image_handlers(
         &self,
         _gl: &gl::Gl,
@@ -271,10 +274,10 @@ pub fn main_wrapper<E: Example>(
                 &api,
                 document_id,
             ),
-            _ => return winit::ControlFlow::Continue,
+            _ => (),
         };
 
-        if custom_event {
+        if custom_event  || example.needs_repaint() {
             let mut builder = DisplayListBuilder::new(pipeline_id, layout_size);
 
             example.render(

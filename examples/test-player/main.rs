@@ -24,6 +24,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread::Builder;
+use ui::HandyDandyRectBuilder;
 use webrender::api::*;
 
 #[path = "ui.rs"]
@@ -133,12 +134,14 @@ impl PlayerWrapper {
 
 struct App {
     frame_queue: Mutex<Vec<Frame>>,
+    current_frame: Mutex<Option<Frame>>,
 }
 
 impl App {
     fn new() -> Self {
         Self {
             frame_queue: Mutex::new(Vec::new()),
+            current_frame: Mutex::new(None),
         }
     }
 }
@@ -146,18 +149,59 @@ impl App {
 impl ui::Example for App {
     fn render(
         &self,
-        _api: &RenderApi,
-        _builder: &mut DisplayListBuilder,
-        _txn: &mut Transaction,
+        api: &RenderApi,
+        builder: &mut DisplayListBuilder,
+        txn: &mut Transaction,
         _framebuffer_size: DeviceUintSize,
         _pipeline_id: PipelineId,
         _document_id: DocumentId,
     ) {
-        // XXX render frame queue
+        let frame = if self.frame_queue.lock().unwrap().is_empty() {
+            let mut frame = self.current_frame.lock().unwrap();
+            if frame.is_none() {
+                return;
+            }
+            frame.take().unwrap()
+        } else {
+            self.frame_queue.lock().unwrap().pop().unwrap()
+        };
+        let width = frame.get_width() as u32;
+        let height = frame.get_height() as u32;
+        let image_descriptor =
+            ImageDescriptor::new(width, height, ImageFormat::BGRA8, false, false);
+        let image_data = ImageData::new_shared(frame.get_data().clone());
+        *self.current_frame.lock().unwrap() = Some(frame);
+        let image_key = api.generate_image_key();
+        txn.add_image(image_key, image_descriptor, image_data, None);
+        let bounds = (0, 0).to(width as i32, height as i32);
+        let info = LayoutPrimitiveInfo::new(bounds);
+        builder.push_stacking_context(
+            &info,
+            None,
+            TransformStyle::Flat,
+            MixBlendMode::Normal,
+            Vec::new(),
+            GlyphRasterSpace::Screen,
+        );
+        let image_size = LayoutSize::new(width as f32, height as f32);
+        let info = LayoutPrimitiveInfo::new(bounds);
+        builder.push_image(
+            &info,
+            image_size,
+            LayoutSize::zero(),
+            ImageRendering::Auto,
+            AlphaType::PremultipliedAlpha,
+            image_key,
+        );
+        builder.pop_stacking_context();
     }
 
     fn on_event(&self, _: winit::WindowEvent, _: &RenderApi, _: DocumentId) -> bool {
         false
+    }
+
+    fn needs_repaint(&self) -> bool {
+        !self.frame_queue.lock().unwrap().is_empty()
     }
 
     fn get_image_handlers(
