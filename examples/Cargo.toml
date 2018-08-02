@@ -51,8 +51,4 @@ path = "play_noise.rs"
 
 [[bin]]
 name = "player"
-path = "player.rs"
-
-[[bin]]
-name = "test-player"
-path = "test-player/main.rs"
+path = "player/main.rs"
