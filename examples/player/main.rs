@@ -228,7 +228,7 @@ fn main() {
     let filename: &str = if args.len() == 2 {
         args[1].as_ref()
     } else {
-        panic!("Usage: cargo run --bin test-player <file_path>")
+        panic!("Usage: cargo run --bin player <file_path>")
     };
 
     let path = Path::new(filename);
