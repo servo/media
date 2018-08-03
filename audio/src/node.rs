@@ -3,6 +3,7 @@ use buffer_source_node::{AudioBufferSourceNodeMessage, AudioBufferSourceNodeOpti
 use channel_node::ChannelNodeOptions;
 use gain_node::GainNodeOptions;
 use oscillator_node::OscillatorNodeOptions;
+use panner_node::PannerNodeOptions;
 use param::{Param, ParamRate, ParamType, UserAutomationEvent};
 use std::boxed::FnBox;
 use std::sync::mpsc::Sender;
@@ -23,7 +24,7 @@ pub enum AudioNodeInit {
     GainNode(GainNodeOptions),
     IIRFilterNode,
     OscillatorNode(OscillatorNodeOptions),
-    PannerNode,
+    PannerNode(PannerNodeOptions),
     PeriodicWave,
     ScriptProcessorNode,
     StereoPannerNode,

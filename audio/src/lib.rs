@@ -1,10 +1,11 @@
 #![feature(cell_update)]
-#![feature(fnbox, never_type)]
+#![feature(fnbox, never_type, step_trait)]
 
 #[macro_use]
 extern crate servo_media_derive;
 
 extern crate byte_slice_cast;
+extern crate euclid;
 extern crate num_traits;
 extern crate petgraph;
 extern crate smallvec;
@@ -23,6 +24,7 @@ pub mod listener;
 pub mod node;
 pub mod offline_sink;
 pub mod oscillator_node;
+pub mod panner_node;
 pub mod param;
 pub mod render_thread;
 pub mod sink;

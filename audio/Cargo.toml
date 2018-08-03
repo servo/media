@@ -10,6 +10,7 @@ name = "servo_media_audio"
 [dependencies]
 smallvec = "0.6.1"
 servo_media_derive = { path = "../servo-media-derive" }
+euclid = "0.19.0"
 
 [dependencies.petgraph]
 version = "0.4.12"

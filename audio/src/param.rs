@@ -12,6 +12,7 @@ pub enum ParamType {
     Position(ParamDir),
     Forward(ParamDir),
     Up(ParamDir),
+    Orientation(ParamDir),
 }
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
