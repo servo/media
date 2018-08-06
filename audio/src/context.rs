@@ -108,6 +108,7 @@ pub struct AudioContext<B> {
     /// The identifier of an AudioDestinationNode with a single input
     /// representing the final destination for all audio.
     dest_node: NodeId,
+    listener: NodeId,
     backend: PhantomData<B>,
 }
 
@@ -123,6 +124,7 @@ impl<B: AudioBackend + 'static> AudioContext<B> {
         let sender_ = sender.clone();
         let graph = AudioGraph::new(channels);
         let dest_node = graph.dest_id();
+        let listener = graph.listener_id();
         Builder::new()
             .name("AudioRenderThread".to_owned())
             .spawn(move || {
@@ -135,6 +137,7 @@ impl<B: AudioBackend + 'static> AudioContext<B> {
             state: Cell::new(ProcessingState::Suspended),
             sample_rate,
             dest_node,
+            listener,
             backend: PhantomData,
         }
     }
@@ -145,6 +148,10 @@ impl<B: AudioBackend + 'static> AudioContext<B> {
 
     pub fn dest_node(&self) -> NodeId {
         self.dest_node
+    }
+
+    pub fn listener(&self) -> NodeId {
+        self.listener
     }
 
     pub fn current_time(&self) -> f64 {
