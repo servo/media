@@ -25,21 +25,144 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         osc,
         AudioNodeMessage::AudioScheduledSourceNode(AudioScheduledSourceNodeMessage::Start(0.)),
     );
+    // trace a square around your head twice
     context.message_node(
         panner,
         AudioNodeMessage::SetParam(
-            ParamType::Orientation(ParamDir::X),
-            UserAutomationEvent::RampToValueAtTime(RampKind::Linear, 0., 3.0),
+            ParamType::Position(ParamDir::X),
+            UserAutomationEvent::RampToValueAtTime(RampKind::Linear, -100., 0.2),
         ),
     );
     context.message_node(
         panner,
         AudioNodeMessage::SetParam(
-            ParamType::Orientation(ParamDir::Z),
-            UserAutomationEvent::RampToValueAtTime(RampKind::Linear, 1., 3.0),
+            ParamType::Position(ParamDir::Z),
+            UserAutomationEvent::RampToValueAtTime(RampKind::Linear, 100., 0.2),
         ),
     );
-    thread::sleep(time::Duration::from_millis(5000));
+    context.message_node(
+        panner,
+        AudioNodeMessage::SetParam(
+            ParamType::Position(ParamDir::X),
+            UserAutomationEvent::RampToValueAtTime(RampKind::Linear, -100., 0.4),
+        ),
+    );
+    context.message_node(
+        panner,
+        AudioNodeMessage::SetParam(
+            ParamType::Position(ParamDir::Z),
+            UserAutomationEvent::RampToValueAtTime(RampKind::Linear, -100., 0.4),
+        ),
+    );
+    context.message_node(
+        panner,
+        AudioNodeMessage::SetParam(
+            ParamType::Position(ParamDir::X),
+            UserAutomationEvent::RampToValueAtTime(RampKind::Linear, 100., 0.6),
+        ),
+    );
+    context.message_node(
+        panner,
+        AudioNodeMessage::SetParam(
+            ParamType::Position(ParamDir::Z),
+            UserAutomationEvent::RampToValueAtTime(RampKind::Linear, -100., 0.6),
+        ),
+    );
+    context.message_node(
+        panner,
+        AudioNodeMessage::SetParam(
+            ParamType::Position(ParamDir::X),
+            UserAutomationEvent::RampToValueAtTime(RampKind::Linear, 100., 0.8),
+        ),
+    );
+    context.message_node(
+        panner,
+        AudioNodeMessage::SetParam(
+            ParamType::Position(ParamDir::Z),
+            UserAutomationEvent::RampToValueAtTime(RampKind::Linear, 100., 0.8),
+        ),
+    );
+
+    context.message_node(
+        panner,
+        AudioNodeMessage::SetParam(
+            ParamType::Position(ParamDir::X),
+            UserAutomationEvent::RampToValueAtTime(RampKind::Linear, -100., 1.0),
+        ),
+    );
+    context.message_node(
+        panner,
+        AudioNodeMessage::SetParam(
+            ParamType::Position(ParamDir::Z),
+            UserAutomationEvent::RampToValueAtTime(RampKind::Linear, 100., 1.0),
+        ),
+    );
+    context.message_node(
+        panner,
+        AudioNodeMessage::SetParam(
+            ParamType::Position(ParamDir::X),
+            UserAutomationEvent::RampToValueAtTime(RampKind::Linear, -100., 1.2),
+        ),
+    );
+    context.message_node(
+        panner,
+        AudioNodeMessage::SetParam(
+            ParamType::Position(ParamDir::Z),
+            UserAutomationEvent::RampToValueAtTime(RampKind::Linear, -100., 1.2),
+        ),
+    );
+    context.message_node(
+        panner,
+        AudioNodeMessage::SetParam(
+            ParamType::Position(ParamDir::X),
+            UserAutomationEvent::RampToValueAtTime(RampKind::Linear, 100., 1.4),
+        ),
+    );
+    context.message_node(
+        panner,
+        AudioNodeMessage::SetParam(
+            ParamType::Position(ParamDir::Z),
+            UserAutomationEvent::RampToValueAtTime(RampKind::Linear, -100., 1.4),
+        ),
+    );
+    context.message_node(
+        panner,
+        AudioNodeMessage::SetParam(
+            ParamType::Position(ParamDir::X),
+            UserAutomationEvent::RampToValueAtTime(RampKind::Linear, 100., 1.6),
+        ),
+    );
+    context.message_node(
+        panner,
+        AudioNodeMessage::SetParam(
+            ParamType::Position(ParamDir::Z),
+            UserAutomationEvent::RampToValueAtTime(RampKind::Linear, 100., 1.6),
+        ),
+    );
+    // now it runs away
+    context.message_node(
+        panner,
+        AudioNodeMessage::SetParam(
+            ParamType::Position(ParamDir::Z),
+            UserAutomationEvent::RampToValueAtTime(RampKind::Linear, 10000., 3.),
+        ),
+    );
+    context.message_node(
+        listener,
+        AudioNodeMessage::SetParam(
+            ParamType::Position(ParamDir::Z),
+            UserAutomationEvent::SetValueAtTime(0., 3.),
+        ),
+    );
+    // chase it
+    context.message_node(
+        listener,
+        AudioNodeMessage::SetParam(
+            ParamType::Position(ParamDir::Z),
+            UserAutomationEvent::RampToValueAtTime(RampKind::Linear, 10000., 4.),
+        ),
+    );
+    thread::sleep(time::Duration::from_millis(4000));
 }
 
 fn main() {
