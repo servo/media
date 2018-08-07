@@ -15,6 +15,8 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let mut options = PannerNodeOptions::default();
     options.cone_outer_angle = 0.;
     options.position_x = 100.;
+    options.position_y = 0.;
+    options.position_z = 100.;
     let panner = context.create_node(AudioNodeInit::PannerNode(options));
     context.connect_ports(osc.output(0), panner.input(0));
     context.connect_ports(panner.output(0), dest.input(0));
@@ -27,14 +29,14 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         panner,
         AudioNodeMessage::SetParam(
             ParamType::Orientation(ParamDir::X),
-            UserAutomationEvent::RampToValueAtTime(RampKind::Linear, 0., 1.0),
+            UserAutomationEvent::RampToValueAtTime(RampKind::Linear, 0., 3.0),
         ),
     );
     context.message_node(
         panner,
         AudioNodeMessage::SetParam(
             ParamType::Orientation(ParamDir::Z),
-            UserAutomationEvent::RampToValueAtTime(RampKind::Linear, 1., 1.0),
+            UserAutomationEvent::RampToValueAtTime(RampKind::Linear, 1., 3.0),
         ),
     );
     thread::sleep(time::Duration::from_millis(5000));

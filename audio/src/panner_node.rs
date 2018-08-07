@@ -343,8 +343,8 @@ impl AudioNodeEngine for PannerNode {
                         r[index] = r[index] + l[index] * gain_r;
                         l[index] = l[index] * gain_l;
                     }
-                    // l[index] = l[index] * distance_gain as f32 * cone_gain as f32;
-                    // r[index] = r[index] * distance_gain as f32 * cone_gain as f32;
+                    l[index] = l[index] * distance_gain as f32 * cone_gain as f32;
+                    r[index] = r[index] * distance_gain as f32 * cone_gain as f32;
                 }
             }
         }
