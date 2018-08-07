@@ -380,7 +380,16 @@ impl AutomationEvent {
                         *value = event_start_value + (val - event_start_value) * progress;
                     }
                     RampKind::Exponential => {
-                        *value = event_start_value * (val / event_start_value).powf(progress);
+                        let ratio = val / event_start_value;
+                        if event_start_value == 0. || ratio < 0. {
+                            if time == current_tick {
+                                *value = val;
+                            } else {
+                                *value = event_start_value;
+                            }
+                        } else {
+                            *value = event_start_value * (ratio).powf(progress);
+                        }
                     }
                 }
                 true
