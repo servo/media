@@ -87,7 +87,7 @@ impl Block {
     pub fn for_channels_explicit(channels: u8) -> Self {
         Block {
             channels,
-            repeat: true,
+            repeat: false,
             buffer: vec![0.; FRAMES_PER_BLOCK_USIZE * channels as usize]
         }
     }
