@@ -5,6 +5,16 @@ use node::{AudioNodeType, ChannelInfo, ChannelCountMode, ChannelInterpretation};
 use param::{Param, ParamDir, ParamType};
 use std::f32::consts::PI;
 
+// .normalize(), but it takes into account zero vectors
+fn normalize_zero(v: Vector3D<f32>) -> Vector3D<f32> {
+    let len = v.length();
+    if len == 0. {
+        v
+    } else {
+        v / len
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum PanningModel {
     EqualPower,
@@ -135,15 +145,15 @@ impl PannerNode {
 
         let diff = source_position - listener_position;
         let distance = diff.length();
-        let source_listener = diff.normalize();
+        let source_listener = normalize_zero(diff);
         let listener_right = listener_forward.cross(listener_up);
-        let listener_right_norm = listener_right.normalize();
-        let listener_forward_norm = listener_forward.normalize();
+        let listener_right_norm = normalize_zero(listener_right);
+        let listener_forward_norm = normalize_zero(listener_forward);
 
         let up = listener_right_norm.cross(listener_forward_norm);
 
         let up_projection = source_listener.dot(up);
-        let projected_source = (source_listener - up * up_projection).normalize();
+        let projected_source = normalize_zero(source_listener - up * up_projection);
         let mut azimuth = 180. * projected_source.dot(listener_right_norm).acos() / PI;
 
         let front_back = projected_source.dot(listener_forward_norm);
@@ -187,9 +197,9 @@ impl PannerNode {
             return 0.
         }
 
-        let normalized_source_orientation = source_orientation.normalize();
+        let normalized_source_orientation = normalize_zero(source_orientation);
 
-        let source_to_listener = (source_position - listener_position).normalize();
+        let source_to_listener = normalize_zero(source_position - listener_position);
         // Angle between the source orientation vector and the source-listener vector
         let angle = 180. * source_to_listener.dot(normalized_source_orientation) / PI;
         let abs_angle = angle.abs() as f64;
@@ -324,10 +334,10 @@ impl AudioNodeEngine for PannerNode {
                         r[index] = r[index] * gain_r;
                     } else {
                         r[index] = r[index] + l[index] * gain_r;
-                        l[index] = l[index] * gain_r;
+                        l[index] = l[index] * gain_l;
                     }
-                    l[index] = l[index] * distance_gain as f32 * cone_gain as f32;
-                    r[index] = r[index] * distance_gain as f32 * cone_gain as f32;
+                    // l[index] = l[index] * distance_gain as f32 * cone_gain as f32;
+                    // r[index] = r[index] * distance_gain as f32 * cone_gain as f32;
                 }
             }
         }
