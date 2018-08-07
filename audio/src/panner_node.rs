@@ -321,8 +321,15 @@ impl AudioNodeEngine for PannerNode {
                     };
                     let x = x * PI / 2.;
 
-                    let gain_l = x.cos();
-                    let gain_r = x.sin();
+                    let mut gain_l = x.cos();
+                    let mut gain_r = x.sin();
+                    // 9. * PI / 2 is often slightly negative, clamp
+                    if gain_l <= 0. {;
+                        gain_l = 0.
+                    }
+                    if gain_r <= 0. {
+                        gain_r = 0.;
+                    }
 
                     let index = frame.0 as usize;
                     if mono {
