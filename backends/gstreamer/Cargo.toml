@@ -11,7 +11,7 @@ zip = "0.3.1"
 version = "0.1"
 
 [dependencies.num-traits]
-version = "0.1"
+version = "0.2"
 
 [dependencies.glib]
 version = "0.5"
