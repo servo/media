@@ -132,13 +132,16 @@ impl Block {
     }
 
     pub fn explicit_repeat(&mut self) {
-        if self.repeat && self.channels > 1 {
-            let mut new = Vec::with_capacity(FRAMES_PER_BLOCK_USIZE * self.channels as usize);
-            for _ in 0..self.channels {
-                new.extend(&self.buffer)
-            }
+        if self.repeat {
+            debug_assert!(self.buffer.len() == FRAMES_PER_BLOCK_USIZE);
+            if self.channels > 1 {
+                let mut new = Vec::with_capacity(FRAMES_PER_BLOCK_USIZE * self.channels as usize);
+                for _ in 0..self.channels {
+                    new.extend(&self.buffer)
+                }
 
-            self.buffer = new;
+                self.buffer = new;
+            }
             self.repeat = false;
         } else if self.is_silence() {
             self.buffer
