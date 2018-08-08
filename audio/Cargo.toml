@@ -19,4 +19,4 @@ features = ["stable_graph"]
 version = "0.1"
 
 [dependencies.num-traits]
-version = "0.1"
+version = "0.2"
