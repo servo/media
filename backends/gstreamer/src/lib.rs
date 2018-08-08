@@ -1,7 +1,6 @@
 #![feature(extern_prelude)]
 
 extern crate byte_slice_cast;
-extern crate num_traits;
 
 extern crate glib;
 extern crate gstreamer as gst;
