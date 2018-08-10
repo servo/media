@@ -6,12 +6,14 @@
 
 extern crate gleam;
 extern crate glutin;
+extern crate ipc_channel;
 extern crate servo_media;
 extern crate time;
 extern crate webrender;
 extern crate winit;
 
 use gleam::gl;
+use ipc_channel::ipc;
 use servo_media::player::frame::{Frame, FrameRenderer};
 use servo_media::player::{Player, PlayerEvent};
 use servo_media::ServoMedia;
@@ -21,7 +23,6 @@ use std::io::BufReader;
 use std::io::Read;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread::Builder;
 use ui::HandyDandyRectBuilder;
@@ -42,7 +43,7 @@ impl PlayerWrapper {
         let file = File::open(&path).unwrap();
         let metadata = file.metadata().unwrap();
         player.lock().unwrap().set_input_size(metadata.len());
-        let (sender, receiver) = mpsc::channel();
+        let (sender, receiver) = ipc::channel().unwrap();
         player.lock().unwrap().register_event_handler(sender);
         player
             .lock()

@@ -1,6 +1,6 @@
 use std::{string, time};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Metadata {
     pub duration: Option<time::Duration>,
     pub width: u32,

@@ -28,6 +28,9 @@ version = "0.11"
 [dependencies.gstreamer-player]
 version = "0.11"
 
+[dependencies.ipc-channel]
+version = "0.10"
+
 [dependencies.servo-media-audio]
 path = "../../audio"
 
