@@ -365,7 +365,7 @@ impl Player for GStreamerPlayer {
 
     fn push_data(&self, data: Vec<u8>) -> Result<(), ()> {
         if let Some(ref mut appsrc) = self.inner.lock().unwrap().appsrc {
-            let buffer = gst::Buffer::from_slice(data).expect("Unable to create a buffer");
+            let buffer = gst::Buffer::from_slice(data).ok_or_else(|| ())?;
             if appsrc.push_buffer(buffer) == gst::FlowReturn::Ok {
                 return Ok(());
             }
