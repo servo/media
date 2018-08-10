@@ -29,14 +29,17 @@ impl AudioBackend for GStreamerBackend {
     fn make_sink() -> Result<Self::Sink, ()> {
         audio_sink::GStreamerAudioSink::new()
     }
-    fn init() {
-        gst::init().unwrap();
-    }
 }
 
 impl PlayerBackend for GStreamerBackend {
     type Player = player::GStreamerPlayer;
     fn make_player() -> Result<Self::Player, ()> {
         player::GStreamerPlayer::new()
+    }
+}
+
+impl GStreamerBackend {
+    pub fn init() {
+        gst::init().unwrap();
     }
 }

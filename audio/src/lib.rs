@@ -31,5 +31,4 @@ pub trait AudioBackend {
     type Sink: sink::AudioSink;
     fn make_decoder() -> Self::Decoder;
     fn make_sink() -> Result<Self::Sink, ()>;
-    fn init();
 }
