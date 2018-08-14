@@ -9,10 +9,11 @@ pub(crate) struct DestinationNode {
 }
 
 impl DestinationNode {
-    pub fn new() -> Self {
+    pub fn new(channel_count: u8) -> Self {
         DestinationNode {
             channel_info: ChannelInfo {
                 mode: ChannelCountMode::Explicit,
+                count: channel_count,
                 ..Default::default()
             },
             chunk: None,

@@ -114,14 +114,14 @@ pub struct AudioContext<B> {
 impl<B: AudioBackend + 'static> AudioContext<B> {
     /// Constructs a new audio context.
     pub fn new(options: AudioContextOptions) -> Self {
-        let sample_rate = match options {
-            AudioContextOptions::RealTimeAudioContext(ref options) => options.sample_rate,
-            AudioContextOptions::OfflineAudioContext(ref options) => options.sample_rate
+        let (sample_rate, channels) = match options {
+            AudioContextOptions::RealTimeAudioContext(ref options) => (options.sample_rate, 2),
+            AudioContextOptions::OfflineAudioContext(ref options) => (options.sample_rate, options.channels)
         };
 
         let (sender, receiver) = mpsc::channel();
         let sender_ = sender.clone();
-        let graph = AudioGraph::new();
+        let graph = AudioGraph::new(channels);
         let dest_node = graph.dest_id();
         Builder::new()
             .name("AudioRenderThread".to_owned())
