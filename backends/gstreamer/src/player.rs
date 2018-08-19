@@ -3,10 +3,11 @@ use gst;
 use gst_app;
 use gst_player;
 use gst_player::{PlayerMediaInfo, PlayerStreamInfoExt};
+use ipc_channel::ipc::IpcSender;
 use servo_media_player::frame::{Frame, FrameRenderer};
 use servo_media_player::metadata::Metadata;
 use servo_media_player::{PlaybackState, Player, PlayerEvent};
-use std::sync::mpsc::{self, Sender};
+use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::time;
 use std::u64;
@@ -81,13 +82,13 @@ struct PlayerInner {
     appsrc: Option<gst_app::AppSrc>,
     appsink: gst_app::AppSink,
     input_size: u64,
-    subscribers: Vec<Sender<PlayerEvent>>,
+    subscribers: Vec<IpcSender<PlayerEvent>>,
     renderers: Vec<Arc<FrameRenderer>>,
     last_metadata: Option<Metadata>,
 }
 
 impl PlayerInner {
-    pub fn register_event_handler(&mut self, sender: Sender<PlayerEvent>) {
+    pub fn register_event_handler(&mut self, sender: IpcSender<PlayerEvent>) {
         self.subscribers.push(sender);
     }
 
@@ -183,7 +184,7 @@ impl GStreamerPlayer {
 }
 
 impl Player for GStreamerPlayer {
-    fn register_event_handler(&self, sender: Sender<PlayerEvent>) {
+    fn register_event_handler(&self, sender: IpcSender<PlayerEvent>) {
         self.inner.lock().unwrap().register_event_handler(sender);
     }
 
@@ -365,7 +366,7 @@ impl Player for GStreamerPlayer {
 
     fn push_data(&self, data: Vec<u8>) -> Result<(), ()> {
         if let Some(ref mut appsrc) = self.inner.lock().unwrap().appsrc {
-            let buffer = gst::Buffer::from_slice(data).expect("Unable to create a buffer");
+            let buffer = gst::Buffer::from_slice(data).ok_or_else(|| ())?;
             if appsrc.push_buffer(buffer) == gst::FlowReturn::Ok {
                 return Ok(());
             }

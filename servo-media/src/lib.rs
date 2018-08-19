@@ -27,7 +27,6 @@ impl AudioBackend for DummyBackend {
     fn make_sink() -> Result<Self::Sink, ()> {
         Ok(DummyAudioSink)
     }
-    fn init() {}
 }
 
 impl PlayerBackend for DummyBackend {
@@ -35,6 +34,10 @@ impl PlayerBackend for DummyBackend {
     fn make_player() -> Result<Self::Player, ()> {
         Ok(DummyPlayer {})
     }
+}
+
+impl DummyBackend {
+    pub fn init() {}
 }
 
 #[cfg(all(not(target_os = "android"), target_arch = "x86_64"))]

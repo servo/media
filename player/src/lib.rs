@@ -1,10 +1,14 @@
+extern crate ipc_channel;
+#[macro_use]
+extern crate serde_derive;
+
 pub mod frame;
 pub mod metadata;
 
+use ipc_channel::ipc::IpcSender;
 use std::sync::Arc;
-use std::sync::mpsc::Sender;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum PlaybackState {
     Stopped,
     // Buffering,
@@ -12,7 +16,7 @@ pub enum PlaybackState {
     Playing,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum PlayerEvent {
     EndOfStream,
     MetadataUpdated(metadata::Metadata),
@@ -22,7 +26,7 @@ pub enum PlayerEvent {
 }
 
 pub trait Player: Send {
-    fn register_event_handler(&self, sender: Sender<PlayerEvent>);
+    fn register_event_handler(&self, sender: IpcSender<PlayerEvent>);
     fn register_frame_renderer(&self, renderer: Arc<frame::FrameRenderer>);
 
     fn setup(&self) -> Result<(), ()>;
@@ -37,7 +41,7 @@ pub trait Player: Send {
 pub struct DummyPlayer {}
 
 impl Player for DummyPlayer {
-    fn register_event_handler(&self, _: Sender<PlayerEvent>) {}
+    fn register_event_handler(&self, _: IpcSender<PlayerEvent>) {}
     fn register_frame_renderer(&self, _: Arc<frame::FrameRenderer>) {}
 
     fn setup(&self) -> Result<(), ()> {
