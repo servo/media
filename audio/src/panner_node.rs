@@ -92,7 +92,7 @@ impl PannerNode {
         Self {
             channel_info: ChannelInfo {
                 count: 2,
-                mode: ChannelCountMode::Max,
+                mode: ChannelCountMode::ClampedMax,
                 interpretation: ChannelInterpretation::Speakers,
             },
             panning_model: options.panning_model,
@@ -122,8 +122,8 @@ impl PannerNode {
         self.orientation_z.update(info, tick)
     }
 
-    /// Computes azimuthm elevation, and distance of source with respect to a
-    /// given AudioListener's position, forward, up vectors
+    /// Computes azimuth, elevation, and distance of source with respect to a
+    /// given AudioListener's position, forward, and up vectors
     /// in degrees
     ///
     /// https://webaudio.github.io/web-audio-api/#azimuth-elevation
@@ -177,6 +177,7 @@ impl PannerNode {
         (azimuth, elevation, distance as f64)
     }
 
+    /// https://webaudio.github.io/web-audio-api/#Spatialization-sound-cones
     fn cone_gain(&self,
             listener: (Vector3D<f32>, Vector3D<f32>, Vector3D<f32>))
             -> f64 {
@@ -201,7 +202,7 @@ impl PannerNode {
 
         let source_to_listener = normalize_zero(source_position - listener_position);
         // Angle between the source orientation vector and the source-listener vector
-        let angle = 180. * source_to_listener.dot(normalized_source_orientation) / PI;
+        let angle = 180. * source_to_listener.dot(normalized_source_orientation).acos() / PI;
         let abs_angle = angle.abs() as f64;
 
         // Divide by 2 here since API is entire angle (not half-angle)
