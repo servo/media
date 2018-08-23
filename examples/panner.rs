@@ -17,6 +17,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     options.position_x = 100.;
     options.position_y = 0.;
     options.position_z = 100.;
+    options.ref_distance = 100.;
     let panner = context.create_node(AudioNodeInit::PannerNode(options));
     context.connect_ports(osc.output(0), panner.input(0));
     context.connect_ports(panner.output(0), dest.input(0));

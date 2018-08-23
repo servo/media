@@ -50,7 +50,7 @@ impl Default for PannerNodeOptions {
     fn default() -> Self {
         PannerNodeOptions {
             panning_model: PanningModel::EqualPower,
-            distance_model: DistanceModel::Linear,
+            distance_model: DistanceModel::Inverse,
             position_x: 0.,
             position_y: 0.,
             position_z: 0.,
