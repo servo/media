@@ -1,8 +1,9 @@
-use block::{Chunk, Tick};
+use block::{Block, Chunk, Tick};
 use buffer_source_node::{AudioBufferSourceNodeMessage, AudioBufferSourceNodeOptions};
 use channel_node::ChannelNodeOptions;
 use gain_node::GainNodeOptions;
 use oscillator_node::OscillatorNodeOptions;
+use panner_node::PannerNodeOptions;
 use param::{Param, ParamRate, ParamType, UserAutomationEvent};
 use std::boxed::FnBox;
 use std::sync::mpsc::Sender;
@@ -23,7 +24,7 @@ pub enum AudioNodeInit {
     GainNode(GainNodeOptions),
     IIRFilterNode,
     OscillatorNode(OscillatorNodeOptions),
-    PannerNode,
+    PannerNode(PannerNodeOptions),
     PeriodicWave,
     ScriptProcessorNode,
     StereoPannerNode,
@@ -33,6 +34,8 @@ pub enum AudioNodeInit {
 /// Type of AudioNodeEngine.
 #[derive(Debug, Clone, Copy)]
 pub enum AudioNodeType {
+    /// Not a constructable node
+    AudioListenerNode,
     AnalyserNode,
     BiquadFilterNode,
     AudioBuffer,
@@ -166,6 +169,10 @@ pub(crate) trait AudioNodeEngine: Send + AudioNodeCommon {
 
     fn get_param(&mut self, _: ParamType) -> &mut Param {
         panic!("No params on node {:?}", self.node_type())
+    }
+
+    fn set_listenerdata(&mut self, _: Block) {
+        panic!("{:?} can't accept listener connections")
     }
 }
 

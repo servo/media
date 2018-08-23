@@ -1,3 +1,4 @@
+use block::FRAMES_PER_BLOCK_USIZE;
 use block::Block;
 use block::Tick;
 use node::BlockInfo;
@@ -8,6 +9,15 @@ pub enum ParamType {
     Detune,
     Gain,
     PlaybackRate,
+    Position(ParamDir),
+    Forward(ParamDir),
+    Up(ParamDir),
+    Orientation(ParamDir),
+}
+
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
+pub enum ParamDir {
+    X, Y, Z
 }
 
 /// An AudioParam.
@@ -206,6 +216,29 @@ impl Param {
         }
         self.blocks.push(block)
     }
+
+    /// Flush an entire block of values into a buffer
+    ///
+    /// Only for use with AudioListener.
+    ///
+    /// Invariant: `block` must be a FRAMES_PER_BLOCK length array filled with silence
+    pub(crate) fn flush_to_block(&mut self, info: &BlockInfo, block: &mut [f32]) {
+        // common case
+        if self.current_event >= self.events.len() && self.blocks.is_empty() {
+            if self.val != 0. {
+                for tick in 0..(FRAMES_PER_BLOCK_USIZE) {
+                    // ideally this can use some kind of vectorized memset()
+                    block[tick] = self.val;
+                }
+            }
+            // if the value is zero, our buffer is already zeroed
+        } else {
+            for tick in 0..(FRAMES_PER_BLOCK_USIZE) {
+                self.update(info, Tick(tick as u64));
+                block[tick] = self.val;
+            }
+        }
+    }
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
@@ -347,7 +380,16 @@ impl AutomationEvent {
                         *value = event_start_value + (val - event_start_value) * progress;
                     }
                     RampKind::Exponential => {
-                        *value = event_start_value * (val / event_start_value).powf(progress);
+                        let ratio = val / event_start_value;
+                        if event_start_value == 0. || ratio < 0. {
+                            if time == current_tick {
+                                *value = val;
+                            } else {
+                                *value = event_start_value;
+                            }
+                        } else {
+                            *value = event_start_value * (ratio).powf(progress);
+                        }
                     }
                 }
                 true

@@ -8,6 +8,7 @@ use node::BlockInfo;
 use node::{AudioNodeEngine, AudioNodeInit, AudioNodeMessage};
 use offline_sink::OfflineAudioSink;
 use oscillator_node::OscillatorNode;
+use panner_node::PannerNode;
 use sink::AudioSink;
 use std::sync::mpsc::{Receiver, Sender};
 use AudioBackend;
@@ -126,11 +127,16 @@ impl<B: AudioBackend + 'static> AudioRenderThread<B> {
     make_render_thread_state_change!(suspend, Suspended, stop);
 
     fn create_node(&mut self, node_type: AudioNodeInit) -> NodeId {
+        let mut needs_listener = false;
         let node: Box<AudioNodeEngine> = match node_type {
             AudioNodeInit::AudioBufferSourceNode(options) => {
                 Box::new(AudioBufferSourceNode::new(options))
             }
             AudioNodeInit::GainNode(options) => Box::new(GainNode::new(options)),
+            AudioNodeInit::PannerNode(options) => {
+                needs_listener = true;
+                Box::new(PannerNode::new(options))
+            },
             AudioNodeInit::OscillatorNode(options) => Box::new(OscillatorNode::new(options)),
             AudioNodeInit::ChannelMergerNode(options) => Box::new(ChannelMergerNode::new(options)),
             AudioNodeInit::ChannelSplitterNode(options) => {
@@ -138,7 +144,12 @@ impl<B: AudioBackend + 'static> AudioRenderThread<B> {
             }
             _ => unimplemented!(),
         };
-        self.graph.add_node(node)
+        let id = self.graph.add_node(node);
+        if needs_listener {
+            let listener = self.graph.listener_id().output(0);
+            self.graph.add_edge(listener, id.listener());
+        }
+        id
     }
 
     fn connect_ports(&mut self, output: PortId<OutputPort>, input: PortId<InputPort>) {

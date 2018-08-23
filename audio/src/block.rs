@@ -1,8 +1,10 @@
+use euclid::Vector3D;
 use byte_slice_cast::*;
 use graph::{PortIndex, PortKind};
 use node::ChannelInterpretation;
 use smallvec::SmallVec;
 use std::f32::consts::SQRT_2;
+use std::iter::Step;
 use std::mem;
 use std::ops::*;
 
@@ -82,6 +84,14 @@ impl Block {
         }
     }
 
+    pub fn for_channels_explicit(channels: u8) -> Self {
+        Block {
+            channels,
+            repeat: false,
+            buffer: vec![0.; FRAMES_PER_BLOCK_USIZE * channels as usize]
+        }
+    }
+
     /// This provides the entire buffer as a mutable slice of u8
     pub fn as_mut_byte_slice(&mut self) -> &mut [u8] {
         self.data_mut().as_mut_byte_slice().expect("casting failed")
@@ -122,13 +132,16 @@ impl Block {
     }
 
     pub fn explicit_repeat(&mut self) {
-        if self.repeat && self.channels > 1 {
-            let mut new = Vec::with_capacity(FRAMES_PER_BLOCK_USIZE * self.channels as usize);
-            for _ in 0..self.channels {
-                new.extend(&self.buffer)
-            }
+        if self.repeat {
+            debug_assert!(self.buffer.len() == FRAMES_PER_BLOCK_USIZE);
+            if self.channels > 1 {
+                let mut new = Vec::with_capacity(FRAMES_PER_BLOCK_USIZE * self.channels as usize);
+                for _ in 0..self.channels {
+                    new.extend(&self.buffer)
+                }
 
-            self.buffer = new;
+                self.buffer = new;
+            }
             self.repeat = false;
         } else if self.is_silence() {
             self.buffer
@@ -395,7 +408,7 @@ impl Block {
     }
 
     /// Resize to add or remove channels, fill extra channels with silence
-    fn resize_silence(&mut self, channels: u8) {
+    pub fn resize_silence(&mut self, channels: u8) {
         self.explicit_repeat();
         self.buffer
             .resize(FRAMES_PER_BLOCK_USIZE * channels as usize, 0.);
@@ -428,6 +441,29 @@ impl Block {
 
     pub fn is_empty(&self) -> bool {
         self.buffer.is_empty()
+    }
+
+    /// Get the position, forward, and up vectors for a given
+    /// AudioListener-produced block
+    pub fn listener_data(&self, frame: Tick) -> (Vector3D<f32>, Vector3D<f32>, Vector3D<f32>) {
+        let frame = frame.0 as usize;
+        (
+            Vector3D::new(
+                self.data_chan_frame(frame, 0),
+                self.data_chan_frame(frame, 1),
+                self.data_chan_frame(frame, 2),
+            ),
+            Vector3D::new(
+                self.data_chan_frame(frame, 3),
+                self.data_chan_frame(frame, 4),
+                self.data_chan_frame(frame, 5),
+            ),
+            Vector3D::new(
+                self.data_chan_frame(frame, 6),
+                self.data_chan_frame(frame, 7),
+                self.data_chan_frame(frame, 8),
+            ),
+        )
     }
 }
 
@@ -566,6 +602,27 @@ impl Div<f64> for Tick {
     type Output = f64;
     fn div(self, other: f64) -> f64 {
         self.0 as f64 / other
+    }
+}
+
+impl Step for Tick {
+    fn steps_between(start: &Self, end: &Self) -> Option<usize> {
+        Step::steps_between(&start.0, &end.0)
+    }
+    fn replace_one(&mut self) -> Self {
+        Tick(self.0.replace_one())
+    }
+    fn replace_zero(&mut self) -> Self {
+        Tick(self.0.replace_zero())
+    }
+    fn add_one(&self) -> Self {
+        Tick(self.0.add_one())
+    }
+    fn sub_one(&self) -> Self {
+        Tick(self.0.sub_one())
+    }
+    fn add_usize(&self, n: usize) -> Option<Self> {
+        self.0.add_usize(n).map(Tick)
     }
 }
 

@@ -31,6 +31,10 @@ name = "offline"
 path = "offline_context.rs"
 
 [[bin]]
+name = "panner"
+path = "panner.rs"
+
+[[bin]]
 name = "params"
 path = "params.rs"
 
