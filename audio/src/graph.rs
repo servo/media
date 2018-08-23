@@ -145,9 +145,9 @@ struct Connection {
 }
 
 impl AudioGraph {
-    pub fn new() -> Self {
+    pub fn new(channel_count: u8) -> Self {
         let mut graph = StableGraph::new();
-        let dest_id = NodeId(graph.add_node(Node::new(Box::new(DestinationNode::new()))));
+        let dest_id = NodeId(graph.add_node(Node::new(Box::new(DestinationNode::new(channel_count)))));
         AudioGraph { graph, dest_id }
     }
 

@@ -2,7 +2,6 @@ use block::{Chunk, Tick, FRAMES_PER_BLOCK};
 use buffer_source_node::AudioBufferSourceNode;
 use channel_node::{ChannelMergerNode, ChannelSplitterNode};
 use context::{AudioContextOptions, ProcessingState, StateChangeResult};
-use destination_node::DestinationNode;
 use gain_node::GainNode;
 use graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
 use node::BlockInfo;
@@ -131,7 +130,6 @@ impl<B: AudioBackend + 'static> AudioRenderThread<B> {
             AudioNodeInit::AudioBufferSourceNode(options) => {
                 Box::new(AudioBufferSourceNode::new(options))
             }
-            AudioNodeInit::DestinationNode => Box::new(DestinationNode::new()),
             AudioNodeInit::GainNode(options) => Box::new(GainNode::new(options)),
             AudioNodeInit::OscillatorNode(options) => Box::new(OscillatorNode::new(options)),
             AudioNodeInit::ChannelMergerNode(options) => Box::new(ChannelMergerNode::new(options)),

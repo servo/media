@@ -19,7 +19,6 @@ pub enum AudioNodeInit {
     ConstantSourceNode,
     ConvolverNode,
     DelayNode,
-    DestinationNode,
     DynamicsCompressionNode,
     GainNode(GainNodeOptions),
     IIRFilterNode,
