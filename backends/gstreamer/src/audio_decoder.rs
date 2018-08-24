@@ -103,6 +103,7 @@ impl AudioDecoder for GStreamerAudioDecoder {
                 let resample = gst::ElementFactory::make("audioresample", None).ok_or(())?;
                 let sink = gst::ElementFactory::make("appsink", None).ok_or(())?;
                 let appsink = sink.clone().dynamic_cast::<AppSink>().map_err(|_| ())?;
+                sink.set_property("sync", &false.to_value()).map_err(|_| ())?;
 
                 let audio_info = gst_audio::AudioInfo::new(
                     gst_audio::AUDIO_FORMAT_F32,
