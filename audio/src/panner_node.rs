@@ -1,6 +1,6 @@
 use euclid::Vector3D;
 use block::{Block, Chunk, FRAMES_PER_BLOCK, Tick};
-use node::{AudioNodeEngine, BlockInfo};
+use node::{AudioNodeEngine, AudioNodeMessage, BlockInfo};
 use node::{AudioNodeType, ChannelInfo, ChannelCountMode, ChannelInterpretation};
 use param::{Param, ParamDir, ParamType};
 use std::f32::consts::PI;
@@ -44,6 +44,17 @@ pub struct PannerNodeOptions {
     pub cone_inner_angle: f64,
     pub cone_outer_angle: f64,
     pub cone_outer_gain: f64,
+}
+
+pub enum PannerNodeMessage {
+    SetPanningModel(PanningModel),
+    SetDistanceModel(DistanceModel),
+    SetRefDistance(f64),
+    SetMaxDistance(f64),
+    SetRolloff(f64),
+    SetConeInner(f64),
+    SetConeOuter(f64),
+    SetConeGain(f64),
 }
 
 impl Default for PannerNodeOptions {
@@ -371,5 +382,21 @@ impl AudioNodeEngine for PannerNode {
 
     fn set_listenerdata(&mut self, data: Block) {
         self.listener_data = Some(data);
+    }
+
+    fn message_specific(&mut self, message: AudioNodeMessage, _sample_rate: f32) {
+        match message {
+            AudioNodeMessage::PannerNode(p) => match p {
+                PannerNodeMessage::SetPanningModel(p) => self.panning_model = p,
+                PannerNodeMessage::SetDistanceModel(d) => self.distance_model = d,
+                PannerNodeMessage::SetRefDistance(val) => self.ref_distance = val,
+                PannerNodeMessage::SetMaxDistance(val) => self.max_distance = val,
+                PannerNodeMessage::SetRolloff(val) => self.rolloff_factor = val,
+                PannerNodeMessage::SetConeInner(val) => self.cone_inner_angle = val,
+                PannerNodeMessage::SetConeOuter(val) => self.cone_outer_angle = val,
+                PannerNodeMessage::SetConeGain(val) => self.cone_outer_gain = val,
+            }
+            _ => ()
+        }
     }
 }
