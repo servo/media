@@ -234,7 +234,7 @@ impl PannerNode {
         }
     }
 
-    fn linear_distance(&self, mut distance: f64) -> f64 {
+    fn linear_distance(&self, mut distance: f64, rolloff_factor: f64) -> f64 {
         if distance > self.max_distance {
             distance = self.max_distance;
         }
@@ -242,30 +242,30 @@ impl PannerNode {
             distance = self.ref_distance;
         }
         let denom = self.max_distance - self.ref_distance;
-        1. - self.rolloff_factor * (distance - self.ref_distance) / denom
+        1. - rolloff_factor * (distance - self.ref_distance) / denom
     }
 
-    fn inverse_distance(&self, mut distance: f64) -> f64 {
+    fn inverse_distance(&self, mut distance: f64, rolloff_factor: f64) -> f64 {
         if distance < self.ref_distance {
             distance = self.ref_distance;
         }
-        let denom = self.ref_distance + self.rolloff_factor * (distance - self.ref_distance);
+        let denom = self.ref_distance + rolloff_factor * (distance - self.ref_distance);
         self.ref_distance / denom
     }
 
-    fn exponential_distance(&self, mut distance: f64) -> f64 {
+    fn exponential_distance(&self, mut distance: f64, rolloff_factor: f64) -> f64 {
         if distance < self.ref_distance {
             distance = self.ref_distance;
         }
 
-        (distance / self.ref_distance).powf(-self.rolloff_factor)
+        (distance / self.ref_distance).powf(-rolloff_factor)
     }
 
-    fn distance_gain_fn(&self) -> fn(&Self, f64) -> f64 {
+    fn distance_gain_fn(&self) -> fn(&Self, f64, f64) -> f64 {
         match self.distance_model {
-            DistanceModel::Linear => |x, d| x.linear_distance(d),
-            DistanceModel::Inverse => |x, d| x.inverse_distance(d),
-            DistanceModel::Exponential => |x, d| x.exponential_distance(d),
+            DistanceModel::Linear => |x, d, r| x.linear_distance(d, r),
+            DistanceModel::Inverse => |x, d, r| x.inverse_distance(d, r),
+            DistanceModel::Exponential => |x, d, r| x.exponential_distance(d, r),
         }
     }
 }
@@ -282,6 +282,14 @@ impl AudioNodeEngine for PannerNode {
             listener_data
         } else {
             return inputs
+        };
+
+        // We clamp this early
+        let rolloff_factor = if self.distance_model == DistanceModel::Linear &&
+                                self.rolloff_factor > 1. {
+            1.
+        } else {
+            self.rolloff_factor
         };
 
         {
@@ -307,7 +315,7 @@ impl AudioNodeEngine for PannerNode {
                     self.update_parameters(info, frame);
                     let data = listener_data.listener_data(frame);
                     let (mut azimuth, _elev, dist) = self.azimuth_elevation_distance(data);
-                    let distance_gain = distance_gain_fn(self, dist);
+                    let distance_gain = distance_gain_fn(self, dist, rolloff_factor);
                     let cone_gain = self.cone_gain(data);
 
                     // https://webaudio.github.io/web-audio-api/#Spatialization-equal-power-panning
