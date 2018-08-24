@@ -3,7 +3,7 @@ use buffer_source_node::{AudioBufferSourceNodeMessage, AudioBufferSourceNodeOpti
 use channel_node::ChannelNodeOptions;
 use gain_node::GainNodeOptions;
 use oscillator_node::OscillatorNodeOptions;
-use panner_node::PannerNodeOptions;
+use panner_node::{PannerNodeMessage, PannerNodeOptions};
 use param::{Param, ParamRate, ParamType, UserAutomationEvent};
 use std::boxed::FnBox;
 use std::sync::mpsc::Sender;
@@ -179,6 +179,7 @@ pub(crate) trait AudioNodeEngine: Send + AudioNodeCommon {
 pub enum AudioNodeMessage {
     AudioBufferSourceNode(AudioBufferSourceNodeMessage),
     AudioScheduledSourceNode(AudioScheduledSourceNodeMessage),
+    PannerNode(PannerNodeMessage),
     GetParamValue(ParamType, Sender<f32>),
     SetChannelCount(u8),
     SetChannelMode(ChannelCountMode),
