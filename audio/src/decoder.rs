@@ -82,14 +82,12 @@ impl AudioDecoderCallbacksBuilder {
 
 pub struct AudioDecoderOptions {
     pub sample_rate: f32,
-    pub channels: u32,
 }
 
 impl Default for AudioDecoderOptions {
     fn default() -> Self {
         AudioDecoderOptions {
             sample_rate: 44100.,
-            channels: 1,
         }
     }
 }
