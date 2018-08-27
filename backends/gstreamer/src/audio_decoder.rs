@@ -76,11 +76,11 @@ impl AudioDecoder for GStreamerAudioDecoder {
             let pipeline = &pipeline_;
             let callbacks = &callbacks_;
 
-            let (is_audio, _) = {
+            let (is_audio, caps) = {
                 let media_type = src_pad.get_current_caps().and_then(|caps| {
                     caps.get_structure(0).map(|s| {
                         let name = s.get_name();
-                        (name.starts_with("audio/"), name.starts_with("video/"))
+                        (name.starts_with("audio/"), caps.clone())
                     })
                 });
 
@@ -103,12 +103,15 @@ impl AudioDecoder for GStreamerAudioDecoder {
                 let resample = gst::ElementFactory::make("audioresample", None).ok_or(())?;
                 let sink = gst::ElementFactory::make("appsink", None).ok_or(())?;
                 let appsink = sink.clone().dynamic_cast::<AppSink>().map_err(|_| ())?;
-                sink.set_property("sync", &false.to_value()).map_err(|_| ())?;
+                sink.set_property("sync", &false.to_value())
+                    .map_err(|_| ())?;
 
+                let sample_audio_info = gst_audio::AudioInfo::from_caps(&caps).ok_or(())?;
+                let channels = sample_audio_info.channels();
                 let audio_info = gst_audio::AudioInfo::new(
                     gst_audio::AUDIO_FORMAT_F32,
                     options.sample_rate as u32,
-                    options.channels,
+                    channels,
                 ).build()
                     .ok_or(())?;
                 appsink.set_caps(&audio_info.to_caps().unwrap());
