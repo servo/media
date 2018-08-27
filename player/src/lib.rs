@@ -31,6 +31,7 @@ pub trait Player: Send {
 
     fn setup(&self) -> Result<(), ()>;
     fn play(&self);
+    fn pause(&self);
     fn stop(&self);
 
     fn set_input_size(&self, size: u64);
@@ -49,6 +50,7 @@ impl Player for DummyPlayer {
         Err(())
     }
     fn play(&self) {}
+    fn pause(&self) {}
     fn stop(&self) {}
 
     fn set_input_size(&self, _: u64) {}
