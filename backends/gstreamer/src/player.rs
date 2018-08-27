@@ -360,6 +360,10 @@ impl Player for GStreamerPlayer {
         self.inner.lock().unwrap().play();
     }
 
+    fn pause(&self) {
+        self.inner.lock().unwrap().pause();
+    }
+
     fn stop(&self) {
         self.inner.lock().unwrap().stop();
     }
