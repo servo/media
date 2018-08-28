@@ -12,7 +12,7 @@ time = "0.1.40"
 servo-media = { path = "../servo-media" }
 webrender = { git = "https://github.com/servo/webrender/" }
 winit = "0.16.2"
-ipc-channel = "0.10"
+ipc-channel = "0.11"
 
 [[bin]]
 name = "audio_decoder"
