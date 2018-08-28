@@ -32,11 +32,14 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         .error(|| {
             eprintln!("Error decoding audio");
         })
-        .progress(move |buffer, _channel, _channels| {
+        .progress(move |buffer, _channel| {
             progress
                 .lock()
                 .unwrap()
                 .extend_from_slice((*buffer).as_ref());
+        })
+        .ready(move |channels| {
+            println!("There are {:?} audio channels", channels);
         })
         .build();
     context.decode_audio_data(bytes.to_vec(), callbacks);

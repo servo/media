@@ -120,6 +120,7 @@ impl AudioDecoder for GStreamerAudioDecoder {
                 None => return callbacks.error(),
             };
             let channels = sample_audio_info.channels();
+            callbacks.ready(channels);
 
             let insert_deinterleave = || -> Result<(), ()> {
                 let convert = gst::ElementFactory::make("audioconvert", None).ok_or(())?;
@@ -211,7 +212,7 @@ impl AudioDecoder for GStreamerAudioDecoder {
 
                                         let progress = Box::new(GStreamerAudioDecoderProgress(map));
                                         let channel = position.to_mask() as u32;
-                                        callbacks_.progress(progress, channel, channels);
+                                        callbacks_.progress(progress, channel);
                                     }
 
                                     gst::FlowReturn::Ok
