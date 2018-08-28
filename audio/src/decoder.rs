@@ -4,7 +4,7 @@ use std::sync::Mutex;
 pub struct AudioDecoderCallbacks {
     pub eos: Mutex<Option<Box<FnBox(u32) + Send + 'static>>>,
     pub error: Mutex<Option<Box<FnBox() + Send + 'static>>>,
-    pub progress: Option<Box<Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>>,
+    pub progress: Option<Box<Fn(Box<AsRef<[f32]>>, u32, u32) + Send + Sync + 'static>>,
 }
 
 impl AudioDecoderCallbacks {
@@ -32,10 +32,10 @@ impl AudioDecoderCallbacks {
         };
     }
 
-    pub fn progress(&self, buffer: Box<AsRef<[f32]>>) {
+    pub fn progress(&self, buffer: Box<AsRef<[f32]>>, channel: u32, channels: u32) {
         match self.progress {
             None => return,
-            Some(ref callback) => callback(buffer),
+            Some(ref callback) => callback(buffer, channel, channels),
         };
     }
 }
@@ -46,7 +46,7 @@ unsafe impl Sync for AudioDecoderCallbacks {}
 pub struct AudioDecoderCallbacksBuilder {
     eos: Option<Box<FnBox(u32) + Send + 'static>>,
     error: Option<Box<FnBox() + Send + 'static>>,
-    progress: Option<Box<Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>>,
+    progress: Option<Box<Fn(Box<AsRef<[f32]>>, u32, u32) + Send + Sync + 'static>>,
 }
 
 impl AudioDecoderCallbacksBuilder {
@@ -64,7 +64,10 @@ impl AudioDecoderCallbacksBuilder {
         }
     }
 
-    pub fn progress<F: Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>(self, progress: F) -> Self {
+    pub fn progress<F: Fn(Box<AsRef<[f32]>>, u32, u32) + Send + Sync + 'static>(
+        self,
+        progress: F,
+    ) -> Self {
         Self {
             progress: Some(Box::new(progress)),
             ..self

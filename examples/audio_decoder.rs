@@ -32,7 +32,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         .error(|| {
             eprintln!("Error decoding audio");
         })
-        .progress(move |buffer| {
+        .progress(move |buffer, _channel, _channels| {
             progress
                 .lock()
                 .unwrap()
