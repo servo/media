@@ -2,7 +2,7 @@ use std::boxed::FnBox;
 use std::sync::Mutex;
 
 pub struct AudioDecoderCallbacks {
-    pub eos: Mutex<Option<Box<FnBox(u32) + Send + 'static>>>,
+    pub eos: Mutex<Option<Box<FnBox() + Send + 'static>>>,
     pub error: Mutex<Option<Box<FnBox() + Send + 'static>>>,
     pub progress: Option<Box<Fn(Box<AsRef<[f32]>>, u32, u32) + Send + Sync + 'static>>,
 }
@@ -16,11 +16,11 @@ impl AudioDecoderCallbacks {
         }
     }
 
-    pub fn eos(&self, channels: u32) {
+    pub fn eos(&self) {
         let eos = self.eos.lock().unwrap().take();
         match eos {
             None => return,
-            Some(callback) => callback(channels),
+            Some(callback) => callback(),
         };
     }
 
@@ -44,13 +44,13 @@ unsafe impl Send for AudioDecoderCallbacks {}
 unsafe impl Sync for AudioDecoderCallbacks {}
 
 pub struct AudioDecoderCallbacksBuilder {
-    eos: Option<Box<FnBox(u32) + Send + 'static>>,
+    eos: Option<Box<FnBox() + Send + 'static>>,
     error: Option<Box<FnBox() + Send + 'static>>,
     progress: Option<Box<Fn(Box<AsRef<[f32]>>, u32, u32) + Send + Sync + 'static>>,
 }
 
 impl AudioDecoderCallbacksBuilder {
-    pub fn eos<F: FnOnce(u32) + Send + 'static>(self, eos: F) -> Self {
+    pub fn eos<F: FnOnce() + Send + 'static>(self, eos: F) -> Self {
         Self {
             eos: Some(Box::new(eos)),
             ..self

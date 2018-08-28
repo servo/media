@@ -217,7 +217,7 @@ impl AudioDecoder for GStreamerAudioDecoder {
                                     gst::FlowReturn::Ok
                                 })
                                 .eos(move |_| {
-                                    callbacks__.eos(channels);
+                                    callbacks__.eos();
                                     let _ = pipeline__.set_state(gst::State::Null);
                                 })
                                 .build(),

@@ -26,8 +26,8 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let progress = decoded_audio.clone();
     let (sender, receiver) = mpsc::channel();
     let callbacks = AudioDecoderCallbacks::new()
-        .eos(move |channels| {
-            sender.send(channels).unwrap();
+        .eos(move || {
+            sender.send(()).unwrap();
         })
         .error(|| {
             eprintln!("Error decoding audio");
@@ -41,8 +41,8 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         .build();
     context.decode_audio_data(bytes.to_vec(), callbacks);
     println!("Decoding audio");
-    let channels = receiver.recv().unwrap();
-    println!("Audio decoded. Channels {}", channels);
+    receiver.recv().unwrap();
+    println!("Audio decoded");
     let buffer_source =
         context.create_node(AudioNodeInit::AudioBufferSourceNode(Default::default()));
     let dest = context.dest_node();
