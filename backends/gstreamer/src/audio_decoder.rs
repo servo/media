@@ -74,11 +74,6 @@ impl AudioDecoder for GStreamerAudioDecoder {
         // We plug in the second part of the pipeline, including the deinterleave element,
         // once the media starts being decoded.
         decodebin.connect_pad_added(move |_, src_pad| {
-            // Ignore any additional source pads just in case.
-            if src_pad.is_linked() {
-                return;
-            }
-
             // A decodebin pad was added, if this is an audio file,
             // plug in a deinterleave element to separate each planar channel.
             //
