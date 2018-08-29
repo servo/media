@@ -22,27 +22,33 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let mut file = File::open(filename).unwrap();
     let mut bytes = vec![];
     file.read_to_end(&mut bytes).unwrap();
-    let decoded_audio: Arc<Mutex<Vec<f32>>> = Arc::new(Mutex::new(Vec::new()));
-    let progress = decoded_audio.clone();
+    let decoded_audio: Arc<Mutex<Vec<Vec<f32>>>> = Arc::new(Mutex::new(Vec::new()));
+    let decoded_audio_ = decoded_audio.clone();
+    let decoded_audio__ = decoded_audio.clone();
     let (sender, receiver) = mpsc::channel();
     let callbacks = AudioDecoderCallbacks::new()
-        .eos(move |channels| {
-            sender.send(channels).unwrap();
+        .eos(move || {
+            sender.send(()).unwrap();
         })
         .error(|| {
             eprintln!("Error decoding audio");
         })
-        .progress(move |buffer| {
-            progress
+        .progress(move |buffer, channel| {
+            let mut decoded_audio = decoded_audio_.lock().unwrap();
+            decoded_audio[(channel - 1) as usize].extend_from_slice((*buffer).as_ref());
+        })
+        .ready(move |channels| {
+            println!("There are {:?} audio channels", channels);
+            decoded_audio__
                 .lock()
                 .unwrap()
-                .extend_from_slice((*buffer).as_ref());
+                .resize(channels as usize, Vec::new());
         })
         .build();
     context.decode_audio_data(bytes.to_vec(), callbacks);
     println!("Decoding audio");
-    let channels = receiver.recv().unwrap();
-    println!("Audio decoded. Channels {}", channels);
+    receiver.recv().unwrap();
+    println!("Audio decoded");
     let buffer_source =
         context.create_node(AudioNodeInit::AudioBufferSourceNode(Default::default()));
     let dest = context.dest_node();

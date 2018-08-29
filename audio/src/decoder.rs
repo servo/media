@@ -2,9 +2,10 @@ use std::boxed::FnBox;
 use std::sync::Mutex;
 
 pub struct AudioDecoderCallbacks {
-    pub eos: Mutex<Option<Box<FnBox(u32) + Send + 'static>>>,
+    pub eos: Mutex<Option<Box<FnBox() + Send + 'static>>>,
     pub error: Mutex<Option<Box<FnBox() + Send + 'static>>>,
-    pub progress: Option<Box<Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>>,
+    pub progress: Option<Box<Fn(Box<AsRef<[f32]>>, u32) + Send + Sync + 'static>>,
+    pub ready: Mutex<Option<Box<FnBox(u32) + Send + 'static>>>,
 }
 
 impl AudioDecoderCallbacks {
@@ -13,14 +14,15 @@ impl AudioDecoderCallbacks {
             eos: None,
             error: None,
             progress: None,
+            ready: None,
         }
     }
 
-    pub fn eos(&self, channels: u32) {
+    pub fn eos(&self) {
         let eos = self.eos.lock().unwrap().take();
         match eos {
             None => return,
-            Some(callback) => callback(channels),
+            Some(callback) => callback(),
         };
     }
 
@@ -32,10 +34,18 @@ impl AudioDecoderCallbacks {
         };
     }
 
-    pub fn progress(&self, buffer: Box<AsRef<[f32]>>) {
+    pub fn progress(&self, buffer: Box<AsRef<[f32]>>, channel: u32) {
         match self.progress {
             None => return,
-            Some(ref callback) => callback(buffer),
+            Some(ref callback) => callback(buffer, channel),
+        };
+    }
+
+    pub fn ready(&self, channels: u32) {
+        let ready = self.ready.lock().unwrap().take();
+        match ready {
+            None => return,
+            Some(callback) => callback(channels),
         };
     }
 }
@@ -44,13 +54,14 @@ unsafe impl Send for AudioDecoderCallbacks {}
 unsafe impl Sync for AudioDecoderCallbacks {}
 
 pub struct AudioDecoderCallbacksBuilder {
-    eos: Option<Box<FnBox(u32) + Send + 'static>>,
+    eos: Option<Box<FnBox() + Send + 'static>>,
     error: Option<Box<FnBox() + Send + 'static>>,
-    progress: Option<Box<Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>>,
+    progress: Option<Box<Fn(Box<AsRef<[f32]>>, u32) + Send + Sync + 'static>>,
+    ready: Option<Box<FnBox(u32) + Send + 'static>>,
 }
 
 impl AudioDecoderCallbacksBuilder {
-    pub fn eos<F: FnOnce(u32) + Send + 'static>(self, eos: F) -> Self {
+    pub fn eos<F: FnOnce() + Send + 'static>(self, eos: F) -> Self {
         Self {
             eos: Some(Box::new(eos)),
             ..self
@@ -64,9 +75,19 @@ impl AudioDecoderCallbacksBuilder {
         }
     }
 
-    pub fn progress<F: Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>(self, progress: F) -> Self {
+    pub fn progress<F: Fn(Box<AsRef<[f32]>>, u32) + Send + Sync + 'static>(
+        self,
+        progress: F,
+    ) -> Self {
         Self {
             progress: Some(Box::new(progress)),
+            ..self
+        }
+    }
+
+    pub fn ready<F: FnOnce(u32) + Send + 'static>(self, ready: F) -> Self {
+        Self {
+            ready: Some(Box::new(ready)),
             ..self
         }
     }
@@ -76,6 +97,7 @@ impl AudioDecoderCallbacksBuilder {
             eos: Mutex::new(self.eos),
             error: Mutex::new(self.error),
             progress: self.progress,
+            ready: Mutex::new(self.ready),
         }
     }
 }
