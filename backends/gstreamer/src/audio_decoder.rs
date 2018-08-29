@@ -65,7 +65,7 @@ impl AudioDecoder for GStreamerAudioDecoder {
 
         let options = options.unwrap_or_default();
 
-        let pipeline_ = pipeline.clone();
+        let pipeline_ = pipeline.downgrade();
         let callbacks_ = callbacks.clone();
         // Initial pipeline looks like
         //
@@ -91,8 +91,11 @@ impl AudioDecoder for GStreamerAudioDecoder {
             // the pipeline, with the appsink that will be pulling the data from
             // each channel.
 
-            let pipeline = &pipeline_;
             let callbacks = &callbacks_;
+            let pipeline = match pipeline_.upgrade() {
+                Some(pipeline) => pipeline,
+                None => return callbacks.error(),
+            };
 
             let (is_audio, caps) = {
                 let media_type = src_pad.get_current_caps().and_then(|caps| {
@@ -132,7 +135,7 @@ impl AudioDecoder for GStreamerAudioDecoder {
                 deinterleave
                     .set_property("keep-positions", &true.to_value())
                     .map_err(|_| ())?;
-                let pipeline_ = pipeline.clone();
+                let pipeline_ = pipeline.downgrade();
                 let callbacks_ = callbacks.clone();
                 deinterleave.connect_pad_added(move |_, src_pad| {
                     // A new pad for a planar channel was added in deinterleave.
@@ -141,8 +144,11 @@ impl AudioDecoder for GStreamerAudioDecoder {
                     // The end of the pipeline looks like:
                     //
                     // ... deinterleave ! queue ! appsink.
-                    let pipeline = &pipeline_;
                     let callbacks = &callbacks_;
+                    let pipeline = match pipeline_.upgrade() {
+                        Some(pipeline) => pipeline,
+                        None => return callbacks.error(),
+                    };
                     let insert_sink = || -> Result<(), ()> {
                         let queue = gst::ElementFactory::make("queue", None).ok_or(())?;
                         let sink = gst::ElementFactory::make("appsink", None).ok_or(())?;
