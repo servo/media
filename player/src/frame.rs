@@ -30,5 +30,5 @@ impl Frame {
 }
 
 pub trait FrameRenderer: Send + 'static {
-    fn render(&self, frame: Frame);
+    fn render(&mut self, frame: Frame);
 }

@@ -134,22 +134,22 @@ impl PlayerWrapper {
 }
 
 struct App {
-    frame_queue: Mutex<Vec<Frame>>,
-    current_frame: Mutex<Option<Frame>>,
+    frame_queue: Vec<Frame>,
+    current_frame: Option<Frame>,
 }
 
 impl App {
     fn new() -> Self {
         Self {
-            frame_queue: Mutex::new(Vec::new()),
-            current_frame: Mutex::new(None),
+            frame_queue: Vec::new(),
+            current_frame: None,
         }
     }
 }
 
 impl ui::Example for App {
     fn render(
-        &self,
+        &mut self,
         api: &RenderApi,
         builder: &mut DisplayListBuilder,
         txn: &mut Transaction,
@@ -157,21 +157,20 @@ impl ui::Example for App {
         _pipeline_id: PipelineId,
         _document_id: DocumentId,
     ) {
-        let frame = if self.frame_queue.lock().unwrap().is_empty() {
-            let mut frame = self.current_frame.lock().unwrap();
-            if frame.is_none() {
+        let frame = if self.frame_queue.is_empty() {
+            if self.current_frame.is_none() {
                 return;
             }
-            frame.take().unwrap()
+            self.current_frame.take().unwrap()
         } else {
-            self.frame_queue.lock().unwrap().pop().unwrap()
+            self.frame_queue.pop().unwrap()
         };
         let width = frame.get_width() as u32;
         let height = frame.get_height() as u32;
         let image_descriptor =
             ImageDescriptor::new(width, height, ImageFormat::BGRA8, false, false);
         let image_data = ImageData::new_shared(frame.get_data().clone());
-        *self.current_frame.lock().unwrap() = Some(frame);
+        self.current_frame = Some(frame);
         let image_key = api.generate_image_key();
         txn.add_image(image_key, image_descriptor, image_data, None);
         let bounds = (0, 0).to(width as i32, height as i32);
@@ -202,7 +201,7 @@ impl ui::Example for App {
     }
 
     fn needs_repaint(&self) -> bool {
-        !self.frame_queue.lock().unwrap().is_empty()
+        !self.frame_queue.is_empty()
     }
 
     fn get_image_handlers(
@@ -219,8 +218,8 @@ impl ui::Example for App {
 }
 
 impl FrameRenderer for App {
-    fn render(&self, frame: Frame) {
-        self.frame_queue.lock().unwrap().push(frame);
+    fn render(&mut self, frame: Frame) {
+        self.frame_queue.push(frame);
     }
 }
 

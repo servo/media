@@ -76,7 +76,7 @@ pub trait Example {
     const HEIGHT: u32 = 1080;
 
     fn render(
-        &self,
+        &mut self,
         api: &RenderApi,
         builder: &mut DisplayListBuilder,
         txn: &mut Transaction,
