@@ -6,7 +6,7 @@ pub mod frame;
 pub mod metadata;
 
 use ipc_channel::ipc::IpcSender;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum PlaybackState {
@@ -27,7 +27,7 @@ pub enum PlayerEvent {
 
 pub trait Player: Send {
     fn register_event_handler(&self, sender: IpcSender<PlayerEvent>);
-    fn register_frame_renderer(&self, renderer: Arc<frame::FrameRenderer>);
+    fn register_frame_renderer(&self, renderer: Arc<Mutex<frame::FrameRenderer>>);
 
     fn setup(&self) -> Result<(), ()>;
     fn play(&self);
@@ -43,7 +43,7 @@ pub struct DummyPlayer {}
 
 impl Player for DummyPlayer {
     fn register_event_handler(&self, _: IpcSender<PlayerEvent>) {}
-    fn register_frame_renderer(&self, _: Arc<frame::FrameRenderer>) {}
+    fn register_frame_renderer(&self, _: Arc<Mutex<frame::FrameRenderer>>) {}
 
     fn setup(&self) -> Result<(), ()> {
         println!("You are using the DummyPlayer");

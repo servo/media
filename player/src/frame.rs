@@ -29,6 +29,6 @@ impl Frame {
     }
 }
 
-pub trait FrameRenderer: Send + Sync + 'static {
-    fn render(&self, frame: Frame);
+pub trait FrameRenderer: Send + 'static {
+    fn render(&mut self, frame: Frame);
 }
