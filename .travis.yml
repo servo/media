@@ -1,0 +1,23 @@
+language: rust
+sudo: required
+dist: trusty
+rust:
+  - nightly
+os:
+  - linux
+addons:
+  apt:
+    packages:
+      - libpulse-dev
+      - pulseaudio
+      - dbus-x11
+
+before_install:
+  - export DISPLAY=:99.0;
+  - /sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -screen 0 1400x900x24 -ac +extension GLX +render -noreset;
+  - dbus-launch pulseaudio --start;
+
+
+script:
+  - cargo build
+  - ls examples/*.rs | xargs -I{} basename  {} .rs  | xargs -I{} cargo ex {}
