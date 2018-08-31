@@ -11,7 +11,7 @@ use gleam::gl;
 use glutin::{self, GlContext};
 use std::env;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use webrender;
 use winit;
 use webrender::api::*;
@@ -107,7 +107,7 @@ pub trait Example {
 }
 
 pub fn main_wrapper<E: Example>(
-    example: Arc<E>,
+    example: Arc<Mutex<E>>,
     options: Option<webrender::RendererOptions>,
 ) {
     env_logger::init();
@@ -174,7 +174,7 @@ pub fn main_wrapper<E: Example>(
     let api = sender.create_api();
     let document_id = api.add_document(framebuffer_size, 0);
 
-    let (external, output) = example.get_image_handlers(&*gl);
+    let (external, output) = example.lock().unwrap().get_image_handlers(&*gl);
 
     if let Some(output_image_handler) = output {
         renderer.set_output_image_handler(output_image_handler);
@@ -190,7 +190,7 @@ pub fn main_wrapper<E: Example>(
     let mut builder = DisplayListBuilder::new(pipeline_id, layout_size);
     let mut txn = Transaction::new();
 
-    example.render(
+    example.lock().unwrap().render(
         &api,
         &mut builder,
         &mut txn,
@@ -262,14 +262,14 @@ pub fn main_wrapper<E: Example>(
                         winit::Event::WindowEvent { event, .. } => event,
                         _ => unreachable!()
                     };
-                    custom_event = example.on_event(
+                    custom_event = example.lock().unwrap().on_event(
                         win_event,
                         &api,
                         document_id,
                     )
                 },
             },
-            winit::Event::WindowEvent { event, .. } => custom_event = example.on_event(
+            winit::Event::WindowEvent { event, .. } => custom_event = example.lock().unwrap().on_event(
                 event,
                 &api,
                 document_id,
@@ -277,10 +277,10 @@ pub fn main_wrapper<E: Example>(
             _ => (),
         };
 
-        if custom_event  || example.needs_repaint() {
+        if custom_event  || example.lock().unwrap().needs_repaint() {
             let mut builder = DisplayListBuilder::new(pipeline_id, layout_size);
 
-            example.render(
+            example.lock().unwrap().render(
                 &api,
                 &mut builder,
                 &mut txn,
@@ -302,7 +302,7 @@ pub fn main_wrapper<E: Example>(
         renderer.update();
         renderer.render(framebuffer_size).unwrap();
         let _ = renderer.flush_pipeline_info();
-        example.draw_custom(&*gl);
+        example.lock().unwrap().draw_custom(&*gl);
         window.swap_buffers().ok();
 
         winit::ControlFlow::Continue

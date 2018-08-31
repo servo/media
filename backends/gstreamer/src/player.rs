@@ -83,7 +83,7 @@ struct PlayerInner {
     appsink: gst_app::AppSink,
     input_size: u64,
     subscribers: Vec<IpcSender<PlayerEvent>>,
-    renderers: Vec<Arc<FrameRenderer>>,
+    renderers: Vec<Arc<Mutex<FrameRenderer>>>,
     last_metadata: Option<Metadata>,
 }
 
@@ -92,7 +92,7 @@ impl PlayerInner {
         self.subscribers.push(sender);
     }
 
-    pub fn register_frame_renderer(&mut self, renderer: Arc<FrameRenderer>) {
+    pub fn register_frame_renderer(&mut self, renderer: Arc<Mutex<FrameRenderer>>) {
         self.renderers.push(renderer);
     }
 
@@ -106,7 +106,7 @@ impl PlayerInner {
         let frame = frame_from_sample(&sample)?;
 
         for renderer in &self.renderers {
-            renderer.render(frame.clone());
+            renderer.lock().unwrap().render(frame.clone());
         }
         self.notify(PlayerEvent::FrameUpdated);
         Ok(())
@@ -188,7 +188,7 @@ impl Player for GStreamerPlayer {
         self.inner.lock().unwrap().register_event_handler(sender);
     }
 
-    fn register_frame_renderer(&self, renderer: Arc<FrameRenderer>) {
+    fn register_frame_renderer(&self, renderer: Arc<Mutex<FrameRenderer>>) {
         self.inner.lock().unwrap().register_frame_renderer(renderer);
     }
 

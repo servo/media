@@ -125,7 +125,7 @@ impl PlayerWrapper {
         self.shutdown.store(true, Ordering::Relaxed);
     }
 
-    fn register_frame_renderer(&self, renderer: Arc<FrameRenderer>) {
+    fn register_frame_renderer(&self, renderer: Arc<Mutex<FrameRenderer>>) {
         self.player
             .lock()
             .unwrap()
@@ -234,7 +234,7 @@ fn main() {
 
     let path = Path::new(filename);
     let player_wrapper = PlayerWrapper::new(&path);
-    let app = Arc::new(App::new());
+    let app = Arc::new(Mutex::new(App::new()));
     player_wrapper.register_frame_renderer(app.clone());
     ui::main_wrapper(app, None);
     player_wrapper.shutdown();
