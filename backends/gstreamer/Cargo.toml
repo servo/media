@@ -8,22 +8,22 @@ regex = "1.0"
 zip = "0.3.1"
 
 [dependencies.byte-slice-cast]
-version = "0.1"
+version = "0.2"
 
 [dependencies.glib]
-version = "0.5"
+version = "0.6"
 
 [dependencies.gstreamer]
-version = "0.11"
+version = "0.12"
 
 [dependencies.gstreamer-app]
-version = "0.11.2"
+version = "0.12"
 
 [dependencies.gstreamer-audio]
-version = "0.11"
+version = "0.12"
 
 [dependencies.gstreamer-player]
-version = "0.11"
+version = "0.12"
 
 [dependencies.ipc-channel]
 version = "0.11"
