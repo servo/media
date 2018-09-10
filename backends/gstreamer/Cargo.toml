@@ -11,19 +11,19 @@ zip = "0.3.1"
 version = "0.1"
 
 [dependencies.glib]
-version = "0.5"
+version = "0.6"
 
 [dependencies.gstreamer]
-version = "0.11"
+version = "0.12"
 
 [dependencies.gstreamer-app]
-version = "0.11.2"
+version = "0.12"
 
 [dependencies.gstreamer-audio]
-version = "0.11"
+version = "0.12"
 
 [dependencies.gstreamer-player]
-version = "0.11"
+version = "0.12"
 
 [dependencies.ipc-channel]
 version = "0.11"
