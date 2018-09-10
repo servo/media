@@ -26,4 +26,4 @@ before_install:
 
 script:
   - cargo build
-  - ls examples/*.rs | xargs -I{} basename  {} .rs  | xargs -I{} cargo ex {}
+  - ls examples/*.rs | xargs -I{} basename  {} .rs  | RUST_BACKTRACE=1 xargs -I{} cargo ex {}
