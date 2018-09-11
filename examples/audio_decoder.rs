@@ -15,7 +15,7 @@ use std::{thread, time};
 fn run_example(servo_media: Arc<ServoMedia>) {
     let context = servo_media.create_audio_context(Default::default());
     let args: Vec<_> = env::args().collect();
-    let default = "./examples/resources/viper.ogg";
+    let default = "./examples/resources/viper_cut.ogg";
     let filename: &str = if args.len() == 2 {
         args[1].as_ref()
     } else if Path::new(default).exists() {
