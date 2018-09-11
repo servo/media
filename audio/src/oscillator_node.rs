@@ -52,9 +52,9 @@ pub(crate) struct OscillatorNode {
 }
 
 impl OscillatorNode {
-    pub fn new(options: OscillatorNodeOptions) -> Self {
+    pub fn new(options: OscillatorNodeOptions, channel_info: ChannelInfo) -> Self {
         Self {
-            channel_info: Default::default(),
+            channel_info,
             frequency: Param::new(options.freq.into()),
             detune: Param::new(options.detune.into()),
             phase: 0.,

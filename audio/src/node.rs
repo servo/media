@@ -16,7 +16,7 @@ pub enum AudioNodeInit {
     AudioBuffer,
     AudioBufferSourceNode(AudioBufferSourceNodeOptions),
     ChannelMergerNode(ChannelNodeOptions),
-    ChannelSplitterNode(ChannelNodeOptions),
+    ChannelSplitterNode,
     ConstantSourceNode,
     ConvolverNode,
     DelayNode,

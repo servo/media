@@ -1,7 +1,7 @@
 use AudioBackend;
 use decoder::{AudioDecoder, AudioDecoderCallbacks, AudioDecoderOptions};
 use graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
-use node::{AudioNodeInit, AudioNodeMessage};
+use node::{AudioNodeInit, AudioNodeMessage, ChannelInfo};
 use render_thread::AudioRenderThread;
 use render_thread::AudioRenderThreadMsg;
 use std::cell::Cell;
@@ -160,11 +160,11 @@ impl<B: AudioBackend + 'static> AudioContext<B> {
         rx.recv().unwrap()
     }
 
-    pub fn create_node(&self, node_type: AudioNodeInit) -> NodeId {
+    pub fn create_node(&self, node_type: AudioNodeInit, ch: ChannelInfo) -> NodeId {
         let (tx, rx) = mpsc::channel();
         let _ = self
             .sender
-            .send(AudioRenderThreadMsg::CreateNode(node_type, tx));
+            .send(AudioRenderThreadMsg::CreateNode(node_type, tx, ch));
         rx.recv().unwrap()
     }
 

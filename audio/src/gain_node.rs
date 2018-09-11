@@ -23,9 +23,9 @@ pub(crate) struct GainNode {
 }
 
 impl GainNode {
-    pub fn new(options: GainNodeOptions) -> Self {
+    pub fn new(options: GainNodeOptions, channel_info: ChannelInfo) -> Self {
         Self {
-            channel_info: Default::default(),
+            channel_info,
             gain: Param::new(options.gain),
         }
     }

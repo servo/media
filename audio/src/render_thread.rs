@@ -4,7 +4,7 @@ use channel_node::{ChannelMergerNode, ChannelSplitterNode};
 use context::{AudioContextOptions, ProcessingState, StateChangeResult};
 use gain_node::GainNode;
 use graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
-use node::BlockInfo;
+use node::{BlockInfo, ChannelInfo};
 use node::{AudioNodeEngine, AudioNodeInit, AudioNodeMessage};
 use offline_sink::OfflineAudioSink;
 use oscillator_node::OscillatorNode;
@@ -14,7 +14,7 @@ use std::sync::mpsc::{Receiver, Sender};
 use AudioBackend;
 
 pub enum AudioRenderThreadMsg {
-    CreateNode(AudioNodeInit, Sender<NodeId>),
+    CreateNode(AudioNodeInit, Sender<NodeId>, ChannelInfo),
     ConnectPorts(PortId<OutputPort>, PortId<InputPort>),
     MessageNode(NodeId, AudioNodeMessage),
     Resume(Sender<StateChangeResult>),
@@ -126,21 +126,21 @@ impl<B: AudioBackend + 'static> AudioRenderThread<B> {
 
     make_render_thread_state_change!(suspend, Suspended, stop);
 
-    fn create_node(&mut self, node_type: AudioNodeInit) -> NodeId {
+    fn create_node(&mut self, node_type: AudioNodeInit, ch: ChannelInfo) -> NodeId {
         let mut needs_listener = false;
         let node: Box<AudioNodeEngine> = match node_type {
             AudioNodeInit::AudioBufferSourceNode(options) => {
-                Box::new(AudioBufferSourceNode::new(options))
+                Box::new(AudioBufferSourceNode::new(options, ch))
             }
-            AudioNodeInit::GainNode(options) => Box::new(GainNode::new(options)),
+            AudioNodeInit::GainNode(options) => Box::new(GainNode::new(options, ch)),
             AudioNodeInit::PannerNode(options) => {
                 needs_listener = true;
-                Box::new(PannerNode::new(options))
+                Box::new(PannerNode::new(options, ch))
             },
-            AudioNodeInit::OscillatorNode(options) => Box::new(OscillatorNode::new(options)),
-            AudioNodeInit::ChannelMergerNode(options) => Box::new(ChannelMergerNode::new(options)),
-            AudioNodeInit::ChannelSplitterNode(options) => {
-                Box::new(ChannelSplitterNode::new(options))
+            AudioNodeInit::OscillatorNode(options) => Box::new(OscillatorNode::new(options, ch)),
+            AudioNodeInit::ChannelMergerNode(options) => Box::new(ChannelMergerNode::new(options, ch)),
+            AudioNodeInit::ChannelSplitterNode => {
+                Box::new(ChannelSplitterNode::new(ch))
             }
             _ => unimplemented!(),
         };
@@ -170,8 +170,8 @@ impl<B: AudioBackend + 'static> AudioRenderThread<B> {
         let handle_msg = move |context: &mut Self, msg: AudioRenderThreadMsg| -> bool {
             let mut break_loop = false;
             match msg {
-                AudioRenderThreadMsg::CreateNode(node_type, tx) => {
-                    let _ = tx.send(context.create_node(node_type));
+                AudioRenderThreadMsg::CreateNode(node_type, tx, ch) => {
+                    let _ = tx.send(context.create_node(node_type, ch));
                 }
                 AudioRenderThreadMsg::ConnectPorts(output, input) => {
                     context.connect_ports(output, input);
