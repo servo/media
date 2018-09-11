@@ -216,6 +216,10 @@ impl AudioBuffer {
     pub fn chans(&self) -> u8 {
         self.buffers.len() as u8
     }
+
+    pub fn data_chan_mut(&mut self, chan: u8) -> &mut [f32] {
+        &mut self.buffers[chan as usize]
+    }
 }
 
 impl From<Vec<f32>> for AudioBuffer {
