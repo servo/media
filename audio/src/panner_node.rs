@@ -1,7 +1,7 @@
 use euclid::Vector3D;
 use block::{Block, Chunk, FRAMES_PER_BLOCK, Tick};
 use node::{AudioNodeEngine, AudioNodeMessage, BlockInfo};
-use node::{AudioNodeType, ChannelInfo, ChannelCountMode, ChannelInterpretation};
+use node::{AudioNodeType, ChannelInfo};
 use param::{Param, ParamDir, ParamType};
 use std::f32::consts::PI;
 
@@ -99,13 +99,9 @@ pub(crate) struct PannerNode {
 }
 
 impl PannerNode {
-    pub fn new(options: PannerNodeOptions) -> Self {
+    pub fn new(options: PannerNodeOptions, channel_info: ChannelInfo) -> Self {
         Self {
-            channel_info: ChannelInfo {
-                count: 2,
-                mode: ChannelCountMode::ClampedMax,
-                interpretation: ChannelInterpretation::Speakers,
-            },
+            channel_info,
             panning_model: options.panning_model,
             distance_model: options.distance_model,
             position_x: Param::new(options.position_x),

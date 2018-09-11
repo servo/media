@@ -16,13 +16,9 @@ pub(crate) struct ChannelMergerNode {
 }
 
 impl ChannelMergerNode {
-    pub fn new(params: ChannelNodeOptions) -> Self {
+    pub fn new(params: ChannelNodeOptions, channel_info: ChannelInfo) -> Self {
         ChannelMergerNode {
-            channel_info: ChannelInfo {
-                count: 1,
-                mode: ChannelCountMode::Explicit,
-                ..Default::default()
-            },
+            channel_info,
             channels: params.channels,
         }
     }
@@ -72,13 +68,9 @@ pub(crate) struct ChannelSplitterNode {
 }
 
 impl ChannelSplitterNode {
-    pub fn new(params: ChannelNodeOptions) -> Self {
+    pub fn new(channel_info: ChannelInfo) -> Self {
         ChannelSplitterNode {
-            channel_info: ChannelInfo {
-                count: params.channels,
-                mode: ChannelCountMode::Explicit,
-                interpretation: ChannelInterpretation::Discrete,
-            },
+            channel_info,
         }
     }
 }

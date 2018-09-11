@@ -14,11 +14,11 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let context = servo_media.create_audio_context(Default::default());
     let mut options = OscillatorNodeOptions::default();
     options.freq = 2.0;
-    let lfo = context.create_node(AudioNodeInit::OscillatorNode(options));
-    let osc = context.create_node(AudioNodeInit::OscillatorNode(Default::default()));
+    let lfo = context.create_node(AudioNodeInit::OscillatorNode(options), Default::default());
+    let osc = context.create_node(AudioNodeInit::OscillatorNode(Default::default()), Default::default());
     let mut options = GainNodeOptions::default();
     options.gain = 100.;
-    let gain = context.create_node(AudioNodeInit::GainNode(options));
+    let gain = context.create_node(AudioNodeInit::GainNode(options), Default::default());
     let dest = context.dest_node();
     context.connect_ports(lfo.output(0), gain.input(0));
     context.connect_ports(gain.output(0), osc.param(ParamType::Frequency));

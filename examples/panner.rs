@@ -11,7 +11,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let context = servo_media.create_audio_context(Default::default());
     let dest = context.dest_node();
     let listener = context.listener();
-    let osc = context.create_node(AudioNodeInit::OscillatorNode(Default::default()));
+    let osc = context.create_node(AudioNodeInit::OscillatorNode(Default::default()), Default::default());
     let mut options = PannerNodeOptions::default();
     options.cone_outer_angle = 0.;
     options.position_x = 100.;
@@ -19,7 +19,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     options.position_z = 100.;
     options.ref_distance = 100.;
     options.rolloff_factor = 0.01;
-    let panner = context.create_node(AudioNodeInit::PannerNode(options));
+    let panner = context.create_node(AudioNodeInit::PannerNode(options), Default::default());
     context.connect_ports(osc.output(0), panner.input(0));
     context.connect_ports(panner.output(0), dest.input(0));
     let _ = context.resume();

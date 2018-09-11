@@ -74,9 +74,9 @@ pub(crate) struct AudioBufferSourceNode {
 }
 
 impl AudioBufferSourceNode {
-    pub fn new(options: AudioBufferSourceNodeOptions) -> Self {
+    pub fn new(options: AudioBufferSourceNodeOptions, channel_info: ChannelInfo) -> Self {
         Self {
-            channel_info: Default::default(),
+            channel_info,
             buffer: options.buffer,
             detune: Param::new(options.detune),
             loop_enabled: options.loop_enabled,

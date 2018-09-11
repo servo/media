@@ -50,7 +50,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     receiver.recv().unwrap();
     println!("Audio decoded");
     let buffer_source =
-        context.create_node(AudioNodeInit::AudioBufferSourceNode(Default::default()));
+        context.create_node(AudioNodeInit::AudioBufferSourceNode(Default::default()), Default::default());
     let dest = context.dest_node();
     context.connect_ports(buffer_source.output(0), dest.input(0));
     context.message_node(

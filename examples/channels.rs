@@ -10,14 +10,14 @@ use std::{thread, time};
 fn run_example(servo_media: Arc<ServoMedia>) {
     let context = servo_media.create_audio_context(Default::default());
     let mut options = Default::default();
-    let osc = context.create_node(AudioNodeInit::OscillatorNode(options));
+    let osc = context.create_node(AudioNodeInit::OscillatorNode(options), Default::default());
     options.freq = 213.;
-    let osc2 = context.create_node(AudioNodeInit::OscillatorNode(options));
+    let osc2 = context.create_node(AudioNodeInit::OscillatorNode(options), Default::default());
     let mut options = GainNodeOptions::default();
     options.gain = 0.7;
-    let gain = context.create_node(AudioNodeInit::GainNode(options));
+    let gain = context.create_node(AudioNodeInit::GainNode(options), Default::default());
     let options = ChannelNodeOptions { channels: 2 };
-    let merger = context.create_node(AudioNodeInit::ChannelMergerNode(options));
+    let merger = context.create_node(AudioNodeInit::ChannelMergerNode(options), Default::default());
 
     let dest = context.dest_node();
     context.connect_ports(osc.output(0), gain.input(0));
