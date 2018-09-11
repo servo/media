@@ -10,6 +10,7 @@ extern crate smallvec;
 #[macro_use]
 pub mod macros;
 
+pub mod analyser_node;
 pub mod block;
 pub mod buffer_source_node;
 pub mod channel_node;
