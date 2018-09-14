@@ -9,9 +9,8 @@ use param::{Param, ParamRate, ParamType, UserAutomationEvent};
 use std::sync::mpsc::Sender;
 
 /// Information required to construct an audio node
-#[derive(Debug, Clone)]
 pub enum AudioNodeInit {
-    AnalyserNode,
+    AnalyserNode(Box<FnMut(Block) + Send>),
     BiquadFilterNode,
     AudioBuffer,
     AudioBufferSourceNode(AudioBufferSourceNodeOptions),
