@@ -1,3 +1,4 @@
+use glib;
 use glib::*;
 use gst;
 use gst_app;
