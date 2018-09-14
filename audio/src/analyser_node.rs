@@ -4,7 +4,7 @@ use node::BlockInfo;
 use node::{AudioNodeType, ChannelInfo, ChannelInterpretation};
 use std::f32::consts::PI;
 use std::sync::mpsc::Sender;
-use std::mem;
+use std::{cmp, mem};
 
 #[derive(AudioNodeCommon)]
 pub(crate) struct AnalyserNode {
@@ -47,6 +47,9 @@ pub const MAX_BLOCK_COUNT: usize = MAX_FFT_SIZE / FRAMES_PER_BLOCK_USIZE;
 pub struct AnalysisEngine {
     /// The number of past sample-frames to consider in the FFT
     fft_size: usize,
+    smoothing_constant: f64,
+    min_decibels: f64,
+    max_decibels: f64,
     /// This is a ring buffer containing the last MAX_FFT_SIZE
     /// sample-frames 
     data: Box<[f32; MAX_FFT_SIZE]>,
@@ -56,31 +59,76 @@ pub struct AnalysisEngine {
     fft_computed: bool,
     /// Cached blackman window data
     blackman_windows: Vec<f32>,
-    /// The computed FFT data (in frequency domain)
+    /// The smoothed FFT data (in frequency domain)
+    smoothed_fft_data: Vec<f32>,
+    /// The computed FFT data, in decibels
     computed_fft_data: Vec<f32>,
-
-    // these two vectors are for temporary buffers
-    // that we keep around for efficiency
-
     /// The windowed time domain data
     /// Used during FFT computation
     windowed: Vec<f32>,
-    /// Scratch space used during the actual FFT computation
-    tmp_transformed: Vec<f32> 
 }
 
 impl AnalysisEngine {
-    pub fn new(fft_size: usize) -> Self {
+    pub fn new(fft_size: usize, smoothing_constant: f64,
+               min_decibels: f64, max_decibels: f64) -> Self {
+        debug_assert!(fft_size >= 32 && fft_size <= 32768);
+        // must be a power of two
+        debug_assert!(fft_size & fft_size - 1 == 0);
+        debug_assert!(smoothing_constant <= 1. && smoothing_constant >= 0.);
+        debug_assert!(max_decibels > min_decibels);
         Self {
             fft_size,
+            smoothing_constant,
+            min_decibels,
+            max_decibels,
             data: Box::new([0.; MAX_FFT_SIZE]),
             current_block: MAX_BLOCK_COUNT - 1,
             fft_computed: false,
             blackman_windows: Vec::with_capacity(fft_size),
             computed_fft_data: Vec::with_capacity(fft_size / 2),
+            smoothed_fft_data: Vec::with_capacity(fft_size / 2),
             windowed: Vec::with_capacity(fft_size),
-            tmp_transformed: Vec::with_capacity(fft_size / 2),
         }
+    }
+
+    pub fn set_fft_size(&mut self, fft_size: usize) {
+        debug_assert!(fft_size >= 32 && fft_size <= 32768);
+        // must be a power of two
+        debug_assert!(fft_size & fft_size - 1 == 0);
+        self.fft_size = fft_size;
+        self.fft_computed = false;
+    }
+
+    pub fn get_fft_size(&self) -> usize {
+        self.fft_size
+    }
+
+    pub fn set_smoothing_constant(&mut self, smoothing_constant: f64) {
+        debug_assert!(smoothing_constant <= 1. && smoothing_constant >= 0.);
+        self.smoothing_constant = smoothing_constant;
+        self.fft_computed = false;
+    }
+
+    pub fn get_smoothing_constant(&self) -> f64 {
+        self.smoothing_constant
+    }
+
+    pub fn set_min_decibels(&mut self, min_decibels: f64) {
+        debug_assert!(min_decibels < self.max_decibels);
+        self.min_decibels = min_decibels;
+    }
+
+    pub fn get_min_decibels(&self) -> f64 {
+        self.min_decibels
+    }
+
+    pub fn set_max_decibels(&mut self, max_decibels: f64) {
+        debug_assert!(self.min_decibels < max_decibels);
+        self.max_decibels = max_decibels;
+    }
+
+    pub fn get_max_decibels(&self) -> f64 {
+        self.max_decibels
     }
 
     fn advance(&mut self) {
@@ -104,6 +152,12 @@ impl AnalysisEngine {
     fn block_mut(&mut self, offset: usize) -> &mut [f32] {
         let index = FRAMES_PER_BLOCK_USIZE * self.block_index(offset);
         &mut self.data[index..(index + FRAMES_PER_BLOCK_USIZE)]
+    }
+
+    /// Get the data of a block. `offset` tells us how far back to go
+    fn block(&self, offset: usize) -> &[f32] {
+        let index = FRAMES_PER_BLOCK_USIZE * self.block_index(offset);
+        &self.data[index..(index + FRAMES_PER_BLOCK_USIZE)]
     }
 
     pub fn push(&mut self, mut block: Block) {
@@ -139,11 +193,9 @@ impl AnalysisEngine {
         windowed.resize(self.fft_size, 0.);
         let mut n = 0;
         for offset in (0..self.fft_size).rev() {
-            let data = self.block_mut(offset);
-            for frame in 0..FRAMES_PER_BLOCK_USIZE {
-                windowed[n] = data[frame];
-                n += 1;
-            }
+            let data = self.block(offset);
+            windowed[n..n+FRAMES_PER_BLOCK_USIZE].copy_from_slice(&data);
+            n += FRAMES_PER_BLOCK_USIZE;
         }
         self.windowed = windowed;
     }
@@ -154,6 +206,82 @@ impl AnalysisEngine {
         }
         self.fft_computed = true;
         self.apply_blackman_window();
-        // ...
+        self.computed_fft_data.resize(self.fft_size / 2, 0.);
+        self.smoothed_fft_data.resize(self.fft_size / 2, 0.);
+
+        for k in 0..(self.fft_size / 2) {
+            let mut sum_real = 0.;
+            let mut sum_imaginary = 0.;
+            let factor = - 2. * PI * k as f32 / self.fft_size as f32;
+            for n in 0..(self.fft_size) {
+                sum_real += self.windowed[n] * (factor * n as f32).cos();
+                sum_imaginary += self.windowed[n] * (factor * n as f32).sin();
+            }
+            let sum_real = sum_real / self.fft_size as f32;
+            let sum_imaginary = sum_imaginary / self.fft_size as f32;
+            let magnitude = (sum_real * sum_real + sum_imaginary * sum_imaginary).sqrt();
+            self.smoothed_fft_data[k] = (self.smoothing_constant * self.smoothed_fft_data[k] as f64
+                                        + (1. - self.smoothing_constant) * magnitude as f64) as f32;
+            self.computed_fft_data[k] = 20. * self.smoothed_fft_data[k].log(10.);
+        }
+    }
+
+    pub fn fill_time_domain_data(&self, dest: &mut [f32]) {
+        let mut n = 0;
+        for offset in (0..self.fft_size).rev() {
+            let data = self.block(offset);
+            let mut end = n + FRAMES_PER_BLOCK_USIZE;
+            if n >= dest.len() {
+                break;
+            } else if end > dest.len() {
+                end = dest.len();
+            };
+            let offset = end - n;
+            dest[n..end].copy_from_slice(&data[0..offset]);
+
+            n += FRAMES_PER_BLOCK_USIZE;
+        }
+    }
+
+    pub fn fill_byte_time_domain_data(&self, dest: &mut [u8]) {
+        let mut n = 0;
+        for offset in (0..self.fft_size).rev() {
+            let data = self.block(offset);
+            if n >= dest.len() {
+                break;
+            }
+            let end = cmp::min(FRAMES_PER_BLOCK_USIZE, dest.len() - n - FRAMES_PER_BLOCK_USIZE);
+            for frame in 0..end {
+                let result = 128. * (1. + data[frame]);
+                dest[n] = clamp_255(result);
+                n += 1;
+            }
+        }
+    }
+
+    pub fn fill_frequency_data(&mut self, dest: &mut [f32]) {
+        self.compute_fft();
+        let len = cmp::min(dest.len(), self.computed_fft_data.len());
+        dest[0..len].copy_from_slice(&mut self.computed_fft_data[0..len]);
+    }
+
+    pub fn fill_byte_frequency_data(&mut self, dest: &mut [u8]) {
+        self.compute_fft();
+        let len = cmp::min(dest.len(), self.computed_fft_data.len());
+        let ratio = 255. / (self.max_decibels - self.min_decibels);
+        for freq in 0..len {
+            let result = ratio * (self.computed_fft_data[freq] as f64 - self.min_decibels);
+            dest[freq] = clamp_255(result as f32);
+        }
+    }
+}
+
+fn clamp_255(val: f32) -> u8 {
+    if val > 255. {
+        255
+    } else if val < 0. {
+        0
+    } else {
+        val as u8
     }
 }
