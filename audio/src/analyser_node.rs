@@ -3,7 +3,7 @@ use node::AudioNodeEngine;
 use node::BlockInfo;
 use node::{AudioNodeType, ChannelInfo, ChannelInterpretation};
 use std::f32::consts::PI;
-use std::{cmp, mem};
+use std::cmp;
 
 #[derive(AudioNodeCommon)]
 pub(crate) struct AnalyserNode {
@@ -153,10 +153,24 @@ impl AnalysisEngine {
         &mut self.data[index..(index + FRAMES_PER_BLOCK_USIZE)]
     }
 
-    /// Get the data of a block. `offset` tells us how far back to go
-    fn block(&self, offset: usize) -> &[f32] {
-        let index = FRAMES_PER_BLOCK_USIZE * self.block_index(offset);
-        &self.data[index..(index + FRAMES_PER_BLOCK_USIZE)]
+    /// Given an index from 0 to fft_size, convert it into an index into
+    /// the backing array
+    fn convert_index(&self, index: usize) -> usize {
+        let offset = self.fft_size - index;
+        let current_block_idx = self.current_block * FRAMES_PER_BLOCK_USIZE;
+        if offset > current_block_idx {
+            MAX_FFT_SIZE - offset + current_block_idx
+        } else {
+            current_block_idx - offset
+        }
+    }
+
+    /// Given an index into the backing array, increment it
+    fn advance_index(&self, index: &mut usize) {
+        *index += 1;
+        if *index >= MAX_FFT_SIZE {
+            *index = 0;
+        }
     }
 
     pub fn push(&mut self, mut block: Block) {
@@ -187,16 +201,13 @@ impl AnalysisEngine {
 
     fn apply_blackman_window(&mut self) {
         self.compute_blackman_windows();
-        // avoids conflicting borrows with data_mut
-        let mut windowed = mem::replace(&mut self.windowed, Vec::new());
-        windowed.resize(self.fft_size, 0.);
-        let mut n = 0;
-        for offset in (0..self.fft_size).rev() {
-            let data = self.block(offset);
-            windowed[n..n+FRAMES_PER_BLOCK_USIZE].copy_from_slice(&data);
-            n += FRAMES_PER_BLOCK_USIZE;
+        self.windowed.resize(self.fft_size, 0.);
+
+        let mut data_idx = self.convert_index(0);
+        for n in 0..self.fft_size {
+            self.windowed[n] = self.blackman_windows[n] * self.data[data_idx];
+            self.advance_index(&mut data_idx);
         }
-        self.windowed = windowed;
     }
 
     fn compute_fft(&mut self) {
@@ -226,35 +237,21 @@ impl AnalysisEngine {
     }
 
     pub fn fill_time_domain_data(&self, dest: &mut [f32]) {
-        let mut n = 0;
-        for offset in (0..self.fft_size).rev() {
-            let data = self.block(offset);
-            let mut end = n + FRAMES_PER_BLOCK_USIZE;
-            if n >= dest.len() {
-                break;
-            } else if end > dest.len() {
-                end = dest.len();
-            };
-            let offset = end - n;
-            dest[n..end].copy_from_slice(&data[0..offset]);
-
-            n += FRAMES_PER_BLOCK_USIZE;
+        let mut data_idx = self.convert_index(0);
+        let end = cmp::min(self.fft_size, dest.len());
+        for n in 0..end {
+            dest[n] = self.data[data_idx];
+            self.advance_index(&mut data_idx);
         }
     }
 
     pub fn fill_byte_time_domain_data(&self, dest: &mut [u8]) {
-        let mut n = 0;
-        for offset in (0..self.fft_size).rev() {
-            let data = self.block(offset);
-            if n >= dest.len() {
-                break;
-            }
-            let end = cmp::min(FRAMES_PER_BLOCK_USIZE, dest.len() - n - FRAMES_PER_BLOCK_USIZE);
-            for frame in 0..end {
-                let result = 128. * (1. + data[frame]);
-                dest[n] = clamp_255(result);
-                n += 1;
-            }
+        let mut data_idx = self.convert_index(0);
+        let end = cmp::min(self.fft_size, dest.len());
+        for n in 0..end {
+            let result = 128. * (1. + self.data[data_idx]);
+            dest[n] = clamp_255(result);
+            self.advance_index(&mut data_idx)
         }
     }
 

@@ -45,7 +45,7 @@ impl Chunk {
 /// We render audio in blocks of size FRAMES_PER_BLOCK
 ///
 /// A single block may contain multiple channels
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Block {
     /// The number of channels in this block
     channels: u8,
