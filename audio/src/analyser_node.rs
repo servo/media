@@ -137,19 +137,9 @@ impl AnalysisEngine {
         }
     }
 
-    /// Wrap around the index of a block `offset` elements in the past
-    fn block_index(&self, offset: usize) -> usize {
-        debug_assert!(offset < MAX_BLOCK_COUNT);
-        if offset > self.current_block {
-            MAX_BLOCK_COUNT - offset + self.current_block
-        } else {
-            self.current_block - offset
-        }   
-    }
-
-    /// Get the data of a block. `offset` tells us how far back to go
-    fn block_mut(&mut self, offset: usize) -> &mut [f32] {
-        let index = FRAMES_PER_BLOCK_USIZE * self.block_index(offset);
+    /// Get the data of the current block
+    fn curent_block_mut(&mut self) -> &mut [f32] {
+        let index = FRAMES_PER_BLOCK_USIZE * self.current_block;
         &mut self.data[index..(index + FRAMES_PER_BLOCK_USIZE)]
     }
 
@@ -157,11 +147,11 @@ impl AnalysisEngine {
     /// the backing array
     fn convert_index(&self, index: usize) -> usize {
         let offset = self.fft_size - index;
-        let current_block_idx = self.current_block * FRAMES_PER_BLOCK_USIZE;
-        if offset > current_block_idx {
-            MAX_FFT_SIZE - offset + current_block_idx
+        let last_element = (1 + self.current_block) * FRAMES_PER_BLOCK_USIZE - 1;
+        if offset > last_element {
+            MAX_FFT_SIZE - offset + last_element
         } else {
-            current_block_idx - offset
+            last_element - offset
         }
     }
 
@@ -177,7 +167,7 @@ impl AnalysisEngine {
         debug_assert!(block.chan_count() == 1);
         self.advance();
         if !block.is_silence() {
-            self.block_mut(0).copy_from_slice(block.data_mut());
+            self.curent_block_mut().copy_from_slice(block.data_mut());
         }
         self.fft_computed = false;
     }
