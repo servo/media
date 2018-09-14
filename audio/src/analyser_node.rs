@@ -3,18 +3,17 @@ use node::AudioNodeEngine;
 use node::BlockInfo;
 use node::{AudioNodeType, ChannelInfo, ChannelInterpretation};
 use std::f32::consts::PI;
-use std::sync::mpsc::Sender;
 use std::{cmp, mem};
 
 #[derive(AudioNodeCommon)]
 pub(crate) struct AnalyserNode {
     channel_info: ChannelInfo,
-    sender: Sender<Block>
+    callback: Box<FnMut(Block) + Send>,
 }
 
 impl AnalyserNode {
-    pub fn new(sender: Sender<Block>, channel_info: ChannelInfo) -> Self {
-        Self { sender, channel_info }
+    pub fn new(callback: Box<FnMut(Block) + Send>, channel_info: ChannelInfo) -> Self {
+        Self { callback, channel_info }
     }
 
 }
@@ -30,7 +29,7 @@ impl AudioNodeEngine for AnalyserNode {
         let mut push = inputs.blocks[0].clone();
         push.mix(1, ChannelInterpretation::Speakers);
 
-        let _ = self.sender.send(push);
+        (self.callback)(push);
 
         // analyser node doesn't modify the inputs
         inputs
