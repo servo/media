@@ -4,7 +4,6 @@ use graph::{PortIndex, PortKind};
 use node::ChannelInterpretation;
 use smallvec::SmallVec;
 use std::f32::consts::SQRT_2;
-use std::iter::Step;
 use std::mem;
 use std::ops::*;
 
@@ -602,27 +601,6 @@ impl Div<f64> for Tick {
     type Output = f64;
     fn div(self, other: f64) -> f64 {
         self.0 as f64 / other
-    }
-}
-
-impl Step for Tick {
-    fn steps_between(start: &Self, end: &Self) -> Option<usize> {
-        Step::steps_between(&start.0, &end.0)
-    }
-    fn replace_one(&mut self) -> Self {
-        Tick(self.0.replace_one())
-    }
-    fn replace_zero(&mut self) -> Self {
-        Tick(self.0.replace_zero())
-    }
-    fn add_one(&self) -> Self {
-        Tick(self.0.add_one())
-    }
-    fn sub_one(&self) -> Self {
-        Tick(self.0.sub_one())
-    }
-    fn add_usize(&self, n: usize) -> Option<Self> {
-        self.0.add_usize(n).map(Tick)
     }
 }
 

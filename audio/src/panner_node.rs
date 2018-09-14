@@ -307,7 +307,8 @@ impl AudioNodeEngine for PannerNode {
                 unimplemented!()
             } else {
                 let (l, r) = block.data_mut().split_at_mut(FRAMES_PER_BLOCK.0 as usize);
-                for frame in Tick(0)..FRAMES_PER_BLOCK {
+                for frame in 0..FRAMES_PER_BLOCK.0 {
+                    let frame = Tick(frame);
                     self.update_parameters(info, frame);
                     let data = listener_data.listener_data(frame);
                     let (mut azimuth, _elev, dist) = self.azimuth_elevation_distance(data);

@@ -79,7 +79,7 @@ impl AudioSink for OfflineAudioSink {
                 channel_data.copy_from_slice(&chunk.blocks[0].data_chan(channel_number as u8)[0..copy_len]);
             }
         };
-        self.rendered_blocks.update(|blocks| blocks + 1);
+        self.rendered_blocks.set(self.rendered_blocks.get() + 1);
 
         if last {
             if let Some(callback) = self.eos_callback.borrow_mut().take() {

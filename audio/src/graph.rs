@@ -81,13 +81,16 @@ impl PortKind for InputPort {
     type Listener = ();
 }
 
+#[derive(Debug, Hash, PartialOrd, Ord, PartialEq, Eq, Copy, Clone)]
+pub enum Void {}
+
 impl PortKind for OutputPort {
-    // Params are only a feature of input ports. By using a never type here
+    // Params are only a feature of input ports. By using an empty type here
     // we ensure that the PortIndex enum has zero overhead for outputs,
     // taking up no extra discriminant space and eliminating PortIndex::Param
     // branches entirely from the compiled code
-    type ParamId = !;
-    type Listener = !;
+    type ParamId = Void;
+    type Listener = Void;
 }
 
 

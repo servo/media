@@ -1,5 +1,3 @@
-#![feature(extern_prelude)]
-
 extern crate byte_slice_cast;
 
 extern crate glib;

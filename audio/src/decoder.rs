@@ -1,11 +1,11 @@
-use std::boxed::FnBox;
+use boxfnonce::SendBoxFnOnce;
 use std::sync::Mutex;
 
 pub struct AudioDecoderCallbacks {
-    pub eos: Mutex<Option<Box<FnBox() + Send + 'static>>>,
-    pub error: Mutex<Option<Box<FnBox() + Send + 'static>>>,
+    pub eos: Mutex<Option<SendBoxFnOnce<'static, ()>>>,
+    pub error: Mutex<Option<SendBoxFnOnce<'static, ()>>>,
     pub progress: Option<Box<Fn(Box<AsRef<[f32]>>, u32) + Send + Sync + 'static>>,
-    pub ready: Mutex<Option<Box<FnBox(u32) + Send + 'static>>>,
+    pub ready: Mutex<Option<SendBoxFnOnce<'static, (u32,)>>>,
 }
 
 impl AudioDecoderCallbacks {
@@ -22,7 +22,7 @@ impl AudioDecoderCallbacks {
         let eos = self.eos.lock().unwrap().take();
         match eos {
             None => return,
-            Some(callback) => callback(),
+            Some(callback) => callback.call(),
         };
     }
 
@@ -30,7 +30,7 @@ impl AudioDecoderCallbacks {
         let error = self.error.lock().unwrap().take();
         match error {
             None => return,
-            Some(callback) => callback(),
+            Some(callback) => callback.call(),
         };
     }
 
@@ -45,7 +45,7 @@ impl AudioDecoderCallbacks {
         let ready = self.ready.lock().unwrap().take();
         match ready {
             None => return,
-            Some(callback) => callback(channels),
+            Some(callback) => callback.call(channels),
         };
     }
 }
@@ -54,23 +54,23 @@ unsafe impl Send for AudioDecoderCallbacks {}
 unsafe impl Sync for AudioDecoderCallbacks {}
 
 pub struct AudioDecoderCallbacksBuilder {
-    eos: Option<Box<FnBox() + Send + 'static>>,
-    error: Option<Box<FnBox() + Send + 'static>>,
+    eos: Option<SendBoxFnOnce<'static, ()>>,
+    error: Option<SendBoxFnOnce<'static, ()>>,
     progress: Option<Box<Fn(Box<AsRef<[f32]>>, u32) + Send + Sync + 'static>>,
-    ready: Option<Box<FnBox(u32) + Send + 'static>>,
+    ready: Option<SendBoxFnOnce<'static, (u32,)>>,
 }
 
 impl AudioDecoderCallbacksBuilder {
     pub fn eos<F: FnOnce() + Send + 'static>(self, eos: F) -> Self {
         Self {
-            eos: Some(Box::new(eos)),
+            eos: Some(SendBoxFnOnce::new(eos)),
             ..self
         }
     }
 
     pub fn error<F: FnOnce() + Send + 'static>(self, error: F) -> Self {
         Self {
-            error: Some(Box::new(error)),
+            error: Some(SendBoxFnOnce::new(error)),
             ..self
         }
     }
@@ -87,7 +87,7 @@ impl AudioDecoderCallbacksBuilder {
 
     pub fn ready<F: FnOnce(u32) + Send + 'static>(self, ready: F) -> Self {
         Self {
-            ready: Some(Box::new(ready)),
+            ready: Some(SendBoxFnOnce::new(ready)),
             ..self
         }
     }

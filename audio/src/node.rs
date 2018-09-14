@@ -1,3 +1,4 @@
+use boxfnonce::SendBoxFnOnce;
 use block::{Block, Chunk, Tick};
 use buffer_source_node::{AudioBufferSourceNodeMessage, AudioBufferSourceNodeOptions};
 use channel_node::ChannelNodeOptions;
@@ -5,7 +6,6 @@ use gain_node::GainNodeOptions;
 use oscillator_node::OscillatorNodeOptions;
 use panner_node::{PannerNodeMessage, PannerNodeOptions};
 use param::{Param, ParamRate, ParamType, UserAutomationEvent};
-use std::boxed::FnBox;
 use std::sync::mpsc::Sender;
 
 /// Information required to construct an audio node
@@ -188,11 +188,11 @@ pub enum AudioNodeMessage {
     SetParamRate(ParamType, ParamRate),
 }
 
-pub struct OnEndedCallback(pub Box<FnBox() + Send + 'static>);
+pub struct OnEndedCallback(pub SendBoxFnOnce<'static, ()>);
 
 impl OnEndedCallback {
     pub fn new<F: FnOnce() + Send + 'static>(callback: F) -> Self {
-        OnEndedCallback(Box::new(callback))
+        OnEndedCallback(SendBoxFnOnce::new(callback))
     }
 }
 

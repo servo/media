@@ -61,7 +61,7 @@ fn impl_audio_scheduled_source_node(ast: &syn::DeriveInput) -> quote::Tokens {
                 if self.start_at.is_none() || self.onended_callback.is_none() {
                     return;
                 }
-                self.onended_callback.take().unwrap().0();
+                self.onended_callback.take().unwrap().0.call();
             }
 
             fn handle_source_node_message(&mut self, message: AudioScheduledSourceNodeMessage, sample_rate: f32) {
