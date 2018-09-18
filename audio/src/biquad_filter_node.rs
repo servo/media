@@ -4,6 +4,7 @@ use node::AudioNodeEngine;
 use node::BlockInfo;
 use node::{AudioNodeMessage, AudioNodeType, ChannelInfo};
 use param::{Param, ParamType};
+use std::f32::consts::{PI, SQRT_2};
 
 #[derive(Copy, Clone, Debug)]
 pub struct BiquadFilterNodeOptions {
@@ -23,7 +24,7 @@ pub enum FilterType {
     HighShelf,
     Peaking,
     Notch,
-    Allpass
+    AllPass
 }
 
 impl Default for BiquadFilterNodeOptions {
@@ -43,6 +44,7 @@ pub enum BiquadFilterNodeMessage {
     SetFilterType(FilterType)
 }
 
+/// https://webaudio.github.io/web-audio-api/#biquadfilternode
 #[derive(AudioNodeCommon)]
 pub(crate) struct BiquadFilterNode {
     channel_info: ChannelInfo,
@@ -51,18 +53,43 @@ pub(crate) struct BiquadFilterNode {
     detune: Param,
     q: Param,
     gain: Param,
+    /// The computed filter parameter b0
+    /// This is actually b0 / a0, we pre-divide
+    /// for efficiency
+    b0: f32,
+    /// The computed filter parameter b1
+    /// This is actually b1 / a0, we pre-divide
+    /// for efficiency
+    b1: f32,
+    /// The computed filter parameter b2
+    /// This is actually b2 / a0, we pre-divide
+    /// for efficiency
+    b2: f32,
+    /// The computed filter parameter a1
+    /// This is actually a1 / a0, we pre-divide
+    /// for efficiency
+    a1: f32,
+    /// The computed filter parameter a2
+    /// This is actually a2 / a0, we pre-divide
+    /// for efficiency
+    a2: f32,
 }
 
 impl BiquadFilterNode {
-    pub fn new(options: BiquadFilterNodeOptions, channel_info: ChannelInfo) -> Self {
-        Self {
+    pub fn new(options: BiquadFilterNodeOptions,
+               channel_info: ChannelInfo,
+               sample_rate: f32) -> Self {
+        let mut ret = Self {
             channel_info,
             filter: options.filter,
             frequency: Param::new(options.frequency),
             gain: Param::new(options.gain),
             q: Param::new(options.q),
             detune: Param::new(options.detune),
-        }
+            b0: 0., b1: 0., b2: 0., a1: 0., a2: 0.,
+        };
+        ret.update_coefficients(sample_rate);
+        ret
     }
 
     pub fn update_parameters(&mut self, info: &BlockInfo, tick: Tick) -> bool {
@@ -70,7 +97,115 @@ impl BiquadFilterNode {
         changed |= self.detune.update(info, tick);
         changed |= self.q.update(info, tick);
         changed |= self.gain.update(info, tick);
+
+        if changed {
+            self.update_coefficients(info.sample_rate);
+        }
         changed
+    }
+
+    /// Update the coefficients a1, a2, b0, b1, b2, given the sample_rate
+    ///
+    /// See https://webaudio.github.io/web-audio-api/#filters-characteristics
+    fn update_coefficients(&mut self, fs: f32) {
+        let g = self.gain.value();
+        let q = self.q.value();
+        let f0 = self.frequency.value() * (2.0_f32).powf(self.detune.value() / 1200.);
+
+        // clamp to nominal range
+        // https://webaudio.github.io/web-audio-api/#biquadfilternode
+        let f0 = if f0 > fs / 2. || !f0.is_finite() {
+            fs / 2.
+        } else if f0 < 0. {
+            0.
+        } else {
+            f0
+        };
+
+        let a = 10.0_f32.powf(g / 40.);
+        let omega0 = 2. * PI * f0 / fs;
+        let sin_omega = omega0.sin();
+        let cos_omega = omega0.cos();
+        let alpha_q = sin_omega / (2. * q);
+        let alpha_q_db = sin_omega / (2. * 10.0_f32.powf(q / 20.));
+        let alpha_s = sin_omega / SQRT_2;
+
+        // we predivide by a0
+        let a0;
+
+        match self.filter {
+            FilterType::LowPass => {
+                self.b0 = (1. - cos_omega) / 2.;
+                self.b1 = 1. - cos_omega;
+                self.b2 = self.b1 / 2.;
+                a0 = 1. + alpha_q_db;
+                self.a1 = -2. * cos_omega;
+                self.a2 = 1. - alpha_q_db;
+            }
+            FilterType::HighPass => {
+                self.b0 = (1. + cos_omega) / 2.;
+                self.b1 = - (1. + cos_omega);
+                self.b2 = - self.b1 / 2.;
+                a0 = 1. + alpha_q_db;
+                self.a1 = -2. * cos_omega;
+                self.a2 = 1. - alpha_q_db;
+            }
+            FilterType::BandPass => {
+                self.b0 = alpha_q;
+                self.b1 = 0.;
+                self.b2 = -alpha_q;
+                a0 = 1. + alpha_q;
+                self.a1 = - 2. * cos_omega;
+                self.a2 = 1. - alpha_q;
+            }
+            FilterType::Notch => {
+                self.b0 = 1.;
+                self.b1 = -2. * cos_omega;
+                self.b2 = 1.;
+                a0 = 1. + alpha_q;
+                self.a1 = -2. * cos_omega;
+                self.a2 = 1. - alpha_q;
+            }
+            FilterType::AllPass => {
+                self.b0 = 1. - alpha_q;
+                self.b1 = -2. * cos_omega;
+                self.b2 = 1. + alpha_q;
+                a0 = 1. + alpha_q;
+                self.a1 = -2. * cos_omega;
+                self.a2 = 1. - alpha_q;
+            }
+            FilterType::Peaking => {
+                self.b0 = 1. + alpha_q * a;
+                self.b1 = -2. * cos_omega;
+                self.b2 = 1. - alpha_q * a;
+                a0 = 1. + alpha_q / a;
+                self.a1 = -2. * cos_omega;
+                self.a2 = 1. - alpha_q / a;
+            }
+            FilterType::LowShelf => {
+                let alpha_rt_a = 2. * alpha_s * a.sqrt();
+                self.b0 =       a * ((a + 1.) - (a - 1.) * cos_omega + alpha_rt_a);
+                self.b1 = 2. *  a * ((a - 1.) - (a + 1.) * cos_omega);
+                self.b2 =       a * ((a + 1.) - (a - 1.) * cos_omega - alpha_rt_a);
+                a0      =            (a + 1.) + (a - 1.) * cos_omega + alpha_rt_a;
+                self.a1 = -2. *     ((a - 1.) + (a + 1.) * cos_omega);
+                self.a2 =            (a + 1.) + (a - 1.) * cos_omega - alpha_rt_a;
+            }
+            FilterType::HighShelf => {
+                let alpha_rt_a = 2. * alpha_s * a.sqrt();
+                self.b0 =       a * ((a + 1.) + (a - 1.) * cos_omega + alpha_rt_a);
+                self.b1 = -2. * a * ((a - 1.) + (a + 1.) * cos_omega);
+                self.b2 =       a * ((a + 1.) + (a - 1.) * cos_omega - alpha_rt_a);
+                a0      =            (a + 1.) - (a - 1.) * cos_omega + alpha_rt_a;
+                self.a1 = 2. *      ((a - 1.) - (a + 1.) * cos_omega);
+                self.a2 =            (a + 1.) - (a - 1.) * cos_omega - alpha_rt_a;
+            }
+        }
+        self.b0 = self.b0 / a0;
+        self.b1 = self.b1 / a0;
+        self.b2 = self.b2 / a0;
+        self.a1 = self.a1 / a0;
+        self.a2 = self.a2 / a0;
     }
 }
 
@@ -94,11 +229,14 @@ impl AudioNodeEngine for BiquadFilterNode {
         }
     }
 
-    fn message_specific(&mut self, message: AudioNodeMessage, _sample_rate: f32) {
+    fn message_specific(&mut self, message: AudioNodeMessage, sample_rate: f32) {
         match message {
             AudioNodeMessage::BiquadFilterNode(m) => {
                 match m {
-                    BiquadFilterNodeMessage::SetFilterType(f) => self.filter = f,
+                    BiquadFilterNodeMessage::SetFilterType(f) => {
+                        self.filter = f;
+                        self.update_coefficients(sample_rate);
+                    }
                 }
             }
             _ => ()

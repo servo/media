@@ -136,7 +136,7 @@ impl<B: AudioBackend + 'static> AudioRenderThread<B> {
                 Box::new(AudioBufferSourceNode::new(options, ch))
             }
             AudioNodeInit::BiquadFilterNode(options) => {
-                Box::new(BiquadFilterNode::new(options, ch))
+                Box::new(BiquadFilterNode::new(options, ch, self.sample_rate))
             }
             AudioNodeInit::GainNode(options) => Box::new(GainNode::new(options, ch)),
             AudioNodeInit::PannerNode(options) => {
