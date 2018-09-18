@@ -121,12 +121,13 @@ impl PannerNode {
     }
 
     pub fn update_parameters(&mut self, info: &BlockInfo, tick: Tick) -> bool {
-        self.position_x.update(info, tick) ||
-        self.position_y.update(info, tick) ||
-        self.position_z.update(info, tick) ||
-        self.orientation_x.update(info, tick) ||
-        self.orientation_y.update(info, tick) ||
-        self.orientation_z.update(info, tick)
+        let mut changed = self.position_x.update(info, tick);
+        changed |= self.position_y.update(info, tick);
+        changed |= self.position_z.update(info, tick);
+        changed |= self.orientation_x.update(info, tick);
+        changed |= self.orientation_y.update(info, tick);
+        changed |= self.orientation_z.update(info, tick);
+        changed
     }
 
     /// Computes azimuth, elevation, and distance of source with respect to a
