@@ -47,7 +47,7 @@ pub enum BiquadFilterNodeMessage {
 
 /// The last two input and output values, per-channel
 // Default sets all fields to zero
-#[derive(Default, Copy, Clone)]
+#[derive(Default, Copy, Clone, PartialEq)]
 struct BiquadState {
     /// The input value from last frame
     x1: f32,
@@ -255,12 +255,20 @@ impl AudioNodeEngine for BiquadFilterNode {
         //
         // see https://dxr.mozilla.org/mozilla-central/rev/87a95e1b7ec691bef7b938e722fe1b01cce68664/dom/media/webaudio/blink/Biquad.cpp#81-91
 
-        // mutate_with can't deal with silent nodes, and will also incorrectly only use
-        // the first channel's state for the repeat block
-        //
-        // This can potentially be optimized to run explicit_silence() and only
-        // call explicit_repeat() if the states are not identical
-        inputs.blocks[0].explicit_repeat();
+        let repeat_or_silence = inputs.blocks[0].is_silence() || inputs.blocks[0].is_repeat();
+
+
+        if repeat_or_silence && !self.state.iter().all(|s| *s == self.state[0]) {
+            // In case our input is repeat/silence but our states are not identical, we must
+            // explicitly duplicate, since mutate_with will otherwise only operate
+            // on the first channel, ignoring the states of the later ones
+            inputs.blocks[0].explicit_repeat();
+        } else {
+            // In case the states are identical, just make any silence explicit,
+            // since mutate_with can't handle silent blocks
+            inputs.blocks[0].explicit_silence();
+        }
+
         {
             let mut iter = inputs.blocks[0].iter();
             while let Some(mut frame) = iter.next() {
@@ -275,6 +283,12 @@ impl AudioNodeEngine for BiquadFilterNode {
             }
 
         }
+
+        if inputs.blocks[0].is_repeat() {
+            let state = self.state[0];
+            self.state.iter_mut().for_each(|s| *s = state);
+        }
+
         inputs
     }
 
