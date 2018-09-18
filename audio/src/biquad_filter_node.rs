@@ -245,7 +245,36 @@ impl AudioNodeEngine for BiquadFilterNode {
     }
 
     fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
-        // TODO
+        debug_assert!(inputs.len() == 1);
+        self.state.resize(inputs.blocks[0].chan_count() as usize, Default::default());
+        self.update_parameters(info, info.frame);
+
+        // XXXManishearth this node has tail time, so even if the block is silence
+        // we must still compute things on it. However, it is possible to become
+        // a dumb passthrough as long as we reach a quiescent state
+        //
+        // see https://dxr.mozilla.org/mozilla-central/rev/87a95e1b7ec691bef7b938e722fe1b01cce68664/dom/media/webaudio/blink/Biquad.cpp#81-91
+
+        // mutate_with can't deal with silent nodes, and will also incorrectly only use
+        // the first channel's state for the repeat block
+        //
+        // This can potentially be optimized to run explicit_silence() and only
+        // call explicit_repeat() if the states are not identical
+        inputs.blocks[0].explicit_repeat();
+        {
+            let mut iter = inputs.blocks[0].iter();
+            while let Some(mut frame) = iter.next() {
+                self.update_parameters(info, frame.tick());
+                frame.mutate_with(|sample, chan| {
+                    let state = &mut self.state[chan as usize];
+                    let x0 = *sample;
+                    *sample = self.b0 * x0 + self.b1 * state.x1 + self.b2 * state.x2
+                                           - self.a1 * state.y1 - self.a2 * state.y2;
+                    state.update(x0, *sample);
+                });
+            }
+
+        }
         inputs
     }
 
