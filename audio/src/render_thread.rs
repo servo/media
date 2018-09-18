@@ -1,4 +1,5 @@
 use analyser_node::AnalyserNode;
+use biquad_filter_node::BiquadFilterNode;
 use block::{Chunk, Tick, FRAMES_PER_BLOCK};
 use buffer_source_node::AudioBufferSourceNode;
 use channel_node::{ChannelMergerNode, ChannelSplitterNode};
@@ -133,6 +134,9 @@ impl<B: AudioBackend + 'static> AudioRenderThread<B> {
             AudioNodeInit::AnalyserNode(sender) => Box::new(AnalyserNode::new(sender, ch)),
             AudioNodeInit::AudioBufferSourceNode(options) => {
                 Box::new(AudioBufferSourceNode::new(options, ch))
+            }
+            AudioNodeInit::BiquadFilterNode(options) => {
+                Box::new(BiquadFilterNode::new(options, ch))
             }
             AudioNodeInit::GainNode(options) => Box::new(GainNode::new(options, ch)),
             AudioNodeInit::PannerNode(options) => {
