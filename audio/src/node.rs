@@ -1,4 +1,4 @@
-use biquad_filter_node::BiquadFilterNodeOptions;
+use biquad_filter_node::{BiquadFilterNodeMessage, BiquadFilterNodeOptions};
 use boxfnonce::SendBoxFnOnce;
 use block::{Block, Chunk, Tick};
 use buffer_source_node::{AudioBufferSourceNodeMessage, AudioBufferSourceNodeOptions};
@@ -179,6 +179,7 @@ pub(crate) trait AudioNodeEngine: Send + AudioNodeCommon {
 pub enum AudioNodeMessage {
     AudioBufferSourceNode(AudioBufferSourceNodeMessage),
     AudioScheduledSourceNode(AudioScheduledSourceNodeMessage),
+    BiquadFilterNode(BiquadFilterNodeMessage),
     PannerNode(PannerNodeMessage),
     GetParamValue(ParamType, Sender<f32>),
     SetChannelCount(u8),
