@@ -4,6 +4,7 @@ use node::AudioNodeEngine;
 use node::BlockInfo;
 use node::{AudioNodeMessage, AudioNodeType, ChannelInfo};
 use param::{Param, ParamType};
+use smallvec::SmallVec;
 use std::f32::consts::{PI, SQRT_2};
 
 #[derive(Copy, Clone, Debug)]
@@ -44,6 +45,30 @@ pub enum BiquadFilterNodeMessage {
     SetFilterType(FilterType)
 }
 
+/// The last two input and output values, per-channel
+// Default sets all fields to zero
+#[derive(Default, Copy, Clone)]
+struct BiquadState {
+    /// The input value from last frame
+    x1: f32,
+    /// The input value from two frames ago
+    x2: f32,
+    /// The output value from last frame
+    y1: f32,
+    /// The output value from two frames ago
+    y2: f32,
+}
+
+impl BiquadState {
+    /// Update with new input/output values from this frame
+    fn update(&mut self, x: f32, y: f32) {
+        self.x2 = self.x1;
+        self.x1 = x;
+        self.y2 = self.y1;
+        self.y1 = y;
+    }
+}
+
 /// https://webaudio.github.io/web-audio-api/#biquadfilternode
 #[derive(AudioNodeCommon)]
 pub(crate) struct BiquadFilterNode {
@@ -73,6 +98,10 @@ pub(crate) struct BiquadFilterNode {
     /// This is actually a2 / a0, we pre-divide
     /// for efficiency
     a2: f32,
+    /// Stored filter state, this contains the last two
+    /// frames of input and output values for every
+    /// channel
+    state: SmallVec<[BiquadState; 2]>,
 }
 
 impl BiquadFilterNode {
@@ -87,6 +116,7 @@ impl BiquadFilterNode {
             q: Param::new(options.q),
             detune: Param::new(options.detune),
             b0: 0., b1: 0., b2: 0., a1: 0., a2: 0.,
+            state: SmallVec::new(),
         };
         ret.update_coefficients(sample_rate);
         ret
