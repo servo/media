@@ -8,6 +8,7 @@ pub enum ParamType {
     Frequency,
     Detune,
     Gain,
+    Q,
     PlaybackRate,
     Position(ParamDir),
     Forward(ParamDir),

@@ -20,6 +20,10 @@ name = "audio_decoder"
 path = "audio_decoder.rs"
 
 [[bin]]
+name = "biquad"
+path = "biquad.rs"
+
+[[bin]]
 name = "channels"
 path = "channels.rs"
 

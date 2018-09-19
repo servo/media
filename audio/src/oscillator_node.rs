@@ -118,7 +118,7 @@ impl AudioNodeEngine for OscillatorNode {
                     step = two_pi * self.frequency.value() as f64 / sample_rate;
                 }
                 let value = vol * f32::sin(NumCast::from(self.phase).unwrap());
-                frame.mutate_with(|sample| *sample = value);
+                frame.mutate_with(|sample, _| *sample = value);
 
                 self.phase += step;
                 if self.phase >= two_pi {

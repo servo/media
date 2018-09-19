@@ -55,7 +55,7 @@ impl AudioNodeEngine for GainNode {
                 if self.update_parameters(info, frame.tick()) {
                     gain = self.gain.value();
                 }
-                frame.mutate_with(|sample| *sample = *sample * gain);
+                frame.mutate_with(|sample, _| *sample = *sample * gain);
             }
         }
         inputs

@@ -14,6 +14,7 @@ extern crate smallvec;
 pub mod macros;
 
 pub mod analyser_node;
+pub mod biquad_filter_node;
 pub mod block;
 pub mod buffer_source_node;
 pub mod channel_node;

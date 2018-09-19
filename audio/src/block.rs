@@ -182,6 +182,10 @@ impl Block {
         self.buffer.is_empty()
     }
 
+    pub fn is_repeat(&self) -> bool {
+        self.repeat
+    }
+
     pub fn data_chan_frame(&self, frame: usize, chan: u8) -> f32 {
         if self.is_silence() {
             0.
@@ -519,10 +523,12 @@ impl<'a> FrameRef<'a> {
     /// (Helpers for the other cases will eventually exist)
     ///
     /// Block must not be silence
+    ///
+    /// The second parameter to f is the channel number, 0 in case of a repeat()
     #[inline]
-    pub fn mutate_with<F>(&mut self, f: F)
+    pub fn mutate_with<F>(&mut self, mut f: F)
     where
-        F: Fn(&mut f32),
+        F: FnMut(&mut f32, u8),
     {
         debug_assert!(
             !self.block.is_silence(),
@@ -530,11 +536,12 @@ impl<'a> FrameRef<'a> {
              call .explicit_silence() if you wish to use this"
         );
         if self.block.repeat {
-            f(&mut self.block.buffer[self.frame.0 as usize])
+            f(&mut self.block.buffer[self.frame.0 as usize], 0)
         } else {
             for chan in 0..self.block.channels {
                 f(&mut self.block.buffer
-                    [chan as usize * FRAMES_PER_BLOCK_USIZE + self.frame.0 as usize])
+                    [chan as usize * FRAMES_PER_BLOCK_USIZE + self.frame.0 as usize],
+                  chan)
             }
         }
     }
