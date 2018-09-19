@@ -32,7 +32,7 @@ name = "channelsum"
 path = "channelsum.rs"
 
 [[bin]]
-name = "offline"
+name = "offline_context"
 path = "offline_context.rs"
 
 [[bin]]
@@ -50,6 +50,10 @@ path = "params_settarget.rs"
 [[bin]]
 name = "params_connect"
 path = "params_connect.rs"
+
+[[bin]]
+name = "params_connect2"
+path = "params_connect2.rs"
 
 [[bin]]
 name = "play"

@@ -7,6 +7,7 @@ use servo_media::ServoMedia;
 use std::env;
 use std::fs::File;
 use std::io::Read;
+use std::path::Path;
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::{thread, time};
@@ -14,8 +15,11 @@ use std::{thread, time};
 fn run_example(servo_media: Arc<ServoMedia>) {
     let context = servo_media.create_audio_context(Default::default());
     let args: Vec<_> = env::args().collect();
+    let default = "./examples/resources/viper_cut.ogg";
     let filename: &str = if args.len() == 2 {
         args[1].as_ref()
+    } else if Path::new(default).exists() {
+        default
     } else {
         panic!("Usage: cargo run --bin audio_decoder <file_path>")
     };
