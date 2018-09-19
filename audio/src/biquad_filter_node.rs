@@ -9,11 +9,11 @@ use std::f32::consts::{PI, SQRT_2};
 
 #[derive(Copy, Clone, Debug)]
 pub struct BiquadFilterNodeOptions {
-    filter: FilterType,
-    frequency: f32,
-    detune: f32,
-    q: f32,
-    gain: f32,
+    pub filter: FilterType,
+    pub frequency: f32,
+    pub detune: f32,
+    pub q: f32,
+    pub gain: f32,
 }
 
 #[derive(Copy, Clone, Debug)]
