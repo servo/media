@@ -31,7 +31,12 @@ fn android_main(target: &str) {
         .unwrap()
         .is_match(target)
     {
-        "gst-build-x86_g4"
+        "gst-build-x86_64"
+    } else if Regex::new("i686-([a-z])*-android")
+        .unwrap()
+        .is_match(target)
+    {
+        "gst-build-x86"
     } else {
         panic!("Invalid target architecture {}", target);
     };
