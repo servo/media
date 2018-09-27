@@ -194,7 +194,16 @@ impl Player for GStreamerPlayer {
     }
 
     fn set_input_size(&self, size: u64) {
+        // Keep inner's .set_input_size() to proxy its value, since it
+        // could be set by the user before calling .setup()
         self.inner.lock().unwrap().set_input_size(size);
+        if let Some(ref mut appsrc) = self.inner.lock().unwrap().appsrc {
+            if size > 0 {
+                appsrc.set_size(size as i64);
+            } else {
+                appsrc.set_size(-1); // live source
+            }
+        }
     }
 
     fn setup(&self) -> Result<(), ()> {
