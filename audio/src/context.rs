@@ -26,6 +26,7 @@ pub type StateChangeResult = Result<(), ()>;
 
 /// Identify the type of playback, which affects tradeoffs between audio output
 /// and power consumption.
+#[derive(Copy, Clone)]
 pub enum LatencyCategory {
     /// Balance audio output latency and power consumption.
     Balanced,
@@ -37,6 +38,7 @@ pub enum LatencyCategory {
 }
 
 /// User-specified options for a real time audio context.
+#[derive(Copy, Clone)]
 pub struct RealTimeAudioContextOptions {
     /// Number of samples that will play in one second, measured in Hz.
     pub sample_rate: f32,
@@ -54,6 +56,7 @@ impl Default for RealTimeAudioContextOptions {
 }
 
 /// User-specified options for an offline audio context.
+#[derive(Copy, Clone)]
 pub struct OfflineAudioContextOptions {
     /// The number of channels for this offline audio context.
     pub channels: u8,
@@ -86,6 +89,7 @@ impl From<OfflineAudioContextOptions> for AudioContextOptions {
 }
 
 /// User-specified options for a real time or offline audio context.
+#[derive(Copy, Clone)]
 pub enum AudioContextOptions {
     RealTimeAudioContext(RealTimeAudioContextOptions),
     OfflineAudioContext(OfflineAudioContextOptions),
@@ -128,8 +132,7 @@ impl<B: AudioBackend + 'static> AudioContext<B> {
         Builder::new()
             .name("AudioRenderThread".to_owned())
             .spawn(move || {
-                AudioRenderThread::<B>::start(receiver, sender_, sample_rate, graph, options)
-                    .expect("Could not start AudioRenderThread");
+                AudioRenderThread::<B>::start(receiver, sender_, sample_rate, graph, options);
             })
             .unwrap();
         Self {

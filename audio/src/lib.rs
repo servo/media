@@ -3,6 +3,8 @@ extern crate serde_derive;
 
 #[macro_use]
 extern crate servo_media_derive;
+#[macro_use]
+extern crate log;
 
 extern crate boxfnonce;
 extern crate byte_slice_cast;
@@ -37,4 +39,22 @@ pub trait AudioBackend {
     type Sink: sink::AudioSink;
     fn make_decoder() -> Self::Decoder;
     fn make_sink() -> Result<Self::Sink, <Self::Sink as sink::AudioSink>::Error>;
+}
+
+pub struct DummyBackend {}
+
+impl AudioBackend for DummyBackend {
+    type Decoder = decoder::DummyAudioDecoder;
+    type Sink = sink::DummyAudioSink;
+    fn make_decoder() -> Self::Decoder {
+        decoder::DummyAudioDecoder
+    }
+
+    fn make_sink() -> Result<Self::Sink, ()> {
+        Ok(sink::DummyAudioSink)
+    }
+}
+
+impl DummyBackend {
+    pub fn init() {}
 }

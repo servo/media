@@ -95,34 +95,68 @@ pub struct AudioRenderThread<B: AudioBackend> {
 }
 
 impl<B: AudioBackend + 'static> AudioRenderThread<B> {
-    /// Start the audio render thread
-    pub fn start(
-        event_queue: Receiver<AudioRenderThreadMsg>,
+    /// Initializes the AudioRenderThread object
+    ///
+    /// You must call .event_loop() on this to run it!
+    fn prepare_thread(
         sender: Sender<AudioRenderThreadMsg>,
         sample_rate: f32,
         graph: AudioGraph,
         options: AudioContextOptions,
-    ) -> Result<(), <B::Sink as AudioSink>::Error> {
+    ) -> Result<Self, (AudioGraph, <B::Sink as AudioSink>::Error)> {
         let sink = match options {
-            AudioContextOptions::RealTimeAudioContext(_) => Sink::RealTime(B::make_sink()?),
+            AudioContextOptions::RealTimeAudioContext(_) => {
+                let sink = match B::make_sink() {
+                    Ok(s) => s,
+                    Err(e) => return Err((graph, e))
+                };
+
+                Sink::RealTime(sink)
+            },
             AudioContextOptions::OfflineAudioContext(options) => Sink::Offline(
                 OfflineAudioSink::new(options.channels as usize, options.length),
             ),
         };
 
-        let mut graph = Self {
+
+        if let Err(e) = sink.init(sample_rate, sender) {
+            return Err((graph, e))
+        }
+
+        Ok(Self {
             graph,
             sink,
             state: ProcessingState::Suspended,
             sample_rate,
             current_time: 0.,
             current_frame: Tick(0),
-        };
+        })
+    }
 
-        graph.sink.init(sample_rate, sender)?;
-        graph.event_loop(event_queue);
+    /// Start the audio render thread
+    ///
+    /// In case something fails, it will instead start a thread with a dummy backend
+    pub fn start(
+        event_queue: Receiver<AudioRenderThreadMsg>,
+        sender: Sender<AudioRenderThreadMsg>,
+        sample_rate: f32,
+        graph: AudioGraph,
+        options: AudioContextOptions,
+    ) {
+        let thread = Self::prepare_thread(sender.clone(), sample_rate, graph, options);
+        match thread {
+            Ok(mut thread) => thread.event_loop(event_queue),
+            Err((graph, e)) => {
+                use DummyBackend;
+                error!("Could not start audio render thread due to error `{:?}`, \
+                        falling back to dummy backend", e);
+                let mut thread = AudioRenderThread::<DummyBackend>
+                                                  ::prepare_thread(sender, sample_rate, graph, options)
+                                .map_err(|_| ()).unwrap();
+                thread.event_loop(event_queue)
 
-        Ok(())
+            }
+        }
     }
 
     make_render_thread_state_change!(resume, Running, play);
