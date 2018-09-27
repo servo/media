@@ -41,24 +41,25 @@ pub enum Sink<B: AudioBackend> {
 }
 
 impl<B: AudioBackend> AudioSink for Sink<B> {
-    fn init(&self, sample_rate: f32, sender: Sender<AudioRenderThreadMsg>) -> Result<(), ()> {
+    type Error = <B::Sink as AudioSink>::Error;
+    fn init(&self, sample_rate: f32, sender: Sender<AudioRenderThreadMsg>) -> Result<(), Self::Error> {
         match *self {
             Sink::RealTime(ref sink) => sink.init(sample_rate, sender),
-            Sink::Offline(ref sink) => sink.init(sample_rate, sender),
+            Sink::Offline(ref sink) => Ok(sink.init(sample_rate, sender).unwrap()),
         }
     }
 
-    fn play(&self) -> Result<(), ()> {
+    fn play(&self) -> Result<(), Self::Error> {
         match *self {
             Sink::RealTime(ref sink) => sink.play(),
-            Sink::Offline(ref sink) => sink.play(),
+            Sink::Offline(ref sink) => Ok(sink.play().unwrap()),
         }
     }
 
-    fn stop(&self) -> Result<(), ()> {
+    fn stop(&self) -> Result<(), Self::Error> {
         match *self {
             Sink::RealTime(ref sink) => sink.stop(),
-            Sink::Offline(ref sink) => sink.stop(),
+            Sink::Offline(ref sink) => Ok(sink.stop().unwrap()),
         }
     }
 
@@ -69,10 +70,10 @@ impl<B: AudioBackend> AudioSink for Sink<B> {
         }
     }
 
-    fn push_data(&self, chunk: Chunk) -> Result<(), ()> {
+    fn push_data(&self, chunk: Chunk) -> Result<(), Self::Error> {
         match *self {
             Sink::RealTime(ref sink) => sink.push_data(chunk),
-            Sink::Offline(ref sink) => sink.push_data(chunk),
+            Sink::Offline(ref sink) => Ok(sink.push_data(chunk).unwrap()),
         }
     }
 
@@ -101,7 +102,7 @@ impl<B: AudioBackend + 'static> AudioRenderThread<B> {
         sample_rate: f32,
         graph: AudioGraph,
         options: AudioContextOptions,
-    ) -> Result<(), ()> {
+    ) -> Result<(), <B::Sink as AudioSink>::Error> {
         let sink = match options {
             AudioContextOptions::RealTimeAudioContext(_) => Sink::RealTime(B::make_sink()?),
             AudioContextOptions::OfflineAudioContext(options) => Sink::Offline(
