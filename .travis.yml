@@ -23,7 +23,6 @@ before_install:
   - export GST_PLUGIN_SCANNER=$PWD/gstreamer/libexec/gstreamer-1.0/gst-plugin-scanner
   - export PATH=$PATH:$PWD/gstreamer/bin
   - export LD_LIBRARY_PATH=$PWD/gstreamer/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
-  - GST_REGISTRY_FORK=no gstreamer/bin/gst-inspect-1.0
   - export DISPLAY=:99.0;
   - /sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -screen 0 1400x900x24 -ac +extension GLX +render -noreset;
 
