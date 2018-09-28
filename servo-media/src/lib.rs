@@ -5,13 +5,40 @@ pub extern crate servo_media_player as player;
 use std::sync::{self, Arc, Mutex, Once};
 
 use audio::context::{AudioContext, AudioContextOptions};
-use player::{Player, PlayerBackend};
+use audio::decoder::DummyAudioDecoder;
+use audio::sink::DummyAudioSink;
+use audio::AudioBackend;
+use player::{DummyPlayer, Player, PlayerBackend};
 
 pub struct ServoMedia;
 
 static INITIALIZER: Once = sync::ONCE_INIT;
 static mut INSTANCE: *mut Mutex<Option<Arc<ServoMedia>>> = 0 as *mut _;
 
+pub struct DummyBackend {}
+
+impl AudioBackend for DummyBackend {
+    type Decoder = DummyAudioDecoder;
+    type Sink = DummyAudioSink;
+    fn make_decoder() -> Self::Decoder {
+        DummyAudioDecoder
+    }
+
+    fn make_sink() -> Result<Self::Sink, ()> {
+        Ok(DummyAudioSink)
+    }
+}
+
+impl PlayerBackend for DummyBackend {
+    type Player = DummyPlayer;
+    fn make_player() -> Result<Self::Player, ()> {
+        Ok(DummyPlayer {})
+    }
+}
+
+impl DummyBackend {
+    pub fn init() {}
+}
 
 #[cfg(any(target_os = "android", target_arch = "x86_64"))]
 pub type Backend = servo_media_gstreamer::GStreamerBackend;

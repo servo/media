@@ -2,8 +2,6 @@ extern crate ipc_channel;
 #[macro_use]
 extern crate serde_derive;
 
-extern crate servo_media_audio;
-
 pub mod frame;
 pub mod metadata;
 
@@ -67,11 +65,4 @@ impl Player for DummyPlayer {
 pub trait PlayerBackend {
     type Player: Player;
     fn make_player() -> Result<Self::Player, ()>;
-}
-
-impl PlayerBackend for servo_media_audio::DummyBackend {
-    type Player = DummyPlayer;
-    fn make_player() -> Result<Self::Player, ()> {
-        Ok(DummyPlayer {})
-    }
 }

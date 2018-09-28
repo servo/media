@@ -132,7 +132,9 @@ impl<B: AudioBackend + 'static> AudioContext<B> {
         Builder::new()
             .name("AudioRenderThread".to_owned())
             .spawn(move || {
-                AudioRenderThread::<B>::start(receiver, sender_, sample_rate, graph, options);
+                AudioRenderThread::<B::Sink>::start(|| B::make_sink(), 
+                                                    receiver, sender_, sample_rate,
+                                                    graph, options);
             })
             .unwrap();
         Self {

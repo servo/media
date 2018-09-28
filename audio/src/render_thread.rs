@@ -11,9 +11,8 @@ use node::{AudioNodeEngine, AudioNodeInit, AudioNodeMessage};
 use offline_sink::OfflineAudioSink;
 use oscillator_node::OscillatorNode;
 use panner_node::PannerNode;
-use sink::AudioSink;
+use sink::{AudioSink, DummyAudioSink};
 use std::sync::mpsc::{Receiver, Sender};
-use AudioBackend;
 
 pub enum AudioRenderThreadMsg {
     CreateNode(AudioNodeInit, Sender<NodeId>, ChannelInfo),
@@ -35,13 +34,14 @@ pub enum AudioRenderThreadMsg {
     SetSinkEosCallback(Box<Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>),
 }
 
-pub enum Sink<B: AudioBackend> {
-    RealTime(B::Sink),
+pub enum Sink<S: AudioSink> {
+    RealTime(S),
     Offline(OfflineAudioSink),
 }
 
-impl<B: AudioBackend> AudioSink for Sink<B> {
-    type Error = <B::Sink as AudioSink>::Error;
+impl<S: AudioSink> AudioSink for Sink<S> {
+    type Error = S::Error;
+
     fn init(&self, sample_rate: f32, sender: Sender<AudioRenderThreadMsg>) -> Result<(), Self::Error> {
         match *self {
             Sink::RealTime(ref sink) => sink.init(sample_rate, sender),
@@ -85,28 +85,32 @@ impl<B: AudioBackend> AudioSink for Sink<B> {
     }
 }
 
-pub struct AudioRenderThread<B: AudioBackend> {
+
+pub struct AudioRenderThread<S: AudioSink> {
     pub graph: AudioGraph,
-    pub sink: Sink<B>,
+    pub sink: Sink<S>,
     pub state: ProcessingState,
     pub sample_rate: f32,
     pub current_time: f64,
     pub current_frame: Tick,
 }
 
-impl<B: AudioBackend + 'static> AudioRenderThread<B> {
+impl<S: AudioSink + 'static> AudioRenderThread<S> {
     /// Initializes the AudioRenderThread object
     ///
     /// You must call .event_loop() on this to run it!
-    fn prepare_thread(
+    fn prepare_thread<F>(
+        make_sink: F,
         sender: Sender<AudioRenderThreadMsg>,
         sample_rate: f32,
         graph: AudioGraph,
         options: AudioContextOptions,
-    ) -> Result<Self, (AudioGraph, <B::Sink as AudioSink>::Error)> {
+    ) -> Result<Self, (AudioGraph, S::Error)> 
+        where F: FnOnce() -> Result<S, S::Error> 
+    {
         let sink = match options {
             AudioContextOptions::RealTimeAudioContext(_) => {
-                let sink = match B::make_sink() {
+                let sink = match make_sink() {
                     Ok(s) => s,
                     Err(e) => return Err((graph, e))
                 };
@@ -136,22 +140,25 @@ impl<B: AudioBackend + 'static> AudioRenderThread<B> {
     /// Start the audio render thread
     ///
     /// In case something fails, it will instead start a thread with a dummy backend
-    pub fn start(
+    pub fn start<F>(
+        make_sink: F,
         event_queue: Receiver<AudioRenderThreadMsg>,
         sender: Sender<AudioRenderThreadMsg>,
         sample_rate: f32,
         graph: AudioGraph,
         options: AudioContextOptions,
-    ) {
-        let thread = Self::prepare_thread(sender.clone(), sample_rate, graph, options);
+    ) 
+        where F: FnOnce() -> Result<S, S::Error> 
+    {
+        let thread = Self::prepare_thread(make_sink, sender.clone(), sample_rate, graph, options);
         match thread {
             Ok(mut thread) => thread.event_loop(event_queue),
             Err((graph, e)) => {
-                use DummyBackend;
                 error!("Could not start audio render thread due to error `{:?}`, \
                         falling back to dummy backend", e);
-                let mut thread = AudioRenderThread::<DummyBackend>
-                                                  ::prepare_thread(sender, sample_rate, graph, options)
+                let mut thread = AudioRenderThread::<DummyAudioSink>
+                                                  ::prepare_thread(|| Ok(DummyAudioSink),
+                                                                   sender, sample_rate, graph, options)
                                 .map_err(|_| ()).unwrap();
                 thread.event_loop(event_queue)
 
