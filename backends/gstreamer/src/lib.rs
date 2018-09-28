@@ -11,6 +11,7 @@ extern crate servo_media_audio;
 extern crate servo_media_player;
 
 use servo_media_audio::AudioBackend;
+use servo_media_audio::sink::AudioSink;
 use servo_media_player::PlayerBackend;
 
 pub mod audio_decoder;
@@ -25,7 +26,7 @@ impl AudioBackend for GStreamerBackend {
     fn make_decoder() -> Self::Decoder {
         audio_decoder::GStreamerAudioDecoder::new()
     }
-    fn make_sink() -> Result<Self::Sink, ()> {
+    fn make_sink() -> Result<Self::Sink, <Self::Sink as AudioSink>::Error> {
         audio_sink::GStreamerAudioSink::new()
     }
 }

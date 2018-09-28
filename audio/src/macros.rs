@@ -34,7 +34,7 @@ macro_rules! make_render_thread_state_change(
                 return Ok(());
             }
             self.state = ProcessingState::$state;
-            self.sink.$sink_method()
+            self.sink.$sink_method().map_err(|_| ())
         }
     );
 );

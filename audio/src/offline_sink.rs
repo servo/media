@@ -34,17 +34,22 @@ impl OfflineAudioSink {
     }
 }
 
+// replace with ! when it stabilizes
+#[derive(Debug)]
+pub enum OfflineError {}
+
 impl AudioSink for OfflineAudioSink {
-    fn init(&self, _: f32, _: Sender<AudioRenderThreadMsg>) -> Result<(), ()> {
+    type Error = OfflineError;
+    fn init(&self, _: f32, _: Sender<AudioRenderThreadMsg>) -> Result<(), OfflineError> {
         Ok(())
     }
 
-    fn play(&self) -> Result<(), ()> {
+    fn play(&self) -> Result<(), OfflineError> {
         self.has_enough_data.set(false);
         Ok(())
     }
 
-    fn stop(&self) -> Result<(), ()> {
+    fn stop(&self) -> Result<(), OfflineError> {
         self.has_enough_data.set(true);
         Ok(())
     }
@@ -54,7 +59,7 @@ impl AudioSink for OfflineAudioSink {
             || (self.rendered_blocks.get() * FRAMES_PER_BLOCK_USIZE >= self.length)
     }
 
-    fn push_data(&self, mut chunk: Chunk) -> Result<(), ()> {
+    fn push_data(&self, mut chunk: Chunk) -> Result<(), OfflineError> {
         let offset = self.rendered_blocks.get() * FRAMES_PER_BLOCK_USIZE;
         let (last, copy_len) = if self.length - offset <= FRAMES_PER_BLOCK_USIZE {
             (true, self.length - offset)
