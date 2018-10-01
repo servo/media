@@ -34,8 +34,8 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         .eos(move || {
             sender.send(()).unwrap();
         })
-        .error(|| {
-            eprintln!("Error decoding audio");
+        .error(|e| {
+            eprintln!("Error decoding audio {:?}", e);
         })
         .progress(move |buffer, channel| {
             let mut decoded_audio = decoded_audio_.lock().unwrap();

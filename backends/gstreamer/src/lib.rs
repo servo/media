@@ -18,6 +18,23 @@ pub mod audio_decoder;
 pub mod audio_sink;
 pub mod player;
 
+#[derive(Debug)]
+pub enum BackendError {
+    AudioInfoFailed,
+    BufferReadError,
+    Caps(&'static str),
+    ElementCreationFailed(&'static str),
+    Flow(gst::FlowError),
+    GetStaticPadFailed(&'static str),
+    Gstreamer(gst::Error),
+    InvalidMediaFormat,
+    InvalidSample,
+    PadLinkFailed,
+    PipelineFailed(&'static str),
+    SetPropertyFailed(&'static str),
+    StateChangeFailed,
+}
+
 pub struct GStreamerBackend;
 
 impl AudioBackend for GStreamerBackend {

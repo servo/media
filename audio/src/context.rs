@@ -245,7 +245,7 @@ impl<B: AudioBackend + 'static> AudioContext<B> {
 
     /// Asynchronously decodes the audio file data contained in the given
     /// buffer.
-    pub fn decode_audio_data(&self, data: Vec<u8>, callbacks: AudioDecoderCallbacks) {
+    pub fn decode_audio_data(&self, data: Vec<u8>, callbacks: AudioDecoderCallbacks<<B::Decoder as AudioDecoder>::Error>) {
         let mut options = AudioDecoderOptions::default();
         options.sample_rate = self.sample_rate;
         Builder::new()

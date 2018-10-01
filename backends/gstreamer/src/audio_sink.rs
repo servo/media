@@ -10,8 +10,7 @@ use std::cell::{Cell, RefCell};
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::thread::Builder;
-
-// XXX Define own error type.
+use super::BackendError;
 
 const DEFAULT_SAMPLE_RATE: f32 = 44100.;
 
@@ -22,17 +21,6 @@ pub struct GStreamerAudioSink {
     audio_info: RefCell<Option<gst_audio::AudioInfo>>,
     sample_offset: Cell<u64>,
 }
-
-#[derive(Debug)]
-pub enum BackendError {
-    Gstreamer(gst::Error),
-    Flow(gst::FlowError),
-    ElementCreationFailed(&'static str),
-    AudioInfoFailed,
-    PipelineFailed(&'static str),
-    StateChangeFailed,
-}
-
 
 impl GStreamerAudioSink {
     pub fn new() -> Result<Self, BackendError> {
