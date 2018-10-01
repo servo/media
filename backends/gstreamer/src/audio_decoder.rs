@@ -8,8 +8,7 @@ use gst::{self, MessageView};
 use servo_media_audio::decoder::{AudioDecoder, AudioDecoderCallbacks, AudioDecoderOptions};
 use std::io::Cursor;
 use std::io::Read;
-use std::sync::Arc;
-use std::thread::Builder;
+use std::sync::{mpsc, Arc, Mutex};
 
 pub struct GStreamerAudioDecoderProgress(MappedBuffer<Readable>);
 
@@ -63,8 +62,12 @@ impl AudioDecoder for GStreamerAudioDecoder {
 
         let options = options.unwrap_or_default();
 
+        let (sender, receiver) = mpsc::channel();
+        let sender = Arc::new(Mutex::new(sender));
+
         let pipeline_ = pipeline.downgrade();
         let callbacks_ = callbacks.clone();
+        let sender_ = sender.clone();
         // Initial pipeline looks like
         //
         // appsrc ! decodebin2! ...
@@ -85,9 +88,14 @@ impl AudioDecoder for GStreamerAudioDecoder {
             // each channel.
 
             let callbacks = &callbacks_;
+            let sender = &sender_;
             let pipeline = match pipeline_.upgrade() {
                 Some(pipeline) => pipeline,
-                None => return callbacks.error(BackendError::PipelineFailed("upgrade")),
+                None => {
+                    callbacks.error(BackendError::PipelineFailed("upgrade"));
+                    let _ = sender.lock().unwrap().send(());
+                    return;
+                }
             };
 
             let (is_audio, caps) = {
@@ -100,21 +108,27 @@ impl AudioDecoder for GStreamerAudioDecoder {
 
                 match media_type {
                     None => {
-                        eprintln!("Failed to get media type from pad {}", src_pad.get_name());
-                        return callbacks
-                            .error(BackendError::Caps("Failed to get media type from pad"));
+                        callbacks.error(BackendError::Caps("Failed to get media type from pad"));
+                        let _ = sender.lock().unwrap().send(());
+                        return;
                     }
                     Some(media_type) => media_type,
                 }
             };
 
             if !is_audio {
-                return callbacks.error(BackendError::InvalidMediaFormat);
+                callbacks.error(BackendError::InvalidMediaFormat);
+                let _ = sender.lock().unwrap().send(());
+                return;
             }
 
             let sample_audio_info = match gst_audio::AudioInfo::from_caps(&caps) {
                 Some(sample_audio_info) => sample_audio_info,
-                None => return callbacks.error(BackendError::AudioInfoFailed),
+                None => {
+                    callbacks.error(BackendError::AudioInfoFailed);
+                    let _ = sender.lock().unwrap().send(());
+                    return;
+                }
             };
             let channels = sample_audio_info.channels();
             callbacks.ready(channels);
@@ -155,8 +169,6 @@ impl AudioDecoder for GStreamerAudioDecoder {
                         sink.set_property("sync", &false.to_value())
                             .map_err(|e| BackendError::SetPropertyFailed(e.0))?;
 
-                        let pipeline_ = pipeline.clone();
-                        let pipeline__ = pipeline.clone();
                         let callbacks_ = callbacks.clone();
                         let callbacks__ = callbacks.clone();
                         appsink.set_callbacks(
@@ -173,7 +185,6 @@ impl AudioDecoder for GStreamerAudioDecoder {
                                         buffer
                                     } else {
                                         callbacks_.error(BackendError::InvalidSample);
-                                        let _ = pipeline_.set_state(gst::State::Null);
                                         return gst::FlowReturn::Error;
                                     };
 
@@ -183,7 +194,6 @@ impl AudioDecoder for GStreamerAudioDecoder {
                                         callbacks_.error(BackendError::Caps(
                                             "Could not get caps from sample",
                                         ));
-                                        let _ = pipeline_.set_state(gst::State::Null);
                                         return gst::FlowReturn::Error;
                                     };
 
@@ -193,7 +203,6 @@ impl AudioDecoder for GStreamerAudioDecoder {
                                         audio_info
                                     } else {
                                         callbacks_.error(BackendError::AudioInfoFailed);
-                                        let _ = pipeline_.set_state(gst::State::Null);
                                         return gst::FlowReturn::Error;
                                     };
                                     assert_eq!(audio_info.channels(), 1);
@@ -202,7 +211,6 @@ impl AudioDecoder for GStreamerAudioDecoder {
                                         positions
                                     } else {
                                         callbacks_.error(BackendError::AudioInfoFailed);
-                                        let _ = pipeline_.set_state(gst::State::Null);
                                         return gst::FlowReturn::Error;
                                     };
 
@@ -213,7 +221,6 @@ impl AudioDecoder for GStreamerAudioDecoder {
                                                 map
                                             } else {
                                                 callbacks_.error(BackendError::BufferReadError);
-                                                let _ = pipeline_.set_state(gst::State::Null);
                                                 return gst::FlowReturn::Error;
                                             };
                                         let progress = Box::new(GStreamerAudioDecoderProgress(map));
@@ -225,7 +232,6 @@ impl AudioDecoder for GStreamerAudioDecoder {
                                 })
                                 .eos(move |_| {
                                     callbacks__.eos();
-                                    let _ = pipeline__.set_state(gst::State::Null);
                                 })
                                 .build(),
                         );
@@ -291,41 +297,37 @@ impl AudioDecoder for GStreamerAudioDecoder {
 
             if let Err(e) = insert_deinterleave() {
                 callbacks.error(e);
+                let _ = sender.lock().unwrap().send(());
             }
         });
 
         appsrc.set_property_format(gst::Format::Bytes);
         appsrc.set_property_block(true);
 
-        let pipeline_ = pipeline.downgrade();
+        let bus = match pipeline.get_bus() {
+            Some(bus) => bus,
+            None => {
+                callbacks.error(BackendError::PipelineFailed(
+                    "Pipeline without bus. Shouldn't happen!",
+                ));
+                let _ = sender.lock().unwrap().send(());
+                return;
+            }
+        };
+
         let callbacks_ = callbacks.clone();
-
-        Builder::new()
-            .name("GStreamer pipeline bus".to_owned())
-            .spawn(move || {
-                let callbacks = &callbacks_;
-                let pipeline = match pipeline_.upgrade() {
-                    Some(pipeline) => pipeline,
-                    None => return callbacks.error(BackendError::PipelineFailed("upgrade")),
-                };
-                let bus = pipeline
-                    .get_bus()
-                    .expect("Pipeline without bus. Shouldn't happen!");
-
-                while let Some(msg) = bus.timed_pop(gst::CLOCK_TIME_NONE) {
-                    match msg.view() {
-                        MessageView::Eos(..) => break,
-                        MessageView::Error(e) => {
-                            callbacks.error(BackendError::PipelineBusError(
-                                e.get_debug().unwrap_or("Unknown".to_owned()),
-                            ));
-                            break;
-                        }
-                        _ => (),
-                    }
+        bus.set_sync_handler(move |_, msg| {
+            match msg.view() {
+                MessageView::Error(e) => {
+                    callbacks_.error(BackendError::PipelineBusError(
+                        e.get_debug().unwrap_or("Unknown".to_owned()),
+                    ));
+                    let _ = sender.lock().unwrap().send(());
                 }
-            })
-            .unwrap();
+                _ => (),
+            }
+            gst::BusSyncReply::Drop
+        });
 
         if pipeline
             .set_state(gst::State::Playing)
@@ -356,5 +358,9 @@ impl AudioDecoder for GStreamerAudioDecoder {
             let _ = appsrc.push_buffer(buffer);
         }
         let _ = appsrc.end_of_stream();
+
+        // Wait until we get an error or EOS.
+        receiver.recv().unwrap();
+        let _ = pipeline.set_state(gst::State::Null);
     }
 }
