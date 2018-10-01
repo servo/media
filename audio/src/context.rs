@@ -1,4 +1,3 @@
-use AudioBackend;
 use decoder::{AudioDecoder, AudioDecoderCallbacks, AudioDecoderOptions};
 use graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
 use node::{AudioNodeInit, AudioNodeMessage, ChannelInfo};
@@ -8,6 +7,7 @@ use std::cell::Cell;
 use std::marker::PhantomData;
 use std::sync::mpsc::{self, Sender};
 use std::thread::Builder;
+use AudioBackend;
 
 /// Describes the state of the audio context on the control thread.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -121,7 +121,9 @@ impl<B: AudioBackend + 'static> AudioContext<B> {
     pub fn new(options: AudioContextOptions) -> Self {
         let (sample_rate, channels) = match options {
             AudioContextOptions::RealTimeAudioContext(ref options) => (options.sample_rate, 2),
-            AudioContextOptions::OfflineAudioContext(ref options) => (options.sample_rate, options.channels)
+            AudioContextOptions::OfflineAudioContext(ref options) => {
+                (options.sample_rate, options.channels)
+            }
         };
 
         let (sender, receiver) = mpsc::channel();
@@ -132,9 +134,14 @@ impl<B: AudioBackend + 'static> AudioContext<B> {
         Builder::new()
             .name("AudioRenderThread".to_owned())
             .spawn(move || {
-                AudioRenderThread::<B::Sink>::start(|| B::make_sink(), 
-                                                    receiver, sender_, sample_rate,
-                                                    graph, options);
+                AudioRenderThread::<B::Sink>::start(
+                    || B::make_sink(),
+                    receiver,
+                    sender_,
+                    sample_rate,
+                    graph,
+                    options,
+                );
             })
             .unwrap();
         Self {
@@ -245,7 +252,11 @@ impl<B: AudioBackend + 'static> AudioContext<B> {
 
     /// Asynchronously decodes the audio file data contained in the given
     /// buffer.
-    pub fn decode_audio_data(&self, data: Vec<u8>, callbacks: AudioDecoderCallbacks<<B::Decoder as AudioDecoder>::Error>) {
+    pub fn decode_audio_data(
+        &self,
+        data: Vec<u8>,
+        callbacks: AudioDecoderCallbacks<<B::Decoder as AudioDecoder>::Error>,
+    ) {
         let mut options = AudioDecoderOptions::default();
         options.sample_rate = self.sample_rate;
         Builder::new()

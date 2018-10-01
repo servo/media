@@ -10,8 +10,8 @@ extern crate ipc_channel;
 extern crate servo_media_audio;
 extern crate servo_media_player;
 
-use servo_media_audio::AudioBackend;
 use servo_media_audio::sink::AudioSink;
+use servo_media_audio::AudioBackend;
 use servo_media_player::PlayerBackend;
 
 pub mod audio_decoder;

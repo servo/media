@@ -1,5 +1,6 @@
 use super::gst_app::{AppSink, AppSinkCallbacks, AppSrc};
 use super::gst_audio;
+use super::BackendError;
 use byte_slice_cast::*;
 use gst;
 use gst::buffer::{MappedBuffer, Readable};
@@ -8,7 +9,6 @@ use servo_media_audio::decoder::{AudioDecoder, AudioDecoderCallbacks, AudioDecod
 use std::io::Cursor;
 use std::io::Read;
 use std::sync::Arc;
-use super::BackendError;
 
 pub struct GStreamerAudioDecoderProgress(MappedBuffer<Readable>);
 
@@ -100,7 +100,8 @@ impl AudioDecoder for GStreamerAudioDecoder {
                 match media_type {
                     None => {
                         eprintln!("Failed to get media type from pad {}", src_pad.get_name());
-                        return callbacks.error(BackendError::Caps("Failed to get media type from pad"));
+                        return callbacks
+                            .error(BackendError::Caps("Failed to get media type from pad"));
                     }
                     Some(media_type) => media_type,
                 }
@@ -118,11 +119,14 @@ impl AudioDecoder for GStreamerAudioDecoder {
             callbacks.ready(channels);
 
             let insert_deinterleave = || -> Result<(), BackendError> {
-                let convert = gst::ElementFactory::make("audioconvert", None).ok_or(BackendError::ElementCreationFailed("audioconvert"))?;
-                let resample = gst::ElementFactory::make("audioresample", None).ok_or(BackendError::ElementCreationFailed("audioresample"))?;
-                let filter = gst::ElementFactory::make("capsfilter", None).ok_or(BackendError::ElementCreationFailed("capsfilter"))?;
-                let deinterleave =
-                    gst::ElementFactory::make("deinterleave", Some("deinterleave")).ok_or(BackendError::ElementCreationFailed("deinterleave"))?;
+                let convert = gst::ElementFactory::make("audioconvert", None)
+                    .ok_or(BackendError::ElementCreationFailed("audioconvert"))?;
+                let resample = gst::ElementFactory::make("audioresample", None)
+                    .ok_or(BackendError::ElementCreationFailed("audioresample"))?;
+                let filter = gst::ElementFactory::make("capsfilter", None)
+                    .ok_or(BackendError::ElementCreationFailed("capsfilter"))?;
+                let deinterleave = gst::ElementFactory::make("deinterleave", Some("deinterleave"))
+                    .ok_or(BackendError::ElementCreationFailed("deinterleave"))?;
 
                 deinterleave
                     .set_property("keep-positions", &true.to_value())
@@ -142,8 +146,10 @@ impl AudioDecoder for GStreamerAudioDecoder {
                         None => return callbacks.error(BackendError::PipelineFailed("upgrade")),
                     };
                     let insert_sink = || -> Result<(), BackendError> {
-                        let queue = gst::ElementFactory::make("queue", None).ok_or(BackendError::ElementCreationFailed("queue"))?;
-                        let sink = gst::ElementFactory::make("appsink", None).ok_or(BackendError::ElementCreationFailed("appsink"))?;
+                        let queue = gst::ElementFactory::make("queue", None)
+                            .ok_or(BackendError::ElementCreationFailed("queue"))?;
+                        let sink = gst::ElementFactory::make("appsink", None)
+                            .ok_or(BackendError::ElementCreationFailed("appsink"))?;
                         let appsink = sink.clone().dynamic_cast::<AppSink>().unwrap();
                         sink.set_property("sync", &false.to_value())
                             .map_err(|e| BackendError::SetPropertyFailed(e.0))?;
@@ -173,7 +179,9 @@ impl AudioDecoder for GStreamerAudioDecoder {
                                     let caps = if let Some(caps) = sample.get_caps() {
                                         caps
                                     } else {
-                                        callbacks_.error(BackendError::Caps("Could not get caps from sample"));
+                                        callbacks_.error(BackendError::Caps(
+                                            "Could not get caps from sample",
+                                        ));
                                         let _ = pipeline_.set_state(gst::State::Null);
                                         return gst::FlowReturn::Error;
                                     };
@@ -222,14 +230,20 @@ impl AudioDecoder for GStreamerAudioDecoder {
                         );
 
                         let elements = &[&queue, &sink];
-                        pipeline.add_many(elements).map_err(|e| BackendError::PipelineFailed(e.0))?;
-                        gst::Element::link_many(elements).map_err(|e| BackendError::PipelineFailed(e.0))?;
+                        pipeline
+                            .add_many(elements)
+                            .map_err(|e| BackendError::PipelineFailed(e.0))?;
+                        gst::Element::link_many(elements)
+                            .map_err(|e| BackendError::PipelineFailed(e.0))?;
 
                         for e in elements {
-                            e.sync_state_with_parent().map_err(|e| BackendError::PipelineFailed(e.0))?;
+                            e.sync_state_with_parent()
+                                .map_err(|e| BackendError::PipelineFailed(e.0))?;
                         }
 
-                        let sink_pad = queue.get_static_pad("sink").ok_or(BackendError::GetStaticPadFailed("sink"))?;
+                        let sink_pad = queue
+                            .get_static_pad("sink")
+                            .ok_or(BackendError::GetStaticPadFailed("sink"))?;
                         src_pad
                             .link(&sink_pad)
                             .into_result()
@@ -246,21 +260,27 @@ impl AudioDecoder for GStreamerAudioDecoder {
                     gst_audio::AUDIO_FORMAT_F32,
                     options.sample_rate as u32,
                     channels,
-                ).build().ok_or(BackendError::AudioInfoFailed)?;
+                ).build()
+                    .ok_or(BackendError::AudioInfoFailed)?;
                 let caps = audio_info.to_caps().ok_or(BackendError::AudioInfoFailed)?;
                 filter
                     .set_property("caps", &caps.to_value())
                     .map_err(|_| BackendError::SetPropertyFailed("caps"))?;
 
                 let elements = &[&convert, &resample, &filter, &deinterleave];
-                pipeline.add_many(elements).map_err(|e| BackendError::PipelineFailed(e.0))?;
+                pipeline
+                    .add_many(elements)
+                    .map_err(|e| BackendError::PipelineFailed(e.0))?;
                 gst::Element::link_many(elements).map_err(|e| BackendError::PipelineFailed(e.0))?;
 
                 for e in elements {
-                    e.sync_state_with_parent().map_err(|e| BackendError::PipelineFailed(e.0))?;
+                    e.sync_state_with_parent()
+                        .map_err(|e| BackendError::PipelineFailed(e.0))?;
                 }
 
-                let sink_pad = convert.get_static_pad("sink").ok_or(BackendError::GetStaticPadFailed("sink"))?;
+                let sink_pad = convert
+                    .get_static_pad("sink")
+                    .ok_or(BackendError::GetStaticPadFailed("sink"))?;
                 src_pad
                     .link(&sink_pad)
                     .into_result()
@@ -276,7 +296,11 @@ impl AudioDecoder for GStreamerAudioDecoder {
         appsrc.set_property_format(gst::Format::Bytes);
         appsrc.set_property_block(true);
 
-        if pipeline.set_state(gst::State::Playing).into_result().is_err() {
+        if pipeline
+            .set_state(gst::State::Playing)
+            .into_result()
+            .is_err()
+        {
             callbacks.error(BackendError::StateChangeFailed);
             return;
         }

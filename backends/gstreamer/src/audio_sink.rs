@@ -1,3 +1,4 @@
+use super::BackendError;
 use byte_slice_cast::*;
 use gst;
 use gst::prelude::*;
@@ -10,7 +11,6 @@ use std::cell::{Cell, RefCell};
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::thread::Builder;
-use super::BackendError;
 
 const DEFAULT_SAMPLE_RATE: f32 = 44100.;
 
@@ -30,7 +30,7 @@ impl GStreamerAudioSink {
         gst::init().map_err(BackendError::Gstreamer)?;
 
         let appsrc = gst::ElementFactory::make("appsrc", None)
-                .ok_or(BackendError::ElementCreationFailed("appsrc"))?;
+            .ok_or(BackendError::ElementCreationFailed("appsrc"))?;
         let appsrc = appsrc.downcast::<AppSrc>().unwrap();
         Ok(Self {
             pipeline: gst::Pipeline::new(None),

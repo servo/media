@@ -69,9 +69,7 @@ pub(crate) struct ChannelSplitterNode {
 
 impl ChannelSplitterNode {
     pub fn new(channel_info: ChannelInfo) -> Self {
-        ChannelSplitterNode {
-            channel_info,
-        }
+        ChannelSplitterNode { channel_info }
     }
 }
 

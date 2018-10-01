@@ -1,6 +1,6 @@
-use block::FRAMES_PER_BLOCK_USIZE;
 use block::Block;
 use block::Tick;
+use block::FRAMES_PER_BLOCK_USIZE;
 use node::BlockInfo;
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
@@ -18,7 +18,9 @@ pub enum ParamType {
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub enum ParamDir {
-    X, Y, Z
+    X,
+    Y,
+    Z,
 }
 
 /// An AudioParam.
@@ -74,15 +76,15 @@ impl Param {
             if let Some(first) = self.blocks.pop() {
                 // first sum them together
                 // https://webaudio.github.io/web-audio-api/#dom-audionode-connect-destinationparam-output
-                let block = self.blocks.drain(..)
-                                .fold(first, |acc, block| acc.sum(block));
+                let block = self
+                    .blocks
+                    .drain(..)
+                    .fold(first, |acc, block| acc.sum(block));
                 self.blocks.push(block);
-
             }
         } else if self.kind == ParamRate::KRate {
             return false;
         }
-
 
         // Even if the timeline does nothing, it's still possible
         // that there were connected inputs, so we should not
@@ -232,7 +234,7 @@ impl Param {
                     block[tick] = self.val;
                 }
             }
-            // if the value is zero, our buffer is already zeroed
+        // if the value is zero, our buffer is already zeroed
         } else {
             for tick in 0..(FRAMES_PER_BLOCK_USIZE) {
                 self.update(info, Tick(tick as u64));

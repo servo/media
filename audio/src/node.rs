@@ -1,6 +1,6 @@
 use biquad_filter_node::{BiquadFilterNodeMessage, BiquadFilterNodeOptions};
-use boxfnonce::SendBoxFnOnce;
 use block::{Block, Chunk, Tick};
+use boxfnonce::SendBoxFnOnce;
 use buffer_source_node::{AudioBufferSourceNodeMessage, AudioBufferSourceNodeOptions};
 use channel_node::ChannelNodeOptions;
 use gain_node::GainNodeOptions;

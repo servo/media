@@ -2,8 +2,8 @@ use block::{Block, Chunk, FRAMES_PER_BLOCK_USIZE};
 use node::AudioNodeEngine;
 use node::BlockInfo;
 use node::{AudioNodeType, ChannelInfo, ChannelInterpretation};
-use std::f32::consts::PI;
 use std::cmp;
+use std::f32::consts::PI;
 
 #[derive(AudioNodeCommon)]
 pub(crate) struct AnalyserNode {
@@ -13,9 +13,11 @@ pub(crate) struct AnalyserNode {
 
 impl AnalyserNode {
     pub fn new(callback: Box<FnMut(Block) + Send>, channel_info: ChannelInfo) -> Self {
-        Self { callback, channel_info }
+        Self {
+            callback,
+            channel_info,
+        }
     }
-
 }
 
 impl AudioNodeEngine for AnalyserNode {
@@ -50,7 +52,7 @@ pub struct AnalysisEngine {
     min_decibels: f64,
     max_decibels: f64,
     /// This is a ring buffer containing the last MAX_FFT_SIZE
-    /// sample-frames 
+    /// sample-frames
     data: Box<[f32; MAX_FFT_SIZE]>,
     /// The index of the current block
     current_block: usize,
@@ -68,8 +70,12 @@ pub struct AnalysisEngine {
 }
 
 impl AnalysisEngine {
-    pub fn new(fft_size: usize, smoothing_constant: f64,
-               min_decibels: f64, max_decibels: f64) -> Self {
+    pub fn new(
+        fft_size: usize,
+        smoothing_constant: f64,
+        min_decibels: f64,
+        max_decibels: f64,
+    ) -> Self {
         debug_assert!(fft_size >= 32 && fft_size <= 32768);
         // must be a power of two
         debug_assert!(fft_size & fft_size - 1 == 0);
@@ -184,8 +190,8 @@ impl AnalysisEngine {
         self.blackman_windows.resize(self.fft_size, 0.);
         let coeff = PI * 2. / self.fft_size as f32;
         for n in 0..self.fft_size {
-            self.blackman_windows[n] = ALPHA_0 - ALPHA_1 * (coeff * n as f32).cos() 
-                                               + ALPHA_2 * (2. * coeff * n as f32).cos();
+            self.blackman_windows[n] = ALPHA_0 - ALPHA_1 * (coeff * n as f32).cos()
+                + ALPHA_2 * (2. * coeff * n as f32).cos();
         }
     }
 
@@ -212,7 +218,7 @@ impl AnalysisEngine {
         for k in 0..(self.fft_size / 2) {
             let mut sum_real = 0.;
             let mut sum_imaginary = 0.;
-            let factor = - 2. * PI * k as f32 / self.fft_size as f32;
+            let factor = -2. * PI * k as f32 / self.fft_size as f32;
             for n in 0..(self.fft_size) {
                 sum_real += self.windowed[n] * (factor * n as f32).cos();
                 sum_imaginary += self.windowed[n] * (factor * n as f32).sin();
@@ -221,7 +227,8 @@ impl AnalysisEngine {
             let sum_imaginary = sum_imaginary / self.fft_size as f32;
             let magnitude = (sum_real * sum_real + sum_imaginary * sum_imaginary).sqrt();
             self.smoothed_fft_data[k] = (self.smoothing_constant * self.smoothed_fft_data[k] as f64
-                                        + (1. - self.smoothing_constant) * magnitude as f64) as f32;
+                + (1. - self.smoothing_constant) * magnitude as f64)
+                as f32;
             self.computed_fft_data[k] = 20. * self.smoothed_fft_data[k].log(10.);
         }
     }
