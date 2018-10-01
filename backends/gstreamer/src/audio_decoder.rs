@@ -2,13 +2,14 @@ use super::gst_app::{AppSink, AppSinkCallbacks, AppSrc};
 use super::gst_audio;
 use super::BackendError;
 use byte_slice_cast::*;
-use gst;
 use gst::buffer::{MappedBuffer, Readable};
 use gst::prelude::*;
+use gst::{self, MessageView};
 use servo_media_audio::decoder::{AudioDecoder, AudioDecoderCallbacks, AudioDecoderOptions};
 use std::io::Cursor;
 use std::io::Read;
 use std::sync::Arc;
+use std::thread::Builder;
 
 pub struct GStreamerAudioDecoderProgress(MappedBuffer<Readable>);
 
@@ -295,6 +296,36 @@ impl AudioDecoder for GStreamerAudioDecoder {
 
         appsrc.set_property_format(gst::Format::Bytes);
         appsrc.set_property_block(true);
+
+        let pipeline_ = pipeline.downgrade();
+        let callbacks_ = callbacks.clone();
+
+        Builder::new()
+            .name("GStreamer pipeline bus".to_owned())
+            .spawn(move || {
+                let callbacks = &callbacks_;
+                let pipeline = match pipeline_.upgrade() {
+                    Some(pipeline) => pipeline,
+                    None => return callbacks.error(BackendError::PipelineFailed("upgrade")),
+                };
+                let bus = pipeline
+                    .get_bus()
+                    .expect("Pipeline without bus. Shouldn't happen!");
+
+                while let Some(msg) = bus.timed_pop(gst::CLOCK_TIME_NONE) {
+                    match msg.view() {
+                        MessageView::Eos(..) => break,
+                        MessageView::Error(e) => {
+                            callbacks.error(BackendError::PipelineBusError(
+                                e.get_debug().unwrap_or("Unknown".to_owned()),
+                            ));
+                            break;
+                        }
+                        _ => (),
+                    }
+                }
+            })
+            .unwrap();
 
         if pipeline
             .set_state(gst::State::Playing)

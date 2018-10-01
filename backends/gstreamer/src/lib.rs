@@ -30,6 +30,7 @@ pub enum BackendError {
     InvalidMediaFormat,
     InvalidSample,
     PadLinkFailed,
+    PipelineBusError(String),
     PipelineFailed(&'static str),
     SetPropertyFailed(&'static str),
     StateChangeFailed,
