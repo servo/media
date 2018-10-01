@@ -5,7 +5,7 @@ use node::BlockInfo;
 use node::{AudioNodeMessage, AudioNodeType, ChannelInfo};
 use param::{Param, ParamType};
 use smallvec::SmallVec;
-use std::f32::consts::{PI, SQRT_2};
+use std::f32::consts::{SQRT_2, PI};
 
 #[derive(Copy, Clone, Debug)]
 pub struct BiquadFilterNodeOptions {
@@ -25,7 +25,7 @@ pub enum FilterType {
     HighShelf,
     Peaking,
     Notch,
-    AllPass
+    AllPass,
 }
 
 impl Default for BiquadFilterNodeOptions {
@@ -42,7 +42,7 @@ impl Default for BiquadFilterNodeOptions {
 
 #[derive(Copy, Clone, Debug)]
 pub enum BiquadFilterNodeMessage {
-    SetFilterType(FilterType)
+    SetFilterType(FilterType),
 }
 
 /// The last two input and output values, per-channel
@@ -105,9 +105,11 @@ pub(crate) struct BiquadFilterNode {
 }
 
 impl BiquadFilterNode {
-    pub fn new(options: BiquadFilterNodeOptions,
-               channel_info: ChannelInfo,
-               sample_rate: f32) -> Self {
+    pub fn new(
+        options: BiquadFilterNodeOptions,
+        channel_info: ChannelInfo,
+        sample_rate: f32,
+    ) -> Self {
         let mut ret = Self {
             channel_info,
             filter: options.filter,
@@ -115,7 +117,11 @@ impl BiquadFilterNode {
             gain: Param::new(options.gain),
             q: Param::new(options.q),
             detune: Param::new(options.detune),
-            b0: 0., b1: 0., b2: 0., a1: 0., a2: 0.,
+            b0: 0.,
+            b1: 0.,
+            b2: 0.,
+            a1: 0.,
+            a2: 0.,
             state: SmallVec::new(),
         };
         ret.update_coefficients(sample_rate);
@@ -174,8 +180,8 @@ impl BiquadFilterNode {
             }
             FilterType::HighPass => {
                 self.b0 = (1. + cos_omega) / 2.;
-                self.b1 = - (1. + cos_omega);
-                self.b2 = - self.b1 / 2.;
+                self.b1 = -(1. + cos_omega);
+                self.b2 = -self.b1 / 2.;
                 a0 = 1. + alpha_q_db;
                 self.a1 = -2. * cos_omega;
                 self.a2 = 1. - alpha_q_db;
@@ -185,7 +191,7 @@ impl BiquadFilterNode {
                 self.b1 = 0.;
                 self.b2 = -alpha_q;
                 a0 = 1. + alpha_q;
-                self.a1 = - 2. * cos_omega;
+                self.a1 = -2. * cos_omega;
                 self.a2 = 1. - alpha_q;
             }
             FilterType::Notch => {
@@ -214,21 +220,21 @@ impl BiquadFilterNode {
             }
             FilterType::LowShelf => {
                 let alpha_rt_a = 2. * alpha_s * a.sqrt();
-                self.b0 =       a * ((a + 1.) - (a - 1.) * cos_omega + alpha_rt_a);
-                self.b1 = 2. *  a * ((a - 1.) - (a + 1.) * cos_omega);
-                self.b2 =       a * ((a + 1.) - (a - 1.) * cos_omega - alpha_rt_a);
-                a0      =            (a + 1.) + (a - 1.) * cos_omega + alpha_rt_a;
-                self.a1 = -2. *     ((a - 1.) + (a + 1.) * cos_omega);
-                self.a2 =            (a + 1.) + (a - 1.) * cos_omega - alpha_rt_a;
+                self.b0 = a * ((a + 1.) - (a - 1.) * cos_omega + alpha_rt_a);
+                self.b1 = 2. * a * ((a - 1.) - (a + 1.) * cos_omega);
+                self.b2 = a * ((a + 1.) - (a - 1.) * cos_omega - alpha_rt_a);
+                a0 = (a + 1.) + (a - 1.) * cos_omega + alpha_rt_a;
+                self.a1 = -2. * ((a - 1.) + (a + 1.) * cos_omega);
+                self.a2 = (a + 1.) + (a - 1.) * cos_omega - alpha_rt_a;
             }
             FilterType::HighShelf => {
                 let alpha_rt_a = 2. * alpha_s * a.sqrt();
-                self.b0 =       a * ((a + 1.) + (a - 1.) * cos_omega + alpha_rt_a);
+                self.b0 = a * ((a + 1.) + (a - 1.) * cos_omega + alpha_rt_a);
                 self.b1 = -2. * a * ((a - 1.) + (a + 1.) * cos_omega);
-                self.b2 =       a * ((a + 1.) + (a - 1.) * cos_omega - alpha_rt_a);
-                a0      =            (a + 1.) - (a - 1.) * cos_omega + alpha_rt_a;
-                self.a1 = 2. *      ((a - 1.) - (a + 1.) * cos_omega);
-                self.a2 =            (a + 1.) - (a - 1.) * cos_omega - alpha_rt_a;
+                self.b2 = a * ((a + 1.) + (a - 1.) * cos_omega - alpha_rt_a);
+                a0 = (a + 1.) - (a - 1.) * cos_omega + alpha_rt_a;
+                self.a1 = 2. * ((a - 1.) - (a + 1.) * cos_omega);
+                self.a2 = (a + 1.) - (a - 1.) * cos_omega - alpha_rt_a;
             }
         }
         self.b0 = self.b0 / a0;
@@ -246,7 +252,8 @@ impl AudioNodeEngine for BiquadFilterNode {
 
     fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
         debug_assert!(inputs.len() == 1);
-        self.state.resize(inputs.blocks[0].chan_count() as usize, Default::default());
+        self.state
+            .resize(inputs.blocks[0].chan_count() as usize, Default::default());
         self.update_parameters(info, info.frame);
 
         // XXXManishearth this node has tail time, so even if the block is silence
@@ -256,7 +263,6 @@ impl AudioNodeEngine for BiquadFilterNode {
         // see https://dxr.mozilla.org/mozilla-central/rev/87a95e1b7ec691bef7b938e722fe1b01cce68664/dom/media/webaudio/blink/Biquad.cpp#81-91
 
         let repeat_or_silence = inputs.blocks[0].is_silence() || inputs.blocks[0].is_repeat();
-
 
         if repeat_or_silence && !self.state.iter().all(|s| *s == self.state[0]) {
             // In case our input is repeat/silence but our states are not identical, we must
@@ -277,11 +283,11 @@ impl AudioNodeEngine for BiquadFilterNode {
                     let state = &mut self.state[chan as usize];
                     let x0 = *sample;
                     *sample = self.b0 * x0 + self.b1 * state.x1 + self.b2 * state.x2
-                                           - self.a1 * state.y1 - self.a2 * state.y2;
+                        - self.a1 * state.y1
+                        - self.a2 * state.y2;
                     state.update(x0, *sample);
                 });
             }
-
         }
 
         if inputs.blocks[0].is_repeat() {
@@ -304,15 +310,13 @@ impl AudioNodeEngine for BiquadFilterNode {
 
     fn message_specific(&mut self, message: AudioNodeMessage, sample_rate: f32) {
         match message {
-            AudioNodeMessage::BiquadFilterNode(m) => {
-                match m {
-                    BiquadFilterNodeMessage::SetFilterType(f) => {
-                        self.filter = f;
-                        self.update_coefficients(sample_rate);
-                    }
+            AudioNodeMessage::BiquadFilterNode(m) => match m {
+                BiquadFilterNodeMessage::SetFilterType(f) => {
+                    self.filter = f;
+                    self.update_coefficients(sample_rate);
                 }
-            }
-            _ => ()
+            },
+            _ => (),
         }
     }
 }

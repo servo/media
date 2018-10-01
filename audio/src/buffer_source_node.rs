@@ -141,7 +141,7 @@ impl AudioNodeEngine for AudioBufferSourceNode {
                 } else {
                     len - self.playback_offset
                 }
-            },
+            }
         };
 
         let next_offset = self.playback_offset + samples_to_copy;

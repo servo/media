@@ -79,17 +79,16 @@ impl AudioSink for OfflineAudioSink {
         if let Some(ref mut buffer) = *buffer {
             for channel_number in 0..self.channel_count {
                 let channel_offset = offset + (channel_number * self.length);
-                let mut channel_data =
-                    &mut buffer[channel_offset..channel_offset + copy_len];
-                channel_data.copy_from_slice(&chunk.blocks[0].data_chan(channel_number as u8)[0..copy_len]);
+                let mut channel_data = &mut buffer[channel_offset..channel_offset + copy_len];
+                channel_data
+                    .copy_from_slice(&chunk.blocks[0].data_chan(channel_number as u8)[0..copy_len]);
             }
         };
         self.rendered_blocks.set(self.rendered_blocks.get() + 1);
 
         if last {
             if let Some(callback) = self.eos_callback.borrow_mut().take() {
-                let processed_audio =
-                    ProcessedAudio(buffer.take().unwrap().into_boxed_slice());
+                let processed_audio = ProcessedAudio(buffer.take().unwrap().into_boxed_slice());
                 callback(Box::new(processed_audio));
             }
         }

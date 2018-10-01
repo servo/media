@@ -10,13 +10,31 @@ extern crate ipc_channel;
 extern crate servo_media_audio;
 extern crate servo_media_player;
 
-use servo_media_audio::AudioBackend;
 use servo_media_audio::sink::AudioSink;
+use servo_media_audio::AudioBackend;
 use servo_media_player::PlayerBackend;
 
 pub mod audio_decoder;
 pub mod audio_sink;
 pub mod player;
+
+#[derive(Debug)]
+pub enum BackendError {
+    AudioInfoFailed,
+    BufferReadError,
+    Caps(&'static str),
+    ElementCreationFailed(&'static str),
+    Flow(gst::FlowError),
+    GetStaticPadFailed(&'static str),
+    Gstreamer(gst::Error),
+    InvalidMediaFormat,
+    InvalidSample,
+    PadLinkFailed,
+    PipelineBusError(String),
+    PipelineFailed(&'static str),
+    SetPropertyFailed(&'static str),
+    StateChangeFailed,
+}
 
 pub struct GStreamerBackend;
 

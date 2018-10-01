@@ -1,3 +1,4 @@
+use super::BackendError;
 use byte_slice_cast::*;
 use gst;
 use gst::prelude::*;
@@ -11,8 +12,6 @@ use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::thread::Builder;
 
-// XXX Define own error type.
-
 const DEFAULT_SAMPLE_RATE: f32 = 44100.;
 
 pub struct GStreamerAudioSink {
@@ -23,17 +22,6 @@ pub struct GStreamerAudioSink {
     sample_offset: Cell<u64>,
 }
 
-#[derive(Debug)]
-pub enum BackendError {
-    Gstreamer(gst::Error),
-    Flow(gst::FlowError),
-    ElementCreationFailed(&'static str),
-    AudioInfoFailed,
-    PipelineFailed(&'static str),
-    StateChangeFailed,
-}
-
-
 impl GStreamerAudioSink {
     pub fn new() -> Result<Self, BackendError> {
         if let Some(category) = gst::DebugCategory::get("openslessink") {
@@ -42,7 +30,7 @@ impl GStreamerAudioSink {
         gst::init().map_err(BackendError::Gstreamer)?;
 
         let appsrc = gst::ElementFactory::make("appsrc", None)
-                .ok_or(BackendError::ElementCreationFailed("appsrc"))?;
+            .ok_or(BackendError::ElementCreationFailed("appsrc"))?;
         let appsrc = appsrc.downcast::<AppSrc>().unwrap();
         Ok(Self {
             pipeline: gst::Pipeline::new(None),

@@ -1,5 +1,5 @@
-use euclid::Vector3D;
 use byte_slice_cast::*;
+use euclid::Vector3D;
 use graph::{PortIndex, PortKind};
 use node::ChannelInterpretation;
 use smallvec::SmallVec;
@@ -87,7 +87,7 @@ impl Block {
         Block {
             channels,
             repeat: false,
-            buffer: vec![0.; FRAMES_PER_BLOCK_USIZE * channels as usize]
+            buffer: vec![0.; FRAMES_PER_BLOCK_USIZE * channels as usize],
         }
     }
 
@@ -539,9 +539,11 @@ impl<'a> FrameRef<'a> {
             f(&mut self.block.buffer[self.frame.0 as usize], 0)
         } else {
             for chan in 0..self.block.channels {
-                f(&mut self.block.buffer
-                    [chan as usize * FRAMES_PER_BLOCK_USIZE + self.frame.0 as usize],
-                  chan)
+                f(
+                    &mut self.block.buffer
+                        [chan as usize * FRAMES_PER_BLOCK_USIZE + self.frame.0 as usize],
+                    chan,
+                )
             }
         }
     }

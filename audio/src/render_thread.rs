@@ -6,8 +6,8 @@ use channel_node::{ChannelMergerNode, ChannelSplitterNode};
 use context::{AudioContextOptions, ProcessingState, StateChangeResult};
 use gain_node::GainNode;
 use graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
-use node::{BlockInfo, ChannelInfo};
 use node::{AudioNodeEngine, AudioNodeInit, AudioNodeMessage};
+use node::{BlockInfo, ChannelInfo};
 use offline_sink::OfflineAudioSink;
 use oscillator_node::OscillatorNode;
 use panner_node::PannerNode;
@@ -42,7 +42,11 @@ pub enum Sink<S: AudioSink> {
 impl<S: AudioSink> AudioSink for Sink<S> {
     type Error = S::Error;
 
-    fn init(&self, sample_rate: f32, sender: Sender<AudioRenderThreadMsg>) -> Result<(), Self::Error> {
+    fn init(
+        &self,
+        sample_rate: f32,
+        sender: Sender<AudioRenderThreadMsg>,
+    ) -> Result<(), Self::Error> {
         match *self {
             Sink::RealTime(ref sink) => sink.init(sample_rate, sender),
             Sink::Offline(ref sink) => Ok(sink.init(sample_rate, sender).unwrap()),
@@ -85,7 +89,6 @@ impl<S: AudioSink> AudioSink for Sink<S> {
     }
 }
 
-
 pub struct AudioRenderThread<S: AudioSink> {
     pub graph: AudioGraph,
     pub sink: Sink<S>,
@@ -105,26 +108,26 @@ impl<S: AudioSink + 'static> AudioRenderThread<S> {
         sample_rate: f32,
         graph: AudioGraph,
         options: AudioContextOptions,
-    ) -> Result<Self, (AudioGraph, S::Error)> 
-        where F: FnOnce() -> Result<S, S::Error> 
+    ) -> Result<Self, (AudioGraph, S::Error)>
+    where
+        F: FnOnce() -> Result<S, S::Error>,
     {
         let sink = match options {
             AudioContextOptions::RealTimeAudioContext(_) => {
                 let sink = match make_sink() {
                     Ok(s) => s,
-                    Err(e) => return Err((graph, e))
+                    Err(e) => return Err((graph, e)),
                 };
 
                 Sink::RealTime(sink)
-            },
+            }
             AudioContextOptions::OfflineAudioContext(options) => Sink::Offline(
                 OfflineAudioSink::new(options.channels as usize, options.length),
             ),
         };
 
-
         if let Err(e) = sink.init(sample_rate, sender) {
-            return Err((graph, e))
+            return Err((graph, e));
         }
 
         Ok(Self {
@@ -147,21 +150,27 @@ impl<S: AudioSink + 'static> AudioRenderThread<S> {
         sample_rate: f32,
         graph: AudioGraph,
         options: AudioContextOptions,
-    ) 
-        where F: FnOnce() -> Result<S, S::Error> 
+    ) where
+        F: FnOnce() -> Result<S, S::Error>,
     {
         let thread = Self::prepare_thread(make_sink, sender.clone(), sample_rate, graph, options);
         match thread {
             Ok(mut thread) => thread.event_loop(event_queue),
             Err((graph, e)) => {
-                error!("Could not start audio render thread due to error `{:?}`, \
-                        falling back to dummy backend", e);
-                let mut thread = AudioRenderThread::<DummyAudioSink>
-                                                  ::prepare_thread(|| Ok(DummyAudioSink),
-                                                                   sender, sample_rate, graph, options)
-                                .map_err(|_| ()).unwrap();
+                error!(
+                    "Could not start audio render thread due to error `{:?}`, \
+                     falling back to dummy backend",
+                    e
+                );
+                let mut thread = AudioRenderThread::<DummyAudioSink>::prepare_thread(
+                    || Ok(DummyAudioSink),
+                    sender,
+                    sample_rate,
+                    graph,
+                    options,
+                ).map_err(|_| ())
+                    .unwrap();
                 thread.event_loop(event_queue)
-
             }
         }
     }
@@ -184,12 +193,12 @@ impl<S: AudioSink + 'static> AudioRenderThread<S> {
             AudioNodeInit::PannerNode(options) => {
                 needs_listener = true;
                 Box::new(PannerNode::new(options, ch))
-            },
-            AudioNodeInit::OscillatorNode(options) => Box::new(OscillatorNode::new(options, ch)),
-            AudioNodeInit::ChannelMergerNode(options) => Box::new(ChannelMergerNode::new(options, ch)),
-            AudioNodeInit::ChannelSplitterNode => {
-                Box::new(ChannelSplitterNode::new(ch))
             }
+            AudioNodeInit::OscillatorNode(options) => Box::new(OscillatorNode::new(options, ch)),
+            AudioNodeInit::ChannelMergerNode(options) => {
+                Box::new(ChannelMergerNode::new(options, ch))
+            }
+            AudioNodeInit::ChannelSplitterNode => Box::new(ChannelSplitterNode::new(ch)),
             _ => unimplemented!(),
         };
         let id = self.graph.add_node(node);

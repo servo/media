@@ -1,8 +1,8 @@
-use param::ParamType;
 use block::{Block, Chunk};
 use destination_node::DestinationNode;
 use listener::AudioListenerNode;
 use node::{AudioNodeEngine, BlockInfo, ChannelCountMode, ChannelInterpretation};
+use param::ParamType;
 use petgraph::graph::DefaultIx;
 use petgraph::stable_graph::NodeIndex;
 use petgraph::stable_graph::StableGraph;
@@ -47,7 +47,7 @@ pub enum PortIndex<Kind: PortKind> {
     Param(Kind::ParamId),
     /// special variant only used for the implicit connection
     /// from listeners to params
-    Listener(Kind::Listener)
+    Listener(Kind::Listener),
 }
 
 impl<Kind: PortKind> PortId<Kind> {
@@ -57,10 +57,8 @@ impl<Kind: PortKind> PortId<Kind> {
 }
 
 pub trait PortKind {
-    type ParamId: Copy + Eq + PartialEq + Ord
-                       + PartialOrd + hash::Hash + fmt::Debug;
-    type Listener: Copy + Eq + PartialEq + Ord
-                       + PartialOrd + hash::Hash + fmt::Debug;
+    type ParamId: Copy + Eq + PartialEq + Ord + PartialOrd + hash::Hash + fmt::Debug;
+    type Listener: Copy + Eq + PartialEq + Ord + PartialOrd + hash::Hash + fmt::Debug;
 }
 
 /// An identifier for a port.
@@ -92,7 +90,6 @@ impl PortKind for OutputPort {
     type ParamId = Void;
     type Listener = Void;
 }
-
 
 pub struct AudioGraph {
     graph: StableGraph<Node, Edge>,
@@ -162,9 +159,14 @@ struct Connection {
 impl AudioGraph {
     pub fn new(channel_count: u8) -> Self {
         let mut graph = StableGraph::new();
-        let dest_id = NodeId(graph.add_node(Node::new(Box::new(DestinationNode::new(channel_count)))));
+        let dest_id =
+            NodeId(graph.add_node(Node::new(Box::new(DestinationNode::new(channel_count)))));
         let listener_id = NodeId(graph.add_node(Node::new(Box::new(AudioListenerNode::new()))));
-        AudioGraph { graph, dest_id, listener_id }
+        AudioGraph {
+            graph,
+            dest_id,
+            listener_id,
+        }
     }
 
     /// Create a node, obtain its id
@@ -269,11 +271,7 @@ impl AudioGraph {
     /// Only used in WebAudio for disconnecting audio params
     ///
     /// https://webaudio.github.io/web-audio-api/#dom-audionode-disconnect-destinationparam
-    pub fn disconnect_to(
-        &mut self,
-        node: NodeId,
-        inp: PortId<InputPort>,
-    ) {
+    pub fn disconnect_to(&mut self, node: NodeId, inp: PortId<InputPort>) {
         let edge = self
             .graph
             .edges(node.0)
@@ -335,7 +333,6 @@ impl AudioGraph {
         self.listener_id
     }
 
-
     /// For a given block, process all the data on this graph
     pub fn process(&mut self, info: &BlockInfo) -> Chunk {
         // DFS post order: Children are processed before their parent,
@@ -388,9 +385,7 @@ impl AudioGraph {
                             block.mix(1, ChannelInterpretation::Speakers);
                             curr.get_param(param).add_block(block)
                         }
-                        PortIndex::Listener(_) => {
-                            curr.set_listenerdata(block)
-                        }
+                        PortIndex::Listener(_) => curr.set_listenerdata(block),
                     }
                 }
             }

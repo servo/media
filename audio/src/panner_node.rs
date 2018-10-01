@@ -1,5 +1,5 @@
+use block::{Block, Chunk, Tick, FRAMES_PER_BLOCK};
 use euclid::Vector3D;
-use block::{Block, Chunk, FRAMES_PER_BLOCK, Tick};
 use node::{AudioNodeEngine, AudioNodeMessage, BlockInfo};
 use node::{AudioNodeType, ChannelInfo};
 use param::{Param, ParamDir, ParamType};
@@ -18,14 +18,14 @@ fn normalize_zero(v: Vector3D<f32>) -> Vector3D<f32> {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum PanningModel {
     EqualPower,
-    HRTF
+    HRTF,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum DistanceModel {
     Linear,
     Inverse,
-    Exponential
+    Exponential,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -136,19 +136,20 @@ impl PannerNode {
     ///
     /// https://webaudio.github.io/web-audio-api/#azimuth-elevation
     /// https://webaudio.github.io/web-audio-api/#Spatialization-distance-effects
-    fn azimuth_elevation_distance(&self,
-            listener: (Vector3D<f32>, Vector3D<f32>, Vector3D<f32>))
-            -> (f32, f32, f64) {
+    fn azimuth_elevation_distance(
+        &self,
+        listener: (Vector3D<f32>, Vector3D<f32>, Vector3D<f32>),
+    ) -> (f32, f32, f64) {
         let (listener_position, listener_forward, listener_up) = listener;
         let source_position = Vector3D::new(
             self.position_x.value(),
             self.position_y.value(),
-            self.position_z.value()
+            self.position_z.value(),
         );
 
         // degenerate case
         if source_position == listener_position {
-            return (0., 0., 0.)
+            return (0., 0., 0.);
         }
 
         let diff = source_position - listener_position;
@@ -186,24 +187,23 @@ impl PannerNode {
     }
 
     /// https://webaudio.github.io/web-audio-api/#Spatialization-sound-cones
-    fn cone_gain(&self,
-            listener: (Vector3D<f32>, Vector3D<f32>, Vector3D<f32>))
-            -> f64 {
+    fn cone_gain(&self, listener: (Vector3D<f32>, Vector3D<f32>, Vector3D<f32>)) -> f64 {
         let (listener_position, _, _) = listener;
         let source_position = Vector3D::new(
             self.position_x.value(),
             self.position_y.value(),
-            self.position_z.value()
+            self.position_z.value(),
         );
         let source_orientation = Vector3D::new(
             self.orientation_x.value(),
             self.orientation_y.value(),
-            self.orientation_z.value()
+            self.orientation_z.value(),
         );
 
-        if source_orientation == Vector3D::zero() ||
-            (self.cone_inner_angle == 360. && self.cone_outer_angle == 360.) {
-            return 0.
+        if source_orientation == Vector3D::zero()
+            || (self.cone_inner_angle == 360. && self.cone_outer_angle == 360.)
+        {
+            return 0.;
         }
 
         let normalized_source_orientation = normalize_zero(source_orientation);
@@ -278,16 +278,16 @@ impl AudioNodeEngine for PannerNode {
         let listener_data = if let Some(listener_data) = self.listener_data.take() {
             listener_data
         } else {
-            return inputs
+            return inputs;
         };
 
         // We clamp this early
-        let rolloff_factor = if self.distance_model == DistanceModel::Linear &&
-                                self.rolloff_factor > 1. {
-            1.
-        } else {
-            self.rolloff_factor
-        };
+        let rolloff_factor =
+            if self.distance_model == DistanceModel::Linear && self.rolloff_factor > 1. {
+                1.
+            } else {
+                self.rolloff_factor
+            };
 
         {
             let block = &mut inputs.blocks[0];
@@ -342,7 +342,7 @@ impl AudioNodeEngine for PannerNode {
                     let mut gain_l = x.cos();
                     let mut gain_r = x.sin();
                     // 9. * PI / 2 is often slightly negative, clamp
-                    if gain_l <= 0. {;
+                    if gain_l <= 0. {
                         gain_l = 0.
                     }
                     if gain_r <= 0. {
@@ -401,8 +401,8 @@ impl AudioNodeEngine for PannerNode {
                 PannerNodeMessage::SetConeInner(val) => self.cone_inner_angle = val,
                 PannerNodeMessage::SetConeOuter(val) => self.cone_outer_angle = val,
                 PannerNodeMessage::SetConeGain(val) => self.cone_outer_gain = val,
-            }
-            _ => ()
+            },
+            _ => (),
         }
     }
 }
