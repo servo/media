@@ -66,3 +66,7 @@ path = "play_noise.rs"
 [[bin]]
 name = "player"
 path = "player/main.rs"
+
+[[bin]]
+name = "simple_player"
+path = "simple_player.rs"
