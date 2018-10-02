@@ -51,7 +51,7 @@ impl AudioBackend for GStreamerBackend {
 
 impl PlayerBackend for GStreamerBackend {
     type Player = player::GStreamerPlayer;
-    fn make_player() -> Result<Self::Player, ()> {
+    fn make_player() -> Self::Player {
         player::GStreamerPlayer::new()
     }
 }

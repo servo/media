@@ -31,8 +31,8 @@ impl AudioBackend for DummyBackend {
 
 impl PlayerBackend for DummyBackend {
     type Player = DummyPlayer;
-    fn make_player() -> Result<Self::Player, ()> {
-        Ok(DummyPlayer {})
+    fn make_player() -> Self::Player {
+        DummyPlayer {}
     }
 }
 
@@ -67,10 +67,7 @@ impl ServoMedia {
         AudioContext::new(options)
     }
 
-    pub fn create_player(&self) -> Result<Box<Player>, ()> {
-        match Backend::make_player() {
-            Ok(player) => return Ok(Box::new(player)),
-            Err(_) => return Err(()),
-        }
+    pub fn create_player(&self) -> Box<Player> {
+        Box::new(Backend::make_player())
     }
 }
