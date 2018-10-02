@@ -8,6 +8,7 @@ use ipc_channel::ipc::IpcSender;
 use servo_media_player::frame::{Frame, FrameRenderer};
 use servo_media_player::metadata::Metadata;
 use servo_media_player::{PlaybackState, Player, PlayerEvent};
+use std::cell::RefCell;
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::time;
@@ -137,11 +138,20 @@ impl PlayerInner {
 }
 
 pub struct GStreamerPlayer {
-    inner: Arc<Mutex<PlayerInner>>,
+    inner: RefCell<Option<Arc<Mutex<PlayerInner>>>>,
 }
 
 impl GStreamerPlayer {
-    pub fn new() -> Result<GStreamerPlayer, ()> {
+    pub fn new() -> GStreamerPlayer {
+        Self {
+            inner: RefCell::new(None),
+        }
+    }
+
+    fn setup(&self) -> Result<(), ()> {
+        if self.inner.borrow().is_some() {
+            return Ok(());
+        }
         let player = gst_player::Player::new(
             /* video renderer */ None, /* signal dispatcher */ None,
         );
@@ -170,45 +180,20 @@ impl GStreamerPlayer {
             ],
         ));
 
-        Ok(GStreamerPlayer {
-            inner: Arc::new(Mutex::new(PlayerInner {
-                player: player,
-                appsrc: None,
-                appsink: video_sink,
-                input_size: 0,
-                subscribers: Vec::new(),
-                renderers: Vec::new(),
-                last_metadata: None,
-            })),
-        })
-    }
-}
+        *self.inner.borrow_mut() = Some(Arc::new(Mutex::new(PlayerInner {
+            player,
+            appsrc: None,
+            appsink: video_sink,
+            input_size: 0,
+            subscribers: Vec::new(),
+            renderers: Vec::new(),
+            last_metadata: None,
+        })));
 
-impl Player for GStreamerPlayer {
-    fn register_event_handler(&self, sender: IpcSender<PlayerEvent>) {
-        self.inner.lock().unwrap().register_event_handler(sender);
-    }
-
-    fn register_frame_renderer(&self, renderer: Arc<Mutex<FrameRenderer>>) {
-        self.inner.lock().unwrap().register_frame_renderer(renderer);
-    }
-
-    fn set_input_size(&self, size: u64) {
-        // Keep inner's .set_input_size() to proxy its value, since it
-        // could be set by the user before calling .setup()
-        self.inner.lock().unwrap().set_input_size(size);
-        if let Some(ref mut appsrc) = self.inner.lock().unwrap().appsrc {
-            if size > 0 {
-                appsrc.set_size(size as i64);
-            } else {
-                appsrc.set_size(-1); // live source
-            }
-        }
-    }
-
-    fn setup(&self) -> Result<(), ()> {
-        let inner_clone = self.inner.clone();
-        self.inner
+        let inner = self.inner.borrow();
+        let inner = inner.as_ref().unwrap();
+        let inner_clone = inner.clone();
+        inner
             .lock()
             .unwrap()
             .player
@@ -219,20 +204,16 @@ impl Player for GStreamerPlayer {
                 guard.notify(PlayerEvent::EndOfStream);
             });
 
-        let inner_clone = self.inner.clone();
-        self.inner
-            .lock()
-            .unwrap()
-            .player
-            .connect_error(move |_, _| {
-                let inner = &inner_clone;
-                let guard = inner.lock().unwrap();
+        let inner_clone = inner.clone();
+        inner.lock().unwrap().player.connect_error(move |_, _| {
+            let inner = &inner_clone;
+            let guard = inner.lock().unwrap();
 
-                guard.notify(PlayerEvent::Error);
-            });
+            guard.notify(PlayerEvent::Error);
+        });
 
-        let inner_clone = self.inner.clone();
-        self.inner
+        let inner_clone = inner.clone();
+        inner
             .lock()
             .unwrap()
             .player
@@ -251,8 +232,8 @@ impl Player for GStreamerPlayer {
                 }
             });
 
-        let inner_clone = self.inner.clone();
-        self.inner
+        let inner_clone = inner.clone();
+        inner
             .lock()
             .unwrap()
             .player
@@ -268,7 +249,7 @@ impl Player for GStreamerPlayer {
                 }
             });
 
-        self.inner
+        inner
             .lock()
             .unwrap()
             .player
@@ -279,8 +260,8 @@ impl Player for GStreamerPlayer {
                 minutes %= 60;
             });
 
-        let inner_clone = self.inner.clone();
-        self.inner.lock().unwrap().appsink.set_callbacks(
+        let inner_clone = inner.clone();
+        inner.lock().unwrap().appsink.set_callbacks(
             gst_app::AppSinkCallbacks::new()
                 .new_preroll(|_| gst::FlowReturn::Ok)
                 .new_sample(move |appsink| {
@@ -297,9 +278,9 @@ impl Player for GStreamerPlayer {
                 .build(),
         );
 
-        let inner_clone = self.inner.clone();
+        let inner_clone = inner.clone();
         let (receiver, error_id) = {
-            let mut inner = self.inner.lock().unwrap();
+            let mut inner = inner.lock().unwrap();
             let pipeline = inner.player.get_pipeline();
 
             let (sender, receiver) = mpsc::channel();
@@ -358,28 +339,77 @@ impl Player for GStreamerPlayer {
             (receiver, error_id)
         };
 
-        glib::signal::signal_handler_disconnect(&self.inner.lock().unwrap().player, error_id);
+        glib::signal::signal_handler_disconnect(&inner.lock().unwrap().player, error_id);
 
         match receiver.recv().unwrap() {
             Ok(_) => return Ok(()),
             Err(_) => return Err(()),
         };
     }
+}
+
+impl Player for GStreamerPlayer {
+    fn register_event_handler(&self, sender: IpcSender<PlayerEvent>) {
+        let _ = self.setup();
+        let inner = self.inner.borrow();
+        inner
+            .as_ref()
+            .unwrap()
+            .lock()
+            .unwrap()
+            .register_event_handler(sender);
+    }
+
+    fn register_frame_renderer(&self, renderer: Arc<Mutex<FrameRenderer>>) {
+        let _ = self.setup();
+        let inner = self.inner.borrow();
+        inner
+            .as_ref()
+            .unwrap()
+            .lock()
+            .unwrap()
+            .register_frame_renderer(renderer);
+    }
+
+    fn set_input_size(&self, size: u64) {
+        let _ = self.setup();
+        // Keep inner's .set_input_size() to proxy its value, since it
+        // could be set by the user before calling .setup()
+        let inner = self.inner.borrow();
+        let mut inner = inner.as_ref().unwrap().lock().unwrap();
+        inner.set_input_size(size);
+        if let Some(ref mut appsrc) = inner.appsrc {
+            if size > 0 {
+                appsrc.set_size(size as i64);
+            } else {
+                appsrc.set_size(-1); // live source
+            }
+        }
+    }
 
     fn play(&self) {
-        self.inner.lock().unwrap().play();
+        let _ = self.setup();
+        let inner = self.inner.borrow();
+        inner.as_ref().unwrap().lock().unwrap().play();
     }
 
     fn pause(&self) {
-        self.inner.lock().unwrap().pause();
+        let _ = self.setup();
+        let inner = self.inner.borrow();
+        inner.as_ref().unwrap().lock().unwrap().pause();
     }
 
     fn stop(&self) {
-        self.inner.lock().unwrap().stop();
+        let _ = self.setup();
+        let inner = self.inner.borrow();
+        inner.as_ref().unwrap().lock().unwrap().stop();
     }
 
     fn push_data(&self, data: Vec<u8>) -> Result<(), ()> {
-        if let Some(ref mut appsrc) = self.inner.lock().unwrap().appsrc {
+        let _ = self.setup();
+        let inner = self.inner.borrow();
+        let mut inner = inner.as_ref().unwrap().lock().unwrap();
+        if let Some(ref mut appsrc) = inner.appsrc {
             let buffer = gst::Buffer::from_slice(data).ok_or_else(|| ())?;
             if appsrc.push_buffer(buffer) == gst::FlowReturn::Ok {
                 return Ok(());
@@ -389,7 +419,10 @@ impl Player for GStreamerPlayer {
     }
 
     fn end_of_stream(&self) -> Result<(), ()> {
-        if let Some(ref mut appsrc) = self.inner.lock().unwrap().appsrc {
+        let _ = self.setup();
+        let inner = self.inner.borrow();
+        let mut inner = inner.as_ref().unwrap().lock().unwrap();
+        if let Some(ref mut appsrc) = inner.appsrc {
             if appsrc.end_of_stream() == gst::FlowReturn::Ok {
                 return Ok(());
             }

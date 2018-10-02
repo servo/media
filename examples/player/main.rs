@@ -37,17 +37,12 @@ struct PlayerWrapper {
 impl PlayerWrapper {
     pub fn new(path: &Path) -> Self {
         let servo_media = ServoMedia::get().unwrap();
-        let player = Arc::new(Mutex::new(servo_media.create_player().unwrap()));
+        let player = Arc::new(Mutex::new(servo_media.create_player()));
         let file = File::open(&path).unwrap();
         let metadata = file.metadata().unwrap();
         player.lock().unwrap().set_input_size(metadata.len());
         let (sender, receiver) = ipc::channel().unwrap();
         player.lock().unwrap().register_event_handler(sender);
-        player
-            .lock()
-            .unwrap()
-            .setup()
-            .expect("couldn't setup player");
         let player_ = player.clone();
         let player__ = player.clone();
         let shutdown = Arc::new(AtomicBool::new(false));

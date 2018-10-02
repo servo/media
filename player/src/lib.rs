@@ -29,7 +29,6 @@ pub trait Player: Send {
     fn register_event_handler(&self, sender: IpcSender<PlayerEvent>);
     fn register_frame_renderer(&self, renderer: Arc<Mutex<frame::FrameRenderer>>);
 
-    fn setup(&self) -> Result<(), ()>;
     fn play(&self);
     fn pause(&self);
     fn stop(&self);
@@ -45,10 +44,6 @@ impl Player for DummyPlayer {
     fn register_event_handler(&self, _: IpcSender<PlayerEvent>) {}
     fn register_frame_renderer(&self, _: Arc<Mutex<frame::FrameRenderer>>) {}
 
-    fn setup(&self) -> Result<(), ()> {
-        println!("You are using the DummyPlayer");
-        Err(())
-    }
     fn play(&self) {}
     fn pause(&self) {}
     fn stop(&self) {}
@@ -64,5 +59,5 @@ impl Player for DummyPlayer {
 
 pub trait PlayerBackend {
     type Player: Player;
-    fn make_player() -> Result<Self::Player, ()>;
+    fn make_player() -> Self::Player;
 }
