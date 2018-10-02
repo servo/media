@@ -1,5 +1,7 @@
 # Servo Media
 
+[![Build Status](https://travis-ci.org/servo/media.svg?branch=master)](https://travis-ci.org/servo/media)
+
 ## Requirements
 So far the only supported and default backend is
 [GStreamer](https://gstreamer.freedesktop.org/).
