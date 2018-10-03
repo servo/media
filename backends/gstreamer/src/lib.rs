@@ -32,6 +32,10 @@ pub enum BackendError {
     PadLinkFailed,
     PipelineBusError(String),
     PipelineFailed(&'static str),
+    PlayerError, // XXX add player error
+    PlayerPushDataFailed,
+    PlayerEOSFailed,
+    PlayerSourceSetupFailed,
     SetPropertyFailed(&'static str),
     StateChangeFailed,
 }

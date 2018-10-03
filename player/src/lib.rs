@@ -6,6 +6,7 @@ pub mod frame;
 pub mod metadata;
 
 use ipc_channel::ipc::IpcSender;
+use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -26,29 +27,31 @@ pub enum PlayerEvent {
 }
 
 pub trait Player: Send {
-    fn register_event_handler(&self, sender: IpcSender<PlayerEvent>);
-    fn register_frame_renderer(&self, renderer: Arc<Mutex<frame::FrameRenderer>>);
+    type Error: Debug;
+    fn register_event_handler(&self, sender: IpcSender<PlayerEvent>) -> Result<(), Self::Error>;
+    fn register_frame_renderer(&self, renderer: Arc<Mutex<frame::FrameRenderer>>) -> Result<(), Self::Error>;
 
-    fn play(&self);
-    fn pause(&self);
-    fn stop(&self);
+    fn play(&self) -> Result<(), Self::Error>;
+    fn pause(&self) -> Result<(), Self::Error>;
+    fn stop(&self) -> Result<(), Self::Error>;
 
-    fn set_input_size(&self, size: u64);
-    fn push_data(&self, data: Vec<u8>) -> Result<(), ()>;
-    fn end_of_stream(&self) -> Result<(), ()>;
+    fn set_input_size(&self, size: u64) -> Result<(), Self::Error>;
+    fn push_data(&self, data: Vec<u8>) -> Result<(), Self::Error>;
+    fn end_of_stream(&self) -> Result<(), Self::Error>;
 }
 
 pub struct DummyPlayer {}
 
 impl Player for DummyPlayer {
-    fn register_event_handler(&self, _: IpcSender<PlayerEvent>) {}
-    fn register_frame_renderer(&self, _: Arc<Mutex<frame::FrameRenderer>>) {}
+    type Error = ();
+    fn register_event_handler(&self, _: IpcSender<PlayerEvent>) -> Result<(), ()> { Ok(()) }
+    fn register_frame_renderer(&self, _: Arc<Mutex<frame::FrameRenderer>>) -> Result<(), ()> { Ok(()) }
 
-    fn play(&self) {}
-    fn pause(&self) {}
-    fn stop(&self) {}
+    fn play(&self) -> Result<(), ()> { Ok(()) }
+    fn pause(&self) -> Result<(), ()> { Ok(()) }
+    fn stop(&self) -> Result<(), ()> { Ok(()) }
 
-    fn set_input_size(&self, _: u64) {}
+    fn set_input_size(&self, _: u64) -> Result<(), ()> { Ok(()) }
     fn push_data(&self, _: Vec<u8>) -> Result<(), ()> {
         Err(())
     }

@@ -1,3 +1,4 @@
+use super::BackendError;
 use glib;
 use glib::*;
 use gst;
@@ -148,30 +149,33 @@ impl GStreamerPlayer {
         }
     }
 
-    fn setup(&self) -> Result<(), ()> {
+    fn setup(&self) -> Result<(), BackendError> {
         if self.inner.borrow().is_some() {
             return Ok(());
         }
+
         let player = gst_player::Player::new(
             /* video renderer */ None, /* signal dispatcher */ None,
         );
+
         player
             .set_property("uri", &Value::from("appsrc://"))
-            .or_else(|_| Err(()))?;
+            .map_err(|e| BackendError::SetPropertyFailed(e.0))?;
 
         // Disable periodic position updates for now.
         let mut config = player.get_config();
         config.set_position_update_interval(0u32);
-        player.set_config(config).or_else(|_| Err(()))?;
+        player
+            .set_config(config)
+            .map_err(|e| BackendError::SetPropertyFailed(e.0))?;
 
-        let video_sink = gst::ElementFactory::make("appsink", None).ok_or_else(|| ())?;
+        let video_sink = gst::ElementFactory::make("appsink", None)
+            .ok_or(BackendError::ElementCreationFailed("appsink"))?;
         let pipeline = player.get_pipeline();
         pipeline
             .set_property("video-sink", &video_sink.to_value())
-            .or_else(|_| Err(()))?;
-        let video_sink = video_sink
-            .dynamic_cast::<gst_app::AppSink>()
-            .or_else(|_| Err(()))?;
+            .map_err(|e| BackendError::SetPropertyFailed(e.0))?;
+        let video_sink = video_sink.dynamic_cast::<gst_app::AppSink>().unwrap();
         video_sink.set_caps(&gst::Caps::new_simple(
             "video/x-raw",
             &[
@@ -198,18 +202,14 @@ impl GStreamerPlayer {
             .unwrap()
             .player
             .connect_end_of_stream(move |_| {
-                let inner = &inner_clone;
-                let guard = inner.lock().unwrap();
-
-                guard.notify(PlayerEvent::EndOfStream);
+                let inner = inner_clone.lock().unwrap();
+                inner.notify(PlayerEvent::EndOfStream);
             });
 
         let inner_clone = inner.clone();
         inner.lock().unwrap().player.connect_error(move |_, _| {
-            let inner = &inner_clone;
-            let guard = inner.lock().unwrap();
-
-            guard.notify(PlayerEvent::Error);
+            let inner = inner_clone.lock().unwrap();
+            inner.notify(PlayerEvent::Error);
         });
 
         let inner_clone = inner.clone();
@@ -225,10 +225,8 @@ impl GStreamerPlayer {
                     _ => None,
                 };
                 if let Some(v) = state {
-                    let inner = &inner_clone;
-                    let guard = inner.lock().unwrap();
-
-                    guard.notify(PlayerEvent::StateChanged(v));
+                    let inner = inner_clone.lock().unwrap();
+                    inner.notify(PlayerEvent::StateChanged(v));
                 }
             });
 
@@ -238,13 +236,11 @@ impl GStreamerPlayer {
             .unwrap()
             .player
             .connect_media_info_updated(move |_, info| {
-                let inner = &inner_clone;
-                let mut guard = inner.lock().unwrap();
-
+                let mut inner = inner_clone.lock().unwrap();
                 if let Ok(metadata) = metadata_from_media_info(info) {
-                    if guard.last_metadata.as_ref() != Some(&metadata) {
-                        guard.last_metadata = Some(metadata.clone());
-                        guard.notify(PlayerEvent::MetadataUpdated(metadata));
+                    if inner.last_metadata.as_ref() != Some(&metadata) {
+                        inner.last_metadata = Some(metadata.clone());
+                        inner.notify(PlayerEvent::MetadataUpdated(metadata));
                     }
                 }
             });
@@ -278,8 +274,8 @@ impl GStreamerPlayer {
                 .build(),
         );
 
-        let inner_clone = inner.clone();
-        let (receiver, error_id) = {
+        let (receiver, error_handler_id) = {
+            let inner_clone = inner.clone();
             let mut inner = inner.lock().unwrap();
             let pipeline = inner.player.get_pipeline();
 
@@ -287,70 +283,82 @@ impl GStreamerPlayer {
 
             let sender = Arc::new(Mutex::new(sender));
             let sender_clone = sender.clone();
-            pipeline
+            if pipeline
                 .connect("source-setup", false, move |args| {
-                    let mut inner = inner_clone.lock().unwrap();
-
-                    if let Some(source) = args[1].get::<gst::Element>() {
-                        let appsrc = source
-                            .clone()
-                            .dynamic_cast::<gst_app::AppSrc>()
-                            .expect("Source element is expected to be an appsrc!");
-
-                        appsrc.set_property_format(gst::Format::Bytes);
-                        if inner.input_size > 0 {
-                            appsrc.set_size(inner.input_size as i64);
-                        }
-
-                        let sender_clone = sender.clone();
-
-                        let need_data_id = Arc::new(Mutex::new(None));
-                        let need_data_id_clone = need_data_id.clone();
-                        *need_data_id.lock().unwrap() = Some(
-                            appsrc
-                                .connect("need-data", false, move |args| {
-                                    let _ = sender_clone.lock().unwrap().send(Ok(()));
-                                    if let Some(id) = need_data_id_clone.lock().unwrap().take() {
-                                        glib::signal::signal_handler_disconnect(
-                                            &args[0].get::<gst::Element>().unwrap(),
-                                            id,
-                                        );
-                                    }
-                                    None
-                                })
-                                .unwrap(),
-                        );
-
-                        inner.set_app_src(appsrc);
-                    } else {
-                        let _ = sender.lock().unwrap().send(Err(()));
+                    let source = args[1].get::<gst::Element>();
+                    if source.is_none() {
+                        let _ = sender
+                            .lock()
+                            .unwrap()
+                            .send(Err(BackendError::PlayerSourceSetupFailed));
+                        return None;
                     }
+                    let source = source.unwrap();
+                    let mut inner = inner_clone.lock().unwrap();
+                    let appsrc = source
+                        .clone()
+                        .dynamic_cast::<gst_app::AppSrc>()
+                        .expect("Source element is expected to be an appsrc!");
+
+                    appsrc.set_property_format(gst::Format::Bytes);
+                    if inner.input_size > 0 {
+                        appsrc.set_size(inner.input_size as i64);
+                    }
+
+                    let sender_clone = sender.clone();
+
+                    let need_data_id = Arc::new(Mutex::new(None));
+                    let need_data_id_clone = need_data_id.clone();
+                    *need_data_id.lock().unwrap() = Some(
+                        appsrc
+                            .connect("need-data", false, move |args| {
+                                let _ = sender_clone.lock().unwrap().send(Ok(()));
+                                if let Some(id) = need_data_id_clone.lock().unwrap().take() {
+                                    glib::signal::signal_handler_disconnect(
+                                        &args[0].get::<gst::Element>().unwrap(),
+                                        id,
+                                    );
+                                }
+                                None
+                            })
+                            .unwrap(),
+                    );
+
+                    inner.set_app_src(appsrc);
 
                     None
                 })
-                .unwrap();
+                .is_err()
+            {
+                let _ = sender_clone
+                    .lock()
+                    .unwrap()
+                    .send(Err(BackendError::PlayerSourceSetupFailed));
+            }
 
-            let error_id = inner.player.connect_error(move |_, _| {
-                let _ = sender_clone.lock().unwrap().send(Err(()));
+            let error_handler_id = inner.player.connect_error(move |player, _error| {
+                let _ = sender_clone
+                    .lock()
+                    .unwrap()
+                    .send(Err(BackendError::PlayerError));
+                player.stop();
             });
 
             inner.pause();
 
-            (receiver, error_id)
+            (receiver, error_handler_id)
         };
 
-        glib::signal::signal_handler_disconnect(&inner.lock().unwrap().player, error_id);
-
-        match receiver.recv().unwrap() {
-            Ok(_) => return Ok(()),
-            Err(_) => return Err(()),
-        };
+        let result = receiver.recv().unwrap();
+        glib::signal::signal_handler_disconnect(&inner.lock().unwrap().player, error_handler_id);
+        result
     }
 }
 
 impl Player for GStreamerPlayer {
-    fn register_event_handler(&self, sender: IpcSender<PlayerEvent>) {
-        let _ = self.setup();
+    type Error = BackendError;
+    fn register_event_handler(&self, sender: IpcSender<PlayerEvent>) -> Result<(), BackendError> {
+        self.setup()?;
         let inner = self.inner.borrow();
         inner
             .as_ref()
@@ -358,10 +366,11 @@ impl Player for GStreamerPlayer {
             .lock()
             .unwrap()
             .register_event_handler(sender);
+        Ok(())
     }
 
-    fn register_frame_renderer(&self, renderer: Arc<Mutex<FrameRenderer>>) {
-        let _ = self.setup();
+    fn register_frame_renderer(&self, renderer: Arc<Mutex<FrameRenderer>>) -> Result<(), BackendError> {
+        self.setup()?;
         let inner = self.inner.borrow();
         inner
             .as_ref()
@@ -369,10 +378,11 @@ impl Player for GStreamerPlayer {
             .lock()
             .unwrap()
             .register_frame_renderer(renderer);
+        Ok(())
     }
 
-    fn set_input_size(&self, size: u64) {
-        let _ = self.setup();
+    fn set_input_size(&self, size: u64) -> Result<(), BackendError> {
+        self.setup()?;
         // Keep inner's .set_input_size() to proxy its value, since it
         // could be set by the user before calling .setup()
         let inner = self.inner.borrow();
@@ -385,41 +395,45 @@ impl Player for GStreamerPlayer {
                 appsrc.set_size(-1); // live source
             }
         }
+        Ok(())
     }
 
-    fn play(&self) {
-        let _ = self.setup();
+    fn play(&self) -> Result<(), BackendError> {
+        self.setup()?;
         let inner = self.inner.borrow();
         inner.as_ref().unwrap().lock().unwrap().play();
+        Ok(())
     }
 
-    fn pause(&self) {
-        let _ = self.setup();
+    fn pause(&self) -> Result<(), BackendError> {
+        self.setup()?;
         let inner = self.inner.borrow();
         inner.as_ref().unwrap().lock().unwrap().pause();
+        Ok(())
     }
 
-    fn stop(&self) {
-        let _ = self.setup();
+    fn stop(&self) -> Result<(), BackendError> {
+        self.setup()?;
         let inner = self.inner.borrow();
         inner.as_ref().unwrap().lock().unwrap().stop();
+        Ok(())
     }
 
-    fn push_data(&self, data: Vec<u8>) -> Result<(), ()> {
-        let _ = self.setup();
+    fn push_data(&self, data: Vec<u8>) -> Result<(), BackendError> {
+        self.setup()?;
         let inner = self.inner.borrow();
         let mut inner = inner.as_ref().unwrap().lock().unwrap();
         if let Some(ref mut appsrc) = inner.appsrc {
-            let buffer = gst::Buffer::from_slice(data).ok_or_else(|| ())?;
+            let buffer = gst::Buffer::from_slice(data).ok_or_else(|| BackendError::PlayerPushDataFailed)?;
             if appsrc.push_buffer(buffer) == gst::FlowReturn::Ok {
                 return Ok(());
             }
         }
-        Err(())
+        Err(BackendError::PlayerPushDataFailed)
     }
 
-    fn end_of_stream(&self) -> Result<(), ()> {
-        let _ = self.setup();
+    fn end_of_stream(&self) -> Result<(), BackendError> {
+        self.setup()?;
         let inner = self.inner.borrow();
         let mut inner = inner.as_ref().unwrap().lock().unwrap();
         if let Some(ref mut appsrc) = inner.appsrc {
@@ -427,6 +441,6 @@ impl Player for GStreamerPlayer {
                 return Ok(());
             }
         }
-        Err(())
+        Err(BackendError::PlayerEOSFailed)
     }
 }

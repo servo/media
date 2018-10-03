@@ -27,7 +27,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     };
 
     let (sender, receiver) = ipc::channel().unwrap();
-    player.lock().unwrap().register_event_handler(sender);
+    player.lock().unwrap().register_event_handler(sender).unwrap();
 
     let path = Path::new(filename);
     let display = path.display();
@@ -38,7 +38,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     };
 
     if let Ok(metadata) = file.metadata() {
-        player.lock().unwrap().set_input_size(metadata.len());
+        player.lock().unwrap().set_input_size(metadata.len()).unwrap();
     }
 
     let player_clone = Arc::clone(&player);
@@ -55,13 +55,11 @@ fn run_example(servo_media: Arc<ServoMedia>) {
                     break;
                 }
                 Ok(size) => {
-                    if let Err(_) = player
+                    player
                         .lock()
                         .unwrap()
                         .push_data(Vec::from(&buffer[0..size]))
-                    {
-                        break;
-                    }
+                        .unwrap()
                 }
                 Err(e) => {
                     eprintln!("Error: {}", e);
@@ -71,7 +69,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         }
     });
 
-    player.lock().unwrap().play();
+    player.lock().unwrap().play().unwrap();
 
     while let Ok(event) = receiver.recv() {
         match event {

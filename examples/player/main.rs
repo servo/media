@@ -14,6 +14,7 @@ use gleam::gl;
 use ipc_channel::ipc;
 use servo_media::player::frame::{Frame, FrameRenderer};
 use servo_media::player::{Player, PlayerEvent};
+use servo_media::Error as ServoMediaError;
 use servo_media::ServoMedia;
 use std::env;
 use std::fs::File;
@@ -30,7 +31,7 @@ use webrender::api::*;
 mod ui;
 
 struct PlayerWrapper {
-    player: Arc<Mutex<Box<Player>>>,
+    player: Arc<Mutex<Box<Player<Error=ServoMediaError>>>>,
     shutdown: Arc<AtomicBool>,
 }
 
@@ -40,9 +41,9 @@ impl PlayerWrapper {
         let player = Arc::new(Mutex::new(servo_media.create_player()));
         let file = File::open(&path).unwrap();
         let metadata = file.metadata().unwrap();
-        player.lock().unwrap().set_input_size(metadata.len());
+        player.lock().unwrap().set_input_size(metadata.len()).unwrap();
         let (sender, receiver) = ipc::channel().unwrap();
-        player.lock().unwrap().register_event_handler(sender);
+        player.lock().unwrap().register_event_handler(sender).unwrap();
         let player_ = player.clone();
         let player__ = player.clone();
         let shutdown = Arc::new(AtomicBool::new(false));
@@ -103,18 +104,18 @@ impl PlayerWrapper {
                         PlayerEvent::FrameUpdated => eprint!("."),
                     }
                 }
-                player.lock().unwrap().stop();
+                player.lock().unwrap().stop().unwrap();
                 shutdown.store(true, Ordering::Relaxed);
             })
             .unwrap();
 
-        player.lock().unwrap().play();
+        player.lock().unwrap().play().unwrap();
 
         PlayerWrapper { player, shutdown }
     }
 
     fn shutdown(&self) {
-        self.player.lock().unwrap().stop();
+        self.player.lock().unwrap().stop().unwrap();
         self.shutdown.store(true, Ordering::Relaxed);
     }
 
@@ -122,7 +123,8 @@ impl PlayerWrapper {
         self.player
             .lock()
             .unwrap()
-            .register_frame_renderer(renderer);
+            .register_frame_renderer(renderer)
+            .unwrap();
     }
 }
 

@@ -45,6 +45,11 @@ pub type Backend = servo_media_gstreamer::GStreamerBackend;
 #[cfg(not(any(target_os = "android", target_arch = "x86_64")))]
 pub type Backend = DummyBackend;
 
+#[cfg(any(target_os = "android", target_arch = "x86_64"))]
+pub type Error = servo_media_gstreamer::BackendError;
+#[cfg(not(any(target_os = "android", target_arch = "x86_64")))]
+pub type Error = ();
+
 impl ServoMedia {
     pub fn new() -> Self {
         Backend::init();
@@ -67,7 +72,7 @@ impl ServoMedia {
         AudioContext::new(options)
     }
 
-    pub fn create_player(&self) -> Box<Player> {
+    pub fn create_player(&self) -> Box<Player<Error=Error>> {
         Box::new(Backend::make_player())
     }
 }
