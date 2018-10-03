@@ -1,10 +1,8 @@
 extern crate servo_media;
 
-use servo_media::audio::oscillator_node::OscillatorNodeOptions;
 use servo_media::audio::gain_node::GainNodeOptions;
-use servo_media::audio::node::{
-    AudioNodeInit, AudioNodeMessage, AudioScheduledSourceNodeMessage,
-};
+use servo_media::audio::node::{AudioNodeInit, AudioNodeMessage, AudioScheduledSourceNodeMessage};
+use servo_media::audio::oscillator_node::OscillatorNodeOptions;
 use servo_media::audio::param::{ParamType, RampKind, UserAutomationEvent};
 use servo_media::ServoMedia;
 use std::sync::Arc;
@@ -15,7 +13,10 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let mut options = OscillatorNodeOptions::default();
     options.freq = 2.0;
     let lfo = context.create_node(AudioNodeInit::OscillatorNode(options), Default::default());
-    let osc = context.create_node(AudioNodeInit::OscillatorNode(Default::default()), Default::default());
+    let osc = context.create_node(
+        AudioNodeInit::OscillatorNode(Default::default()),
+        Default::default(),
+    );
     let mut options = GainNodeOptions::default();
     options.gain = 100.;
     let gain = context.create_node(AudioNodeInit::GainNode(options), Default::default());

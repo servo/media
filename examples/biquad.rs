@@ -1,8 +1,10 @@
 extern crate servo_media;
 
-use servo_media::audio::biquad_filter_node::{BiquadFilterNodeMessage, BiquadFilterNodeOptions, FilterType};
-use servo_media::audio::oscillator_node::OscillatorNodeOptions;
+use servo_media::audio::biquad_filter_node::{
+    BiquadFilterNodeMessage, BiquadFilterNodeOptions, FilterType,
+};
 use servo_media::audio::node::{AudioNodeInit, AudioNodeMessage, AudioScheduledSourceNodeMessage};
+use servo_media::audio::oscillator_node::OscillatorNodeOptions;
 use servo_media::audio::param::{ParamType, RampKind, UserAutomationEvent};
 use servo_media::ServoMedia;
 use std::sync::Arc;
@@ -43,11 +45,12 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     thread::sleep(time::Duration::from_millis(2200));
     context.message_node(
         biquad,
-        AudioNodeMessage::BiquadFilterNode(BiquadFilterNodeMessage::SetFilterType(FilterType::BandPass)),
+        AudioNodeMessage::BiquadFilterNode(BiquadFilterNodeMessage::SetFilterType(
+            FilterType::BandPass,
+        )),
     );
 
     thread::sleep(time::Duration::from_millis(1000));
-
 }
 
 fn main() {

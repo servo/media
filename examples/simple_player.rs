@@ -27,7 +27,11 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     };
 
     let (sender, receiver) = ipc::channel().unwrap();
-    player.lock().unwrap().register_event_handler(sender);
+    player
+        .lock()
+        .unwrap()
+        .register_event_handler(sender)
+        .unwrap();
 
     let path = Path::new(filename);
     let display = path.display();
@@ -38,7 +42,11 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     };
 
     if let Ok(metadata) = file.metadata() {
-        player.lock().unwrap().set_input_size(metadata.len());
+        player
+            .lock()
+            .unwrap()
+            .set_input_size(metadata.len())
+            .unwrap();
     }
 
     let player_clone = Arc::clone(&player);
@@ -54,15 +62,11 @@ fn run_example(servo_media: Arc<ServoMedia>) {
                     println!("finished pushing data");
                     break;
                 }
-                Ok(size) => {
-                    if let Err(_) = player
-                        .lock()
-                        .unwrap()
-                        .push_data(Vec::from(&buffer[0..size]))
-                    {
-                        break;
-                    }
-                }
+                Ok(size) => player
+                    .lock()
+                    .unwrap()
+                    .push_data(Vec::from(&buffer[0..size]))
+                    .unwrap(),
                 Err(e) => {
                     eprintln!("Error: {}", e);
                     break;
@@ -71,7 +75,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         }
     });
 
-    player.lock().unwrap().play();
+    player.lock().unwrap().play().unwrap();
 
     while let Ok(event) = receiver.recv() {
         match event {
@@ -96,7 +100,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     shutdown.store(true, Ordering::Relaxed);
     let _ = t.join();
 
-    player.lock().unwrap().stop();
+    player.lock().unwrap().stop().unwrap();
 }
 
 fn main() {
@@ -104,4 +108,3 @@ fn main() {
         run_example(servo_media);
     }
 }
-

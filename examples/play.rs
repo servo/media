@@ -11,7 +11,10 @@ use std::{thread, time};
 
 fn run_example(servo_media: Arc<ServoMedia>) {
     let context = servo_media.create_audio_context(Default::default());
-    let osc = context.create_node(AudioNodeInit::OscillatorNode(Default::default()), Default::default());
+    let osc = context.create_node(
+        AudioNodeInit::OscillatorNode(Default::default()),
+        Default::default(),
+    );
     let mut options = GainNodeOptions::default();
     options.gain = 0.5;
     let gain = context.create_node(AudioNodeInit::GainNode(options), Default::default());

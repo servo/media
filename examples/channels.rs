@@ -17,7 +17,10 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     options.gain = 0.7;
     let gain = context.create_node(AudioNodeInit::GainNode(options), Default::default());
     let options = ChannelNodeOptions { channels: 2 };
-    let merger = context.create_node(AudioNodeInit::ChannelMergerNode(options), Default::default());
+    let merger = context.create_node(
+        AudioNodeInit::ChannelMergerNode(options),
+        Default::default(),
+    );
 
     let dest = context.dest_node();
     context.connect_ports(osc.output(0), gain.input(0));
