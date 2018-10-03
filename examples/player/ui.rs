@@ -13,8 +13,8 @@ use std::env;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use webrender;
-use winit;
 use webrender::api::*;
+use winit;
 
 struct Notifier {
     events_proxy: winit::EventsLoopProxy,
@@ -38,11 +38,13 @@ impl RenderNotifier for Notifier {
         let _ = self.events_proxy.wakeup();
     }
 
-    fn new_frame_ready(&self,
-                       _: DocumentId,
-                       _scrolled: bool,
-                       _composite_needed: bool,
-                       _render_time: Option<u64>) {
+    fn new_frame_ready(
+        &self,
+        _: DocumentId,
+        _scrolled: bool,
+        _composite_needed: bool,
+        _render_time: Option<u64>,
+    ) {
         self.wake_up();
     }
 }
@@ -84,12 +86,7 @@ pub trait Example {
         pipeline_id: PipelineId,
         document_id: DocumentId,
     );
-    fn on_event(
-        &self,
-        winit::WindowEvent,
-        &RenderApi,
-        DocumentId,
-    ) -> bool {
+    fn on_event(&self, winit::WindowEvent, &RenderApi, DocumentId) -> bool {
         false
     }
     fn needs_repaint(&self) -> bool {
@@ -98,12 +95,13 @@ pub trait Example {
     fn get_image_handlers(
         &self,
         _gl: &gl::Gl,
-    ) -> (Option<Box<webrender::ExternalImageHandler>>,
-          Option<Box<webrender::OutputImageHandler>>) {
+    ) -> (
+        Option<Box<webrender::ExternalImageHandler>>,
+        Option<Box<webrender::OutputImageHandler>>,
+    ) {
         (None, None)
     }
-    fn draw_custom(&self, _gl: &gl::Gl) {
-    }
+    fn draw_custom(&self, _gl: &gl::Gl) {}
 }
 
 pub fn main_wrapper<E: Example>(
@@ -120,17 +118,18 @@ pub fn main_wrapper<E: Example>(
     };
 
     let mut events_loop = winit::EventsLoop::new();
-    let context_builder = glutin::ContextBuilder::new()
-        .with_gl(glutin::GlRequest::GlThenGles {
-            opengl_version: (3, 2),
-            opengles_version: (3, 0),
-        });
+    let context_builder = glutin::ContextBuilder::new().with_gl(glutin::GlRequest::GlThenGles {
+        opengl_version: (3, 2),
+        opengles_version: (3, 0),
+    });
     let window_builder = winit::WindowBuilder::new()
         .with_title(E::TITLE)
         .with_multitouch()
-        .with_dimensions(winit::dpi::LogicalSize::new(E::WIDTH as f64, E::HEIGHT as f64));
-    let window = glutin::GlWindow::new(window_builder, context_builder, &events_loop)
-        .unwrap();
+        .with_dimensions(winit::dpi::LogicalSize::new(
+            E::WIDTH as f64,
+            E::HEIGHT as f64,
+        ));
+    let window = glutin::GlWindow::new(window_builder, context_builder, &events_loop).unwrap();
 
     unsafe {
         window.make_current().ok();
@@ -198,13 +197,7 @@ pub fn main_wrapper<E: Example>(
         pipeline_id,
         document_id,
     );
-    txn.set_display_list(
-        epoch,
-        None,
-        layout_size,
-        builder.finalize(),
-        true,
-    );
+    txn.set_display_list(epoch, None, layout_size, builder.finalize(), true);
     txn.set_root_pipeline(pipeline_id);
     txn.generate_frame();
     api.send_transaction(document_id, txn);
@@ -220,33 +213,44 @@ pub fn main_wrapper<E: Example>(
                 ..
             } => return winit::ControlFlow::Break,
             winit::Event::WindowEvent {
-                event: winit::WindowEvent::KeyboardInput {
-                    input: winit::KeyboardInput {
-                        state: winit::ElementState::Pressed,
-                        virtual_keycode: Some(key),
+                event:
+                    winit::WindowEvent::KeyboardInput {
+                        input:
+                            winit::KeyboardInput {
+                                state: winit::ElementState::Pressed,
+                                virtual_keycode: Some(key),
+                                ..
+                            },
                         ..
                     },
-                    ..
-                },
                 ..
             } => match key {
                 winit::VirtualKeyCode::Escape => return winit::ControlFlow::Break,
-                winit::VirtualKeyCode::P => renderer.toggle_debug_flags(webrender::DebugFlags::PROFILER_DBG),
-                winit::VirtualKeyCode::O => renderer.toggle_debug_flags(webrender::DebugFlags::RENDER_TARGET_DBG),
-                winit::VirtualKeyCode::I => renderer.toggle_debug_flags(webrender::DebugFlags::TEXTURE_CACHE_DBG),
-                winit::VirtualKeyCode::S => renderer.toggle_debug_flags(webrender::DebugFlags::COMPACT_PROFILER),
+                winit::VirtualKeyCode::P => {
+                    renderer.toggle_debug_flags(webrender::DebugFlags::PROFILER_DBG)
+                }
+                winit::VirtualKeyCode::O => {
+                    renderer.toggle_debug_flags(webrender::DebugFlags::RENDER_TARGET_DBG)
+                }
+                winit::VirtualKeyCode::I => {
+                    renderer.toggle_debug_flags(webrender::DebugFlags::TEXTURE_CACHE_DBG)
+                }
+                winit::VirtualKeyCode::S => {
+                    renderer.toggle_debug_flags(webrender::DebugFlags::COMPACT_PROFILER)
+                }
                 winit::VirtualKeyCode::Q => renderer.toggle_debug_flags(
-                    webrender::DebugFlags::GPU_TIME_QUERIES | webrender::DebugFlags::GPU_SAMPLE_QUERIES
+                    webrender::DebugFlags::GPU_TIME_QUERIES
+                        | webrender::DebugFlags::GPU_SAMPLE_QUERIES,
                 ),
                 winit::VirtualKeyCode::Key1 => txn.set_window_parameters(
                     framebuffer_size,
                     DeviceUintRect::new(DeviceUintPoint::zero(), framebuffer_size),
-                    1.0
+                    1.0,
                 ),
                 winit::VirtualKeyCode::Key2 => txn.set_window_parameters(
                     framebuffer_size,
                     DeviceUintRect::new(DeviceUintPoint::zero(), framebuffer_size),
-                    2.0
+                    2.0,
                 ),
                 winit::VirtualKeyCode::M => api.notify_memory_pressure(),
                 #[cfg(feature = "capture")]
@@ -256,28 +260,25 @@ pub fn main_wrapper<E: Example>(
                     // based on "shift" modifier, when `glutin` is updated.
                     let bits = CaptureBits::all();
                     api.save_capture(path, bits);
-                },
+                }
                 _ => {
                     let win_event = match global_event {
                         winit::Event::WindowEvent { event, .. } => event,
-                        _ => unreachable!()
+                        _ => unreachable!(),
                     };
-                    custom_event = example.lock().unwrap().on_event(
-                        win_event,
-                        &api,
-                        document_id,
-                    )
-                },
+                    custom_event = example
+                        .lock()
+                        .unwrap()
+                        .on_event(win_event, &api, document_id)
+                }
             },
-            winit::Event::WindowEvent { event, .. } => custom_event = example.lock().unwrap().on_event(
-                event,
-                &api,
-                document_id,
-            ),
+            winit::Event::WindowEvent { event, .. } => {
+                custom_event = example.lock().unwrap().on_event(event, &api, document_id)
+            }
             _ => (),
         };
 
-        if custom_event  || example.lock().unwrap().needs_repaint() {
+        if custom_event || example.lock().unwrap().needs_repaint() {
             let mut builder = DisplayListBuilder::new(pipeline_id, layout_size);
 
             example.lock().unwrap().render(
@@ -288,13 +289,7 @@ pub fn main_wrapper<E: Example>(
                 pipeline_id,
                 document_id,
             );
-            txn.set_display_list(
-                epoch,
-                None,
-                layout_size,
-                builder.finalize(),
-                true,
-            );
+            txn.set_display_list(epoch, None, layout_size, builder.finalize(), true);
             txn.generate_frame();
         }
         api.send_transaction(document_id, txn);

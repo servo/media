@@ -369,7 +369,10 @@ impl Player for GStreamerPlayer {
         Ok(())
     }
 
-    fn register_frame_renderer(&self, renderer: Arc<Mutex<FrameRenderer>>) -> Result<(), BackendError> {
+    fn register_frame_renderer(
+        &self,
+        renderer: Arc<Mutex<FrameRenderer>>,
+    ) -> Result<(), BackendError> {
         self.setup()?;
         let inner = self.inner.borrow();
         inner
@@ -424,7 +427,8 @@ impl Player for GStreamerPlayer {
         let inner = self.inner.borrow();
         let mut inner = inner.as_ref().unwrap().lock().unwrap();
         if let Some(ref mut appsrc) = inner.appsrc {
-            let buffer = gst::Buffer::from_slice(data).ok_or_else(|| BackendError::PlayerPushDataFailed)?;
+            let buffer =
+                gst::Buffer::from_slice(data).ok_or_else(|| BackendError::PlayerPushDataFailed)?;
             if appsrc.push_buffer(buffer) == gst::FlowReturn::Ok {
                 return Ok(());
             }

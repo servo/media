@@ -31,7 +31,7 @@ use webrender::api::*;
 mod ui;
 
 struct PlayerWrapper {
-    player: Arc<Mutex<Box<Player<Error=ServoMediaError>>>>,
+    player: Arc<Mutex<Box<Player<Error = ServoMediaError>>>>,
     shutdown: Arc<AtomicBool>,
 }
 
@@ -41,9 +41,17 @@ impl PlayerWrapper {
         let player = Arc::new(Mutex::new(servo_media.create_player()));
         let file = File::open(&path).unwrap();
         let metadata = file.metadata().unwrap();
-        player.lock().unwrap().set_input_size(metadata.len()).unwrap();
+        player
+            .lock()
+            .unwrap()
+            .set_input_size(metadata.len())
+            .unwrap();
         let (sender, receiver) = ipc::channel().unwrap();
-        player.lock().unwrap().register_event_handler(sender).unwrap();
+        player
+            .lock()
+            .unwrap()
+            .register_event_handler(sender)
+            .unwrap();
         let player_ = player.clone();
         let player__ = player.clone();
         let shutdown = Arc::new(AtomicBool::new(false));

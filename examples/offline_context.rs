@@ -5,9 +5,9 @@ use servo_media::audio::buffer_source_node::AudioBufferSourceNodeMessage;
 use servo_media::audio::context::{AudioContextOptions, OfflineAudioContextOptions};
 use servo_media::audio::node::{AudioNodeInit, AudioNodeMessage, AudioScheduledSourceNodeMessage};
 use servo_media::ServoMedia;
-use std::{thread, time};
-use std::sync::{Arc, Mutex};
 use std::sync::mpsc;
+use std::sync::{Arc, Mutex};
+use std::{thread, time};
 
 fn run_example(servo_media: Arc<ServoMedia>) {
     // Create offline context to process 1024 blocks of a oscillator node produced
@@ -22,10 +22,16 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let (sender, receiver) = mpsc::channel();
     let sender = Mutex::new(sender);
     context.set_eos_callback(Box::new(move |buffer| {
-        processed_audio.lock().unwrap().extend_from_slice((*buffer).as_ref());
+        processed_audio
+            .lock()
+            .unwrap()
+            .extend_from_slice((*buffer).as_ref());
         sender.lock().unwrap().send(()).unwrap();
     }));
-    let osc = context.create_node(AudioNodeInit::OscillatorNode(Default::default()), Default::default());
+    let osc = context.create_node(
+        AudioNodeInit::OscillatorNode(Default::default()),
+        Default::default(),
+    );
     let dest = context.dest_node();
     context.connect_ports(osc.output(0), dest.input(0));
     context.message_node(
@@ -39,8 +45,10 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let _ = context.close();
     // Create audio context to play the processed audio.
     let context = servo_media.create_audio_context(Default::default());
-    let buffer_source =
-        context.create_node(AudioNodeInit::AudioBufferSourceNode(Default::default()), Default::default());
+    let buffer_source = context.create_node(
+        AudioNodeInit::AudioBufferSourceNode(Default::default()),
+        Default::default(),
+    );
     let dest = context.dest_node();
     context.connect_ports(buffer_source.output(0), dest.input(0));
     context.message_node(
@@ -56,7 +64,6 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let _ = context.resume();
     thread::sleep(time::Duration::from_millis(5000));
     let _ = context.close();
-
 }
 
 fn main() {
