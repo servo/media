@@ -100,7 +100,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     shutdown.store(true, Ordering::Relaxed);
     let _ = t.join();
 
-    player.lock().unwrap().stop();
+    player.lock().unwrap().stop().unwrap();
 }
 
 fn main() {

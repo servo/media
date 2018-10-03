@@ -10,6 +10,7 @@ use servo_media_player::frame::{Frame, FrameRenderer};
 use servo_media_player::metadata::Metadata;
 use servo_media_player::{PlaybackState, Player, PlayerEvent};
 use std::cell::RefCell;
+use std::error::Error;
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::time;
@@ -283,64 +284,65 @@ impl GStreamerPlayer {
 
             let sender = Arc::new(Mutex::new(sender));
             let sender_clone = sender.clone();
-            if pipeline
-                .connect("source-setup", false, move |args| {
-                    let source = args[1].get::<gst::Element>();
-                    if source.is_none() {
-                        let _ = sender
-                            .lock()
-                            .unwrap()
-                            .send(Err(BackendError::PlayerSourceSetupFailed));
-                        return None;
-                    }
-                    let source = source.unwrap();
-                    let mut inner = inner_clone.lock().unwrap();
-                    let appsrc = source
-                        .clone()
-                        .dynamic_cast::<gst_app::AppSrc>()
-                        .expect("Source element is expected to be an appsrc!");
+            let connect_result = pipeline.connect("source-setup", false, move |args| {
+                let source = args[1].get::<gst::Element>();
+                if source.is_none() {
+                    let _ = sender
+                        .lock()
+                        .unwrap()
+                        .send(Err(BackendError::PlayerSourceSetupFailed));
+                    return None;
+                }
+                let source = source.unwrap();
+                let mut inner = inner_clone.lock().unwrap();
+                let appsrc = source
+                    .clone()
+                    .dynamic_cast::<gst_app::AppSrc>()
+                    .expect("Source element is expected to be an appsrc!");
 
-                    appsrc.set_property_format(gst::Format::Bytes);
-                    if inner.input_size > 0 {
-                        appsrc.set_size(inner.input_size as i64);
-                    }
+                appsrc.set_property_format(gst::Format::Bytes);
+                if inner.input_size > 0 {
+                    appsrc.set_size(inner.input_size as i64);
+                }
 
-                    let sender_clone = sender.clone();
+                let sender_clone = sender.clone();
 
-                    let need_data_id = Arc::new(Mutex::new(None));
-                    let need_data_id_clone = need_data_id.clone();
-                    *need_data_id.lock().unwrap() = Some(
-                        appsrc
-                            .connect("need-data", false, move |args| {
-                                let _ = sender_clone.lock().unwrap().send(Ok(()));
-                                if let Some(id) = need_data_id_clone.lock().unwrap().take() {
-                                    glib::signal::signal_handler_disconnect(
-                                        &args[0].get::<gst::Element>().unwrap(),
-                                        id,
-                                    );
-                                }
-                                None
-                            })
-                            .unwrap(),
-                    );
+                let need_data_id = Arc::new(Mutex::new(None));
+                let need_data_id_clone = need_data_id.clone();
+                *need_data_id.lock().unwrap() = Some(
+                    appsrc
+                        .connect("need-data", false, move |args| {
+                            let _ = sender_clone.lock().unwrap().send(Ok(()));
+                            if let Some(id) = need_data_id_clone.lock().unwrap().take() {
+                                glib::signal::signal_handler_disconnect(
+                                    &args[0].get::<gst::Element>().unwrap(),
+                                    id,
+                                );
+                            }
+                            None
+                        })
+                        .unwrap(),
+                );
 
-                    inner.set_app_src(appsrc);
+                inner.set_app_src(appsrc);
 
-                    None
-                })
-                .is_err()
-            {
+                None
+            });
+
+            if connect_result.is_err() {
                 let _ = sender_clone
                     .lock()
                     .unwrap()
                     .send(Err(BackendError::PlayerSourceSetupFailed));
             }
 
-            let error_handler_id = inner.player.connect_error(move |player, _error| {
+            let error_handler_id = inner.player.connect_error(move |player, error| {
                 let _ = sender_clone
                     .lock()
                     .unwrap()
-                    .send(Err(BackendError::PlayerError));
+                    .send(Err(BackendError::PlayerError(
+                        error.description().to_string(),
+                    )));
                 player.stop();
             });
 
