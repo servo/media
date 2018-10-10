@@ -343,7 +343,7 @@ impl AudioNodeEngine for BiquadFilterNode {
         debug_assert!(inputs.len() == 1);
         self.state
             .resize(inputs.blocks[0].chan_count() as usize, Default::default());
-        self.update_parameters(info, info.frame);
+        self.update_parameters(info, Tick(0));
 
         // XXXManishearth this node has tail time, so even if the block is silence
         // we must still compute things on it. However, it is possible to become
