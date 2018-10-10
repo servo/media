@@ -18,20 +18,49 @@ fn impl_audio_scheduled_source_node(ast: &syn::DeriveInput) -> quote::Tokens {
     let name = &ast.ident;
     quote! {
         impl #name {
-            fn should_play_at(&self, tick: Tick) -> (bool, bool) {
-                if self.start_at.is_none() {
-                    return (false, true);
-                }
-
-                if tick < self.start_at.unwrap() {
-                    (false, false)
+            fn should_play_at(&mut self, tick: Tick) -> ShouldPlay {
+                let start = if let Some(start) = self.start_at {
+                    start
                 } else {
-                    if let Some(stop_at) = self.stop_at {
-                        if tick >= stop_at {
-                            return (false, true);
+                    return ShouldPlay::No;
+                };
+
+                let frame_end = tick + Tick::FRAMES_PER_BLOCK;
+                if tick < start {
+                    if frame_end < start {
+                        ShouldPlay::No
+                    } else {
+                        let delta_start = start - tick;
+                        if let Some(stop) = self.stop_at {
+                            if stop <= start {
+                                self.maybe_trigger_onended_callback();
+                                return ShouldPlay::No;
+                            }
+                            if stop > frame_end {
+                                ShouldPlay::Between(delta_start, Tick::FRAMES_PER_BLOCK)
+                            } else {
+                                self.maybe_trigger_onended_callback();
+                                ShouldPlay::Between(delta_start, stop - tick)
+                            }
+                        } else {
+                            ShouldPlay::Between(delta_start, Tick::FRAMES_PER_BLOCK)
                         }
                     }
-                    (true, false)
+                } else {
+                    let stop = if let Some(stop) = self.stop_at {
+                        stop
+                    } else {
+                        return ShouldPlay::Between(Tick(0), Tick::FRAMES_PER_BLOCK);
+                    };
+                    if stop > frame_end {
+                        ShouldPlay::Between(Tick(0), Tick::FRAMES_PER_BLOCK)
+                    } else if stop < tick {
+                        self.maybe_trigger_onended_callback();
+                        ShouldPlay::No
+                    } else {
+                        self.maybe_trigger_onended_callback();
+                        ShouldPlay::Between(Tick(0), stop - tick)
+                    }
                 }
             }
 
@@ -58,10 +87,12 @@ fn impl_audio_scheduled_source_node(ast: &syn::DeriveInput) -> quote::Tokens {
 
             fn maybe_trigger_onended_callback(&mut self) {
                 // We cannot have an end without a start.
-                if self.start_at.is_none() || self.onended_callback.is_none() {
+                if self.start_at.is_none() {
                     return;
                 }
-                self.onended_callback.take().unwrap().0.call();
+                if let Some(cb) = self.onended_callback.take() {
+                    cb.0.call()
+                }
             }
 
             fn handle_source_node_message(&mut self, message: AudioScheduledSourceNodeMessage, sample_rate: f32) {

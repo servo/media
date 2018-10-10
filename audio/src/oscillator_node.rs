@@ -1,6 +1,6 @@
 use block::{Chunk, Tick};
 use node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, BlockInfo, OnEndedCallback};
-use node::{AudioNodeType, ChannelInfo};
+use node::{AudioNodeType, ChannelInfo, ShouldPlay};
 use num_traits::cast::NumCast;
 use param::{Param, ParamType};
 
@@ -84,10 +84,12 @@ impl AudioNodeEngine for OscillatorNode {
 
         inputs.blocks.push(Default::default());
 
-        if self.should_play_at(info.frame) == (false, true) {
-            self.maybe_trigger_onended_callback();
-            return inputs;
-        }
+        let (start_at, stop_at) = match self.should_play_at(info.frame) {
+            ShouldPlay::No => {
+                return inputs;
+            }
+            ShouldPlay::Between(start, end) => (start, end)
+        };
 
         {
             inputs.blocks[0].explicit_silence();
@@ -106,14 +108,12 @@ impl AudioNodeEngine for OscillatorNode {
             let mut step = two_pi * self.frequency.value() as f64 / sample_rate;
             while let Some(mut frame) = iter.next() {
                 let tick = frame.tick();
-                let (should_play_at, should_break) = self.should_play_at(info.frame + tick);
-                if !should_play_at {
-                    if should_break {
-                        self.maybe_trigger_onended_callback();
-                        break;
-                    }
-                    continue;
+                if tick < start_at {
+                    continue
+                } else if tick > stop_at {
+                    break;
                 }
+
                 if self.update_parameters(info, tick) {
                     step = two_pi * self.frequency.value() as f64 / sample_rate;
                 }

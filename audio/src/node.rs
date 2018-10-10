@@ -206,3 +206,11 @@ pub enum AudioScheduledSourceNodeMessage {
     /// Register onended event callback.
     RegisterOnEndedCallback(OnEndedCallback),
 }
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum ShouldPlay {
+    /// Don't play anything
+    No,
+    /// Play, given start and end tick offsets
+    Between(Tick, Tick),
+}
