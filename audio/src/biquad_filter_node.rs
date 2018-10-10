@@ -140,6 +140,15 @@ impl BiquadFilterNode {
         changed
     }
 
+    /// Set to the constant z-transform y[n] = b0 * x[n]
+    fn constant_z_transform(&mut self, b0: f64) {
+        self.b0 = b0;
+        self.b1 = 0.;
+        self.b2 = 0.;
+        self.a1 = 0.;
+        self.a2 = 0.;
+    } 
+
     /// Update the coefficients a1, a2, b0, b1, b2, given the sample_rate
     ///
     /// See https://webaudio.github.io/web-audio-api/#filters-characteristics
@@ -159,8 +168,87 @@ impl BiquadFilterNode {
             f0
         };
 
+        let normalized = f0 / fs;
         let a = 10.0_f64.powf(g / 40.);
-        let omega0 = 2. * PI * f0 / fs;
+
+        // the boundary values sometimes need limits to
+        // be taken
+        match self.filter {
+            FilterType::LowPass => {
+                if normalized == 1. {
+                    self.constant_z_transform(1.);
+                    return;
+                } else if normalized == 0. {
+                    self.constant_z_transform(0.);
+                    return;                    
+                }
+            }
+            FilterType::HighPass => {
+                if normalized == 1. {
+                    self.constant_z_transform(0.);
+                    return;
+                } else if normalized == 0. {
+                    self.constant_z_transform(1.);
+                    return;                    
+                }
+            }
+            FilterType::LowShelf => {
+                if normalized == 1. {
+                    self.constant_z_transform(a * a);
+                    return;
+                } else if normalized == 0. {
+                    self.constant_z_transform(1.);
+                    return;                    
+                }
+            }
+            FilterType::HighShelf => {
+                if normalized == 1. {
+                    self.constant_z_transform(1.);
+                    return;
+                } else if normalized == 0. {
+                    self.constant_z_transform(a * a);
+                    return;                    
+                }
+            }
+            FilterType::Peaking => {
+                if normalized == 0. || normalized == 1. {
+                    self.constant_z_transform(1.);
+                    return;
+                } else if q <= 0. {
+                    self.constant_z_transform(a * a);
+                    return;
+                }
+            }
+            FilterType::AllPass => {
+                if normalized == 0. || normalized == 1. {
+                    self.constant_z_transform(1.);
+                    return;
+                } else if q <= 0. {
+                    self.constant_z_transform(-1.);
+                    return;
+                }
+            }
+            FilterType::Notch => {
+                if normalized == 0. || normalized == 1. {
+                    self.constant_z_transform(1.);
+                    return;
+                } else if q <= 0. {
+                    self.constant_z_transform(0.);
+                    return;
+                }
+            }
+            FilterType::BandPass => {
+                if normalized == 0. || normalized == 1. {
+                    self.constant_z_transform(0.);
+                    return;
+                } else if q <= 0. {
+                    self.constant_z_transform(1.);
+                    return;
+                }
+            }
+        }
+
+        let omega0 = 2. * PI * normalized;
         let sin_omega = omega0.sin();
         let cos_omega = omega0.cos();
         let alpha_q = sin_omega / (2. * q);
