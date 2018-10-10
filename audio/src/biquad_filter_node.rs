@@ -5,7 +5,7 @@ use node::BlockInfo;
 use node::{AudioNodeMessage, AudioNodeType, ChannelInfo};
 use param::{Param, ParamType};
 use smallvec::SmallVec;
-use std::f32::consts::{SQRT_2, PI};
+use std::f64::consts::{SQRT_2, PI};
 
 #[derive(Copy, Clone, Debug)]
 pub struct BiquadFilterNodeOptions {
@@ -50,18 +50,18 @@ pub enum BiquadFilterNodeMessage {
 #[derive(Default, Copy, Clone, PartialEq)]
 struct BiquadState {
     /// The input value from last frame
-    x1: f32,
+    x1: f64,
     /// The input value from two frames ago
-    x2: f32,
+    x2: f64,
     /// The output value from last frame
-    y1: f32,
+    y1: f64,
     /// The output value from two frames ago
-    y2: f32,
+    y2: f64,
 }
 
 impl BiquadState {
     /// Update with new input/output values from this frame
-    fn update(&mut self, x: f32, y: f32) {
+    fn update(&mut self, x: f64, y: f64) {
         self.x2 = self.x1;
         self.x1 = x;
         self.y2 = self.y1;
@@ -81,23 +81,23 @@ pub(crate) struct BiquadFilterNode {
     /// The computed filter parameter b0
     /// This is actually b0 / a0, we pre-divide
     /// for efficiency
-    b0: f32,
+    b0: f64,
     /// The computed filter parameter b1
     /// This is actually b1 / a0, we pre-divide
     /// for efficiency
-    b1: f32,
+    b1: f64,
     /// The computed filter parameter b2
     /// This is actually b2 / a0, we pre-divide
     /// for efficiency
-    b2: f32,
+    b2: f64,
     /// The computed filter parameter a1
     /// This is actually a1 / a0, we pre-divide
     /// for efficiency
-    a1: f32,
+    a1: f64,
     /// The computed filter parameter a2
     /// This is actually a2 / a0, we pre-divide
     /// for efficiency
-    a2: f32,
+    a2: f64,
     /// Stored filter state, this contains the last two
     /// frames of input and output values for every
     /// channel
@@ -144,10 +144,11 @@ impl BiquadFilterNode {
     ///
     /// See https://webaudio.github.io/web-audio-api/#filters-characteristics
     fn update_coefficients(&mut self, fs: f32) {
-        let g = self.gain.value();
-        let q = self.q.value();
-        let f0 = self.frequency.value() * (2.0_f32).powf(self.detune.value() / 1200.);
-
+        let g: f64 = self.gain.value().into();
+        let q: f64 = self.q.value().into();
+        let freq: f64 = self.frequency.value().into();
+        let f0: f64 = freq * (2.0_f64).powf(self.detune.value() as f64 / 1200.);
+        let fs: f64 = fs.into();
         // clamp to nominal range
         // https://webaudio.github.io/web-audio-api/#biquadfilternode
         let f0 = if f0 > fs / 2. || !f0.is_finite() {
@@ -158,12 +159,12 @@ impl BiquadFilterNode {
             f0
         };
 
-        let a = 10.0_f32.powf(g / 40.);
+        let a = 10.0_f64.powf(g / 40.);
         let omega0 = 2. * PI * f0 / fs;
         let sin_omega = omega0.sin();
         let cos_omega = omega0.cos();
         let alpha_q = sin_omega / (2. * q);
-        let alpha_q_db = sin_omega / (2. * 10.0_f32.powf(q / 20.));
+        let alpha_q_db = sin_omega / (2. * 10.0_f64.powf(q / 20.));
         let alpha_s = sin_omega / SQRT_2;
 
         // we predivide by a0
@@ -281,11 +282,12 @@ impl AudioNodeEngine for BiquadFilterNode {
                 self.update_parameters(info, frame.tick());
                 frame.mutate_with(|sample, chan| {
                     let state = &mut self.state[chan as usize];
-                    let x0 = *sample;
-                    *sample = self.b0 * x0 + self.b1 * state.x1 + self.b2 * state.x2
+                    let x0 = *sample as f64;
+                    let y0 = self.b0 * x0 + self.b1 * state.x1 + self.b2 * state.x2
                         - self.a1 * state.y1
                         - self.a2 * state.y2;
-                    state.update(x0, *sample);
+                    *sample = y0 as f32;
+                    state.update(x0, y0);
                 });
             }
         }
