@@ -38,8 +38,4 @@ impl AudioNodeEngine for DestinationNode {
     fn output_count(&self) -> u32 {
         0
     }
-
-    fn set_channel_count_mode(&mut self, _: ChannelCountMode) {
-        panic!("destination nodes cannot have their mode changed");
-    }
 }
