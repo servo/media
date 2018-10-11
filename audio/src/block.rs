@@ -102,13 +102,15 @@ impl Block {
     pub fn sum(mut self, mut other: Self) -> Self {
         if self.is_silence() {
             other
+        } else if other.is_silence() {
+            self
         } else {
-            debug_assert!(self.channels == other.channels);
+            debug_assert_eq!(self.channels, other.channels);
             if self.repeat ^ other.repeat {
                 self.explicit_repeat();
                 other.explicit_repeat();
             }
-            debug_assert!(self.buffer.len() == other.buffer.len());
+            debug_assert_eq!(self.buffer.len(), other.buffer.len());
             for (a, b) in self.buffer.iter_mut().zip(other.buffer.iter()) {
                 *a += b
             }
@@ -614,6 +616,7 @@ impl Div<f64> for Tick {
 }
 
 impl Tick {
+    pub const FRAMES_PER_BLOCK: Tick = FRAMES_PER_BLOCK;
     pub fn from_time(time: f64, rate: f32) -> Tick {
         Tick((0.5 + time * rate as f64).floor() as u64)
     }

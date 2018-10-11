@@ -39,6 +39,7 @@ pub struct Param {
     block_mix_val: f32,
     /// If true, `blocks` has been summed together into a single block
     summed: bool,
+    dirty: bool,
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
@@ -61,6 +62,7 @@ impl Param {
             blocks: Vec::new(),
             block_mix_val: 0.,
             summed: false,
+            dirty: false,
         }
     }
 
@@ -71,6 +73,8 @@ impl Param {
     ///
     /// Returns true if anything changed
     pub fn update(&mut self, block: &BlockInfo, tick: Tick) -> bool {
+        let mut changed = self.dirty;
+        self.dirty = false;
         if tick.0 == 0 {
             self.summed = true;
             if let Some(first) = self.blocks.pop() {
@@ -83,14 +87,14 @@ impl Param {
                 self.blocks.push(block);
             }
         } else if self.kind == ParamRate::KRate {
-            return false;
+            return changed;
         }
 
         // Even if the timeline does nothing, it's still possible
         // that there were connected inputs, so we should not
         // directly return `false` after this point, instead returning
         // `changed`
-        let changed = if let Some(block) = self.blocks.get(0) {
+        changed |= if let Some(block) = self.blocks.get(0) {
             // store to be summed with `val` later
             self.block_mix_val = block.data_chan(0)[tick.0 as usize];
             true
@@ -176,6 +180,7 @@ impl Param {
         if let AutomationEvent::SetValue(val) = event {
             self.val = val;
             self.event_start_value = val;
+            self.dirty = true;
             return;
         }
 

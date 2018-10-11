@@ -1,6 +1,6 @@
 use block::{Block, Chunk, Tick, FRAMES_PER_BLOCK};
 use node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, BlockInfo, OnEndedCallback};
-use node::{AudioNodeType, ChannelInfo};
+use node::{AudioNodeType, ChannelInfo, ShouldPlay};
 use param::{Param, ParamType};
 
 /// Control messages directed to AudioBufferSourceNodes.
@@ -118,34 +118,28 @@ impl AudioNodeEngine for AudioBufferSourceNode {
 
         let len = { self.buffer.as_ref().unwrap().len() as usize };
 
-        if self.playback_offset >= len || self.should_play_at(info.frame) == (false, true) {
+        if self.playback_offset >= len {
             self.maybe_trigger_onended_callback();
             inputs.blocks.push(Default::default());
             return inputs;
         }
 
-        let buffer = self.buffer.as_ref().unwrap();
-
-        let samples_to_copy = match self.stop_at {
-            Some(stop_at) => {
-                let ticks_to_stop = stop_at - info.frame;
-                if ticks_to_stop > FRAMES_PER_BLOCK {
-                    FRAMES_PER_BLOCK.0 as usize
-                } else {
-                    ticks_to_stop.0 as usize
-                }
+        let (start_at, mut stop_at) = match self.should_play_at(info.frame) {
+            ShouldPlay::No => {
+                inputs.blocks.push(Default::default());
+                return inputs;
             }
-            None => {
-                if self.playback_offset + (FRAMES_PER_BLOCK.0 as usize) < len {
-                    FRAMES_PER_BLOCK.0 as usize
-                } else {
-                    len - self.playback_offset
-                }
-            }
+            ShouldPlay::Between(start, end) => (start.0 as usize, end.0 as usize)
         };
 
-        let next_offset = self.playback_offset + samples_to_copy;
+        let buffer = self.buffer.as_ref().unwrap();
 
+        if self.playback_offset + stop_at - start_at > len {
+            stop_at = start_at + len - self.playback_offset;
+        }
+        let samples_to_copy = stop_at - start_at;
+
+        let next_offset = self.playback_offset + samples_to_copy;
         if samples_to_copy == FRAMES_PER_BLOCK.0 as usize {
             // copy entire chan
             let mut block = Block::empty();
@@ -160,6 +154,7 @@ impl AudioNodeEngine for AudioBufferSourceNode {
             block.explicit_repeat();
             for chan in 0..buffer.chans() {
                 let data = block.data_chan_mut(chan);
+                let (_, data) = data.split_at_mut(start_at);
                 let (data, _) = data.split_at_mut(samples_to_copy);
                 data.copy_from_slice(
                     &buffer.buffers[chan as usize][self.playback_offset..next_offset],
