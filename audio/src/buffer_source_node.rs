@@ -198,7 +198,7 @@ impl AudioBuffer {
 
     pub fn from_buffers(buffers: Vec<Vec<f32>>) -> Self {
         for buf in &buffers {
-            assert!(buf.len() == buffers[0].len())
+            assert_eq!(buf.len(), buffers[0].len())
         }
 
         Self { buffers }
