@@ -170,7 +170,6 @@ impl AudioDecoder for GStreamerAudioDecoder {
                             .map_err(|e| BackendError::SetPropertyFailed(e.0))?;
 
                         let callbacks_ = callbacks.clone();
-                        let callbacks__ = callbacks.clone();
                         appsink.set_callbacks(
                             AppSinkCallbacks::new()
                                 .new_sample(move |appsink| {
@@ -229,9 +228,6 @@ impl AudioDecoder for GStreamerAudioDecoder {
                                     }
 
                                     gst::FlowReturn::Ok
-                                })
-                                .eos(move |_| {
-                                    callbacks__.eos();
                                 })
                                 .build(),
                         );
@@ -322,6 +318,10 @@ impl AudioDecoder for GStreamerAudioDecoder {
                     callbacks_.error(BackendError::PipelineBusError(
                         e.get_debug().unwrap_or("Unknown".to_owned()),
                     ));
+                    let _ = sender.lock().unwrap().send(());
+                }
+                MessageView::Eos(_) => {
+                    callbacks_.eos();
                     let _ = sender.lock().unwrap().send(());
                 }
                 _ => (),
