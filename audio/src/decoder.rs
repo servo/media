@@ -51,9 +51,6 @@ impl<E> AudioDecoderCallbacks<E> {
     }
 }
 
-unsafe impl<E> Send for AudioDecoderCallbacks<E> {}
-unsafe impl<E> Sync for AudioDecoderCallbacks<E> {}
-
 pub struct AudioDecoderCallbacksBuilder<E> {
     eos: Option<SendBoxFnOnce<'static, ()>>,
     error: Option<SendBoxFnOnce<'static, (E,)>>,
