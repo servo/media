@@ -1,3 +1,5 @@
+set -e
+
 if [ "$#" -ne 1 ]; then
   echo "Usage: ./android_bootstrap <target> (supported targets: armeabi-v7a x86)" >&2
   exit 1
