@@ -1,13 +1,18 @@
+#![allow(unused_imports)]
+#![allow(dead_code)]
+
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 extern crate gleam;
+#[cfg(not(target_os = "android"))]
 extern crate glutin;
 extern crate ipc_channel;
 extern crate servo_media;
 extern crate time;
 extern crate webrender;
+#[cfg(not(target_os = "android"))]
 extern crate winit;
 
 use gleam::gl;
@@ -24,9 +29,11 @@ use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::Builder;
+#[cfg(not(target_os = "android"))]
 use ui::HandyDandyRectBuilder;
 use webrender::api::*;
 
+#[cfg(not(target_os = "android"))]
 #[path = "ui.rs"]
 mod ui;
 
@@ -150,6 +157,7 @@ impl App {
     }
 }
 
+#[cfg(not(target_os = "android"))]
 impl ui::Example for App {
     fn render(
         &mut self,
@@ -226,6 +234,12 @@ impl FrameRenderer for App {
     }
 }
 
+#[cfg(target_os = "android")]
+fn main() {
+    panic!("Unsupported");
+}
+
+#[cfg(not(target_os = "android"))]
 fn main() {
     let args: Vec<_> = env::args().collect();
     let filename: &str = if args.len() == 2 {

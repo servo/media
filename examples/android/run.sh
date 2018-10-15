@@ -1,7 +1,9 @@
 ROOT=${PWD}
 PKG_CONFIG_PATH_OLD=$PKG_CONFIG_PATH
-cd ../../
-export PKG_CONFIG_PATH=${PWD}/backends/gstreamer/target/gst-build-armeabi/pkgconfig
+cd ../../etc
+./android_bootstrap.sh armeabi-v7a
+cd ..
+export PKG_CONFIG_PATH=${PWD}/gstreamer/armeabi-v7a/gst-build-armeabi-v7a/pkgconfig
 echo "Set PKG_CONFIG_PATH to ${PKG_CONFIG_PATH}"
 cd servo-media
 echo "Building servo-media ${PWD}"
@@ -17,7 +19,7 @@ rm -rf jniLibs
 mkdir -p jniLibs/armeabi
 
 ln -s ${ROOT}/../../target/arm-linux-androideabi/debug/libservo_media_android.so jniLibs/armeabi/libservo_media_android.so
-ln -s ${ROOT}/../../backends/gstreamer/target/gst-build-armeabi/libgstreamer_android.so jniLibs/armeabi/libgstreamer_android.so
+ln -s ${ROOT}/../../gstreamer/armeabi-v7a/gst-build-armeabi-v7a/libgstreamer_android.so jniLibs/armeabi/libgstreamer_android.so
 
 cd ${ROOT}/src
 ./gradlew installDebug || return 1

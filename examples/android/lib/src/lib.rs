@@ -1,15 +1,23 @@
+#[cfg(target_os = "android")]
 extern crate servo_media;
 
+#[cfg(target_os = "android")]
 use servo_media::audio::gain_node::GainNodeOptions;
+#[cfg(target_os = "android")]
 use servo_media::audio::context::AudioContext;
+#[cfg(target_os = "android")]
 use servo_media::audio::node::{AudioNodeInit, AudioNodeMessage};
+#[cfg(target_os = "android")]
 use servo_media::audio::node::AudioScheduledSourceNodeMessage;
+#[cfg(target_os = "android")]
 use servo_media::{Backend, ServoMedia};
 
+#[cfg(target_os = "android")]
 struct AudioStream {
     context: AudioContext<Backend>,
 }
 
+#[cfg(target_os = "android")]
 impl AudioStream {
     pub fn new() -> Self {
         let context = ServoMedia::get().unwrap().create_audio_context(Default::default());
