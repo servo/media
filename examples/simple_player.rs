@@ -94,6 +94,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
                 println!("Player state changed to {:?}", s);
             }
             PlayerEvent::FrameUpdated => eprint!("."),
+            PlayerEvent::PositionChanged(p) => println!("{:?}", p),
         }
     }
 

@@ -20,10 +20,11 @@ pub enum PlaybackState {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum PlayerEvent {
     EndOfStream,
-    MetadataUpdated(metadata::Metadata),
-    StateChanged(PlaybackState),
-    FrameUpdated,
     Error,
+    FrameUpdated,
+    MetadataUpdated(metadata::Metadata),
+    PositionChanged(u64),
+    StateChanged(PlaybackState),
 }
 
 pub trait Player: Send {

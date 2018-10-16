@@ -229,6 +229,18 @@ impl GStreamerPlayer {
             .lock()
             .unwrap()
             .player
+            .connect_position_updated(move |_, position| {
+                if let Some(seconds) = position.seconds() {
+                    let inner = inner_clone.lock().unwrap();
+                    inner.notify(PlayerEvent::PositionChanged(seconds));
+                }
+            });
+
+        let inner_clone = inner.clone();
+        inner
+            .lock()
+            .unwrap()
+            .player
             .connect_media_info_updated(move |_, info| {
                 let mut inner = inner_clone.lock().unwrap();
                 if let Ok(metadata) = metadata_from_media_info(info) {
