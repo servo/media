@@ -95,5 +95,6 @@ Make sure that you have [adb](https://developer.android.com/studio/command-line/
 installed and you have adb access to your
 Android device. Go to the `examples/android` folder and run:
 ```ssh
-source run.sh
+source build.sh
+./run.sh
 ```
