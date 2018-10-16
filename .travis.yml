@@ -1,31 +1,53 @@
 language: rust
 sudo: required
-dist: trusty
 rust:
   - nightly
 os:
   - linux
-addons:
-  apt:
-    packages:
-      - libpulse-dev
-      - pulseaudio
-      - pulseaudio-utils
-      - dbus-x11
-services:
-  - pulseaudio
+dist: trusty
 
-before_install:
-  - curl -L http://servo-deps.s3.amazonaws.com/gstreamer/gstreamer-x86_64-linux-gnu.tar.gz | tar xz
-  - sed -i "s;prefix=/root/gstreamer;prefix=$PWD/gstreamer;g" $PWD/gstreamer/lib/x86_64-linux-gnu/pkgconfig/*.pc
-  - export PKG_CONFIG_PATH=$PWD/gstreamer/lib/x86_64-linux-gnu/pkgconfig
-  - export GST_PLUGIN_SYSTEM_PATH=$GST_PLUGIN_SYSTEM_PATH:/usr/lib/x86_64-linux-gnu/gstreamer-1.0:$PWD/gstreamer/lib/x86_64-linux-gnu/gstreamer-1.0
-  - export GST_PLUGIN_SCANNER=$PWD/gstreamer/libexec/gstreamer-1.0/gst-plugin-scanner
-  - export PATH=$PATH:$PWD/gstreamer/bin
-  - export LD_LIBRARY_PATH=$PWD/gstreamer/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
-  - export DISPLAY=:99.0;
-  - /sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -screen 0 1400x900x24 -ac +extension GLX +render -noreset;
+matrix:
+  include:
+    - name: "Desktop build"
+      addons:
+        apt:
+          packages:
+            - libpulse-dev
+            - pulseaudio
+            - pulseaudio-utils
+            - dbus-x11
+      services:
+        - pulseaudio
 
-script:
-  - cargo build
-  - ls examples/*.rs | xargs -I{} basename  {} .rs  | grep -v params_connect | RUST_BACKTRACE=1 GST_DEBUG=3 xargs -I{} cargo ex {}
+      before_install:
+        - curl -L http://servo-deps.s3.amazonaws.com/gstreamer/gstreamer-x86_64-linux-gnu.tar.gz | tar xz
+        - sed -i "s;prefix=/root/gstreamer;prefix=$PWD/gstreamer;g" $PWD/gstreamer/lib/x86_64-linux-gnu/pkgconfig/*.pc
+        - export PKG_CONFIG_PATH=$PWD/gstreamer/lib/x86_64-linux-gnu/pkgconfig
+        - export GST_PLUGIN_SYSTEM_PATH=$GST_PLUGIN_SYSTEM_PATH:/usr/lib/x86_64-linux-gnu/gstreamer-1.0:$PWD/gstreamer/lib/x86_64-linux-gnu/gstreamer-1.0
+        - export GST_PLUGIN_SCANNER=$PWD/gstreamer/libexec/gstreamer-1.0/gst-plugin-scanner
+        - export PATH=$PATH:$PWD/gstreamer/bin
+        - export LD_LIBRARY_PATH=$PWD/gstreamer/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+        - export DISPLAY=:99.0;
+        - /sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -screen 0 1400x900x24 -ac +extension GLX +render -noreset;
+
+      script:
+        - cargo build
+        - ls examples/*.rs | xargs -I{} basename  {} .rs  | grep -v params_connect | RUST_BACKTRACE=1 GST_DEBUG=3 xargs -I{} cargo ex {}
+
+    - name: "Android build"
+      before_install:
+        - curl -sSf https://build.travis-ci.org/files/rustup-init.sh | sh -s -- --default-toolchain=nightly -y
+        - source $HOME/.cargo/env
+        - rustup target add arm-linux-androideabi
+        - wget https://dl.google.com/android/repository/android-ndk-r16b-linux-x86_64.zip -O ndk.zip
+        - unzip ndk.zip > /dev/null
+        - export NDK_HOME=`pwd`/android-ndk-r16b
+        - ${NDK_HOME}/build/tools/make_standalone_toolchain.py --arch arm --api 21 --install-dir android-21-armv7-toolchain
+        - echo "[target.arm-linux-androideabi]" >> examples/android/lib/.cargo/config
+        - echo "linker = \"`pwd`/android-21-armv7-toolchain/bin/arm-linux-androideabi-gcc\"" >> examples/android/lib/.cargo/config
+        - echo "ar = \"`pwd`/android-21-armv7-toolchain/bin/arm-linux-androideabi-ar\"" >> examples/android/lib/.cargo/config
+        - cat examples/android/lib/.cargo/config
+
+      script:
+          - cd examples/android
+          - source build.sh
