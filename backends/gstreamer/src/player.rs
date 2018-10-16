@@ -258,10 +258,17 @@ impl GStreamerPlayer {
             .player
             .connect_duration_changed(move |_, duration| {
                 let duration = if duration != gst::ClockTime::none() {
-                    let mut nanos = duration.nanoseconds().unwrap();
-                    nanos = nanos % 1_000_000_000;
-                    let seconds = duration.seconds().unwrap();
-                    Some(time::Duration::new(seconds, nanos as u32))
+                    let nanos = duration.nanoseconds();
+                    if nanos.is_none() {
+                        eprintln!("Could not get duration nanoseconds");
+                        return;
+                    }
+                    let seconds = duration.seconds();
+                    if seconds.is_none() {
+                        eprintln!("Could not get duration seconds");
+                        return;
+                    }
+                    Some(time::Duration::new(seconds.unwrap(), (nanos.unwrap() % 1_000_000_000) as u32))
                 } else {
                     None
                 };
