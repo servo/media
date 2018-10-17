@@ -117,6 +117,7 @@ impl PlayerWrapper {
                             println!("Player state changed to {:?}", s);
                         }
                         PlayerEvent::FrameUpdated => eprint!("."),
+                        PlayerEvent::PositionChanged(_) => (),
                     }
                 }
                 player.lock().unwrap().stop().unwrap();

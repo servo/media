@@ -163,6 +163,13 @@ impl GStreamerPlayer {
             .set_property("uri", &Value::from("appsrc://"))
             .map_err(|e| BackendError::SetPropertyFailed(e.0))?;
 
+        // Set position interval update to 0.5 seconds.
+        let mut config = player.get_config();
+        config.set_position_update_interval(500u32);
+        player
+            .set_config(config)
+            .map_err(|e| BackendError::SetPropertyFailed(e.0))?;
+
         let video_sink = gst::ElementFactory::make("appsink", None)
             .ok_or(BackendError::ElementCreationFailed("appsink"))?;
         let pipeline = player.get_pipeline();
@@ -229,6 +236,18 @@ impl GStreamerPlayer {
             .lock()
             .unwrap()
             .player
+            .connect_position_updated(move |_, position| {
+                if let Some(seconds) = position.seconds() {
+                    let inner = inner_clone.lock().unwrap();
+                    inner.notify(PlayerEvent::PositionChanged(seconds));
+                }
+            });
+
+        let inner_clone = inner.clone();
+        inner
+            .lock()
+            .unwrap()
+            .player
             .connect_media_info_updated(move |_, info| {
                 let mut inner = inner_clone.lock().unwrap();
                 if let Ok(metadata) = metadata_from_media_info(info) {
@@ -239,15 +258,36 @@ impl GStreamerPlayer {
                 }
             });
 
+        let inner_clone = inner.clone();
         inner
             .lock()
             .unwrap()
             .player
             .connect_duration_changed(move |_, duration| {
-                let mut seconds = duration / 1_000_000_000;
-                let mut minutes = seconds / 60;
-                seconds %= 60;
-                minutes %= 60;
+                let duration = if duration != gst::ClockTime::none() {
+                    let nanos = duration.nanoseconds();
+                    if nanos.is_none() {
+                        eprintln!("Could not get duration nanoseconds");
+                        return;
+                    }
+                    let seconds = duration.seconds();
+                    if seconds.is_none() {
+                        eprintln!("Could not get duration seconds");
+                        return;
+                    }
+                    Some(time::Duration::new(seconds.unwrap(), (nanos.unwrap() % 1_000_000_000) as u32))
+                } else {
+                    None
+                };
+                let mut inner = inner_clone.lock().unwrap();
+                let mut updated_metadata = None;
+                if let Some(ref mut metadata) = inner.last_metadata {
+                    metadata.duration = duration;
+                    updated_metadata = Some(metadata.clone());
+                }
+                if updated_metadata.is_some() {
+                    inner.notify(PlayerEvent::MetadataUpdated(updated_metadata.unwrap()));
+                }
             });
 
         let inner_clone = inner.clone();
