@@ -163,6 +163,13 @@ impl GStreamerPlayer {
             .set_property("uri", &Value::from("appsrc://"))
             .map_err(|e| BackendError::SetPropertyFailed(e.0))?;
 
+        // Set position interval update to 0.5 seconds.
+        let mut config = player.get_config();
+        config.set_position_update_interval(500u32);
+        player
+            .set_config(config)
+            .map_err(|e| BackendError::SetPropertyFailed(e.0))?;
+
         let video_sink = gst::ElementFactory::make("appsink", None)
             .ok_or(BackendError::ElementCreationFailed("appsink"))?;
         let pipeline = player.get_pipeline();
