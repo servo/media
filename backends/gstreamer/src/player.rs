@@ -47,6 +47,8 @@ fn metadata_from_media_info(media_info: &PlayerMediaInfo) -> Result<Metadata, ()
         .get_container_format()
         .unwrap_or_else(|| "".to_owned());
 
+    let seekable = media_info.is_seekable();
+
     for stream_info in media_info.get_stream_list() {
         let stream_type = stream_info.get_stream_type();
         match stream_type.as_str() {
@@ -76,6 +78,7 @@ fn metadata_from_media_info(media_info: &PlayerMediaInfo) -> Result<Metadata, ()
         width,
         height,
         format,
+        seekable,
         audio_tracks,
         video_tracks,
     })
@@ -135,6 +138,11 @@ impl PlayerInner {
     }
 
     pub fn seek(&mut self, time: f64, accurate: bool) -> Result<(), BackendError> {
+        if self.last_metadata.is_some() && !self.last_metadata.as_ref().unwrap().seekable {
+            eprintln!("Non seekable stream");
+            return Err(BackendError::PlayerSeekFailed);
+        }
+
         // XXX Cannot change config while playing
         // Need to create bindings for gst_player_config_set_seek_accurate
         /*let mut config = self.player.get_config();
@@ -142,7 +150,9 @@ impl PlayerInner {
         self.player
             .set_config(config)
             .map_err(|e| BackendError::SetPropertyFailed(e.0))?;*/
-        self.player.seek(gst::ClockTime::from_seconds(time as u64));
+
+        let time = time * 1_000_000_000.;
+        self.player.seek(gst::ClockTime::from_nseconds(time as u64));
         Ok(())
     }
 
