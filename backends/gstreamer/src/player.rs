@@ -8,7 +8,7 @@ use gst_player::{PlayerMediaInfo, PlayerStreamInfoExt};
 use ipc_channel::ipc::IpcSender;
 use servo_media_player::frame::{Frame, FrameRenderer};
 use servo_media_player::metadata::Metadata;
-use servo_media_player::{PlaybackState, Player, PlayerEvent};
+use servo_media_player::{PlaybackState, Player, PlayerEvent, Seekable};
 use std::cell::RefCell;
 use std::error::Error;
 use std::sync::mpsc;
@@ -121,6 +121,16 @@ impl PlayerInner {
 
     pub fn set_input_size(&mut self, size: u64) {
         self.input_size = size;
+    }
+
+    pub fn set_seekable(&mut self, seekable: Seekable) {
+        if let Some(ref appsrc) = self.appsrc {
+            appsrc.set_stream_type(match seekable {
+                Seekable::NonSeekable => gst_app::AppStreamType::Stream,
+                Seekable::Seekable => gst_app::AppStreamType::Seekable,
+                Seekable::SeekableFast => gst_app::AppStreamType::RandomAccess,
+            });
+        }
     }
 
     pub fn play(&mut self) {
@@ -470,6 +480,14 @@ impl Player for GStreamerPlayer {
         Ok(())
     }
 
+    fn set_seekable(&self, seekable: Seekable) -> Result<(), BackendError> {
+        self.setup()?;
+        let inner = self.inner.borrow();
+        let mut inner = inner.as_ref().unwrap().lock().unwrap();
+        inner.set_seekable(seekable);
+        Ok(())
+    }
+
     fn play(&self) -> Result<(), BackendError> {
         self.setup()?;
         let inner = self.inner.borrow();
@@ -524,3 +542,4 @@ impl Player for GStreamerPlayer {
         Err(BackendError::PlayerEOSFailed)
     }
 }
+

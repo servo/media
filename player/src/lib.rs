@@ -28,6 +28,16 @@ pub enum PlayerEvent {
     StateChanged(PlaybackState),
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub enum Seekable {
+    /// No seeking is supported in the stream, such as a live stream.
+    NonSeekable,
+    /// The stream is seekable but seeking might not be very fast, such as data from a webserver.
+    Seekable,
+    /// The stream is seekable and seeking is fast, such as in a local file.
+    SeekableFast,
+}
+
 pub trait Player: Send {
     type Error: Debug;
     fn register_event_handler(&self, sender: IpcSender<PlayerEvent>) -> Result<(), Self::Error>;
@@ -39,6 +49,7 @@ pub trait Player: Send {
     fn seek(&self, time: f64, accurate: bool) -> Result<(), Self::Error>;
 
     fn set_input_size(&self, size: u64) -> Result<(), Self::Error>;
+    fn set_seekable(&self, seekable: Seekable) -> Result<(), Self::Error>;
     fn push_data(&self, data: Vec<u8>) -> Result<(), Self::Error>;
     fn end_of_stream(&self) -> Result<(), Self::Error>;
 }
@@ -56,6 +67,7 @@ impl Player for DummyPlayer {
     fn seek(&self, _: f64, _: bool) -> Result<(), ()> { Ok(()) }
 
     fn set_input_size(&self, _: u64) -> Result<(), ()> { Ok(()) }
+    fn set_seekable(&self, _: Seekable) -> Result<(), ()> { Ok(()) }
     fn push_data(&self, _: Vec<u8>) -> Result<(), ()> {
         Err(())
     }
