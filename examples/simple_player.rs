@@ -1,18 +1,18 @@
 extern crate ipc_channel;
 extern crate servo_media;
 
-use ipc_channel::ipc;
-use servo_media::player::PlayerEvent;
+use ipc_channel::ipc::{self, IpcSender};
+use servo_media::player::{PlayerEvent, StreamType};
 use servo_media::ServoMedia;
 use std::env;
 use std::error::Error;
 use std::fs::File;
-use std::io::BufReader;
-use std::io::Read;
+use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::path::Path;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
+use std::time::Duration;
 
 fn run_example(servo_media: Arc<ServoMedia>) {
     let player = Arc::new(Mutex::new(servo_media.create_player()));
@@ -49,24 +49,50 @@ fn run_example(servo_media: Arc<ServoMedia>) {
             .unwrap();
     }
 
+    player
+        .lock()
+        .unwrap()
+        .set_stream_type(StreamType::SeekableFast)
+        .unwrap();
+
     let player_clone = Arc::clone(&player);
+    let seek_sender: Arc<Mutex<Option<IpcSender<bool>>>> = Arc::new(Mutex::new(None));
+    let seek_sender_clone = seek_sender.clone();
     let shutdown = Arc::new(AtomicBool::new(false));
     let shutdown_clone = shutdown.clone();
+    let seek_data = Arc::new(AtomicBool::new(false));
+    let seek_data_clone = seek_data.clone();
+    let seek_to = Arc::new(AtomicUsize::new(0));
+    let seek_to_clone = seek_to.clone();
     let t = thread::spawn(move || {
         let player = &player_clone;
         let mut buf_reader = BufReader::new(file);
-        let mut buffer = [0; 8192];
+        let mut buffer = [0; 1024];
         while !shutdown_clone.load(Ordering::Relaxed) {
-            match buf_reader.read(&mut buffer[..]) {
-                Ok(0) => {
-                    println!("finished pushing data");
+            thread::sleep(Duration::from_millis(100));
+            if seek_data_clone.load(Ordering::Relaxed) {
+                seek_data_clone.store(false, Ordering::Relaxed);
+                let offset = seek_to_clone.load(Ordering::Relaxed) as u64;
+                if buf_reader.seek(SeekFrom::Start(offset)).is_err() {
+                    eprintln!("BufReader - Could not seek to {:?}", offset);
                     break;
                 }
-                Ok(size) => player
-                    .lock()
-                    .unwrap()
-                    .push_data(Vec::from(&buffer[0..size]))
-                    .unwrap(),
+                println!("BufReader - Seeked to {:?}", offset);
+                seek_sender_clone.lock().unwrap().as_ref().unwrap().send(true);
+            }
+            match buf_reader.read(&mut buffer[..]) {
+                Ok(0) => {
+                    println!("Finished pushing data");
+                    break;
+                }
+                Ok(size) => {
+                    println!("Pushing data size {:?}", size);
+                    player
+                        .lock()
+                        .unwrap()
+                        .push_data(Vec::from(&buffer[0..size]))
+                        .unwrap()
+                },
                 Err(e) => {
                     eprintln!("Error: {}", e);
                     break;
@@ -95,13 +121,21 @@ fn run_example(servo_media: Arc<ServoMedia>) {
             }
             PlayerEvent::FrameUpdated => eprint!("."),
             PlayerEvent::PositionChanged(p) => {
+                println!("{:?}", p);
                 if p == 1 {
                     println!("SEEKING");
                     player.lock().unwrap().seek(4., false).unwrap();
                 }
-                println!("{:?}", p)
             },
-            PlayerEvent::Seeked(p) => println!("Seeked to {:?}", p),
+            PlayerEvent::SeekData(p, sender) => {
+                println!("Seek requested to position {:?}", p);
+                seek_data.store(true, Ordering::Relaxed);
+                seek_to.store(p as usize, Ordering::Relaxed);
+                *seek_sender.lock().unwrap() = Some(sender);
+            },
+            PlayerEvent::SeekDone(p) => {
+                println!("Seeked to {:?}", p)
+            },
         }
     }
 

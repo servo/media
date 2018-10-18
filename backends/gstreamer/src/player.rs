@@ -2,13 +2,13 @@ use super::BackendError;
 use glib;
 use glib::*;
 use gst;
-use gst_app;
+use gst_app::{self, AppSrcCallbacks};
 use gst_player;
 use gst_player::{PlayerMediaInfo, PlayerStreamInfoExt};
-use ipc_channel::ipc::IpcSender;
+use ipc_channel::ipc::{self, IpcSender};
 use servo_media_player::frame::{Frame, FrameRenderer};
 use servo_media_player::metadata::Metadata;
-use servo_media_player::{PlaybackState, Player, PlayerEvent, Seekable};
+use servo_media_player::{PlaybackState, Player, PlayerEvent, StreamType};
 use std::cell::RefCell;
 use std::error::Error;
 use std::sync::mpsc;
@@ -123,12 +123,12 @@ impl PlayerInner {
         self.input_size = size;
     }
 
-    pub fn set_seekable(&mut self, seekable: Seekable) {
+    pub fn set_stream_type(&mut self, type_: StreamType) {
         if let Some(ref appsrc) = self.appsrc {
-            appsrc.set_stream_type(match seekable {
-                Seekable::NonSeekable => gst_app::AppStreamType::Stream,
-                Seekable::Seekable => gst_app::AppStreamType::Seekable,
-                Seekable::SeekableFast => gst_app::AppStreamType::RandomAccess,
+            appsrc.set_stream_type(match type_ {
+                StreamType::NonSeekable => gst_app::AppStreamType::Stream,
+                StreamType::Seekable => gst_app::AppStreamType::Seekable,
+                StreamType::SeekableFast => gst_app::AppStreamType::RandomAccess,
             });
         }
     }
@@ -283,7 +283,7 @@ impl GStreamerPlayer {
             .connect_seek_done(move |_, position| {
                 if let Some(seconds) = position.seconds() {
                     let inner = inner_clone.lock().unwrap();
-                    inner.notify(PlayerEvent::Seeked(seconds));
+                    inner.notify(PlayerEvent::SeekDone(seconds));
                 }
             });
 
@@ -401,6 +401,17 @@ impl GStreamerPlayer {
                         .unwrap(),
                 );
 
+                let inner_clone = inner_clone.clone();
+                appsrc.set_callbacks(
+                    AppSrcCallbacks::new()
+                        .seek_data(move |_, offset| {
+                            let (sender, receiver) = ipc::channel().unwrap();
+                            inner_clone.lock().unwrap().notify(PlayerEvent::SeekData(offset, sender));
+                            receiver.recv().unwrap()
+                        })
+                        .build()
+                );
+
                 inner.set_app_src(appsrc);
 
                 None
@@ -480,11 +491,11 @@ impl Player for GStreamerPlayer {
         Ok(())
     }
 
-    fn set_seekable(&self, seekable: Seekable) -> Result<(), BackendError> {
+    fn set_stream_type(&self, type_: StreamType) -> Result<(), BackendError> {
         self.setup()?;
         let inner = self.inner.borrow();
         let mut inner = inner.as_ref().unwrap().lock().unwrap();
-        inner.set_seekable(seekable);
+        inner.set_stream_type(type_);
         Ok(())
     }
 

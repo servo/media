@@ -118,7 +118,8 @@ impl PlayerWrapper {
                         }
                         PlayerEvent::FrameUpdated => eprint!("."),
                         PlayerEvent::PositionChanged(_) => (),
-                        PlayerEvent::Seeked(p) => {
+                        PlayerEvent::SeekData(_, _) => (),
+                        PlayerEvent::SeekDone(p) => {
                             println!("Seeked to {:?}", p);
                         },
                     }

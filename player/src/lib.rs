@@ -24,12 +24,19 @@ pub enum PlayerEvent {
     FrameUpdated,
     MetadataUpdated(metadata::Metadata),
     PositionChanged(u64),
-    Seeked(u64),
+    /// The player needs the data to perform a seek to the given offset.
+    /// The next push_data should get the buffers from the new offset.
+    /// The pipeline is paused until the client confirms that the seek
+    /// data was retrieved and is about to be pushed.
+    /// This event is only received for seekable stream types.
+    SeekData(u64, IpcSender<bool>),
+    /// The player has performed a seek to the given offset.
+    SeekDone(u64),
     StateChanged(PlaybackState),
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub enum Seekable {
+pub enum StreamType {
     /// No seeking is supported in the stream, such as a live stream.
     NonSeekable,
     /// The stream is seekable but seeking might not be very fast, such as data from a webserver.
@@ -49,7 +56,7 @@ pub trait Player: Send {
     fn seek(&self, time: f64, accurate: bool) -> Result<(), Self::Error>;
 
     fn set_input_size(&self, size: u64) -> Result<(), Self::Error>;
-    fn set_seekable(&self, seekable: Seekable) -> Result<(), Self::Error>;
+    fn set_stream_type(&self, type_: StreamType) -> Result<(), Self::Error>;
     fn push_data(&self, data: Vec<u8>) -> Result<(), Self::Error>;
     fn end_of_stream(&self) -> Result<(), Self::Error>;
 }
@@ -67,7 +74,7 @@ impl Player for DummyPlayer {
     fn seek(&self, _: f64, _: bool) -> Result<(), ()> { Ok(()) }
 
     fn set_input_size(&self, _: u64) -> Result<(), ()> { Ok(()) }
-    fn set_seekable(&self, _: Seekable) -> Result<(), ()> { Ok(()) }
+    fn set_stream_type(&self, _: StreamType) -> Result<(), ()> { Ok(()) }
     fn push_data(&self, _: Vec<u8>) -> Result<(), ()> {
         Err(())
     }
