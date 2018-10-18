@@ -94,7 +94,14 @@ fn run_example(servo_media: Arc<ServoMedia>) {
                 println!("Player state changed to {:?}", s);
             }
             PlayerEvent::FrameUpdated => eprint!("."),
-            PlayerEvent::PositionChanged(p) => println!("{:?}", p),
+            PlayerEvent::PositionChanged(p) => {
+                if p == 1 {
+                    println!("SEEKING");
+                    player.lock().unwrap().seek(4., false).unwrap();
+                }
+                println!("{:?}", p)
+            },
+            PlayerEvent::Seeked(p) => println!("Seeked to {:?}", p),
         }
     }
 

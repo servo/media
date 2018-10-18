@@ -134,6 +134,18 @@ impl PlayerInner {
         self.player.pause();
     }
 
+    pub fn seek(&mut self, time: f64, accurate: bool) -> Result<(), BackendError> {
+        // XXX Cannot change config while playing
+        // Need to create bindings for gst_player_config_set_seek_accurate
+        /*let mut config = self.player.get_config();
+        config.set_seek_accurate(accurate);
+        self.player
+            .set_config(config)
+            .map_err(|e| BackendError::SetPropertyFailed(e.0))?;*/
+        self.player.seek(gst::ClockTime::from_seconds(time as u64));
+        Ok(())
+    }
+
     pub fn set_app_src(&mut self, appsrc: gst_app::AppSrc) {
         self.appsrc = Some(appsrc);
     }
@@ -240,6 +252,18 @@ impl GStreamerPlayer {
                 if let Some(seconds) = position.seconds() {
                     let inner = inner_clone.lock().unwrap();
                     inner.notify(PlayerEvent::PositionChanged(seconds));
+                }
+            });
+
+        let inner_clone = inner.clone();
+        inner
+            .lock()
+            .unwrap()
+            .player
+            .connect_seek_done(move |_, position| {
+                if let Some(seconds) = position.seconds() {
+                    let inner = inner_clone.lock().unwrap();
+                    inner.notify(PlayerEvent::Seeked(seconds));
                 }
             });
 
@@ -455,6 +479,13 @@ impl Player for GStreamerPlayer {
         let inner = self.inner.borrow();
         inner.as_ref().unwrap().lock().unwrap().stop();
         Ok(())
+    }
+
+    fn seek(&self, time: f64, accurate: bool) -> Result<(), BackendError> {
+        self.setup()?;
+        let inner = self.inner.borrow();
+        let mut inner = inner.as_ref().unwrap().lock().unwrap();
+        inner.seek(time, accurate)
     }
 
     fn push_data(&self, data: Vec<u8>) -> Result<(), BackendError> {

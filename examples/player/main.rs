@@ -118,6 +118,9 @@ impl PlayerWrapper {
                         }
                         PlayerEvent::FrameUpdated => eprint!("."),
                         PlayerEvent::PositionChanged(_) => (),
+                        PlayerEvent::Seeked(p) => {
+                            println!("Seeked to {:?}", p);
+                        },
                     }
                 }
                 player.lock().unwrap().stop().unwrap();
