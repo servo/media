@@ -71,19 +71,16 @@ fn run_example(servo_media: Arc<ServoMedia>) {
             }
 
             while !shutdown_clone.load(Ordering::Relaxed) {
-
                 match buf_reader.read(&mut buffer[..]) {
                     Ok(0) => {
                         println!("Finished pushing data");
                         break;
                     }
-                    Ok(size) => {
-                        player
-                            .lock()
-                            .unwrap()
-                            .push_data(Vec::from(&buffer[0..size]))
-                            .unwrap()
-                    },
+                    Ok(size) => player
+                        .lock()
+                        .unwrap()
+                        .push_data(Vec::from(&buffer[0..size]))
+                        .unwrap(),
                     Err(e) => {
                         eprintln!("Error: {}", e);
                         break;
@@ -135,14 +132,12 @@ fn run_example(servo_media: Arc<ServoMedia>) {
                         eprintln!("{:?}", e);
                     }
                 }
-            },
+            }
             PlayerEvent::SeekData(p) => {
                 println!("\nSeek requested to position {:?}", p);
                 seek_sender.send(p).unwrap();
-            },
-            PlayerEvent::SeekDone(p) => {
-                println!("\nSeeked to {:?}", p)
-            },
+            }
+            PlayerEvent::SeekDone(p) => println!("\nSeeked to {:?}", p),
         }
     }
 

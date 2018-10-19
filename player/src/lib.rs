@@ -46,7 +46,10 @@ pub enum StreamType {
 pub trait Player: Send {
     type Error: Debug;
     fn register_event_handler(&self, sender: IpcSender<PlayerEvent>) -> Result<(), Self::Error>;
-    fn register_frame_renderer(&self, renderer: Arc<Mutex<frame::FrameRenderer>>) -> Result<(), Self::Error>;
+    fn register_frame_renderer(
+        &self,
+        renderer: Arc<Mutex<frame::FrameRenderer>>,
+    ) -> Result<(), Self::Error>;
 
     fn play(&self) -> Result<(), Self::Error>;
     fn pause(&self) -> Result<(), Self::Error>;
@@ -63,16 +66,32 @@ pub struct DummyPlayer {}
 
 impl Player for DummyPlayer {
     type Error = ();
-    fn register_event_handler(&self, _: IpcSender<PlayerEvent>) -> Result<(), ()> { Ok(()) }
-    fn register_frame_renderer(&self, _: Arc<Mutex<frame::FrameRenderer>>) -> Result<(), ()> { Ok(()) }
+    fn register_event_handler(&self, _: IpcSender<PlayerEvent>) -> Result<(), ()> {
+        Ok(())
+    }
+    fn register_frame_renderer(&self, _: Arc<Mutex<frame::FrameRenderer>>) -> Result<(), ()> {
+        Ok(())
+    }
 
-    fn play(&self) -> Result<(), ()> { Ok(()) }
-    fn pause(&self) -> Result<(), ()> { Ok(()) }
-    fn stop(&self) -> Result<(), ()> { Ok(()) }
-    fn seek(&self, _: f64) -> Result<(), ()> { Ok(()) }
+    fn play(&self) -> Result<(), ()> {
+        Ok(())
+    }
+    fn pause(&self) -> Result<(), ()> {
+        Ok(())
+    }
+    fn stop(&self) -> Result<(), ()> {
+        Ok(())
+    }
+    fn seek(&self, _: f64) -> Result<(), ()> {
+        Ok(())
+    }
 
-    fn set_input_size(&self, _: u64) -> Result<(), ()> { Ok(()) }
-    fn set_stream_type(&self, _: StreamType) -> Result<(), ()> { Ok(()) }
+    fn set_input_size(&self, _: u64) -> Result<(), ()> {
+        Ok(())
+    }
+    fn set_stream_type(&self, _: StreamType) -> Result<(), ()> {
+        Ok(())
+    }
     fn push_data(&self, _: Vec<u8>) -> Result<(), ()> {
         Err(())
     }

@@ -96,12 +96,18 @@ struct PlayerInner {
 }
 
 impl PlayerInner {
-    pub fn register_event_handler(&mut self, sender: IpcSender<PlayerEvent>) -> Result<(), BackendError> {
+    pub fn register_event_handler(
+        &mut self,
+        sender: IpcSender<PlayerEvent>,
+    ) -> Result<(), BackendError> {
         self.subscribers.push(sender);
         Ok(())
     }
 
-    pub fn register_frame_renderer(&mut self, renderer: Arc<Mutex<FrameRenderer>>) -> Result<(), BackendError> {
+    pub fn register_frame_renderer(
+        &mut self,
+        renderer: Arc<Mutex<FrameRenderer>>,
+    ) -> Result<(), BackendError> {
         self.renderers.push(renderer);
         Ok(())
     }
@@ -361,7 +367,10 @@ impl GStreamerPlayer {
                         eprintln!("Could not get duration seconds");
                         return;
                     }
-                    Some(time::Duration::new(seconds.unwrap(), (nanos.unwrap() % 1_000_000_000) as u32))
+                    Some(time::Duration::new(
+                        seconds.unwrap(),
+                        (nanos.unwrap() % 1_000_000_000) as u32,
+                    ))
                 } else {
                     None
                 };
@@ -451,10 +460,13 @@ impl GStreamerPlayer {
                 appsrc.set_callbacks(
                     AppSrcCallbacks::new()
                         .seek_data(move |_, offset| {
-                            inner_clone.lock().unwrap().notify(PlayerEvent::SeekData(offset));
+                            inner_clone
+                                .lock()
+                                .unwrap()
+                                .notify(PlayerEvent::SeekData(offset));
                             true
                         })
-                        .build()
+                        .build(),
                 );
 
                 inner.set_app_src(appsrc);
@@ -524,4 +536,3 @@ impl Player for GStreamerPlayer {
     inner_player_proxy!(push_data, data, Vec<u8>);
     inner_player_proxy!(seek, time, f64);
 }
-
