@@ -35,7 +35,6 @@ pub enum BackendError {
     PlayerError(String),
     PlayerPushDataFailed,
     PlayerEOSFailed,
-    PlayerNoAppSrc,
     PlayerNonSeekable,
     PlayerSeekOutOfRange,
     PlayerSourceSetupFailed,

@@ -89,6 +89,7 @@ struct PlayerInner {
     appsrc: Option<gst_app::AppSrc>,
     appsink: gst_app::AppSink,
     input_size: u64,
+    stream_type: Option<gst_app::AppStreamType>,
     subscribers: Vec<IpcSender<PlayerEvent>>,
     renderers: Vec<Arc<Mutex<FrameRenderer>>>,
     last_metadata: Option<Metadata>,
@@ -136,15 +137,18 @@ impl PlayerInner {
     }
 
     pub fn set_stream_type(&mut self, type_: StreamType) -> Result<(), BackendError> {
+        let type_ = match type_ {
+            StreamType::NonSeekable => gst_app::AppStreamType::Stream,
+            StreamType::Seekable => gst_app::AppStreamType::Seekable,
+            StreamType::SeekableFast => gst_app::AppStreamType::RandomAccess,
+        };
+        // Set stream_type to proxy its value, since it
+        // could be set by the user before calling .setup().
+        self.stream_type = Some(type_);
         if let Some(ref appsrc) = self.appsrc {
-            appsrc.set_stream_type(match type_ {
-                StreamType::NonSeekable => gst_app::AppStreamType::Stream,
-                StreamType::Seekable => gst_app::AppStreamType::Seekable,
-                StreamType::SeekableFast => gst_app::AppStreamType::RandomAccess,
-            });
-            return Ok(());
+            appsrc.set_stream_type(type_);
         }
-        Err(BackendError::PlayerNoAppSrc)
+        Ok(())
     }
 
     pub fn play(&mut self) -> Result<(), BackendError> {
@@ -259,6 +263,7 @@ impl GStreamerPlayer {
             appsrc: None,
             appsink: video_sink,
             input_size: 0,
+            stream_type: None,
             subscribers: Vec::new(),
             renderers: Vec::new(),
             last_metadata: None,
@@ -417,6 +422,10 @@ impl GStreamerPlayer {
                 appsrc.set_property_format(gst::Format::Bytes);
                 if inner.input_size > 0 {
                     appsrc.set_size(inner.input_size as i64);
+                }
+
+                if let Some(ref stream_type) = inner.stream_type {
+                    appsrc.set_stream_type(*stream_type);
                 }
 
                 let sender_clone = sender.clone();
