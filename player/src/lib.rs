@@ -51,7 +51,7 @@ pub trait Player: Send {
     fn play(&self) -> Result<(), Self::Error>;
     fn pause(&self) -> Result<(), Self::Error>;
     fn stop(&self) -> Result<(), Self::Error>;
-    fn seek(&self, time: f64, accurate: bool) -> Result<(), Self::Error>;
+    fn seek(&self, time: f64) -> Result<(), Self::Error>;
 
     fn set_input_size(&self, size: u64) -> Result<(), Self::Error>;
     fn set_stream_type(&self, type_: StreamType) -> Result<(), Self::Error>;
@@ -69,7 +69,7 @@ impl Player for DummyPlayer {
     fn play(&self) -> Result<(), ()> { Ok(()) }
     fn pause(&self) -> Result<(), ()> { Ok(()) }
     fn stop(&self) -> Result<(), ()> { Ok(()) }
-    fn seek(&self, _: f64, _: bool) -> Result<(), ()> { Ok(()) }
+    fn seek(&self, _: f64) -> Result<(), ()> { Ok(()) }
 
     fn set_input_size(&self, _: u64) -> Result<(), ()> { Ok(()) }
     fn set_stream_type(&self, _: StreamType) -> Result<(), ()> { Ok(()) }

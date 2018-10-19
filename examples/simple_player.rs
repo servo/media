@@ -124,14 +124,14 @@ fn run_example(servo_media: Arc<ServoMedia>) {
                 }
                 if p == 1 {
                     println!("\nPosition changed to 1sec, seeking to 4sec");
-                    if let Err(e) = player.seek(4., false) {
+                    if let Err(e) = player.seek(4.) {
                         eprintln!("{:?}", e);
                     }
                 }
 
                 if p == 9 {
                     println!("\nPosition changed to 9sec, seeking to 0sec");
-                    if let Err(e) = player.seek(0., false) {
+                    if let Err(e) = player.seek(0.) {
                         eprintln!("{:?}", e);
                     }
                 }

@@ -173,7 +173,7 @@ impl PlayerInner {
         Err(BackendError::PlayerEOSFailed)
     }
 
-    pub fn seek(&mut self, time: f64, accurate: bool) -> Result<(), BackendError> {
+    pub fn seek(&mut self, time: f64) -> Result<(), BackendError> {
         if let Some(ref metadata) = self.last_metadata {
             if !metadata.seekable {
                 eprintln!("Non seekable stream");
@@ -186,14 +186,6 @@ impl PlayerInner {
                 }
             }
         }
-
-        // XXX Cannot change config while playing
-        // Need to create bindings for gst_player_config_set_seek_accurate
-        /*let mut config = self.player.get_config();
-        config.set_seek_accurate(accurate);
-        self.player
-            .set_config(config)
-            .map_err(|e| BackendError::SetPropertyFailed(e.0))?;*/
 
         let time = time * 1_000_000_000.;
         self.player.seek(gst::ClockTime::from_nseconds(time as u64));
@@ -508,6 +500,7 @@ macro_rules! inner_player_proxy {
         }
     )
 }
+
 impl Player for GStreamerPlayer {
     type Error = BackendError;
 
@@ -520,12 +513,6 @@ impl Player for GStreamerPlayer {
     inner_player_proxy!(set_input_size, size, u64);
     inner_player_proxy!(set_stream_type, type_, StreamType);
     inner_player_proxy!(push_data, data, Vec<u8>);
-
-    fn seek(&self, time: f64, accurate: bool) -> Result<(), BackendError> {
-        self.setup()?;
-        let inner = self.inner.borrow();
-        let mut inner = inner.as_ref().unwrap().lock().unwrap();
-        inner.seek(time, accurate)
-    }
+    inner_player_proxy!(seek, time, f64);
 }
 
