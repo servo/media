@@ -5,7 +5,7 @@ use gst;
 use gst_app::{self, AppSrcCallbacks};
 use gst_player;
 use gst_player::{PlayerMediaInfo, PlayerStreamInfoExt};
-use ipc_channel::ipc::{self, IpcSender};
+use ipc_channel::ipc::IpcSender;
 use servo_media_player::frame::{Frame, FrameRenderer};
 use servo_media_player::metadata::Metadata;
 use servo_media_player::{PlaybackState, Player, PlayerEvent, StreamType};
@@ -148,9 +148,17 @@ impl PlayerInner {
     }
 
     pub fn seek(&mut self, time: f64, accurate: bool) -> Result<(), BackendError> {
-        if self.last_metadata.is_some() && !self.last_metadata.as_ref().unwrap().seekable {
-            eprintln!("Non seekable stream");
-            return Err(BackendError::PlayerSeekFailed);
+        if let Some(ref metadata) = self.last_metadata {
+            if !metadata.seekable {
+                eprintln!("Non seekable stream");
+                return Err(BackendError::PlayerNonSeekable);
+            }
+            if let Some(ref duration) = metadata.duration {
+                if duration < &time::Duration::new(time as u64, 0) {
+                    eprintln!("Trying to seek out of range");
+                    return Err(BackendError::PlayerSeekOutOfRange);
+                }
+            }
         }
 
         // XXX Cannot change config while playing
@@ -164,6 +172,19 @@ impl PlayerInner {
         let time = time * 1_000_000_000.;
         self.player.seek(gst::ClockTime::from_nseconds(time as u64));
         Ok(())
+    }
+
+    pub fn push_data(&mut self, data: Vec<u8>) -> Result<(), BackendError> {
+        if let Some(ref mut appsrc) = self.appsrc {
+            let buffer =
+                gst::Buffer::from_slice(data).ok_or_else(|| BackendError::PlayerPushDataFailed)?;
+            if appsrc.push_buffer(buffer) == gst::FlowReturn::Ok {
+                return Ok(());
+            } else {
+                println!("CRAP");
+            }
+        }
+        Err(BackendError::PlayerPushDataFailed)
     }
 
     pub fn set_app_src(&mut self, appsrc: gst_app::AppSrc) {
@@ -405,9 +426,8 @@ impl GStreamerPlayer {
                 appsrc.set_callbacks(
                     AppSrcCallbacks::new()
                         .seek_data(move |_, offset| {
-                            let (sender, receiver) = ipc::channel().unwrap();
-                            inner_clone.lock().unwrap().notify(PlayerEvent::SeekData(offset, sender));
-                            receiver.recv().unwrap()
+                            inner_clone.lock().unwrap().notify(PlayerEvent::SeekData(offset));
+                            true
                         })
                         .build()
                 );
@@ -531,14 +551,7 @@ impl Player for GStreamerPlayer {
         self.setup()?;
         let inner = self.inner.borrow();
         let mut inner = inner.as_ref().unwrap().lock().unwrap();
-        if let Some(ref mut appsrc) = inner.appsrc {
-            let buffer =
-                gst::Buffer::from_slice(data).ok_or_else(|| BackendError::PlayerPushDataFailed)?;
-            if appsrc.push_buffer(buffer) == gst::FlowReturn::Ok {
-                return Ok(());
-            }
-        }
-        Err(BackendError::PlayerPushDataFailed)
+        inner.push_data(data)
     }
 
     fn end_of_stream(&self) -> Result<(), BackendError> {

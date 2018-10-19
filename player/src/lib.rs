@@ -26,10 +26,8 @@ pub enum PlayerEvent {
     PositionChanged(u64),
     /// The player needs the data to perform a seek to the given offset.
     /// The next push_data should get the buffers from the new offset.
-    /// The pipeline is paused until the client confirms that the seek
-    /// data was retrieved and is about to be pushed.
     /// This event is only received for seekable stream types.
-    SeekData(u64, IpcSender<bool>),
+    SeekData(u64),
     /// The player has performed a seek to the given offset.
     SeekDone(u64),
     StateChanged(PlaybackState),

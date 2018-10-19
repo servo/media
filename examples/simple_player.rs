@@ -1,7 +1,7 @@
 extern crate ipc_channel;
 extern crate servo_media;
 
-use ipc_channel::ipc::{self, IpcSender};
+use ipc_channel::ipc;
 use servo_media::player::{PlayerEvent, StreamType};
 use servo_media::ServoMedia;
 use std::env;
@@ -9,10 +9,10 @@ use std::error::Error;
 use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::path::Path;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
 
 fn run_example(servo_media: Arc<ServoMedia>) {
     let player = Arc::new(Mutex::new(servo_media.create_player()));
@@ -52,53 +52,50 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     player
         .lock()
         .unwrap()
-        .set_stream_type(StreamType::SeekableFast)
+        .set_stream_type(StreamType::Seekable)
         .unwrap();
 
     let player_clone = Arc::clone(&player);
-    let seek_sender: Arc<Mutex<Option<IpcSender<bool>>>> = Arc::new(Mutex::new(None));
-    let seek_sender_clone = seek_sender.clone();
     let shutdown = Arc::new(AtomicBool::new(false));
     let shutdown_clone = shutdown.clone();
-    let seek_data = Arc::new(AtomicBool::new(false));
-    let seek_data_clone = seek_data.clone();
-    let seek_to = Arc::new(AtomicUsize::new(0));
-    let seek_to_clone = seek_to.clone();
+    let seek_done = Arc::new(AtomicBool::new(false));
+    let seek_done_clone = seek_done.clone();
+    let (seek_sender, seek_receiver) = mpsc::channel();
     let t = thread::spawn(move || {
         let player = &player_clone;
         let mut buf_reader = BufReader::new(file);
         let mut buffer = [0; 1024];
-        while !shutdown_clone.load(Ordering::Relaxed) {
-            thread::sleep(Duration::from_millis(100));
-            if seek_data_clone.load(Ordering::Relaxed) {
-                seek_data_clone.store(false, Ordering::Relaxed);
-                let offset = seek_to_clone.load(Ordering::Relaxed) as u64;
-                if buf_reader.seek(SeekFrom::Start(offset)).is_err() {
-                    eprintln!("BufReader - Could not seek to {:?}", offset);
-                    break;
-                }
-                println!("BufReader - Seeked to {:?}", offset);
-                seek_sender_clone.lock().unwrap().as_ref().unwrap().send(true);
+        let mut read = |offset| {
+            if buf_reader.seek(SeekFrom::Start(offset)).is_err() {
+                eprintln!("BufReader - Could not seek to {:?}", offset);
             }
-            match buf_reader.read(&mut buffer[..]) {
-                Ok(0) => {
-                    println!("Finished pushing data");
-                    break;
-                }
-                Ok(size) => {
-                    println!("Pushing data size {:?}", size);
-                    player
-                        .lock()
-                        .unwrap()
-                        .push_data(Vec::from(&buffer[0..size]))
-                        .unwrap()
-                },
-                Err(e) => {
-                    eprintln!("Error: {}", e);
-                    break;
+
+            while !shutdown_clone.load(Ordering::Relaxed) {
+
+                match buf_reader.read(&mut buffer[..]) {
+                    Ok(0) => {
+                        println!("Finished pushing data");
+                        break;
+                    }
+                    Ok(size) => {
+                        player
+                            .lock()
+                            .unwrap()
+                            .push_data(Vec::from(&buffer[0..size]))
+                            .unwrap()
+                    },
+                    Err(e) => {
+                        eprintln!("Error: {}", e);
+                        break;
+                    }
                 }
             }
-        }
+        };
+
+        read(0);
+        read(seek_receiver.recv().unwrap());
+        read(seek_receiver.recv().unwrap());
+        seek_done_clone.store(true, Ordering::Relaxed);
     });
 
     player.lock().unwrap().play().unwrap();
@@ -106,35 +103,45 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     while let Ok(event) = receiver.recv() {
         match event {
             PlayerEvent::EndOfStream => {
-                println!("EOF");
+                println!("\nEOF");
                 break;
             }
             PlayerEvent::Error => {
-                println!("Error");
+                println!("\nError");
                 break;
             }
             PlayerEvent::MetadataUpdated(ref m) => {
-                println!("Metadata updated! {:?}", m);
+                println!("\nMetadata updated! {:?}", m);
             }
             PlayerEvent::StateChanged(ref s) => {
-                println!("Player state changed to {:?}", s);
+                println!("\nPlayer state changed to {:?}", s);
             }
             PlayerEvent::FrameUpdated => eprint!("."),
             PlayerEvent::PositionChanged(p) => {
-                println!("{:?}", p);
+                let player = player.lock().unwrap();
+                if seek_done.load(Ordering::Relaxed) {
+                    continue;
+                }
                 if p == 1 {
-                    println!("SEEKING");
-                    player.lock().unwrap().seek(4., false).unwrap();
+                    println!("\nPosition changed to 1sec, seeking to 4sec");
+                    if let Err(e) = player.seek(4., false) {
+                        eprintln!("{:?}", e);
+                    }
+                }
+
+                if p == 9 {
+                    println!("\nPosition changed to 9sec, seeking to 0sec");
+                    if let Err(e) = player.seek(0., false) {
+                        eprintln!("{:?}", e);
+                    }
                 }
             },
-            PlayerEvent::SeekData(p, sender) => {
-                println!("Seek requested to position {:?}", p);
-                seek_data.store(true, Ordering::Relaxed);
-                seek_to.store(p as usize, Ordering::Relaxed);
-                *seek_sender.lock().unwrap() = Some(sender);
+            PlayerEvent::SeekData(p) => {
+                println!("\nSeek requested to position {:?}", p);
+                seek_sender.send(p).unwrap();
             },
             PlayerEvent::SeekDone(p) => {
-                println!("Seeked to {:?}", p)
+                println!("\nSeeked to {:?}", p)
             },
         }
     }
