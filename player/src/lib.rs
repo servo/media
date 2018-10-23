@@ -36,11 +36,11 @@ pub enum PlayerEvent {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum StreamType {
     /// No seeking is supported in the stream, such as a live stream.
-    NonSeekable,
+    Stream,
     /// The stream is seekable but seeking might not be very fast, such as data from a webserver.
     Seekable,
     /// The stream is seekable and seeking is fast, such as in a local file.
-    SeekableFast,
+    RandomAccess,
 }
 
 pub trait Player: Send {

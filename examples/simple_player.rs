@@ -17,7 +17,7 @@ use std::thread;
 fn run_example(servo_media: Arc<ServoMedia>) {
     let player = Arc::new(Mutex::new(servo_media.create_player()));
     let args: Vec<_> = env::args().collect();
-    let default = "./examples/resources/viper_cut.ogg";
+    let default = "./examples/resources/mov_bbb.mp4";
     let filename: &str = if args.len() == 2 {
         args[1].as_ref()
     } else if Path::new(default).exists() {

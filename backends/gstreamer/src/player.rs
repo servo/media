@@ -2,7 +2,7 @@ use super::BackendError;
 use glib;
 use glib::*;
 use gst;
-use gst_app::{self, AppSrcCallbacks};
+use gst_app::{self, AppSrcCallbacks, AppStreamType};
 use gst_player;
 use gst_player::{PlayerMediaInfo, PlayerStreamInfoExt};
 use ipc_channel::ipc::IpcSender;
@@ -47,8 +47,6 @@ fn metadata_from_media_info(media_info: &PlayerMediaInfo) -> Result<Metadata, ()
         .get_container_format()
         .unwrap_or_else(|| "".to_owned());
 
-    let seekable = media_info.is_seekable();
-
     for stream_info in media_info.get_stream_list() {
         let stream_type = stream_info.get_stream_type();
         match stream_type.as_str() {
@@ -78,7 +76,6 @@ fn metadata_from_media_info(media_info: &PlayerMediaInfo) -> Result<Metadata, ()
         width,
         height,
         format,
-        seekable,
         audio_tracks,
         video_tracks,
     })
@@ -89,7 +86,7 @@ struct PlayerInner {
     appsrc: Option<gst_app::AppSrc>,
     appsink: gst_app::AppSink,
     input_size: u64,
-    stream_type: Option<gst_app::AppStreamType>,
+    stream_type: Option<AppStreamType>,
     subscribers: Vec<IpcSender<PlayerEvent>>,
     renderers: Vec<Arc<Mutex<FrameRenderer>>>,
     last_metadata: Option<Metadata>,
@@ -144,9 +141,9 @@ impl PlayerInner {
 
     pub fn set_stream_type(&mut self, type_: StreamType) -> Result<(), BackendError> {
         let type_ = match type_ {
-            StreamType::NonSeekable => gst_app::AppStreamType::Stream,
-            StreamType::Seekable => gst_app::AppStreamType::Seekable,
-            StreamType::SeekableFast => gst_app::AppStreamType::RandomAccess,
+            StreamType::Stream => AppStreamType::Stream,
+            StreamType::Seekable => AppStreamType::Seekable,
+            StreamType::RandomAccess => AppStreamType::RandomAccess,
         };
         // Set stream_type to proxy its value, since it
         // could be set by the user before calling .setup().
@@ -184,11 +181,14 @@ impl PlayerInner {
     }
 
     pub fn seek(&mut self, time: f64) -> Result<(), BackendError> {
+        // XXX Support AppStreamType::RandomAccess. The callback model changes
+        // if the stream type is set to RandomAccess (i.e. the seek-data
+        // callback is received right after pushing the first chunk of data,
+        // even if player.seek() is not called).
+        if self.stream_type.is_none() || self.stream_type.unwrap() != AppStreamType::Seekable {
+            return Err(BackendError::PlayerNonSeekable);
+        }
         if let Some(ref metadata) = self.last_metadata {
-            if !metadata.seekable {
-                eprintln!("Non seekable stream");
-                return Err(BackendError::PlayerNonSeekable);
-            }
             if let Some(ref duration) = metadata.duration {
                 if duration < &time::Duration::new(time as u64, 0) {
                     eprintln!("Trying to seek out of range");
