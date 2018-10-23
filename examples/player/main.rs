@@ -118,6 +118,8 @@ impl PlayerWrapper {
                         }
                         PlayerEvent::FrameUpdated => eprint!("."),
                         PlayerEvent::PositionChanged(_) => (),
+                        PlayerEvent::SeekData(_) => (),
+                        PlayerEvent::SeekDone(_) => (),
                     }
                 }
                 player.lock().unwrap().stop().unwrap();
