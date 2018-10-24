@@ -238,10 +238,6 @@ impl GStreamerPlayer {
             /* video renderer */ None, /* signal dispatcher */ None,
         );
 
-        player
-            .set_property("uri", &Value::from("appsrc://"))
-            .map_err(|e| BackendError::SetPropertyFailed(e.0))?;
-
         // Set position interval update to 0.5 seconds.
         let mut config = player.get_config();
         config.set_position_update_interval(500u32);
@@ -263,6 +259,17 @@ impl GStreamerPlayer {
                 ("pixel-aspect-ratio", &gst::Fraction::from((1, 1))),
             ],
         ));
+
+        // There's a known bug in gstreamer that may cause a wrong transition
+        // to the ready state while setting the uri property:
+        // http://cgit.freedesktop.org/gstreamer/gst-plugins-bad/commit/?id=afbbc3a97ec391c6a582f3c746965fdc3eb3e1f3
+        // This may affect things like setting the config, so until the bug is
+        // fixed, make sure that state dependent code happens before this line.
+        // The estimated version for the fix is 1.14.5 / 1.15.1.
+        // https://github.com/servo/servo/issues/22010#issuecomment-432599657
+        player
+            .set_property("uri", &Value::from("appsrc://"))
+            .map_err(|e| BackendError::SetPropertyFailed(e.0))?;
 
         *self.inner.borrow_mut() = Some(Arc::new(Mutex::new(PlayerInner {
             player,
