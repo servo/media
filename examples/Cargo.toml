@@ -7,10 +7,16 @@ license = "MPL-2.0"
 env_logger = "0.5"
 euclid = "0.19.0"
 gleam = "0.6.8"
+hyper = "0.12"
 rand = "0.5.0"
 time = "0.1.40"
+serde = "1.0"
+serde_derive = "1.0"
+serde_json = "1.0"
 servo-media = { path = "../servo-media" }
 webrender = { git = "https://github.com/servo/webrender/" }
+websocket = "*"
+#ws = "*"
 ipc-channel = "0.11"
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
@@ -80,3 +86,7 @@ path = "oscillator.rs"
 [[bin]]
 name = "constant_source"
 path = "constant_source.rs"
+
+[[bin]]
+name = "simple_webrtc"
+path = "simple_webrtc.rs"

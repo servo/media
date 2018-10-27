@@ -5,6 +5,7 @@ pub extern crate servo_media_audio as audio;
 ))]
 extern crate servo_media_gstreamer;
 pub extern crate servo_media_player as player;
+pub extern crate servo_media_webrtc as webrtc;
 use std::sync::{self, Arc, Mutex, Once};
 
 use audio::context::{AudioContext, AudioContextOptions};
@@ -12,6 +13,7 @@ use audio::decoder::DummyAudioDecoder;
 use audio::sink::{AudioSinkError, DummyAudioSink};
 use audio::AudioBackend;
 use player::{DummyPlayer, Player, PlayerBackend};
+use webrtc::{WebRtcBackend, WebRtcSignaller};
 
 pub struct ServoMedia;
 
@@ -54,6 +56,8 @@ pub type Backend = servo_media_gstreamer::GStreamerBackend;
 )))]
 pub type Backend = DummyBackend;
 
+pub type WebRtcController = servo_media_gstreamer::webrtc::GStreamerWebRtcController;
+
 impl ServoMedia {
     pub fn new() -> Self {
         Backend::init();
@@ -78,5 +82,9 @@ impl ServoMedia {
 
     pub fn create_player(&self) -> Box<Player> {
         Box::new(Backend::make_player())
+    }
+
+    pub fn create_webrtc(&self, signaller: Box<WebRtcSignaller>) -> Box<WebRtcController> {
+        Box::new(Backend::start_webrtc_controller(signaller))
     }
 }

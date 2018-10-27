@@ -13,6 +13,9 @@ version = "0.2"
 [dependencies.glib]
 version = "0.6"
 
+[dependencies.failure]
+version = "*"
+
 [dependencies.glib-sys]
 version = "0.7"
 
@@ -40,11 +43,20 @@ version = "0.12"
 [dependencies.gstreamer-sys]
 version = "0.6.1"
 
+[dependencies.gstreamer-sdp]
+version = "0.12"
+
+[dependencies.gstreamer-webrtc]
+version = "0.12"
+
 [dependencies.gstreamer-video]
 version = "0.12"
 
 [dependencies.ipc-channel]
 version = "0.11"
+
+[dependencies.lazy_static]
+version = "*"
 
 [dependencies.servo-media-audio]
 path = "../../audio"
@@ -54,3 +66,6 @@ path = "../../player"
 
 [dependencies.url]
 version = "1.7.2"
+
+[dependencies.servo-media-webrtc]
+path = "../../webrtc"
