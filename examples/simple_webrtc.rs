@@ -76,7 +76,7 @@ struct State {
     app_state: AppState,
     send_msg_tx: mpsc::Sender<OwnedMessage>,
     _uid: u32,
-    peer_id: String,
+    peer_id: Option<String>,
     media: Arc<ServoMedia>,
     webrtc: Option<Box<WebRtcController>>,
 }
@@ -101,16 +101,24 @@ impl State {
     fn handle_hello(&mut self) {
         assert_eq!(self.app_state, AppState::ServerRegistering);
         self.app_state = AppState::ServerRegistered;
-        self.send_msg_tx.send(OwnedMessage::Text(format!("SESSION {}", self.peer_id))).unwrap();
-        self.app_state = AppState::PeerConnecting;
+        if let Some(ref peer_id) = self.peer_id {
+            self.send_msg_tx.send(OwnedMessage::Text(format!("SESSION {}", peer_id))).unwrap();
+            self.app_state = AppState::PeerConnecting;
+        }
+        if self.peer_id.is_none() {
+            let signaller = Signaller(self.send_msg_tx.clone());
+            self.webrtc = Some(self.media.create_webrtc(Box::new(signaller)));
+        }
     }
 
     fn handle_session_ok(&mut self) {
         println!("session is ok; creating webrtc objects");
         assert_eq!(self.app_state, AppState::PeerConnecting);
         self.app_state = AppState::PeerConnected;
-        let signaller = Signaller(self.send_msg_tx.clone());
-        self.webrtc = Some(self.media.create_webrtc(Box::new(signaller)));
+        if self.peer_id.is_some() {
+            let signaller = Signaller(self.send_msg_tx.clone());
+            self.webrtc = Some(self.media.create_webrtc(Box::new(signaller)));
+        }
         //self.webrtc.as_ref().unwrap().trigger_negotiation();
     }
 }
@@ -222,7 +230,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let _ = args.next();
     let server_port = args.next().unwrap().parse::<u32>().unwrap();
     let server = format!("ws://localhost:{}", server_port);
-    let peer_id = args.next().unwrap();
+    let peer_id = args.next();
 
     /*let sender = start_server2();
     start_client(sender.clone(), false);
@@ -257,7 +265,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
             app_state: AppState::ServerRegistering,
             send_msg_tx: send_msg_tx.clone(),
             _uid: our_id,
-            peer_id: peer_id.to_owned(),
+            peer_id: peer_id,
             media: servo_media,
             webrtc: None,
         };
