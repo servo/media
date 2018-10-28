@@ -16,48 +16,9 @@ use std::net;
 use std::sync::{Arc, mpsc};
 use std::thread;
 use websocket::OwnedMessage;
-//use websocket::server::sync::Server;
-
-/*fn start_server(port: u32) {
-    thread::spawn(move || {
-        let s = Server::bind(format!("localhost:{}", port)).unwrap();
-        let conns = s.filter_map(Result::ok).take(2);
-        let conn1 = conns.next().unwrap();
-        let mut client = conn1.accept().unwrap();
-        thread::spawn(move || {
-            let msg = client.recv_message().unwrap();
-            let uid = match msg {
-                OwnedMessage::Text(m) => {
-                    let mut parts = m.split(' ');
-                    assert_eq!(parts.next().unwrap(), "HELLO");
-                    parts.next().unwrap().parse::<u32>().unwrap()
-                }
-                _ => panic!("invalid greeting"),
-            };
-            client.send_message(&OwnedMessage::Text("HELLO".to_owned())).unwrap();
-
-            let msg = client.recv_message().unwrap();
-            let peer_id = match msg {
-                OwnedMessage::Text(m) => {
-                    let mut parts = m.split(' ');
-                    assert_eq!(parts.next().unwrap(), "SESSION");
-                    parts.next().unwrap().to_owned()
-                }
-                _ => panic!("invalid session"),
-            };
-            client.send_message(&OwnedMessage::Text("SESSION_OK".to_owned())).unwrap();
-        });
-
-        let conn2 = conns.next().unwrap();
-
-
-        loop {
-            
-        }
-    });
-}*/
 
 #[derive(PartialEq, PartialOrd, Eq, Debug, Copy, Clone, Ord)]
+#[allow(unused)]
 enum AppState {
     Error = 1,
     ServerConnected,
@@ -114,7 +75,7 @@ fn send_loop(
 struct State {
     app_state: AppState,
     send_msg_tx: mpsc::Sender<OwnedMessage>,
-    uid: u32,
+    _uid: u32,
     peer_id: String,
     media: Arc<ServoMedia>,
     webrtc: Option<Box<WebRtcController>>,
@@ -151,25 +112,25 @@ impl State {
         let signaller = Signaller(self.send_msg_tx.clone());
         self.webrtc = Some(self.media.create_webrtc(Box::new(signaller)));
         //self.webrtc.as_ref().unwrap().trigger_negotiation();
-}
-
-    /*fn handle_registered(&mut self) {
-        println!("session is ok; creating webrtc objects");
-        let signaller = Signaller(self.send_msg_tx.clone(), self.uid);
-        self.webrtc = Some(self.media.create_webrtc(Box::new(signaller)));
-    }*/
+    }
 }
 
 struct Signaller(mpsc::Sender<OwnedMessage>);
 
 impl WebRtcSignaller for Signaller {
+    fn close(&self, reason: String) {
+        let _ = self.0.send(OwnedMessage::Close(Some(websocket::message::CloseData {
+            status_code: 1011, //Internal Error
+            reason: reason,
+        })));
+    }
+
     fn send_sdp_offer(&self, offer: String) {
         let message = serde_json::to_string(&JsonMsg::Sdp {
             type_: "offer".to_string(),
             sdp: offer,
         }).unwrap();
-        //self.0.send((SignalMsg::ToPeer(message), self.1)).unwrap();
-        self.0.send(OwnedMessage::Text(message));
+        self.0.send(OwnedMessage::Text(message)).unwrap();
     }
 
     fn send_ice_candidate(&self, mline_index: u32, candidate: String) {
@@ -177,8 +138,7 @@ impl WebRtcSignaller for Signaller {
             candidate,
             sdp_mline_index: mline_index,
         }).unwrap();
-        self.0.send(OwnedMessage::Text(message));
-        //self.0.send((SignalMsg::ToPeer(message), self.1)).unwrap();
+        self.0.send(OwnedMessage::Text(message)).unwrap();
     }
 }
 
@@ -256,9 +216,6 @@ fn receive_loop(
     })
 }
 
-fn start_client(peer_id: String) {
-}
-
 fn run_example(servo_media: Arc<ServoMedia>) {
     env_logger::init();
     let mut args = env::args();
@@ -290,9 +247,6 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         //thread::spawn(move || {
         let (send_msg_tx, send_msg_rx) = mpsc::channel::<OwnedMessage>();
         let send_loop = send_loop(sender, send_msg_rx);
-        let send_msg_tx_clone = send_msg_tx.clone();
-
-        //let (send_msg_tx, send_msg_rx) = mpsc::channel();
 
         let our_id = rand::thread_rng().gen_range(10, 10_000);
         println!("Registering id {} with server", our_id);
@@ -302,9 +256,9 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         let state = State {
             app_state: AppState::ServerRegistering,
             send_msg_tx: send_msg_tx.clone(),
-            uid: our_id,
+            _uid: our_id,
             peer_id: peer_id.to_owned(),
-            media: ServoMedia::get().unwrap(),
+            media: servo_media,
             webrtc: None,
         };
 
