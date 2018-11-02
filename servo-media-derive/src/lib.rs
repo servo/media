@@ -1,6 +1,7 @@
 #![recursion_limit = "128"]
 
 extern crate proc_macro;
+extern crate proc_macro2;
 extern crate syn;
 #[macro_use]
 extern crate quote;
@@ -14,7 +15,7 @@ pub fn audio_scheduled_source_node(input: TokenStream) -> TokenStream {
     gen.into()
 }
 
-fn impl_audio_scheduled_source_node(ast: &syn::DeriveInput) -> quote::Tokens {
+fn impl_audio_scheduled_source_node(ast: &syn::DeriveInput) -> proc_macro2::TokenStream {
     let name = &ast.ident;
     quote! {
         impl #name {
