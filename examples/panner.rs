@@ -171,6 +171,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
 }
 
 fn main() {
+    println!("Hello from panner");
     if let Ok(servo_media) = ServoMedia::get() {
         run_example(servo_media);
     } else {
