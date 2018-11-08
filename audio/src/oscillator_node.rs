@@ -6,8 +6,19 @@ use param::{Param, ParamType};
 
 #[derive(Copy, Clone, Debug)]
 pub struct PeriodicWaveOptions {
-    // XXX https://webaudio.github.io/web-audio-api/#dictdef-periodicwaveoptions
+    //  https://webaudio.github.io/web-audio-api/#dictdef-periodicwaveoptions
+    pub real: [f32; 2],
+    pub imag: [f32; 2],
 }
+impl Default for PeriodicWaveOptions {
+    fn default() -> Self {
+        PeriodicWaveOptions {
+            real: [0.,0.],
+            imag: [0.,1.],
+        }
+    }
+}
+
 
 #[derive(Copy, Clone, Debug)]
 pub enum OscillatorType {
@@ -17,6 +28,8 @@ pub enum OscillatorType {
     Triangle,
     Custom,
 }
+
+
 
 #[derive(Copy, Clone, Debug)]
 pub struct OscillatorNodeOptions {
@@ -37,9 +50,12 @@ impl Default for OscillatorNodeOptions {
     }
 }
 
+
+
 #[derive(AudioScheduledSourceNode, AudioNodeCommon)]
 pub(crate) struct OscillatorNode {
     channel_info: ChannelInfo,
+    oscillator_type: OscillatorType,
     frequency: Param,
     detune: Param,
     phase: f64,
@@ -55,6 +71,7 @@ impl OscillatorNode {
     pub fn new(options: OscillatorNodeOptions, channel_info: ChannelInfo) -> Self {
         Self {
             channel_info,
+            oscillator_type: options.oscillator_type,
             frequency: Param::new(options.freq.into()),
             detune: Param::new(options.detune.into()),
             phase: 0.,
@@ -67,6 +84,8 @@ impl OscillatorNode {
     pub fn update_parameters(&mut self, info: &BlockInfo, tick: Tick) -> bool {
         self.frequency.update(info, tick)
     }
+
+
 }
 
 impl AudioNodeEngine for OscillatorNode {
@@ -117,8 +136,46 @@ impl AudioNodeEngine for OscillatorNode {
                 if self.update_parameters(info, tick) {
                     step = two_pi * self.frequency.value() as f64 / sample_rate;
                 }
-                let value = vol * f32::sin(NumCast::from(self.phase).unwrap());
-                frame.mutate_with(|sample, _| *sample = value);
+                let mut value = vol;
+                println!("{:?}",self.phase );
+                match self.oscillator_type {
+                    OscillatorType::Sine => {
+                        println!("Sine\n");
+                        value = vol * f32::sin(NumCast::from(self.phase).unwrap());
+                    }
+
+                    OscillatorType::Square => {
+                        println!("Square\n");
+                        if self.phase >= PI && self.phase < two_pi {
+                                    value = vol * 1.0;
+                                }
+                                else if self.phase > 0.0 && self.phase < PI {
+                                    value = vol * (-1.0);
+                                }
+                                else {
+                                    value = 0.;
+                                }
+                    }
+
+                    OscillatorType::Custom => {
+                        println!("custom\n");
+
+                    }
+
+                    OscillatorType::Sawtooth => {
+                        println!("Sawtooth\n");
+                        value = vol * ( (self.phase as f64) / (PI)) as f32;
+                    }
+
+                    OscillatorType::Triangle => {
+                        println!("Triangle\n");
+
+
+                    }
+                }
+
+
+        frame.mutate_with(|sample, _| *sample = value);
 
                 self.phase += step;
                 if self.phase >= two_pi {
@@ -135,6 +192,7 @@ impl AudioNodeEngine for OscillatorNode {
 
     fn get_param(&mut self, id: ParamType) -> &mut Param {
         match id {
+
             ParamType::Frequency => &mut self.frequency,
             ParamType::Detune => &mut self.detune,
             _ => panic!("Unknown param {:?} for OscillatorNode", id),
