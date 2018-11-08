@@ -6,8 +6,19 @@ use param::{Param, ParamType};
 
 #[derive(Copy, Clone, Debug)]
 pub struct PeriodicWaveOptions {
-    // XXX https://webaudio.github.io/web-audio-api/#dictdef-periodicwaveoptions
+    //  https://webaudio.github.io/web-audio-api/#dictdef-periodicwaveoptions
+    pub real: [f32; 2],
+    pub imag: [f32; 2],
 }
+impl Default for PeriodicWaveOptions {
+    fn default() -> Self {
+        PeriodicWaveOptions {
+            real: [0.,0.],
+            imag: [0.,1.],
+        }
+    }
+}
+
 
 #[derive(Copy, Clone, Debug)]
 pub enum OscillatorType {
@@ -17,6 +28,8 @@ pub enum OscillatorType {
     Triangle,
     Custom,
 }
+
+
 
 #[derive(Copy, Clone, Debug)]
 pub struct OscillatorNodeOptions {
@@ -36,6 +49,8 @@ impl Default for OscillatorNodeOptions {
         }
     }
 }
+
+
 
 #[derive(AudioScheduledSourceNode, AudioNodeCommon)]
 pub(crate) struct OscillatorNode {
@@ -69,6 +84,8 @@ impl OscillatorNode {
     pub fn update_parameters(&mut self, info: &BlockInfo, tick: Tick) -> bool {
         self.frequency.update(info, tick)
     }
+
+
 }
 
 impl AudioNodeEngine for OscillatorNode {
@@ -168,6 +185,7 @@ impl AudioNodeEngine for OscillatorNode {
 
     fn get_param(&mut self, id: ParamType) -> &mut Param {
         match id {
+
             ParamType::Frequency => &mut self.frequency,
             ParamType::Detune => &mut self.detune,
             _ => panic!("Unknown param {:?} for OscillatorNode", id),
