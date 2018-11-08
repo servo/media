@@ -6,21 +6,8 @@ use param::{Param, ParamType};
 
 #[derive(Copy, Clone, Debug)]
 pub struct PeriodicWaveOptions {
-    //  https://webaudio.github.io/web-audio-api/#dictdef-periodicwaveoptions
-    //pub real: [f32; 2],
-    //pub imag: [f32; 2],
+    // XXX https://webaudio.github.io/web-audio-api/#dictdef-periodicwaveoptions
 }
-
-/*
-impl Default for PeriodicWaveOptions {
-    fn default() -> Self {
-        PeriodicWaveOptions {
-            real: [0.,0.],
-            imag: [0.,1.],
-        }
-    }
-}
-*/
 
 #[derive(Copy, Clone, Debug)]
 pub enum OscillatorType {
@@ -169,7 +156,7 @@ impl AudioNodeEngine for OscillatorNode {
 
                     }
                 }
-                
+
         frame.mutate_with(|sample, _| *sample = value);
 
                 self.phase += step;
