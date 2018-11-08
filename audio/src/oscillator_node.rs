@@ -7,9 +7,11 @@ use param::{Param, ParamType};
 #[derive(Copy, Clone, Debug)]
 pub struct PeriodicWaveOptions {
     //  https://webaudio.github.io/web-audio-api/#dictdef-periodicwaveoptions
-    pub real: [f32; 2],
-    pub imag: [f32; 2],
+    //pub real: [f32; 2],
+    //pub imag: [f32; 2],
 }
+
+/*
 impl Default for PeriodicWaveOptions {
     fn default() -> Self {
         PeriodicWaveOptions {
@@ -18,7 +20,7 @@ impl Default for PeriodicWaveOptions {
         }
     }
 }
-
+*/
 
 #[derive(Copy, Clone, Debug)]
 pub enum OscillatorType {
@@ -28,8 +30,6 @@ pub enum OscillatorType {
     Triangle,
     Custom,
 }
-
-
 
 #[derive(Copy, Clone, Debug)]
 pub struct OscillatorNodeOptions {
@@ -49,7 +49,6 @@ impl Default for OscillatorNodeOptions {
         }
     }
 }
-
 
 
 #[derive(AudioScheduledSourceNode, AudioNodeCommon)]
@@ -96,13 +95,9 @@ impl AudioNodeEngine for OscillatorNode {
     fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
         // XXX Implement this properly and according to self.options
         // as defined in https://webaudio.github.io/web-audio-api/#oscillatornode
-
         use std::f64::consts::PI;
-
         debug_assert!(inputs.len() == 0);
-
         inputs.blocks.push(Default::default());
-
         let (start_at, stop_at) = match self.should_play_at(info.frame) {
             ShouldPlay::No => {
                 return inputs;
@@ -137,44 +132,44 @@ impl AudioNodeEngine for OscillatorNode {
                     step = two_pi * self.frequency.value() as f64 / sample_rate;
                 }
                 let mut value = vol;
-                println!("{:?}",self.phase );
                 match self.oscillator_type {
                     OscillatorType::Sine => {
-                        println!("Sine\n");
                         value = vol * f32::sin(NumCast::from(self.phase).unwrap());
                     }
 
                     OscillatorType::Square => {
-                        println!("Square\n");
                         if self.phase >= PI && self.phase < two_pi {
                                     value = vol * 1.0;
                                 }
                                 else if self.phase > 0.0 && self.phase < PI {
                                     value = vol * (-1.0);
                                 }
-                                else {
-                                    value = 0.;
-                                }
-                    }
-
-                    OscillatorType::Custom => {
-                        println!("custom\n");
-
                     }
 
                     OscillatorType::Sawtooth => {
-                        println!("Sawtooth\n");
-                        value = vol * ( (self.phase as f64) / (PI)) as f32;
+                        value = vol * ((self.phase as f64) / (PI)) as f32;
                     }
 
                     OscillatorType::Triangle => {
-                        println!("Triangle\n");
+                        if self.phase >= 0. && self.phase < PI/2.{
+                            value = vol * 2.0 * ((self.phase as f64) / (PI)) as f32;
+                        }
+                        else if self.phase >= PI/2. && self.phase < PI {
+                            value = vol * ( 1. - ( ( (self.phase as f64) - (PI/2.)) * (2./PI) ) as f32 );
+                        }
+                        else if self.phase >= PI && self.phase < (3.* PI/2.) {
+                            value = vol * -1. * ( 1. - ( ( (self.phase as f64) - (PI/2.)) * (2./PI) ) as f32 );
+                        }
+                        else if self.phase >= 3.*PI/2. && self.phase < 2.*PI {
+                            value = vol * (-2.0) * ((self.phase as f64) / (PI)) as f32;
+                        }
+                    }
 
+                    OscillatorType::Custom => {
 
                     }
                 }
-
-
+                
         frame.mutate_with(|sample, _| *sample = value);
 
                 self.phase += step;
@@ -192,7 +187,6 @@ impl AudioNodeEngine for OscillatorNode {
 
     fn get_param(&mut self, id: ParamType) -> &mut Param {
         match id {
-
             ParamType::Frequency => &mut self.frequency,
             ParamType::Detune => &mut self.detune,
             _ => panic!("Unknown param {:?} for OscillatorNode", id),
