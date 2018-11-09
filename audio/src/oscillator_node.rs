@@ -53,7 +53,6 @@ impl Default for OscillatorNodeOptions {
     }
 }
 
-
 #[derive(AudioScheduledSourceNode, AudioNodeCommon)]
 pub(crate) struct OscillatorNode {
     channel_info: ChannelInfo,
@@ -86,8 +85,6 @@ impl OscillatorNode {
     pub fn update_parameters(&mut self, info: &BlockInfo, tick: Tick) -> bool {
         self.frequency.update(info, tick)
     }
-
-
 }
 
 impl AudioNodeEngine for OscillatorNode {
@@ -142,11 +139,10 @@ impl AudioNodeEngine for OscillatorNode {
 
                     OscillatorType::Square => {
                         if self.phase >= PI && self.phase < two_pi {
-                                    value = vol * 1.0;
-                                }
-                                else if self.phase > 0.0 && self.phase < PI {
-                                    value = vol * (-1.0);
-                                }
+                            value = vol * 1.0;
+                        } else if self.phase > 0.0 && self.phase < PI {
+                            value = vol * (-1.0);
+                        }
                     }
 
                     OscillatorType::Sawtooth => {
@@ -154,26 +150,24 @@ impl AudioNodeEngine for OscillatorNode {
                     }
 
                     OscillatorType::Triangle => {
-                        if self.phase >= 0. && self.phase < PI/2.{
+                        if self.phase >= 0. && self.phase < PI / 2. {
                             value = vol * 2.0 * ((self.phase as f64) / (PI)) as f32;
-                        }
-                        else if self.phase >= PI/2. && self.phase < PI {
-                            value = vol * ( 1. - ( ( (self.phase as f64) - (PI/2.)) * (2./PI) ) as f32 );
-                        }
-                        else if self.phase >= PI && self.phase < (3.* PI/2.) {
-                            value = vol * -1. * ( 1. - ( ( (self.phase as f64) - (PI/2.)) * (2./PI) ) as f32 );
-                        }
-                        else if self.phase >= 3.*PI/2. && self.phase < 2.*PI {
+                        } else if self.phase >= PI / 2. && self.phase < PI {
+                            value =
+                                vol * (1. - (((self.phase as f64) - (PI / 2.)) * (2. / PI)) as f32);
+                        } else if self.phase >= PI && self.phase < (3. * PI / 2.) {
+                            value = vol
+                                * -1.
+                                * (1. - (((self.phase as f64) - (PI / 2.)) * (2. / PI)) as f32);
+                        } else if self.phase >= 3. * PI / 2. && self.phase < 2. * PI {
                             value = vol * (-2.0) * ((self.phase as f64) / (PI)) as f32;
                         }
                     }
 
-                    OscillatorType::Custom => {
-
-                    }
+                    OscillatorType::Custom => {}
                 }
 
-        frame.mutate_with(|sample, _| *sample = value);
+                frame.mutate_with(|sample, _| *sample = value);
 
                 self.phase += step;
                 if self.phase >= two_pi {
