@@ -40,6 +40,7 @@ impl Default for OscillatorNodeOptions {
 #[derive(AudioScheduledSourceNode, AudioNodeCommon)]
 pub(crate) struct OscillatorNode {
     channel_info: ChannelInfo,
+    oscillator_type: OscillatorType,
     frequency: Param,
     detune: Param,
     phase: f64,
@@ -55,6 +56,7 @@ impl OscillatorNode {
     pub fn new(options: OscillatorNodeOptions, channel_info: ChannelInfo) -> Self {
         Self {
             channel_info,
+            oscillator_type: options.oscillator_type,
             frequency: Param::new(options.freq.into()),
             detune: Param::new(options.detune.into()),
             phase: 0.,
@@ -77,18 +79,14 @@ impl AudioNodeEngine for OscillatorNode {
     fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
         // XXX Implement this properly and according to self.options
         // as defined in https://webaudio.github.io/web-audio-api/#oscillatornode
-
         use std::f64::consts::PI;
-
         debug_assert!(inputs.len() == 0);
-
         inputs.blocks.push(Default::default());
-
         let (start_at, stop_at) = match self.should_play_at(info.frame) {
             ShouldPlay::No => {
                 return inputs;
             }
-            ShouldPlay::Between(start, end) => (start, end)
+            ShouldPlay::Between(start, end) => (start, end),
         };
 
         {
@@ -109,7 +107,7 @@ impl AudioNodeEngine for OscillatorNode {
             while let Some(mut frame) = iter.next() {
                 let tick = frame.tick();
                 if tick < start_at {
-                    continue
+                    continue;
                 } else if tick > stop_at {
                     break;
                 }
@@ -117,7 +115,42 @@ impl AudioNodeEngine for OscillatorNode {
                 if self.update_parameters(info, tick) {
                     step = two_pi * self.frequency.value() as f64 / sample_rate;
                 }
-                let value = vol * f32::sin(NumCast::from(self.phase).unwrap());
+                let mut value = vol;
+                match self.oscillator_type {
+                    OscillatorType::Sine => {
+                        value = vol * f32::sin(NumCast::from(self.phase).unwrap());
+                    }
+
+                    OscillatorType::Square => {
+                        if self.phase >= PI && self.phase < two_pi {
+                            value = vol * 1.0;
+                        } else if self.phase > 0.0 && self.phase < PI {
+                            value = vol * (-1.0);
+                        }
+                    }
+
+                    OscillatorType::Sawtooth => {
+                        value = vol * ((self.phase as f64) / (PI)) as f32;
+                    }
+
+                    OscillatorType::Triangle => {
+                        if self.phase >= 0. && self.phase < PI / 2. {
+                            value = vol * 2.0 * ((self.phase as f64) / (PI)) as f32;
+                        } else if self.phase >= PI / 2. && self.phase < PI {
+                            value =
+                                vol * (1. - (((self.phase as f64) - (PI / 2.)) * (2. / PI)) as f32);
+                        } else if self.phase >= PI && self.phase < (3. * PI / 2.) {
+                            value = vol
+                                * -1.
+                                * (1. - (((self.phase as f64) - (PI / 2.)) * (2. / PI)) as f32);
+                        } else if self.phase >= 3. * PI / 2. && self.phase < 2. * PI {
+                            value = vol * (-2.0) * ((self.phase as f64) / (PI)) as f32;
+                        }
+                    }
+
+                    OscillatorType::Custom => {}
+                }
+
                 frame.mutate_with(|sample, _| *sample = value);
 
                 self.phase += step;
