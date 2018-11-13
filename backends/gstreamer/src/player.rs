@@ -302,7 +302,30 @@ impl GStreamerPlayer {
             /* video renderer */ None, /* signal dispatcher */ None,
         );
 
-        // Set position interval update to 0.5 seconds.
+        let pipeline = player.get_pipeline();
+
+        // Set player to perform progressive downloading. This will make the
+        // player store the downloaded media in a local temporary file for
+        // faster playback of already-downloaded chunks.
+        let flags = pipeline.get_property("flags")
+            .map_err(|e| BackendError::GetPropertyFailed(e.0))?;
+        let flags_class = match FlagsClass::new(flags.type_()) {
+                Some(flags) => flags,
+                None => return Err(BackendError::PlayerFlagsSetupFailed),
+            };
+        let flags_class = match flags_class.builder_with_value(flags) {
+                Some(class) => class,
+                None => return Err(BackendError::PlayerFlagsSetupFailed)
+            };
+        let flags = match flags_class.set_by_nick("download")
+            .build() {
+                Some(flags) => flags,
+                None => return Err(BackendError::PlayerFlagsSetupFailed),
+            };
+        pipeline.set_property("flags", &flags)
+            .map_err(|e| BackendError::SetPropertyFailed(e.0))?;
+
+        // Set player position interval update to 0.5 seconds.
         let mut config = player.get_config();
         config.set_position_update_interval(500u32);
         player
@@ -311,7 +334,6 @@ impl GStreamerPlayer {
 
         let video_sink = gst::ElementFactory::make("appsink", None)
             .ok_or(PlayerError::Backend("appsink creation failed".to_owned()))?;
-        let pipeline = player.get_pipeline();
         pipeline
             .set_property("video-sink", &video_sink.to_value())
             .map_err(|e| PlayerError::Backend(e.to_string()))?;
@@ -348,6 +370,7 @@ impl GStreamerPlayer {
         let inner = self.inner.borrow();
         let inner = inner.as_ref().unwrap();
         let observers = self.observers.clone();
+        // Handle `end-of-stream` signal.
         inner
             .lock()
             .unwrap()
@@ -357,17 +380,25 @@ impl GStreamerPlayer {
             });
 
         let observers = self.observers.clone();
+        // Handle `error` signal
         inner.lock().unwrap().player.connect_error(move |_, _| {
             observers.lock().unwrap().notify(PlayerEvent::Error);
         });
 
+        // Handle `buffering` signal.
+        inner.lock().unwrap().player.connect_buffering(move |_, _| {
+            println!("BUFFERING");
+        });
+
         let observers = self.observers.clone();
+        // Handle `state-changed` signal.
         inner
             .lock()
             .unwrap()
             .player
             .connect_state_changed(move |_, player_state| {
                 let state = match player_state {
+                    gst_player::PlayerState::Buffering => Some(PlaybackState::Buffering),
                     gst_player::PlayerState::Stopped => Some(PlaybackState::Stopped),
                     gst_player::PlayerState::Paused => Some(PlaybackState::Paused),
                     gst_player::PlayerState::Playing => Some(PlaybackState::Playing),
@@ -382,6 +413,7 @@ impl GStreamerPlayer {
             });
 
         let observers = self.observers.clone();
+        // Handle `position-update` signal.
         inner
             .lock()
             .unwrap()
@@ -396,6 +428,7 @@ impl GStreamerPlayer {
             });
 
         let observers = self.observers.clone();
+        // Handle `seek-done` signal.
         inner
             .lock()
             .unwrap()
@@ -409,6 +442,7 @@ impl GStreamerPlayer {
                 }
             });
 
+        // Handle `media-info-updated` signal.
         let inner_clone = inner.clone();
         let observers = self.observers.clone();
         inner
@@ -431,6 +465,7 @@ impl GStreamerPlayer {
                 }
             });
 
+        // Handle `duration-changed` signal.
         let inner_clone = inner.clone();
         let observers = self.observers.clone();
         inner
@@ -472,6 +507,7 @@ impl GStreamerPlayer {
 
         let observers = self.observers.clone();
         let renderers = self.renderers.clone();
+        // Set appsink callbacks.
         inner.lock().unwrap().appsink.set_callbacks(
             gst_app::AppSinkCallbacks::new()
                 .new_preroll(|_| gst::FlowReturn::Ok)

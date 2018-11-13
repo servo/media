@@ -11,7 +11,7 @@ use std::sync::{Arc, Mutex};
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum PlaybackState {
     Stopped,
-    // Buffering,
+    Buffering,
     Paused,
     Playing,
 }
