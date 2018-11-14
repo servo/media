@@ -1,6 +1,7 @@
 use glib;
 use glib::*;
-use gst;
+use gst::{self, ElementExt, PadExtManual};
+use gst::query::QueryView;
 use gst_app::{self, AppSrcCallbacks, AppStreamType};
 use gst_player;
 use gst_player::{PlayerMediaInfo, PlayerStreamInfoExt};
@@ -317,7 +318,8 @@ impl GStreamerPlayer {
                 Some(class) => class,
                 None => return Err(BackendError::PlayerFlagsSetupFailed)
             };
-        let flags = match flags_class.set_by_nick("download")
+        let flags = match flags_class
+            .set_by_nick("download")
             .build() {
                 Some(flags) => flags,
                 None => return Err(BackendError::PlayerFlagsSetupFailed),
@@ -386,8 +388,8 @@ impl GStreamerPlayer {
         });
 
         // Handle `buffering` signal.
-        inner.lock().unwrap().player.connect_buffering(move |_, _| {
-            println!("BUFFERING");
+        inner.lock().unwrap().player.connect_buffering(move |_, data| {
+            println!("BUFFERING {:?}", data);
         });
 
         let observers = self.observers.clone();
@@ -540,15 +542,57 @@ impl GStreamerPlayer {
             let is_ready_clone = self.is_ready.clone();
             let observers = self.observers.clone();
             let connect_result = pipeline.connect("source-setup", false, move |args| {
-                let source = args[1].get::<gst::Element>();
-                if source.is_none() {
-                    let _ = sender
-                        .lock()
-                        .unwrap()
-                        .send(Err(PlayerError::Backend("Source setup failed".to_owned())));
-                    return None;
-                }
-                let source = source.unwrap();
+                let source = match args[1].get::<gst::Element>() {
+                    Some(source) => source,
+                    None => {
+                        let _ = sender
+                            .lock()
+                            .unwrap()
+                            .send(Err(PlayerError::Backend("Source setup failed".to_owned())));
+                        return None;
+                    },
+                };
+
+                // In order to make buffering/downloading work as we want, apart from
+                // setting the appropriate flags, the source needs to either:
+                //
+                // 1. be an http, mms, etc. scheme
+                // 2. report that it is "bandwidth limited".
+                //
+                // 1. is not straightforward because we are using an appsrc scheme for now.
+                // This may change in the future if we end up implementing something
+                // like a custom `servohttpsrc` or wrapping the existing appsrc
+                // in a bin src that implements http/https/data URI handlers, which
+                // is what WebKit does.
+                //
+                // For 2. we need to make appsrc handle the scheduling properties query
+                // to report that it "is bandwidth limited".
+                let src_pad = match source.get_static_pad("src") {
+                    Some(src_pad) => src_pad,
+                    None => {
+                        let _ = sender
+                            .lock()
+                            .unwrap()
+                            .send(Err(BackendError::PlayerSourceSetupFailed));
+                        return None;
+                    },
+                };
+                src_pad.add_probe(gst::PadProbeType::QUERY_UPSTREAM, |_, probe_info| {
+                    if let Some(gst::PadProbeData::Query(ref mut query)) = probe_info.data {
+                        if let QueryView::Scheduling(ref mut query) = query.view_mut() {
+                            query.set(
+                                gst::SchedulingFlags::SEQUENTIAL |
+                                gst::SchedulingFlags::BANDWIDTH_LIMITED,
+                                1, -1, 0
+                            );
+                            query.add_scheduling_modes(&[gst::PadMode::Push]);
+                            println!("QUERY {:?}", query);
+                            return gst::PadProbeReturn::Handled;
+                        }
+                    }
+                    gst::PadProbeReturn::Ok
+                });
+
                 let mut inner = inner_clone.lock().unwrap();
                 let appsrc = source
                     .clone()
