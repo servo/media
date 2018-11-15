@@ -7,7 +7,23 @@ use param::{Param, ParamType};
 #[derive(Copy, Clone, Debug)]
 pub struct PeriodicWaveOptions {
     // XXX https://webaudio.github.io/web-audio-api/#dictdef-periodicwaveoptions
+    pub real: [f32; 2],
+    pub imag: [f32; 2],
+    //The above are float arrays of size 2 for now, we need to make them vectors of f32 type.
 }
+
+/*
+impl Default for PeriodicWaveOptions {
+    fn default() -> Self {
+        PeriodicWaveOptions {
+            impl Default for PeriodicWaveOptions {
+
+        }
+    }
+}
+Implement the constructor and initialize the values for the vectors based on the conditions
+
+*/
 
 #[derive(Copy, Clone, Debug)]
 pub enum OscillatorType {
