@@ -25,6 +25,9 @@ version = "0.12"
 [dependencies.gstreamer-player]
 version = "0.12"
 
+[dependencies.gstreamer-video]
+version = "0.12"
+
 [dependencies.ipc-channel]
 version = "0.11"
 

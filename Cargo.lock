@@ -1273,6 +1273,7 @@ dependencies = [
  "gstreamer-app 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer-audio 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer-player 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gstreamer-video 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ipc-channel 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "servo-media-audio 0.1.0",
