@@ -6,38 +6,38 @@ use node::{AudioNodeType, ChannelInfo};
 use param::{Param, ParamType};
 
 #[derive(Copy, Clone, Debug)]
-pub struct GainNodeOptions {
-    pub gain: f32,
+pub struct ConstantSourceNodeOptions {
+    pub offset: f32,
 }
 
-impl Default for GainNodeOptions {
+impl Default for ConstantSourceNodeOptions {
     fn default() -> Self {
-        GainNodeOptions { gain: 1. }
+        ConstantSourceNodeOptions { offset: 1. }
     }
 }
 
 #[derive(AudioNodeCommon)]
-pub(crate) struct GainNode {
+pub(crate) struct ConstantSourceNode {
     channel_info: ChannelInfo,
-    gain: Param,
+    Offset: Param,
 }
 
-impl GainNode {
-    pub fn new(options: GainNodeOptions, channel_info: ChannelInfo) -> Self {
+impl ConstantSourceNode {
+    pub fn new(options: ConstantSourceNodeOptions, channel_info: ChannelInfo) -> Self {
         Self {
             channel_info,
-            gain: Param::new(options.gain),
+            offset: Param::new(options.offset),
         }
     }
 
     pub fn update_parameters(&mut self, info: &BlockInfo, tick: Tick) -> bool {
-        self.gain.update(info, tick)
+        self.offset.update(info, tick)
     }
 }
 
-impl AudioNodeEngine for GainNode {
+impl AudioNodeEngine for ConstantSourceNode {
     fn node_type(&self) -> AudioNodeType {
-        AudioNodeType::GainNode
+        AudioNodeType::ConstantSourceNode
     }
 
     fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
@@ -49,13 +49,13 @@ impl AudioNodeEngine for GainNode {
 
         {
             let mut iter = inputs.blocks[0].iter();
-            let mut gain = self.gain.value();
+            let mut offset = self.offset.value();
 
             while let Some(mut frame) = iter.next() {
                 if self.update_parameters(info, frame.tick()) {
-                    gain = self.gain.value();
+                    offset = self.offset.value();
                 }
-                frame.mutate_with(|sample, _| *sample = *sample * gain);
+                frame.mutate_with(|sample, _| *sample = *sample * offset);
             }
         }
         inputs
@@ -63,8 +63,8 @@ impl AudioNodeEngine for GainNode {
 
     fn get_param(&mut self, id: ParamType) -> &mut Param {
         match id {
-            ParamType::Gain => &mut self.gain,
-            _ => panic!("Unknown param {:?} for GainNode", id),
+            ParamType::Offset => &mut self.offset,
+            _ => panic!("Unknown param {:?} for the offset", id),
         }
     }
 }
