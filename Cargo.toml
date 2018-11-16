@@ -2,10 +2,11 @@
 members = [
   "audio",
   "backends/gstreamer",
+  "backends/gstreamer/source-element",
   "examples",
   "examples/android/lib",
   "player",
   "servo-media",
-  "servo-media-derive"
+  "servo-media-derive",
 ]
 license = "MPL-2.0"

@@ -1,7 +1,6 @@
 use glib;
 use glib::*;
-use gst::{self, ElementExt, PadExtManual};
-use gst::query::QueryView;
+use gst::{self, PadExtManual};
 use gst_app::{self, AppSrcCallbacks, AppStreamType};
 use gst_player;
 use gst_player::{PlayerMediaInfo, PlayerStreamInfoExt};
@@ -10,6 +9,7 @@ use ipc_channel::ipc::IpcSender;
 use servo_media_player::frame::{Frame, FrameRenderer};
 use servo_media_player::metadata::Metadata;
 use servo_media_player::{PlaybackState, Player, PlayerError, PlayerEvent, StreamType};
+use source_element::source::{register_servo_src, ServoSrc};
 use std::cell::RefCell;
 use std::error::Error;
 use std::sync::mpsc;
@@ -92,7 +92,7 @@ fn metadata_from_media_info(media_info: &PlayerMediaInfo) -> Result<Metadata, ()
 
 struct PlayerInner {
     player: gst_player::Player,
-    appsrc: Option<gst_app::AppSrc>,
+    servosrc: Option<ServoSrc>,
     appsink: gst_app::AppSink,
     input_size: u64,
     rate: f64,
@@ -105,11 +105,11 @@ impl PlayerInner {
         // Set input_size to proxy its value, since it
         // could be set by the user before calling .setup().
         self.input_size = size;
-        if let Some(ref mut appsrc) = self.appsrc {
+        if let Some(ref mut servosrc) = self.servosrc {
             if size > 0 {
-                appsrc.set_size(size as i64);
+                servosrc.set_size(size as i64);
             } else {
-                appsrc.set_size(-1); // live source
+                servosrc.set_size(-1); // live source
             }
         }
         Ok(())
@@ -138,8 +138,8 @@ impl PlayerInner {
         // Set stream_type to proxy its value, since it
         // could be set by the user before calling .setup().
         self.stream_type = Some(type_);
-        if let Some(ref appsrc) = self.appsrc {
-            appsrc.set_stream_type(type_);
+        if let Some(ref servosrc) = self.servosrc {
+            servosrc.set_stream_type(type_);
         }
         Ok(())
     }
@@ -152,7 +152,7 @@ impl PlayerInner {
     pub fn stop(&mut self) -> Result<(), PlayerError> {
         self.player.stop();
         self.last_metadata = None;
-        self.appsrc = None;
+        self.servosrc = None;
         Ok(())
     }
 
@@ -162,8 +162,8 @@ impl PlayerInner {
     }
 
     pub fn end_of_stream(&mut self) -> Result<(), PlayerError> {
-        if let Some(ref mut appsrc) = self.appsrc {
-            if appsrc.end_of_stream() == gst::FlowReturn::Ok {
+        if let Some(ref mut servosrc) = self.servosrc {
+            if let Ok(gst::FlowReturn::Ok) = servosrc.end_of_stream() {
                 return Ok(());
             }
         }
@@ -198,21 +198,21 @@ impl PlayerInner {
     }
 
     pub fn push_data(&mut self, data: Vec<u8>) -> Result<(), PlayerError> {
-        if let Some(ref mut appsrc) = self.appsrc {
-            if appsrc.get_current_level_bytes() + data.len() as u64 > appsrc.get_max_bytes() {
+        if let Some(ref mut servosrc) = self.servosrc {
+            if servosrc.get_current_level_bytes() + data.len() as u64 > servosrc.get_max_bytes() {
                 return Err(PlayerError::EnoughData);
             }
             let buffer =
                 gst::Buffer::from_slice(data).ok_or_else(|| PlayerError::BufferPushFailed)?;
-            if appsrc.push_buffer(buffer) == gst::FlowReturn::Ok {
+            if servosrc.push_buffer(buffer) == gst::FlowReturn::Ok {
                 return Ok(());
             }
         }
         Err(PlayerError::BufferPushFailed)
     }
 
-    pub fn set_app_src(&mut self, appsrc: gst_app::AppSrc) {
-        self.appsrc = Some(appsrc);
+    pub fn set_src(&mut self, servosrc: ServoSrc) {
+        self.servosrc = Some(servosrc);
     }
 }
 
@@ -298,6 +298,10 @@ impl GStreamerPlayer {
                 )));
             }
         }
+        
+        if !register_servo_src() {
+            return Err(PlayerError::Backend("servosrc registration error".to_owned()));
+        }
 
         let player = gst_player::Player::new(
             /* video renderer */ None, /* signal dispatcher */ None,
@@ -356,12 +360,12 @@ impl GStreamerPlayer {
         // The estimated version for the fix is 1.14.5 / 1.15.1.
         // https://github.com/servo/servo/issues/22010#issuecomment-432599657
         player
-            .set_property("uri", &Value::from("appsrc://"))
+            .set_property("uri", &Value::from("servosrc://"))
             .map_err(|e| PlayerError::Backend(e.to_string()))?;
 
         *self.inner.borrow_mut() = Some(Arc::new(Mutex::new(PlayerInner {
             player,
-            appsrc: None,
+            servosrc: None,
             appsink: video_sink,
             input_size: 0,
             rate: 1.0,
@@ -553,62 +557,22 @@ impl GStreamerPlayer {
                     },
                 };
 
-                // In order to make buffering/downloading work as we want, apart from
-                // setting the appropriate flags, the source needs to either:
-                //
-                // 1. be an http, mms, etc. scheme
-                // 2. report that it is "bandwidth limited".
-                //
-                // 1. is not straightforward because we are using an appsrc scheme for now.
-                // This may change in the future if we end up implementing something
-                // like a custom `servohttpsrc` or wrapping the existing appsrc
-                // in a bin src that implements http/https/data URI handlers, which
-                // is what WebKit does.
-                //
-                // For 2. we need to make appsrc handle the scheduling properties query
-                // to report that it "is bandwidth limited".
-                let src_pad = match source.get_static_pad("src") {
-                    Some(src_pad) => src_pad,
-                    None => {
-                        let _ = sender
-                            .lock()
-                            .unwrap()
-                            .send(Err(BackendError::PlayerSourceSetupFailed));
-                        return None;
-                    },
-                };
-                src_pad.add_probe(gst::PadProbeType::QUERY_UPSTREAM, |_, probe_info| {
-                    if let Some(gst::PadProbeData::Query(ref mut query)) = probe_info.data {
-                        if let QueryView::Scheduling(ref mut query) = query.view_mut() {
-                            query.set(
-                                gst::SchedulingFlags::SEQUENTIAL |
-                                gst::SchedulingFlags::BANDWIDTH_LIMITED,
-                                1, -1, 0
-                            );
-                            query.add_scheduling_modes(&[gst::PadMode::Push]);
-                            println!("QUERY {:?}", query);
-                            return gst::PadProbeReturn::Handled;
-                        }
-                    }
-                    gst::PadProbeReturn::Ok
-                });
-
                 let mut inner = inner_clone.lock().unwrap();
-                let appsrc = source
+                let servosrc = source
                     .clone()
-                    .dynamic_cast::<gst_app::AppSrc>()
-                    .expect("Source element is expected to be an appsrc!");
+                    .dynamic_cast::<ServoSrc>()
+                    .expect("Source element is expected to be a servosrc!");
 
-                appsrc.set_max_bytes(MAX_SRC_QUEUE_SIZE);
-                appsrc.set_property_block(false);
+                servosrc.set_max_bytes(MAX_SRC_QUEUE_SIZE);
+                servosrc.set_property_block(false);
 
-                appsrc.set_property_format(gst::Format::Bytes);
+                servosrc.set_property_format(gst::Format::Bytes);
                 if inner.input_size > 0 {
-                    appsrc.set_size(inner.input_size as i64);
+                    servosrc.set_size(inner.input_size as i64);
                 }
 
                 if let Some(ref stream_type) = inner.stream_type {
-                    appsrc.set_stream_type(*stream_type);
+                    servosrc.set_stream_type(*stream_type);
                 }
 
                 let sender_clone = sender.clone();
@@ -616,7 +580,7 @@ impl GStreamerPlayer {
                 let observers_ = observers.clone();
                 let observers__ = observers.clone();
                 let observers___ = observers.clone();
-                appsrc.set_callbacks(
+                servosrc.set_callbacks(
                     AppSrcCallbacks::new()
                         .need_data(move |_, _| {
                             // We block the caller of the setup method until we get
@@ -642,7 +606,7 @@ impl GStreamerPlayer {
                         .build(),
                 );
 
-                inner.set_app_src(appsrc);
+                inner.set_src(servosrc);
 
                 None
             });
