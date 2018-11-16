@@ -5,6 +5,7 @@ use buffer_source_node::AudioBufferSourceNode;
 use channel_node::{ChannelMergerNode, ChannelSplitterNode};
 use context::{AudioContextOptions, ProcessingState, StateChangeResult};
 use gain_node::GainNode;
+use constant_source::ConstantSourceNode;
 use graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
 use node::{AudioNodeEngine, AudioNodeInit, AudioNodeMessage};
 use node::{BlockInfo, ChannelInfo};
@@ -198,8 +199,10 @@ impl<S: AudioSink + 'static> AudioRenderThread<S> {
             AudioNodeInit::ChannelMergerNode(options) => {
                 Box::new(ChannelMergerNode::new(options, ch))
             }
+            AudioNodeInit::ConstantSourceNode(options) => Box::new(ConstantSourceNode::new(options, ch)),
             AudioNodeInit::ChannelSplitterNode => Box::new(ChannelSplitterNode::new(ch)),
             _ => unimplemented!(),
+
         };
         let id = self.graph.add_node(node);
         if needs_listener {

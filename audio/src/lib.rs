@@ -19,6 +19,7 @@ pub mod analyser_node;
 pub mod biquad_filter_node;
 pub mod block;
 pub mod buffer_source_node;
+pub mod constant_source;
 pub mod channel_node;
 pub mod context;
 pub mod decoder;
