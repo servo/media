@@ -5,6 +5,7 @@ use buffer_source_node::AudioBufferSourceNode;
 use channel_node::{ChannelMergerNode, ChannelSplitterNode};
 use context::{AudioContextOptions, ProcessingState, StateChangeResult};
 use gain_node::GainNode;
+use constant_source::ConstantSourceNode;
 use graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
 use node::{AudioNodeEngine, AudioNodeInit, AudioNodeMessage};
 use node::{BlockInfo, ChannelInfo};
@@ -13,7 +14,6 @@ use oscillator_node::OscillatorNode;
 use panner_node::PannerNode;
 use sink::{AudioSink, DummyAudioSink};
 use std::sync::mpsc::{Receiver, Sender};
-use constant_source_node::ConstantSourceNode;
 
 pub enum AudioRenderThreadMsg {
     CreateNode(AudioNodeInit, Sender<NodeId>, ChannelInfo),
