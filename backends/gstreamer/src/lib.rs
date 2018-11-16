@@ -10,6 +10,7 @@ extern crate ipc_channel;
 
 extern crate servo_media_audio;
 extern crate servo_media_player;
+extern crate source_element;
 
 use servo_media_audio::sink::AudioSinkError;
 use servo_media_audio::AudioBackend;
@@ -44,3 +45,4 @@ impl GStreamerBackend {
         gst::init().unwrap();
     }
 }
+

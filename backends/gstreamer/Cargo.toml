@@ -36,3 +36,6 @@ path = "../../audio"
 
 [dependencies.servo-media-player]
 path = "../../player"
+
+[dependencies.source-element]
+path = "source-element"
