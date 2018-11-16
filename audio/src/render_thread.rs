@@ -13,6 +13,7 @@ use oscillator_node::OscillatorNode;
 use panner_node::PannerNode;
 use sink::{AudioSink, DummyAudioSink};
 use std::sync::mpsc::{Receiver, Sender};
+use constant_source_node::ConstantSourceNode;
 
 pub enum AudioRenderThreadMsg {
     CreateNode(AudioNodeInit, Sender<NodeId>, ChannelInfo),
@@ -198,8 +199,10 @@ impl<S: AudioSink + 'static> AudioRenderThread<S> {
             AudioNodeInit::ChannelMergerNode(options) => {
                 Box::new(ChannelMergerNode::new(options, ch))
             }
+            AudioNodeInit::ConstantSourceNode(options) => Box::new(ConstantSourceNode::new(options, ch)),
             AudioNodeInit::ChannelSplitterNode => Box::new(ChannelSplitterNode::new(ch)),
             _ => unimplemented!(),
+
         };
         let id = self.graph.add_node(node);
         if needs_listener {
