@@ -2,6 +2,7 @@ extern crate servo_media;
 
 use servo_media::audio::node::{AudioNodeInit, AudioNodeMessage, AudioScheduledSourceNodeMessage};
 use servo_media::audio::oscillator_node::OscillatorNodeOptions;
+use servo_media::audio::oscillator_node::PeriodicWaveOptions;
 use servo_media::audio::oscillator_node::OscillatorType::Sawtooth;
 use servo_media::audio::oscillator_node::OscillatorType::Triangle;
 //use servo_media::audio::oscillator_node::OscillatorType::Sine;
@@ -75,7 +76,10 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let _ = context.close();
     thread::sleep(time::Duration::from_millis(1000));
 
+
     options.oscillator_type = Custom;
+    let wave = PeriodicWaveOptions::default();
+    options.periodic_wave_options = Some(wave); 
     let context = servo_media.create_audio_context(Default::default());
     let dest = context.dest_node();
     let osc5 = context.create_node(AudioNodeInit::OscillatorNode(options), Default::default());
@@ -87,7 +91,11 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         osc5,
         AudioNodeMessage::AudioScheduledSourceNode(AudioScheduledSourceNodeMessage::Start(0.)),
     );
+
     thread::sleep(time::Duration::from_millis(3000));
+    let _ =context.close();
+    thread::sleep(time::Duration::from_millis(1000));
+
 }
 
 fn main() {

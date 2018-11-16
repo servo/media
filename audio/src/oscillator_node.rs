@@ -7,23 +7,21 @@ use param::{Param, ParamType};
 #[derive(Copy, Clone, Debug)]
 pub struct PeriodicWaveOptions {
     // XXX https://webaudio.github.io/web-audio-api/#dictdef-periodicwaveoptions
-    pub real: [f32; 2],
-    pub imag: [f32; 2],
+    pub real: [f32;2] , //=  Vec::new(),
+    pub imag: [f32;2], //=  Vec::new(),
     //The above are float arrays of size 2 for now, we need to make them vectors of f32 type.
 }
 
-/*
 impl Default for PeriodicWaveOptions {
     fn default() -> Self {
         PeriodicWaveOptions {
-            impl Default for PeriodicWaveOptions {
-
+           real: [0.,0.],
+           imag: [0.,1.],
         }
-    }
-}
-Implement the constructor and initialize the values for the vectors based on the conditions
 
-*/
+    }
+
+}
 
 #[derive(Copy, Clone, Debug)]
 pub enum OscillatorType {
@@ -41,6 +39,7 @@ pub struct OscillatorNodeOptions {
     pub detune: f32,
     pub periodic_wave_options: Option<PeriodicWaveOptions>,
 }
+            
 
 impl Default for OscillatorNodeOptions {
     fn default() -> Self {
@@ -66,6 +65,7 @@ pub(crate) struct OscillatorNode {
     stop_at: Option<Tick>,
     /// The ended event callback.
     onended_callback: Option<OnEndedCallback>,
+    periodic_wave_options: Option<PeriodicWaveOptions>,
 }
 
 impl OscillatorNode {
@@ -79,6 +79,7 @@ impl OscillatorNode {
             start_at: None,
             stop_at: None,
             onended_callback: None,
+            periodic_wave_options: options.periodic_wave_options,
         }
     }
 
@@ -92,7 +93,7 @@ impl AudioNodeEngine for OscillatorNode {
         AudioNodeType::OscillatorNode
     }
 
-    fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
+     fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
         // XXX Implement this properly and according to self.options
         // as defined in https://webaudio.github.io/web-audio-api/#oscillatornode
         use std::f64::consts::PI;
@@ -153,8 +154,7 @@ impl AudioNodeEngine for OscillatorNode {
                         if self.phase >= 0. && self.phase < PI / 2. {
                             value = vol * 2.0 * ((self.phase as f64) / (PI)) as f32;
                         } else if self.phase >= PI / 2. && self.phase < PI {
-                            value =
-                                vol * (1. - (((self.phase as f64) - (PI / 2.)) * (2. / PI)) as f32);
+                            value = vol * (1. - (((self.phase as f64) - (PI / 2.)) * (2. / PI)) as f32);
                         } else if self.phase >= PI && self.phase < (3. * PI / 2.) {
                             value = vol
                                 * -1.
@@ -164,8 +164,26 @@ impl AudioNodeEngine for OscillatorNode {
                         }
                     }
 
-                    OscillatorType::Custom => {}
+                    OscillatorType::Custom => {
+                         let mut k = 1;
+                        let mut x : f32=0.;
+                        match self.periodic_wave_options {
+                            Some(ref wave) => {
+                                while k <= 1 {
+                                x = x + wave.real[k]*f32::cos(NumCast::from(self.phase*(k as f64)*two_pi).unwrap()) + wave.imag[k]*f32::sin(NumCast::from(self.phase*(k as f64)*two_pi).unwrap());
+                                k=k+1;
+                                }
+                                value = vol * x;
+                            }
+                            None => {
+                            }
+                             
+                        }
+                            
+                    }
+
                 }
+                
 
                 frame.mutate_with(|sample, _| *sample = value);
 
