@@ -4,6 +4,7 @@ use boxfnonce::SendBoxFnOnce;
 use buffer_source_node::{AudioBufferSourceNodeMessage, AudioBufferSourceNodeOptions};
 use channel_node::ChannelNodeOptions;
 use gain_node::GainNodeOptions;
+use constant_source_node::ConstantSourceNodeOptions;
 use oscillator_node::OscillatorNodeOptions;
 use panner_node::{PannerNodeMessage, PannerNodeOptions};
 use param::{Param, ParamRate, ParamType, UserAutomationEvent};
@@ -17,7 +18,7 @@ pub enum AudioNodeInit {
     AudioBufferSourceNode(AudioBufferSourceNodeOptions),
     ChannelMergerNode(ChannelNodeOptions),
     ChannelSplitterNode,
-    ConstantSourceNode,
+    ConstantSourceNode(ConstantSourceNodeOptions),
     ConvolverNode,
     DelayNode,
     DynamicsCompressionNode,
@@ -29,6 +30,7 @@ pub enum AudioNodeInit {
     ScriptProcessorNode,
     StereoPannerNode,
     WaveShaperNode,
+
 }
 
 /// Type of AudioNodeEngine.

@@ -19,7 +19,7 @@ impl Default for ConstantSourceNodeOptions {
 #[derive(AudioNodeCommon)]
 pub(crate) struct ConstantSourceNode {
     channel_info: ChannelInfo,
-    Offset: Param,
+    offset: Param,
 }
 
 impl ConstantSourceNode {
@@ -42,20 +42,20 @@ impl AudioNodeEngine for ConstantSourceNode {
 
     fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
         debug_assert!(inputs.len() == 1);
-
-        if inputs.blocks[0].is_silence() {
+        inputs.blocks[0].explicit_silence();
+      if inputs.blocks[0].is_silence() {
             return inputs;
         }
 
         {
             let mut iter = inputs.blocks[0].iter();
             let mut offset = self.offset.value();
-
             while let Some(mut frame) = iter.next() {
                 if self.update_parameters(info, frame.tick()) {
                     offset = self.offset.value();
                 }
-                frame.mutate_with(|sample, _| *sample = *sample * offset);
+                
+                frame.mutate_with(|sample, _| *sample = offset);
             }
         }
         inputs
