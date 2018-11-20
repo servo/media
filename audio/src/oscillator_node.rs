@@ -4,40 +4,11 @@ use node::{AudioNodeType, ChannelInfo, ShouldPlay};
 use num_traits::cast::NumCast;
 use param::{Param, ParamType};
 
-#[derive(Clone, Debug)]
-pub struct PeriodicWaveConstraints {
-    pub disable_normalization: bool,
-}
-impl Default for PeriodicWaveConstraints{
-	fn default()->Self{
-		PeriodicWaveConstraints{
-			disable_normalization: false,
-		}
-	}
-}
-
-
-
-#[derive(Clone, Debug)]
+#[derive(Clone,Debug)]
 pub struct PeriodicWaveOptions {
-    // XXX https://webaudio.github.io/web-audio-api/#dictdef-periodicwaveoptions
-    pub real: Vec<f32>,
-    pub imag: Vec<f32>,
-    pub periodic_wave_constraints: Option<PeriodicWaveConstraints>,
-}
-
-impl Default for PeriodicWaveOptions {
-    fn default() -> Self {
-        PeriodicWaveOptions {
-            real: vec![0.,0.],
-            imag: vec![0.,1.],
-            periodic_wave_constraints: Some(PeriodicWaveConstraints::default()),
-        }
-
-    }
+	// XXX https://webaudio.github.io/web-audio-api/#dictdef-periodicwaveoptions
 
 }
-
 #[derive(Clone, Debug)]
 pub enum OscillatorType {
     Sine,
@@ -180,20 +151,6 @@ impl AudioNodeEngine for OscillatorNode {
                     }
 
                     OscillatorType::Custom => {
-                         let mut k = 1;
-                        let mut x : f32=0.;
-                        match self.periodic_wave_options {
-                            Some(ref wave) => {
-                                while k <= 1 {
-                                x = x + wave.real[k]*f32::cos(NumCast::from(self.phase*(k as f64)*two_pi).unwrap()) + wave.imag[k]*f32::sin(NumCast::from(self.phase*(k as f64)*two_pi).unwrap());
-                                k=k+1;
-                                }
-                                value = vol * x;
-                            }
-                            None => {
-                            }
-                             
-                        }
                             
                     }
 
