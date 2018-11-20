@@ -1,6 +1,6 @@
 use glib;
 use glib::*;
-use gst::{self, PadExtManual};
+use gst;
 use gst_app::{self, AppSrcCallbacks, AppStreamType};
 use gst_player;
 use gst_player::{PlayerMediaInfo, PlayerStreamInfoExt};
@@ -163,7 +163,7 @@ impl PlayerInner {
 
     pub fn end_of_stream(&mut self) -> Result<(), PlayerError> {
         if let Some(ref mut servosrc) = self.servosrc {
-            if let Ok(gst::FlowReturn::Ok) = servosrc.end_of_stream() {
+            if servosrc.end_of_stream() == gst::FlowReturn::Ok {
                 return Ok(());
             }
         }
