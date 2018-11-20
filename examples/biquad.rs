@@ -15,13 +15,22 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let dest = context.dest_node();
     let mut options = OscillatorNodeOptions::default();
     options.freq = 100.;
-    let osc1 = context.create_node(AudioNodeInit::OscillatorNode(options.clone()), Default::default());
+    let osc1 = context.create_node(
+        AudioNodeInit::OscillatorNode(options.clone()),
+        Default::default(),
+    );
     options.freq = 800.;
-    let osc2 = context.create_node(AudioNodeInit::OscillatorNode(options.clone()), Default::default());
+    let osc2 = context.create_node(
+        AudioNodeInit::OscillatorNode(options.clone()),
+        Default::default(),
+    );
     let mut options = BiquadFilterNodeOptions::default();
     options.frequency = 50.;
     options.filter = FilterType::LowPass;
-    let biquad = context.create_node(AudioNodeInit::BiquadFilterNode(options.clone()), Default::default());
+    let biquad = context.create_node(
+        AudioNodeInit::BiquadFilterNode(options.clone()),
+        Default::default(),
+    );
     context.connect_ports(osc1.output(0), biquad.input(0));
     context.connect_ports(osc2.output(0), biquad.input(0));
     context.connect_ports(biquad.output(0), dest.input(0));
