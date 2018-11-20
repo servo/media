@@ -4,10 +4,9 @@ use node::{AudioNodeType, ChannelInfo, ShouldPlay};
 use num_traits::cast::NumCast;
 use param::{Param, ParamType};
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct PeriodicWaveOptions {
-	// XXX https://webaudio.github.io/web-audio-api/#dictdef-periodicwaveoptions
-
+    // XXX https://webaudio.github.io/web-audio-api/#dictdef-periodicwaveoptions
 }
 #[derive(Clone, Debug)]
 pub enum OscillatorType {
@@ -25,7 +24,6 @@ pub struct OscillatorNodeOptions {
     pub detune: f32,
     pub periodic_wave_options: Option<PeriodicWaveOptions>,
 }
-            
 
 impl Default for OscillatorNodeOptions {
     fn default() -> Self {
@@ -79,7 +77,7 @@ impl AudioNodeEngine for OscillatorNode {
         AudioNodeType::OscillatorNode
     }
 
-     fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
+    fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
         // XXX Implement this properly and according to self.options
         // as defined in https://webaudio.github.io/web-audio-api/#oscillatornode
         use std::f64::consts::PI;
@@ -140,7 +138,8 @@ impl AudioNodeEngine for OscillatorNode {
                         if self.phase >= 0. && self.phase < PI / 2. {
                             value = vol * 2.0 * ((self.phase as f64) / (PI)) as f32;
                         } else if self.phase >= PI / 2. && self.phase < PI {
-                            value = vol * (1. - (((self.phase as f64) - (PI / 2.)) * (2. / PI)) as f32);
+                            value =
+                                vol * (1. - (((self.phase as f64) - (PI / 2.)) * (2. / PI)) as f32);
                         } else if self.phase >= PI && self.phase < (3. * PI / 2.) {
                             value = vol
                                 * -1.
@@ -150,12 +149,8 @@ impl AudioNodeEngine for OscillatorNode {
                         }
                     }
 
-                    OscillatorType::Custom => {
-                            
-                    }
-
+                    OscillatorType::Custom => {}
                 }
-                
 
                 frame.mutate_with(|sample, _| *sample = value);
 
