@@ -4,10 +4,9 @@ use node::{AudioNodeType, ChannelInfo, ShouldPlay};
 use num_traits::cast::NumCast;
 use param::{Param, ParamType};
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct PeriodicWaveOptions {
-	// XXX https://webaudio.github.io/web-audio-api/#dictdef-periodicwaveoptions
-
+    // XXX https://webaudio.github.io/web-audio-api/#dictdef-periodicwaveoptions
 }
 #[derive(Clone, Debug)]
 pub enum OscillatorType {
@@ -148,10 +147,7 @@ impl AudioNodeEngine for OscillatorNode {
                         }
                     }
 
-                    OscillatorType::Custom => {
-
-                    }
-
+                    OscillatorType::Custom => {}
                 }
 
                 frame.mutate_with(|sample, _| *sample = value);
