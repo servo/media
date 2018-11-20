@@ -4,16 +4,17 @@ use glib::translate::*;
 use glib_ffi;
 use gobject_ffi;
 use gobject_subclass::object::*;
-use gst;
+use gst::{self, ElementExt};
 use gst_app::{self, AppSrc, AppSrcCallbacks, AppStreamType};
 use gst_ffi;
 use gst_plugin::bin::*;
 use gst_plugin::element::{ElementClassExt, ElementImpl};
 use gst_plugin::object::ElementInstanceStruct;
 use gst_plugin::uri_handler::{register_uri_handler, URIHandlerImpl, URIHandlerImplStatic};
+use std::cell::RefCell;
 use std::ptr;
 use std::mem;
-use std::sync::{Once, ONCE_INIT};
+use std::sync::{Arc, Mutex, Once, ONCE_INIT};
 
 mod imp {
     use super::*;
@@ -21,7 +22,9 @@ mod imp {
     macro_rules! inner_appsrc_proxy {
         ($fn_name:ident, $arg1:ident, $arg1_type:ty, $return_type:ty) => (
             pub fn $fn_name(&self, $arg1: $arg1_type) -> Result<$return_type, ()> {
-                match self.appsrc {
+                let appsrc = self.appsrc.lock().unwrap();
+                let appsrc = appsrc.borrow();
+                match *appsrc {
                     Some(ref appsrc) => Ok(appsrc.$fn_name($arg1)),
                     None => Err(()),
                 }
@@ -30,16 +33,13 @@ mod imp {
     }
 
     pub struct ServoSrc {
-        appsrc: Option<gst_app::AppSrc>,
+        appsrc: Arc<Mutex<RefCell<Option<gst_app::AppSrc>>>>,
     }
 
     impl ServoSrc {
         fn init(_bin: &Bin) -> Box<BinImpl<Bin>> {
-            let appsrc = gst::ElementFactory::make("appsrc", None)
-                .map(|e| e.downcast::<AppSrc>().unwrap());
-
             Box::new(Self {
-                appsrc,
+                appsrc: Arc::new(Mutex::new(RefCell::new(None))),
             })
         }
 
@@ -87,13 +87,17 @@ mod imp {
             &self,
             f: F
         ) -> Result<glib::SignalHandlerId, ()> {
-            match self.appsrc {
+            let appsrc = self.appsrc.lock().unwrap();
+            let appsrc = appsrc.borrow();
+            match *appsrc {
                 Some(ref appsrc) => Ok(appsrc.connect_need_data(f)),
                 None => Err(()),
             }
         }
         pub fn end_of_stream(&self) -> Result<gst::FlowReturn, ()> {
-            match self.appsrc {
+            let appsrc = self.appsrc.lock().unwrap();
+            let appsrc = appsrc.borrow();
+            match *appsrc {
                 Some(ref appsrc) => Ok(appsrc.end_of_stream()),
                 None => Err(()),
             }
@@ -106,7 +110,26 @@ mod imp {
         inner_appsrc_proxy!(set_stream_type, type_, AppStreamType, ());
     }
 
-    impl ObjectImpl<Bin> for ServoSrc { }
+    impl ObjectImpl<Bin> for ServoSrc {
+        fn constructed(&self, bin: &Bin) {
+            bin.parent_constructed();
+
+            let elem = gst::ElementFactory::make("appsrc", None)
+                .expect("Could not create source element");
+            let pad = elem.get_static_pad("src")
+                .expect("Could not get src pad");
+
+            self.add_element(bin, &elem);
+
+            let ghost_pad = gst::GhostPad::new("src", &pad)
+                .expect("Could not create src ghost pad");
+            bin.add_pad(&ghost_pad)
+                .expect("Could not add src ghost pad to bin");
+
+            let appsrc = self.appsrc.lock().unwrap();
+            *appsrc.borrow_mut() = Some(elem.downcast::<AppSrc>().unwrap());
+        }
+    }
 
     impl ElementImpl<Bin> for ServoSrc { }
 
