@@ -4,26 +4,41 @@ use node::{AudioNodeType, ChannelInfo, ShouldPlay};
 use num_traits::cast::NumCast;
 use param::{Param, ParamType};
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
+pub struct PeriodicWaveConstraints {
+    pub disable_normalization: bool,
+}
+impl Default for PeriodicWaveConstraints{
+	fn default()->Self{
+		PeriodicWaveConstraints{
+			disable_normalization: false,
+		}
+	}
+}
+
+
+
+#[derive(Clone, Debug)]
 pub struct PeriodicWaveOptions {
     // XXX https://webaudio.github.io/web-audio-api/#dictdef-periodicwaveoptions
-    pub real: [f32;2] , //=  Vec::new(),
-    pub imag: [f32;2], //=  Vec::new(),
-    //The above are float arrays of size 2 for now, we need to make them vectors of f32 type.
+    pub real: Vec<f32>,
+    pub imag: Vec<f32>,
+    pub periodic_wave_constraints: Option<PeriodicWaveConstraints>,
 }
 
 impl Default for PeriodicWaveOptions {
     fn default() -> Self {
         PeriodicWaveOptions {
-           real: [0.,0.],
-           imag: [0.,1.],
+            real: vec![0.,0.],
+            imag: vec![0.,1.],
+            periodic_wave_constraints: Some(PeriodicWaveConstraints::default()),
         }
 
     }
 
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub enum OscillatorType {
     Sine,
     Square,
@@ -32,7 +47,7 @@ pub enum OscillatorType {
     Custom,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct OscillatorNodeOptions {
     pub oscillator_type: OscillatorType,
     pub freq: f32,

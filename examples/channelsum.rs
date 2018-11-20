@@ -2,6 +2,7 @@ extern crate servo_media;
 
 use servo_media::audio::channel_node::ChannelNodeOptions;
 use servo_media::audio::gain_node::GainNodeOptions;
+use servo_media::audio::oscillator_node::OscillatorNodeOptions;
 use servo_media::audio::node::{AudioNodeInit, AudioNodeMessage, AudioScheduledSourceNodeMessage};
 use servo_media::ServoMedia;
 use std::sync::Arc;
@@ -9,15 +10,15 @@ use std::{thread, time};
 
 fn run_example(servo_media: Arc<ServoMedia>) {
     let context = servo_media.create_audio_context(Default::default());
-    let mut options = Default::default();
-    let osc = context.create_node(AudioNodeInit::OscillatorNode(options), Default::default());
+    let mut options = OscillatorNodeOptions::default();
+    let osc = context.create_node(AudioNodeInit::OscillatorNode(options.clone()), Default::default());
     options.freq = 213.;
-    let osc2 = context.create_node(AudioNodeInit::OscillatorNode(options), Default::default());
+    let osc2 = context.create_node(AudioNodeInit::OscillatorNode(options.clone()), Default::default());
     options.freq = 100.;
-    let osc3 = context.create_node(AudioNodeInit::OscillatorNode(options), Default::default());
+    let osc3 = context.create_node(AudioNodeInit::OscillatorNode(options.clone()), Default::default());
     let mut options = GainNodeOptions::default();
     options.gain = 0.7;
-    let gain = context.create_node(AudioNodeInit::GainNode(options), Default::default());
+    let gain = context.create_node(AudioNodeInit::GainNode(options.clone()), Default::default());
 
     let options = ChannelNodeOptions { channels: 2 };
     let merger = context.create_node(
