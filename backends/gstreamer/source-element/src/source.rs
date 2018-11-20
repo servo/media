@@ -4,7 +4,8 @@ use glib::translate::*;
 use glib_ffi;
 use gobject_ffi;
 use gobject_subclass::object::*;
-use gst::{self, ElementExt};
+use gst::{self, ElementExt, PadExtManual};
+use gst::query::QueryView;
 use gst_app::{self, AppSrc, AppSrcCallbacks, AppStreamType};
 use gst_ffi;
 use gst_plugin::bin::*;
@@ -38,6 +39,9 @@ mod imp {
 
     impl ServoSrc {
         fn init(_bin: &Bin) -> Box<BinImpl<Bin>> {
+            // At this point the bin is not completely created yet,
+            // so we cannot create and link the appsrc yet.
+            // We have to wait until ObjectImpl::constructed.
             Box::new(Self {
                 appsrc: Arc::new(Mutex::new(RefCell::new(None))),
             })
@@ -123,6 +127,36 @@ mod imp {
 
             let ghost_pad = gst::GhostPad::new("src", &pad)
                 .expect("Could not create src ghost pad");
+
+            // In order to make buffering/downloading work as we want, apart from
+            // setting the appropriate flags on the player playbin,
+            // the source needs to either:
+            //
+            // 1. be an http, mms, etc. scheme
+            // 2. report that it is "bandwidth limited".
+            //
+            // 1. is not straightforward because we are using a servosrc scheme for now.
+            // This may change in the future if we end up handling http/https/data
+            // URIs, which is what WebKit does.
+            //
+            // For 2. we need to make servosrc handle the scheduling properties query
+            // to report that it "is bandwidth limited".
+            ghost_pad.add_probe(gst::PadProbeType::QUERY_UPSTREAM, |_, probe_info| {
+                if let Some(gst::PadProbeData::Query(ref mut query)) = probe_info.data {
+                    if let QueryView::Scheduling(ref mut query) = query.view_mut() {
+                        query.set(
+                            gst::SchedulingFlags::SEQUENTIAL |
+                            gst::SchedulingFlags::BANDWIDTH_LIMITED,
+                            1, -1, 0
+                        );
+                        query.add_scheduling_modes(&[gst::PadMode::Push]);
+                        println!("QUERY {:?}", query);
+                        return gst::PadProbeReturn::Handled;
+                    }
+                }
+                gst::PadProbeReturn::Ok
+            });
+
             bin.add_pad(&ghost_pad)
                 .expect("Could not add src ghost pad to bin");
 
