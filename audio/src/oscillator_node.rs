@@ -4,12 +4,39 @@ use node::{AudioNodeType, ChannelInfo, ShouldPlay};
 use num_traits::cast::NumCast;
 use param::{Param, ParamType};
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
+pub struct PeriodicWaveConstraints {
+    pub disable_normalization: bool,
+}
+impl Default for PeriodicWaveConstraints{
+	fn default()->Self{
+		PeriodicWaveConstraints{
+			disable_normalization: false,
+		}
+	}
+}
+
+
+
+#[derive(Clone, Debug)]
 pub struct PeriodicWaveOptions {
     // XXX https://webaudio.github.io/web-audio-api/#dictdef-periodicwaveoptions
 }
 
-#[derive(Copy, Clone, Debug)]
+/*
+impl Default for PeriodicWaveOptions {
+    fn default() -> Self {
+        PeriodicWaveOptions {
+            impl Default for PeriodicWaveOptions {
+
+        }
+    }
+}
+Implement the constructor and initialize the values for the vectors based on the conditions
+
+*/
+
+#[derive(Clone, Debug)]
 pub enum OscillatorType {
     Sine,
     Square,
@@ -18,7 +45,7 @@ pub enum OscillatorType {
     Custom,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct OscillatorNodeOptions {
     pub oscillator_type: OscillatorType,
     pub freq: f32,
