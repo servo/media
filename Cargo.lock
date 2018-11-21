@@ -1298,16 +1298,20 @@ version = "0.1.0"
 dependencies = [
  "byte-slice-cast 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "glib 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "glib-sys 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gobject-subclass 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gobject-sys 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gst-plugin 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer-app 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer-audio 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer-player 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gstreamer-sys 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer-video 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ipc-channel 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "servo-media-audio 0.1.0",
  "servo-media-player 0.1.0",
- "source-element 1.0.0",
  "zip 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -1374,20 +1378,6 @@ dependencies = [
  "wayland-client 0.21.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "wayland-commons 0.21.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "wayland-protocols 0.21.4 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "source-element"
-version = "1.0.0"
-dependencies = [
- "glib 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "glib-sys 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "gobject-subclass 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "gobject-sys 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "gst-plugin 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "gstreamer 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "gstreamer-app 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "gstreamer-sys 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
