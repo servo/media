@@ -129,7 +129,7 @@ impl AudioNodeEngine for AudioBufferSourceNode {
                 inputs.blocks.push(Default::default());
                 return inputs;
             }
-            ShouldPlay::Between(start, end) => (start.0 as usize, end.0 as usize)
+            ShouldPlay::Between(start, end) => (start.0 as usize, end.0 as usize),
         };
 
         let buffer = self.buffer.as_ref().unwrap();
