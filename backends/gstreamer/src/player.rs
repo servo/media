@@ -9,7 +9,7 @@ use ipc_channel::ipc::IpcSender;
 use servo_media_player::frame::{Frame, FrameRenderer};
 use servo_media_player::metadata::Metadata;
 use servo_media_player::{PlaybackState, Player, PlayerError, PlayerEvent, StreamType};
-use source_element::source::{register_servo_src, ServoSrc};
+use source::{register_servo_src, ServoSrc};
 use std::cell::RefCell;
 use std::error::Error;
 use std::sync::mpsc;

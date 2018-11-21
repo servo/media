@@ -1,5 +1,4 @@
 use glib;
-use glib::prelude::*;
 use glib::translate::*;
 use glib_ffi;
 use gobject_ffi;
@@ -18,6 +17,7 @@ use std::sync::{Once, ONCE_INIT};
 
 mod imp {
     use super::*;
+    use glib::prelude::*;
     use gst::{ElementExt, PadExtManual};
     use gst_plugin::element::ElementClassExt;
 
@@ -216,17 +216,7 @@ gobject_subclass_deref!(ServoSrc, Bin);
 unsafe impl Send for ServoSrc {}
 unsafe impl Sync for ServoSrc {}
 
-impl ServoSrc {
-    pub fn new() -> ServoSrc {
-        use glib::object::Downcast;
-
-        unsafe {
-            glib::Object::new(Self::static_type(), &[])
-                .unwrap()
-                .downcast_unchecked()
-        }
-    }
-}
+impl ServoSrc {}
 
 pub fn register_servo_src() -> bool {
     let type_ = imp::ServoSrc::get_type();

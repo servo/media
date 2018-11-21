@@ -1,7 +1,7 @@
 [package]
 name = "servo-media-gstreamer"
 version = "0.1.0"
-authors = ["Manish Goregaokar <manishsmail@gmail.com>"]
+authors = ["The Servo Project Developers"]
 
 [build-dependencies]
 regex = "1.0"
@@ -12,6 +12,18 @@ version = "0.2"
 
 [dependencies.glib]
 version = "0.6"
+
+[dependencies.glib-sys]
+version = "0.7"
+
+[dependencies.gobject-subclass]
+version = "0.2.1"
+
+[dependencies.gobject-sys]
+version = "0.7"
+
+[dependencies.gst-plugin]
+version = "0.3.1"
 
 [dependencies.gstreamer]
 version = "0.12"
@@ -25,6 +37,9 @@ version = "0.12"
 [dependencies.gstreamer-player]
 version = "0.12"
 
+[dependencies.gstreamer-sys]
+version = "0.6.1"
+
 [dependencies.gstreamer-video]
 version = "0.12"
 
@@ -36,6 +51,3 @@ path = "../../audio"
 
 [dependencies.servo-media-player]
 path = "../../player"
-
-[dependencies.source-element]
-path = "source-element"
