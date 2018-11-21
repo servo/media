@@ -3,8 +3,8 @@ use block::{Block, Chunk, Tick};
 use boxfnonce::SendBoxFnOnce;
 use buffer_source_node::{AudioBufferSourceNodeMessage, AudioBufferSourceNodeOptions};
 use channel_node::ChannelNodeOptions;
-use gain_node::GainNodeOptions;
 use constant_source::ConstantSourceNodeOptions;
+use gain_node::GainNodeOptions;
 use oscillator_node::OscillatorNodeOptions;
 use panner_node::{PannerNodeMessage, PannerNodeOptions};
 use param::{Param, ParamRate, ParamType, UserAutomationEvent};
@@ -30,7 +30,6 @@ pub enum AudioNodeInit {
     ScriptProcessorNode,
     StereoPannerNode,
     WaveShaperNode,
-
 }
 
 /// Type of AudioNodeEngine.

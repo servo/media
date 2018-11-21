@@ -315,10 +315,11 @@ impl Block {
                     let mut v = Vec::with_capacity(FRAMES_PER_BLOCK_USIZE);
                     for frame in 0..FRAMES_PER_BLOCK_USIZE {
                         // output = 0.5 * (input.L + input.R + input.SL + input.SR);
-                        let o = 0.25 * (self.data_chan_frame(frame, 0)
-                            + self.data_chan_frame(frame, 1)
-                            + self.data_chan_frame(frame, 2)
-                            + self.data_chan_frame(frame, 3));
+                        let o = 0.25
+                            * (self.data_chan_frame(frame, 0)
+                                + self.data_chan_frame(frame, 1)
+                                + self.data_chan_frame(frame, 2)
+                                + self.data_chan_frame(frame, 3));
                         v.push(o);
                     }
                     self.buffer = v;

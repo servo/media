@@ -142,8 +142,7 @@ impl<B: AudioBackend + 'static> AudioContext<B> {
                     graph,
                     options,
                 );
-            })
-            .unwrap();
+            }).unwrap();
         Self {
             sender,
             state: Cell::new(ProcessingState::Suspended),
@@ -265,8 +264,7 @@ impl<B: AudioBackend + 'static> AudioContext<B> {
                 let audio_decoder = B::make_decoder();
 
                 audio_decoder.decode(data, callbacks, Some(options));
-            })
-            .unwrap();
+            }).unwrap();
     }
 
     pub fn set_eos_callback(&self, callback: Box<Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>) {

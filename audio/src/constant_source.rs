@@ -43,7 +43,7 @@ impl AudioNodeEngine for ConstantSourceNode {
     fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
         debug_assert!(inputs.len() == 1);
         inputs.blocks[0].explicit_silence();
-      if inputs.blocks[0].is_silence() {
+        if inputs.blocks[0].is_silence() {
             return inputs;
         }
 
@@ -54,7 +54,7 @@ impl AudioNodeEngine for ConstantSourceNode {
                 if self.update_parameters(info, frame.tick()) {
                     offset = self.offset.value();
                 }
-                
+
                 frame.mutate_with(|sample, _| *sample = offset);
             }
         }
