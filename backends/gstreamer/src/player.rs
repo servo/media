@@ -78,6 +78,7 @@ fn metadata_from_media_info(media_info: &PlayerMediaInfo) -> Result<Metadata, ()
     };
 
     let is_seekable = media_info.is_seekable();
+    let is_live = media_info.is_live();
 
     Ok(Metadata {
         duration,
@@ -87,6 +88,7 @@ fn metadata_from_media_info(media_info: &PlayerMediaInfo) -> Result<Metadata, ()
         is_seekable,
         audio_tracks,
         video_tracks,
+        is_live,
     })
 }
 
