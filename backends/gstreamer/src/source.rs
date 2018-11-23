@@ -138,7 +138,6 @@ mod imp {
                             1, -1, 0
                         );
                         query.add_scheduling_modes(&[gst::PadMode::Push]);
-                        println!("QUERY {:?}", query);
                         return gst::PadProbeReturn::Handled;
                     }
                 }

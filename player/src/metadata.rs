@@ -10,4 +10,6 @@ pub struct Metadata {
     // TODO: Might be nice to move width and height along with each video track.
     pub video_tracks: Vec<string::String>,
     pub audio_tracks: Vec<string::String>,
+    // Whether the media comes from a live source or not.
+    pub is_live: bool,
 }
