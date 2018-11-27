@@ -43,9 +43,6 @@ impl AudioNodeEngine for ConstantSourceNode {
     fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
         debug_assert!(inputs.len() == 1);
         inputs.blocks[0].explicit_silence();
-        if inputs.blocks[0].is_silence() {
-            return inputs;
-        }
 
         {
             let mut iter = inputs.blocks[0].iter();
