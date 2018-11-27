@@ -76,3 +76,7 @@ path = "simple_player.rs"
 [[bin]]
 name = "oscillator"
 path = "oscillator.rs"
+
+[[bin]]
+name = "constant_source"
+path = "constant_source.rs"
