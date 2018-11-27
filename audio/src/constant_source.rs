@@ -29,7 +29,7 @@ impl ConstantSourceNode {
     pub fn new(options: ConstantSourceNodeOptions, channel_info: ChannelInfo) -> Self {
         Self {
             channel_info,
-            offset: Param::new(options.offset),
+            offset: Param::new(options.offset.into()),
             start_at: None,
             stop_at: None,
             onended_callback: None,
@@ -78,7 +78,10 @@ impl AudioNodeEngine for ConstantSourceNode {
         }
         inputs
     }
-
+    fn input_count(&self) -> u32{
+        0
+    }
+    
     fn get_param(&mut self, id: ParamType) -> &mut Param {
         match id {
             ParamType::Offset => &mut self.offset,
