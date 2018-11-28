@@ -6,6 +6,8 @@ pub mod frame;
 pub mod metadata;
 
 use ipc_channel::ipc::IpcSender;
+use std::fmt::Debug;
+use std::ops::Range;
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -76,6 +78,9 @@ pub trait Player: Send {
     fn set_stream_type(&self, type_: StreamType) -> Result<(), PlayerError>;
     fn push_data(&self, data: Vec<u8>) -> Result<(), PlayerError>;
     fn end_of_stream(&self) -> Result<(), PlayerError>;
+    /// Get the list of time ranges in seconds that have been
+    /// buffered.
+    fn buffered(&self) -> Result<Vec<Range<u32>>, PlayerError>;
 }
 
 pub struct DummyPlayer {}
@@ -115,6 +120,9 @@ impl Player for DummyPlayer {
     }
     fn end_of_stream(&self) -> Result<(), PlayerError> {
         Ok(())
+    }
+    fn buffered(&self) -> Result<Vec<Range<u32>>, PlayerError> {
+        Ok(vec![])
     }
 }
 

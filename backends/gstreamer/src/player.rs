@@ -1,6 +1,7 @@
 use glib;
 use glib::*;
-use gst;
+use gst::{self, ElementExtManual};
+use gst::GenericFormattedValue::Percent;
 use gst_app::{self, AppSrcCallbacks, AppStreamType};
 use gst_player;
 use gst_player::{PlayerMediaInfo, PlayerStreamInfoExt};
@@ -12,6 +13,7 @@ use servo_media_player::{PlaybackState, Player, PlayerError, PlayerEvent, Stream
 use source::{register_servo_src, ServoSrc};
 use std::cell::RefCell;
 use std::error::Error;
+use std::ops::Range;
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex, Once};
 use std::time;
@@ -216,6 +218,32 @@ impl PlayerInner {
     pub fn set_src(&mut self, servosrc: ServoSrc) {
         self.servosrc = Some(servosrc);
     }
+
+    pub fn buffered(&mut self) -> Result<Vec<Range<u32>>, BackendError> {
+        let mut result = vec![];
+        let pipeline = self.player.get_pipeline();
+        let mut buffering = gst::Query::new_buffering(gst::Format::Percent);
+        if pipeline.query(&mut buffering) {
+            let ranges = buffering.get_ranges();
+            for i in 0..ranges.len() {
+                let start = ranges[i].0;
+                let end = ranges[i].1;
+                let start = if let Percent(start) = start {
+                    start.unwrap()
+                } else {
+                    0
+                } / (gst::FORMAT_PERCENT_MAX / 100);
+                let end = if let Percent(end) = end {
+                    end.unwrap()
+                } else {
+                    0
+                } / (gst::FORMAT_PERCENT_MAX / 100);
+                result.push(Range { start, end });
+            }
+        }
+
+        Ok(result)
+    }
 }
 
 type PlayerEventObserver = IpcSender<PlayerEvent>;
@@ -314,23 +342,23 @@ impl GStreamerPlayer {
         // Set player to perform progressive downloading. This will make the
         // player store the downloaded media in a local temporary file for
         // faster playback of already-downloaded chunks.
-        let flags = pipeline.get_property("flags")
+        let flags = pipeline
+            .get_property("flags")
             .map_err(|e| BackendError::GetPropertyFailed(e.0))?;
         let flags_class = match FlagsClass::new(flags.type_()) {
-                Some(flags) => flags,
-                None => return Err(BackendError::PlayerFlagsSetupFailed),
-            };
+            Some(flags) => flags,
+            None => return Err(BackendError::PlayerFlagsSetupFailed),
+        };
         let flags_class = match flags_class.builder_with_value(flags) {
-                Some(class) => class,
-                None => return Err(BackendError::PlayerFlagsSetupFailed)
-            };
-        let flags = match flags_class
-            .set_by_nick("download")
-            .build() {
-                Some(flags) => flags,
-                None => return Err(BackendError::PlayerFlagsSetupFailed),
-            };
-        pipeline.set_property("flags", &flags)
+            Some(class) => class,
+            None => return Err(BackendError::PlayerFlagsSetupFailed),
+        };
+        let flags = match flags_class.set_by_nick("download").build() {
+            Some(flags) => flags,
+            None => return Err(BackendError::PlayerFlagsSetupFailed),
+        };
+        pipeline
+            .set_property("flags", &flags)
             .map_err(|e| BackendError::SetPropertyFailed(e.0))?;
 
         // Set player position interval update to 0.5 seconds.
@@ -391,11 +419,6 @@ impl GStreamerPlayer {
         // Handle `error` signal
         inner.lock().unwrap().player.connect_error(move |_, _| {
             observers.lock().unwrap().notify(PlayerEvent::Error);
-        });
-
-        // Handle `buffering` signal.
-        inner.lock().unwrap().player.connect_buffering(move |_, data| {
-            println!("BUFFERING {:?}", data);
         });
 
         let observers = self.observers.clone();
@@ -556,7 +579,7 @@ impl GStreamerPlayer {
                             .unwrap()
                             .send(Err(PlayerError::Backend("Source setup failed".to_owned())));
                         return None;
-                    },
+                    }
                 };
 
                 let mut inner = inner_clone.lock().unwrap();
@@ -640,8 +663,8 @@ impl GStreamerPlayer {
 }
 
 macro_rules! inner_player_proxy {
-    ($fn_name:ident) => (
-        fn $fn_name(&self) -> Result<(), PlayerError> {
+    ($fn_name:ident, $return_type:ty) => (
+        fn $fn_name(&self) -> Result<$return_type, PlayerError> {
             self.setup()?;
             let inner = self.inner.borrow();
             let mut inner = inner.as_ref().unwrap().lock().unwrap();
@@ -660,16 +683,17 @@ macro_rules! inner_player_proxy {
 }
 
 impl Player for GStreamerPlayer {
-    inner_player_proxy!(play);
-    inner_player_proxy!(pause);
-    inner_player_proxy!(stop);
-    inner_player_proxy!(end_of_stream);
+    inner_player_proxy!(play, ());
+    inner_player_proxy!(pause, ());
+    inner_player_proxy!(stop, ());
+    inner_player_proxy!(end_of_stream, ());
     inner_player_proxy!(set_input_size, size, u64);
     inner_player_proxy!(set_rate, rate, f64);
     inner_player_proxy!(set_stream_type, type_, StreamType);
     inner_player_proxy!(push_data, data, Vec<u8>);
     inner_player_proxy!(seek, time, f64);
     inner_player_proxy!(set_volume, value, f64);
+    inner_player_proxy!(buffered, Vec<Range<u32>>);
 
     fn register_event_handler(&self, sender: IpcSender<PlayerEvent>) {
         self.observers.lock().unwrap().register(sender);
