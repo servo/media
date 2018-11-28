@@ -47,15 +47,17 @@ impl AudioNodeEngine for ConstantSourceNode {
     }
 
     fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
+
         debug_assert!(inputs.len() == 0);
+
         inputs.blocks.push(Default::default());
+
         let (start_at, stop_at) = match self.should_play_at(info.frame) {
             ShouldPlay::No => {
                 return inputs;
             }
             ShouldPlay::Between(start, end) => (start, end),
         };
-
 
         {
             inputs.blocks[0].explicit_silence();
@@ -72,7 +74,6 @@ impl AudioNodeEngine for ConstantSourceNode {
                 if self.update_parameters(info, frame.tick()) {
                     offset = self.offset.value();
                 }
-
                 frame.mutate_with(|sample, _| *sample = offset);
             }
         }
@@ -81,11 +82,12 @@ impl AudioNodeEngine for ConstantSourceNode {
     fn input_count(&self) -> u32{
         0
     }
-    
+
     fn get_param(&mut self, id: ParamType) -> &mut Param {
         match id {
             ParamType::Offset => &mut self.offset,
             _ => panic!("Unknown param {:?} for the offset", id),
         }
     }
+    make_message_handler!(AudioScheduledSourceNode: handle_source_node_message);
 }
