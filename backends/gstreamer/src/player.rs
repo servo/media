@@ -75,11 +75,14 @@ fn metadata_from_media_info(media_info: &PlayerMediaInfo) -> Result<Metadata, ()
         0
     };
 
+    let is_seekable = media_info.is_seekable();
+
     Ok(Metadata {
         duration,
         width,
         height,
         format,
+        is_seekable,
         audio_tracks,
         video_tracks,
     })
@@ -90,6 +93,7 @@ struct PlayerInner {
     appsrc: Option<gst_app::AppSrc>,
     appsink: gst_app::AppSink,
     input_size: u64,
+    rate: f64,
     stream_type: Option<AppStreamType>,
     subscribers: Vec<IpcSender<PlayerEvent>>,
     renderers: Vec<Arc<Mutex<FrameRenderer>>>,
@@ -141,6 +145,20 @@ impl PlayerInner {
             } else {
                 appsrc.set_size(-1); // live source
             }
+        }
+        Ok(())
+    }
+
+    pub fn set_rate(&mut self, rate: f64) -> Result<(), BackendError> {
+        // This method may be called before the player setup is done, so we safe the rate value
+        // and set it once the player is ready and after getting the media info
+        self.rate = rate;
+        if let Some(ref metadata) = self.last_metadata {
+            if !metadata.is_seekable {
+                eprintln!("Player must be seekable in order to set the playback rate");
+                return Err(BackendError::PlayerNonSeekable);
+            }
+            self.player.set_rate(rate);
         }
         Ok(())
     }
@@ -312,6 +330,7 @@ impl GStreamerPlayer {
             appsrc: None,
             appsink: video_sink,
             input_size: 0,
+            rate: 1.0,
             stream_type: None,
             subscribers: Vec::new(),
             renderers: Vec::new(),
@@ -389,9 +408,22 @@ impl GStreamerPlayer {
                 if let Ok(metadata) = metadata_from_media_info(info) {
                     if inner.last_metadata.as_ref() != Some(&metadata) {
                         inner.last_metadata = Some(metadata.clone());
+                        if metadata.is_seekable {
+                            inner.player.set_rate(inner.rate);
+                        }
                         inner.notify(PlayerEvent::MetadataUpdated(metadata));
                     }
                 }
+            });
+
+        let inner_clone = inner.clone();
+        inner
+            .lock()
+            .unwrap()
+            .player
+            .connect_property_rate_notify(move |_| {
+                let inner = inner_clone.lock().unwrap();
+                inner.notify(PlayerEvent::RateChanged(inner.rate));
             });
 
         let inner_clone = inner.clone();
@@ -580,6 +612,7 @@ impl Player for GStreamerPlayer {
     inner_player_proxy!(stop);
     inner_player_proxy!(end_of_stream);
     inner_player_proxy!(set_input_size, size, u64);
+    inner_player_proxy!(set_rate, rate, f64);
     inner_player_proxy!(set_stream_type, type_, StreamType);
     inner_player_proxy!(push_data, data, Vec<u8>);
     inner_player_proxy!(seek, time, f64);

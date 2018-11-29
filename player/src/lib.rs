@@ -24,6 +24,7 @@ pub enum PlayerEvent {
     FrameUpdated,
     MetadataUpdated(metadata::Metadata),
     PositionChanged(u64),
+    RateChanged(f64),
     /// The player needs the data to perform a seek to the given offset.
     /// The next push_data should get the buffers from the new offset.
     /// This event is only received for seekable stream types.
@@ -57,6 +58,7 @@ pub trait Player: Send {
     fn seek(&self, time: f64) -> Result<(), Self::Error>;
     fn set_volume(&self, value: f64) -> Result<(), Self::Error>;
     fn set_input_size(&self, size: u64) -> Result<(), Self::Error>;
+    fn set_rate(&self, rate: f64) -> Result<(), Self::Error>;
     fn set_stream_type(&self, type_: StreamType) -> Result<(), Self::Error>;
     fn push_data(&self, data: Vec<u8>) -> Result<(), Self::Error>;
     fn end_of_stream(&self) -> Result<(), Self::Error>;
@@ -91,6 +93,9 @@ impl Player for DummyPlayer {
     }
 
     fn set_input_size(&self, _: u64) -> Result<(), ()> {
+        Ok(())
+    }
+    fn set_rate(&self, _: f64) -> Result<(), ()> {
         Ok(())
     }
     fn set_stream_type(&self, _: StreamType) -> Result<(), ()> {
