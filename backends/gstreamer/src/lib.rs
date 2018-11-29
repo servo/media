@@ -29,6 +29,7 @@ pub enum BackendError {
     Gstreamer(gst::Error),
     InvalidMediaFormat,
     InvalidSample,
+    MissingElement(&'static str),
     PadLinkFailed,
     PipelineBusError(String),
     PipelineFailed(&'static str),

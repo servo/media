@@ -234,6 +234,14 @@ impl GStreamerPlayer {
             return Ok(());
         }
 
+        // Check that we actually have the elements that we
+        // need to make this work.
+        for element in vec!["playbin", "queue"].iter() {
+            if gst::ElementFactory::find(element).is_none() {
+                return Err(BackendError::MissingElement(element));
+            }
+        }
+
         let player = gst_player::Player::new(
             /* video renderer */ None, /* signal dispatcher */ None,
         );
