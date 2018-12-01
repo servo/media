@@ -83,7 +83,22 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         osc4,
         AudioNodeMessage::AudioScheduledSourceNode(AudioScheduledSourceNodeMessage::Start(0.)),
     );
+    thread::sleep(time::Duration::from_millis(3000));
+    let _ = context.close();
+    thread::sleep(time::Duration::from_millis(3000));
 
+    options.oscillator_type = Square;
+    let context = servo_media.create_audio_context(Default::default());
+    let dest = context.dest_node();
+    let osc2 = context.create_node(AudioNodeInit::OscillatorNode(options), Default::default());
+    context.connect_ports(osc2.output(0), dest.input(0));
+    let _ = context.resume();
+    thread::sleep(time::Duration::from_millis(3000));
+    context.connect_ports(osc2.output(0), dest.input(0));
+    context.message_node(
+        osc2,
+        AudioNodeMessage::AudioScheduledSourceNode(AudioScheduledSourceNodeMessage::Start(0.)),
+    );
     thread::sleep(time::Duration::from_millis(3000));
     let _ = context.close();
     thread::sleep(time::Duration::from_millis(1000));
@@ -100,7 +115,11 @@ fn run_example(servo_media: Arc<ServoMedia>) {
 
     let _ = context.resume();
     context.message_node(
+<<<<<<< HEAD
         osc5,
+=======
+        osc4,
+>>>>>>> c08eab616e86db1ad55415fb11bd6beb0a7374bd
         AudioNodeMessage::AudioScheduledSourceNode(AudioScheduledSourceNodeMessage::Start(0.)),
     );
 
