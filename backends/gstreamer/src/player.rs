@@ -202,6 +202,11 @@ impl PlayerInner {
         Ok(())
     }
 
+    pub fn set_volume(&mut self, value: f64) -> Result<(), BackendError> {
+        self.player.set_volume(value);
+        Ok(())
+    }
+
     pub fn push_data(&mut self, data: Vec<u8>) -> Result<(), BackendError> {
         if let Some(ref mut appsrc) = self.appsrc {
             let buffer =
@@ -550,4 +555,5 @@ impl Player for GStreamerPlayer {
     inner_player_proxy!(set_stream_type, type_, StreamType);
     inner_player_proxy!(push_data, data, Vec<u8>);
     inner_player_proxy!(seek, time, f64);
+    inner_player_proxy!(set_volume, value, f64);
 }
