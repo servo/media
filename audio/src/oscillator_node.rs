@@ -11,7 +11,7 @@ pub struct PeriodicWaveConstraints {
 impl Default for PeriodicWaveConstraints{
 	fn default()->Self{
 		PeriodicWaveConstraints{
-			disable_normalization: false,
+			disable_normalization: true,
 		}
 	}
 }
@@ -37,6 +37,17 @@ impl Default for PeriodicWaveOptions {
     }
 
 }
+
+impl PeriodicWaveOptions {
+    pub fn new(real: Vec<f32>, imag: Vec<f32>, normalization: PeriodicWaveConstraints) -> Self {
+        Self {
+            real,
+            imag,
+            periodic_wave_constraints: Some(normalization),
+        }
+    }
+}
+
 
 #[derive(Clone, Debug)]
 pub enum OscillatorType {
@@ -184,12 +195,49 @@ impl AudioNodeEngine for OscillatorNode {
                         let mut x : f32=0.;
                         match self.periodic_wave_options {
                             Some(ref wave) => {
-                                while k <= 1 {
+                                match wave.periodic_wave_constraints {
+                            Some(ref constraints) => {
+                                if constraints.disable_normalization {
+                                let mut n = 0;
+                                let mut N = 4; //Our assumption
+                                let mut f: f32=0.;
+                                while n < N {
+                                    k = 1;
+                                    x=0.; 
+                                 while k < wave.real.len() {
+                                x = x + wave.real[k]*f32::cos(NumCast::from((n as f64)*(k as f64)*two_pi/(N as f64)).unwrap()) + wave.imag[k]*f32::sin(NumCast::from((n as f64)*(k as f64)*two_pi/(N as f64)).unwrap());
+                                k=k+1;
+                                }
+
+                                if x>f {
+                                    f=x;
+                                }
+                                n=n+1;
+                                }
+
+                               k=1;
+                               x=0.;
+                                while k < wave.real.len() {
                                 x = x + wave.real[k]*f32::cos(NumCast::from(self.phase*(k as f64)*two_pi).unwrap()) + wave.imag[k]*f32::sin(NumCast::from(self.phase*(k as f64)*two_pi).unwrap());
                                 k=k+1;
                                 }
-                                value = vol * x;
+                                x=x/f;
                             }
+                            else {
+                                 while k < wave.real.len()  {
+                                x = x + wave.real[k]*f32::cos(NumCast::from(self.phase*(k as f64)*two_pi).unwrap()) + wave.imag[k]*f32::sin(NumCast::from(self.phase*(k as f64)*two_pi).unwrap());
+                                k=k+1;
+                                }
+                            }
+                            }
+                            None => {
+                            }
+
+                        }
+                                value = vol * x;
+
+                            }
+                        
                             None => {
                             }
                              
