@@ -5,7 +5,7 @@ use node::BlockInfo;
 use node::{AudioNodeMessage, AudioNodeType, ChannelInfo};
 use param::{Param, ParamType};
 use smallvec::SmallVec;
-use std::f64::consts::{SQRT_2, PI};
+use std::f64::consts::{PI, SQRT_2};
 
 #[derive(Copy, Clone, Debug)]
 pub struct BiquadFilterNodeOptions {
@@ -147,7 +147,7 @@ impl BiquadFilterNode {
         self.b2 = 0.;
         self.a1 = 0.;
         self.a2 = 0.;
-    } 
+    }
 
     /// Update the coefficients a1, a2, b0, b1, b2, given the sample_rate
     ///
@@ -180,7 +180,7 @@ impl BiquadFilterNode {
                     return;
                 } else if normalized == 0. {
                     self.constant_z_transform(0.);
-                    return;                    
+                    return;
                 }
             }
             FilterType::HighPass => {
@@ -189,7 +189,7 @@ impl BiquadFilterNode {
                     return;
                 } else if normalized == 0. {
                     self.constant_z_transform(1.);
-                    return;                    
+                    return;
                 }
             }
             FilterType::LowShelf => {
@@ -198,7 +198,7 @@ impl BiquadFilterNode {
                     return;
                 } else if normalized == 0. {
                     self.constant_z_transform(1.);
-                    return;                    
+                    return;
                 }
             }
             FilterType::HighShelf => {
@@ -207,7 +207,7 @@ impl BiquadFilterNode {
                     return;
                 } else if normalized == 0. {
                     self.constant_z_transform(a * a);
-                    return;                    
+                    return;
                 }
             }
             FilterType::Peaking => {

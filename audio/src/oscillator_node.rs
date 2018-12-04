@@ -4,51 +4,11 @@ use node::{AudioNodeType, ChannelInfo, ShouldPlay};
 use num_traits::cast::NumCast;
 use param::{Param, ParamType};
 
-#[derive(Clone, Debug)]
-pub struct PeriodicWaveConstraints {
-    pub disable_normalization: bool,
-}
-impl Default for PeriodicWaveConstraints{
-	fn default()->Self{
-		PeriodicWaveConstraints{
-			disable_normalization: true,
-		}
-	}
-}
-
-
 
 #[derive(Clone, Debug)]
 pub struct PeriodicWaveOptions {
     // XXX https://webaudio.github.io/web-audio-api/#dictdef-periodicwaveoptions
-    pub real: Vec<f32>,
-    pub imag: Vec<f32>,
-    pub periodic_wave_constraints: Option<PeriodicWaveConstraints>,
 }
-
-impl Default for PeriodicWaveOptions {
-    fn default() -> Self {
-        PeriodicWaveOptions {
-            real: vec![0.,0.],
-            imag: vec![0.,1.],
-            periodic_wave_constraints: Some(PeriodicWaveConstraints::default()),
-        }
-
-    }
-
-}
-
-impl PeriodicWaveOptions {
-    pub fn new(real: Vec<f32>, imag: Vec<f32>, normalization: PeriodicWaveConstraints) -> Self {
-        Self {
-            real,
-            imag,
-            periodic_wave_constraints: Some(normalization),
-        }
-    }
-}
-
-
 #[derive(Clone, Debug)]
 pub enum OscillatorType {
     Sine,
@@ -65,7 +25,6 @@ pub struct OscillatorNodeOptions {
     pub detune: f32,
     pub periodic_wave_options: Option<PeriodicWaveOptions>,
 }
-            
 
 impl Default for OscillatorNodeOptions {
     fn default() -> Self {
@@ -119,7 +78,7 @@ impl AudioNodeEngine for OscillatorNode {
         AudioNodeType::OscillatorNode
     }
 
-     fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
+    fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
         // XXX Implement this properly and according to self.options
         // as defined in https://webaudio.github.io/web-audio-api/#oscillatornode
         use std::f64::consts::PI;
@@ -180,7 +139,8 @@ impl AudioNodeEngine for OscillatorNode {
                         if self.phase >= 0. && self.phase < PI / 2. {
                             value = vol * 2.0 * ((self.phase as f64) / (PI)) as f32;
                         } else if self.phase >= PI / 2. && self.phase < PI {
-                            value = vol * (1. - (((self.phase as f64) - (PI / 2.)) * (2. / PI)) as f32);
+                            value =
+                                vol * (1. - (((self.phase as f64) - (PI / 2.)) * (2. / PI)) as f32);
                         } else if self.phase >= PI && self.phase < (3. * PI / 2.) {
                             value = vol
                                 * -1.
@@ -190,63 +150,10 @@ impl AudioNodeEngine for OscillatorNode {
                         }
                     }
 
-                    OscillatorType::Custom => {
-                         let mut k = 1;
-                        let mut x : f32=0.;
-                        match self.periodic_wave_options {
-                            Some(ref wave) => {
-                                match wave.periodic_wave_constraints {
-                            Some(ref constraints) => {
-                                if constraints.disable_normalization {
-                                let mut n = 0;
-                                let mut N = 4; //Our assumption
-                                let mut f: f32=0.;
-                                while n < N {
-                                    k = 1;
-                                    x=0.; 
-                                 while k < wave.real.len() {
-                                x = x + wave.real[k]*f32::cos(NumCast::from((n as f64)*(k as f64)*two_pi/(N as f64)).unwrap()) + wave.imag[k]*f32::sin(NumCast::from((n as f64)*(k as f64)*two_pi/(N as f64)).unwrap());
-                                k=k+1;
-                                }
 
-                                if x>f {
-                                    f=x;
-                                }
-                                n=n+1;
-                                }
-
-                               k=1;
-                               x=0.;
-                                while k < wave.real.len() {
-                                x = x + wave.real[k]*f32::cos(NumCast::from(self.phase*(k as f64)*two_pi).unwrap()) + wave.imag[k]*f32::sin(NumCast::from(self.phase*(k as f64)*two_pi).unwrap());
-                                k=k+1;
-                                }
-                                x=x/f;
-                            }
-                            else {
-                                 while k < wave.real.len()  {
-                                x = x + wave.real[k]*f32::cos(NumCast::from(self.phase*(k as f64)*two_pi).unwrap()) + wave.imag[k]*f32::sin(NumCast::from(self.phase*(k as f64)*two_pi).unwrap());
-                                k=k+1;
-                                }
-                            }
-                            }
-                            None => {
-                            }
-
-                        }
-                                value = vol * x;
-
-                            }
-                        
-                            None => {
-                            }
-                             
-                        }
-                            
-                    }
+                    OscillatorType::Custom => {}
 
                 }
-                
 
                 frame.mutate_with(|sample, _| *sample = value);
 

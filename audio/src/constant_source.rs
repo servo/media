@@ -1,8 +1,8 @@
 use block::Chunk;
 use block::Tick;
-use node::AudioNodeEngine;
+use node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, OnEndedCallback};
 use node::BlockInfo;
-use node::{AudioNodeType, ChannelInfo};
+use node::{AudioNodeType, ChannelInfo, ShouldPlay};
 use param::{Param, ParamType};
 
 #[derive(Copy, Clone, Debug)]
@@ -16,17 +16,23 @@ impl Default for ConstantSourceNodeOptions {
     }
 }
 
-#[derive(AudioNodeCommon)]
+#[derive(AudioScheduledSourceNode,AudioNodeCommon)]
 pub(crate) struct ConstantSourceNode {
     channel_info: ChannelInfo,
     offset: Param,
+    start_at: Option<Tick>,
+    stop_at: Option<Tick>,
+    onended_callback: Option<OnEndedCallback>,
 }
 
 impl ConstantSourceNode {
     pub fn new(options: ConstantSourceNodeOptions, channel_info: ChannelInfo) -> Self {
         Self {
             channel_info,
-            offset: Param::new(options.offset),
+            offset: Param::new(options.offset.into()),
+            start_at: None,
+            stop_at: None,
+            onended_callback: None,
         }
     }
 
@@ -41,24 +47,40 @@ impl AudioNodeEngine for ConstantSourceNode {
     }
 
     fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
-        debug_assert!(inputs.len() == 1);
-        inputs.blocks[0].explicit_silence();
-      if inputs.blocks[0].is_silence() {
-            return inputs;
-        }
+
+        debug_assert!(inputs.len() == 0);
+
+        inputs.blocks.push(Default::default());
+
+        let (start_at, stop_at) = match self.should_play_at(info.frame) {
+            ShouldPlay::No => {
+                return inputs;
+            }
+            ShouldPlay::Between(start, end) => (start, end),
+        };
 
         {
+            inputs.blocks[0].explicit_silence();
+
             let mut iter = inputs.blocks[0].iter();
             let mut offset = self.offset.value();
             while let Some(mut frame) = iter.next() {
+                let tick = frame.tick();
+                if tick < start_at {
+                    continue;
+                } else if tick > stop_at {
+                    break;
+                }
                 if self.update_parameters(info, frame.tick()) {
                     offset = self.offset.value();
                 }
-                
                 frame.mutate_with(|sample, _| *sample = offset);
             }
         }
         inputs
+    }
+    fn input_count(&self) -> u32{
+        0
     }
 
     fn get_param(&mut self, id: ParamType) -> &mut Param {
@@ -67,4 +89,5 @@ impl AudioNodeEngine for ConstantSourceNode {
             _ => panic!("Unknown param {:?} for the offset", id),
         }
     }
+    make_message_handler!(AudioScheduledSourceNode: handle_source_node_message);
 }
