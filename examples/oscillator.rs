@@ -3,14 +3,11 @@ extern crate servo_media;
 use servo_media::audio::node::{AudioNodeInit, AudioNodeMessage, AudioScheduledSourceNodeMessage};
 use servo_media::audio::oscillator_node::OscillatorNodeOptions;
 
-use servo_media::audio::oscillator_node::PeriodicWaveOptions;
-use servo_media::audio::oscillator_node::PeriodicWaveConstraints;
 
 //use servo_media::audio::oscillator_node::PeriodicWaveOptions;
 
 use servo_media::audio::oscillator_node::OscillatorType::Sawtooth;
 use servo_media::audio::oscillator_node::OscillatorType::Triangle;
-//use servo_media::audio::oscillator_node::OscillatorType::Sine;
 use servo_media::audio::oscillator_node::OscillatorType::Custom;
 use servo_media::audio::oscillator_node::OscillatorType::Square;
 use servo_media::ServoMedia;
@@ -91,20 +88,6 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     thread::sleep(time::Duration::from_millis(3000));
     let _ = context.close();
 
-    thread::sleep(time::Duration::from_millis(1000));
-
-    //let mut options = OscillatorNodeOptions::default();
-    options.oscillator_type = Custom;
-    let mut wave = PeriodicWaveOptions::default();
-    let mut normalization = PeriodicWaveConstraints::default();
-    normalization.disable_normalization = false;
-    wave.periodic_wave_constraints = Some(normalization); 
-    let mut real = vec![0f32,1.,0.5,3.];
-    let mut imag = vec![0f32,2.,0.3,4.];
-    wave.real = real;
-    wave.imag = imag;
-    options.periodic_wave_options = Some(wave); 
-
     thread::sleep(time::Duration::from_millis(3000));
 
     options.oscillator_type = Custom;
@@ -120,7 +103,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
 
     let _ = context.resume();
     context.message_node(
-        osc5,
+        osc4,
         AudioNodeMessage::AudioScheduledSourceNode(AudioScheduledSourceNodeMessage::Start(0.)),
     );
 

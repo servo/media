@@ -3,7 +3,7 @@ use biquad_filter_node::BiquadFilterNode;
 use block::{Chunk, Tick, FRAMES_PER_BLOCK};
 use buffer_source_node::AudioBufferSourceNode;
 use channel_node::{ChannelMergerNode, ChannelSplitterNode};
-use constant_source::ConstantSourceNode;
+use constant_source_node::ConstantSourceNode;
 use context::{AudioContextOptions, ProcessingState, StateChangeResult};
 use gain_node::GainNode;
 use graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};

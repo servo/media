@@ -4,7 +4,6 @@ use node::{AudioNodeType, ChannelInfo, ShouldPlay};
 use num_traits::cast::NumCast;
 use param::{Param, ParamType};
 
-
 #[derive(Clone, Debug)]
 pub struct PeriodicWaveOptions {
     // XXX https://webaudio.github.io/web-audio-api/#dictdef-periodicwaveoptions
