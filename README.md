@@ -55,9 +55,7 @@ This crate indirectly depends on
 [libgstreamer_android_gen](https://github.com/servo/libgstreamer_android_gen):
 a tool to generate the required `libgstreamer_android.so` library with all
 GStreamer dependencies for Android and some Java code required to initialize
-GStreamer on Android. If you want to generate your own `libgstreamer_android.so`
-bundle, check the documentation from that repo and tweak the
-[build script](https://github.com/servo/media/blob/master/backends/gstreamer/build.rs#L48) accordingly.
+GStreamer on Android.
 
 The final step requires fetching or generating this dependency and setting the pkg-config to use
 `libgstreamer_android.so`. To do that, there's a [helper script](etc/android_bootstrap.sh)
@@ -78,6 +76,10 @@ The script will output the path and a command suggestion. For example:
 ```
 export PKG_CONFIG_PATH=/Users/ferjm/dev/mozilla/media/etc/../gstreamer/armeabi-v7a/gst-build-armeabi-v7a/pkgconfig
 ```
+
+If you want to generate your own `libgstreamer_android.so`
+bundle, check the documentation from that repo and tweak the
+[helper script](https://github.com/servo/media/blob/a9c73680eef72d48f975df55fe9451020e350fad/etc/android_bootstrap.sh#L24) accordingly.
 
 ## Build
 For macOS, Windows, and Linux, simply run:
