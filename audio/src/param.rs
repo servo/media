@@ -96,7 +96,7 @@ impl Param {
         // `changed`
         changed |= if let Some(block) = self.blocks.get(0) {
             // store to be summed with `val` later
-            self.block_mix_val = block.data_chan(0)[tick.0 as usize];
+            self.block_mix_val = block.data_chan_frame(tick.0 as usize, 0);
             true
         } else {
             false
