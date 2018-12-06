@@ -28,7 +28,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     options.frequency = 50.;
     options.filter = FilterType::LowPass;
     let biquad = context.create_node(
-        AudioNodeInit::BiquadFilterNode(options.clone()),
+        AudioNodeInit::BiquadFilterNode(options),
         Default::default(),
     );
     context.connect_ports(osc1.output(0), biquad.input(0));
