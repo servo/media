@@ -93,14 +93,21 @@ mod imp {
         ) -> glib::SignalHandlerId {
             self.appsrc.connect_need_data(f)
         }
+
         pub fn end_of_stream(&self) -> gst::FlowReturn {
             self.appsrc.end_of_stream()
+        }
+
+        pub fn set_size(&self, size: i64) {
+            if self.appsrc.get_size() != -1 {
+                return;
+            }
+            self.appsrc.set_size(size);
         }
 
         inner_appsrc_proxy!(push_buffer, buffer, gst::Buffer, gst::FlowReturn);
         inner_appsrc_proxy!(set_callbacks, callbacks, AppSrcCallbacks, ());
         inner_appsrc_proxy!(set_property_format, format, gst::Format, ());
-        inner_appsrc_proxy!(set_size, size, i64, ());
         inner_appsrc_proxy!(set_stream_type, type_, AppStreamType, ());
     }
 
