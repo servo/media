@@ -5,6 +5,7 @@ use gst;
 use gst_app::{self, AppSrcCallbacks, AppStreamType};
 use gst_player;
 use gst_player::{PlayerMediaInfo, PlayerStreamInfoExt};
+use gst_video::{VideoFrame, VideoInfo};
 use ipc_channel::ipc::IpcSender;
 use servo_media_player::frame::{Frame, FrameRenderer};
 use servo_media_player::metadata::Metadata;
@@ -17,16 +18,19 @@ use std::time;
 use std::u64;
 
 fn frame_from_sample(sample: &gst::Sample) -> Result<Frame, ()> {
-    let caps = sample.get_caps().ok_or_else(|| ())?;
-    let s = caps.get_structure(0).ok_or_else(|| ())?;
-    let width = s.get("width").ok_or_else(|| ())?;
-    let height = s.get("height").ok_or_else(|| ())?;
-
     let buffer = sample.get_buffer().ok_or_else(|| ())?;
-    let map = buffer.map_readable().ok_or_else(|| ())?;
-    let data = Vec::from(map.as_slice());
+    let info = sample
+        .get_caps()
+        .and_then(|caps| VideoInfo::from_caps(caps.as_ref()))
+        .ok_or_else(|| ())?;
+    let frame = VideoFrame::from_buffer_readable(buffer, &info).or_else(|_| Err(()))?;
+    let data = frame.plane_data(0).ok_or_else(|| ())?;
 
-    Ok(Frame::new(width, height, Arc::new(data)))
+    Ok(Frame::new(
+        info.width() as i32,
+        info.height() as i32,
+        Arc::new(data.to_vec()),
+    ))
 }
 
 fn metadata_from_media_info(media_info: &PlayerMediaInfo) -> Result<Metadata, ()> {
