@@ -20,6 +20,7 @@ use std::time;
 use std::u64;
 
 const MAX_SRC_QUEUE_SIZE: u64 = 50 * 1024 * 1024; // 50 MB.
+const MAX_BUFFER_SIZE: i32 = 500 * 1024;
 
 fn frame_from_sample(sample: &gst::Sample) -> Result<Frame, ()> {
     let buffer = sample.get_buffer().ok_or_else(|| ())?;
@@ -359,6 +360,11 @@ impl GStreamerPlayer {
         };
         pipeline
             .set_property("flags", &flags)
+            .map_err(|e| BackendError::SetPropertyFailed(e.0))?;
+
+        // Set max size for the player buffer.
+        pipeline
+            .set_property("buffer-size", &MAX_BUFFER_SIZE)
             .map_err(|e| BackendError::SetPropertyFailed(e.0))?;
 
         // Set player position interval update to 0.5 seconds.
