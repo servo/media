@@ -20,6 +20,7 @@ pub mod biquad_filter_node;
 pub mod block;
 pub mod buffer_source_node;
 pub mod channel_node;
+pub mod constant_source_node;
 pub mod context;
 pub mod decoder;
 pub mod destination_node;

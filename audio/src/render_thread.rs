@@ -3,6 +3,7 @@ use biquad_filter_node::BiquadFilterNode;
 use block::{Chunk, Tick, FRAMES_PER_BLOCK};
 use buffer_source_node::AudioBufferSourceNode;
 use channel_node::{ChannelMergerNode, ChannelSplitterNode};
+use constant_source_node::ConstantSourceNode;
 use context::{AudioContextOptions, ProcessingState, StateChangeResult};
 use gain_node::GainNode;
 use graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
@@ -169,7 +170,7 @@ impl<S: AudioSink + 'static> AudioRenderThread<S> {
                     graph,
                     options,
                 ).map_err(|_| ())
-                    .unwrap();
+                .unwrap();
                 thread.event_loop(event_queue)
             }
         }
@@ -197,6 +198,9 @@ impl<S: AudioSink + 'static> AudioRenderThread<S> {
             AudioNodeInit::OscillatorNode(options) => Box::new(OscillatorNode::new(options, ch)),
             AudioNodeInit::ChannelMergerNode(options) => {
                 Box::new(ChannelMergerNode::new(options, ch))
+            }
+            AudioNodeInit::ConstantSourceNode(options) => {
+                Box::new(ConstantSourceNode::new(options, ch))
             }
             AudioNodeInit::ChannelSplitterNode => Box::new(ChannelSplitterNode::new(ch)),
             _ => unimplemented!(),

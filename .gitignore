@@ -2,3 +2,4 @@
 **/*.rs.bk
 **/wget-log
 /gstreamer/
+.DS_Store

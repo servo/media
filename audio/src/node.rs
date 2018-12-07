@@ -3,6 +3,7 @@ use block::{Block, Chunk, Tick};
 use boxfnonce::SendBoxFnOnce;
 use buffer_source_node::{AudioBufferSourceNodeMessage, AudioBufferSourceNodeOptions};
 use channel_node::ChannelNodeOptions;
+use constant_source_node::ConstantSourceNodeOptions;
 use gain_node::GainNodeOptions;
 use oscillator_node::OscillatorNodeOptions;
 use panner_node::{PannerNodeMessage, PannerNodeOptions};
@@ -17,7 +18,7 @@ pub enum AudioNodeInit {
     AudioBufferSourceNode(AudioBufferSourceNodeOptions),
     ChannelMergerNode(ChannelNodeOptions),
     ChannelSplitterNode,
-    ConstantSourceNode,
+    ConstantSourceNode(ConstantSourceNodeOptions),
     ConvolverNode,
     DelayNode,
     DynamicsCompressionNode,
