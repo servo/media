@@ -12,10 +12,8 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let context = servo_media.create_audio_context(Default::default());
     let dest = context.dest_node();
 
-    let mut cs_options = ConstantSourceNodeOptions::default();
-    cs_options.offset = 0.;
     let cs = context.create_node(
-        AudioNodeInit::ConstantSourceNode(cs_options.clone()),
+        AudioNodeInit::ConstantSourceNode(ConstantSourceNodeOptions::default()),
         Default::default(),
     );
 

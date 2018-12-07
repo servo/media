@@ -63,7 +63,6 @@ impl OscillatorNode {
             start_at: None,
             stop_at: None,
             onended_callback: None,
-            periodic_wave_options: options.periodic_wave_options,
         }
     }
 
