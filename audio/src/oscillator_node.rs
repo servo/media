@@ -49,7 +49,6 @@ pub(crate) struct OscillatorNode {
     stop_at: Option<Tick>,
     /// The ended event callback.
     onended_callback: Option<OnEndedCallback>,
-    periodic_wave_options: Option<PeriodicWaveOptions>,
 }
 
 impl OscillatorNode {
