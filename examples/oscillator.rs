@@ -3,13 +3,12 @@ extern crate servo_media;
 use servo_media::audio::node::{AudioNodeInit, AudioNodeMessage, AudioScheduledSourceNodeMessage};
 use servo_media::audio::oscillator_node::OscillatorNodeOptions;
 
-
 //use servo_media::audio::oscillator_node::PeriodicWaveOptions;
 
-use servo_media::audio::oscillator_node::OscillatorType::Sawtooth;
-use servo_media::audio::oscillator_node::OscillatorType::Triangle;
 use servo_media::audio::oscillator_node::OscillatorType::Custom;
+use servo_media::audio::oscillator_node::OscillatorType::Sawtooth;
 use servo_media::audio::oscillator_node::OscillatorType::Square;
+use servo_media::audio::oscillator_node::OscillatorType::Triangle;
 use servo_media::ServoMedia;
 use std::sync::Arc;
 use std::{thread, time};

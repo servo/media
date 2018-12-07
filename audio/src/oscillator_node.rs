@@ -149,9 +149,7 @@ impl AudioNodeEngine for OscillatorNode {
                         }
                     }
 
-
                     OscillatorType::Custom => {}
-
                 }
 
                 frame.mutate_with(|sample, _| *sample = value);

@@ -1,7 +1,7 @@
 use block::Chunk;
 use block::Tick;
-use node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, OnEndedCallback};
 use node::BlockInfo;
+use node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, OnEndedCallback};
 use node::{AudioNodeType, ChannelInfo, ShouldPlay};
 use param::{Param, ParamType};
 
@@ -16,7 +16,7 @@ impl Default for ConstantSourceNodeOptions {
     }
 }
 
-#[derive(AudioScheduledSourceNode,AudioNodeCommon)]
+#[derive(AudioScheduledSourceNode, AudioNodeCommon)]
 pub(crate) struct ConstantSourceNode {
     channel_info: ChannelInfo,
     offset: Param,
@@ -47,7 +47,6 @@ impl AudioNodeEngine for ConstantSourceNode {
     }
 
     fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
-
         debug_assert!(inputs.len() == 0);
 
         inputs.blocks.push(Default::default());
@@ -79,7 +78,7 @@ impl AudioNodeEngine for ConstantSourceNode {
         }
         inputs
     }
-    fn input_count(&self) -> u32{
+    fn input_count(&self) -> u32 {
         0
     }
 

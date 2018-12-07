@@ -2,8 +2,8 @@ extern crate servo_media;
 
 use servo_media::audio::constant_source_node::ConstantSourceNodeOptions;
 use servo_media::audio::gain_node::GainNodeOptions;
-use servo_media::audio::param::{ParamType, RampKind, UserAutomationEvent};
 use servo_media::audio::node::{AudioNodeInit, AudioNodeMessage, AudioScheduledSourceNodeMessage};
+use servo_media::audio::param::{ParamType, RampKind, UserAutomationEvent};
 use servo_media::ServoMedia;
 use std::sync::Arc;
 use std::{thread, time};
@@ -22,20 +22,18 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let mut gain_options = GainNodeOptions::default();
     gain_options.gain = 0.1;
     let gain = context.create_node(
-
         AudioNodeInit::GainNode(gain_options.clone()),
-
         Default::default(),
     );
 
     let osc = context.create_node(
-       AudioNodeInit::OscillatorNode(Default::default()),
-       Default::default(),
-   );
+        AudioNodeInit::OscillatorNode(Default::default()),
+        Default::default(),
+    );
 
-   context.connect_ports(osc.output(0), gain.input(0));
-   context.connect_ports(cs.output(0), gain.param(ParamType::Gain));
-   context.connect_ports(gain.output(0), dest.input(0));
+    context.connect_ports(osc.output(0), gain.input(0));
+    context.connect_ports(cs.output(0), gain.param(ParamType::Gain));
+    context.connect_ports(gain.output(0), dest.input(0));
 
     let _ = context.resume();
     context.message_node(
@@ -44,7 +42,6 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     );
 
     context.message_node(
-
         gain,
         AudioNodeMessage::AudioScheduledSourceNode(AudioScheduledSourceNodeMessage::Start(0.)),
     );
@@ -88,7 +85,6 @@ fn run_example(servo_media: Arc<ServoMedia>) {
 
     thread::sleep(time::Duration::from_millis(9000));
     let _ = context.close();
-
 }
 
 fn main() {
