@@ -98,8 +98,6 @@ struct PlayerInner {
     subscribers: Vec<IpcSender<PlayerEvent>>,
     renderers: Vec<Arc<Mutex<FrameRenderer>>>,
     last_metadata: Option<Metadata>,
-    /// Data that was pushed to the player before we were ready.
-    queued_data: Vec<gst::Buffer>,
 }
 
 impl PlayerInner {
@@ -232,31 +230,14 @@ impl PlayerInner {
     }
 
     pub fn push_data(&mut self, data: Vec<u8>) -> Result<(), BackendError> {
-        let buffer =
-            gst::Buffer::from_slice(data).ok_or_else(|| BackendError::PlayerPushDataFailed)?;
-
-        match self.appsrc {
-            None => self.queued_data.push(buffer),
-            Some(ref mut appsrc) => {
-                if appsrc.push_buffer(buffer) != gst::FlowReturn::Ok {
-                    return Err(BackendError::PlayerPushDataFailed);
-                }
-            }
-        };
-
-        Ok(())
-    }
-
-    pub fn flush_queued_data(&mut self) -> Result<(), BackendError> {
-        if self.appsrc.is_none() {
-            return Err(BackendError::PlayerPushDataFailed);
-        }
-        for buffer in self.queued_data.drain(..) {
-            if self.appsrc.as_ref().unwrap().push_buffer(buffer) != gst::FlowReturn::Ok {
-                return Err(BackendError::PlayerPushDataFailed);
+        if let Some(ref mut appsrc) = self.appsrc {
+            let buffer =
+                gst::Buffer::from_slice(data).ok_or_else(|| BackendError::PlayerPushDataFailed)?;
+            if appsrc.push_buffer(buffer) == gst::FlowReturn::Ok {
+                return Ok(());
             }
         }
-        Ok(())
+        Err(BackendError::PlayerPushDataFailed)
     }
 
     pub fn set_app_src(&mut self, appsrc: gst_app::AppSrc) {
@@ -335,7 +316,6 @@ impl GStreamerPlayer {
             subscribers: Vec::new(),
             renderers: Vec::new(),
             last_metadata: None,
-            queued_data: Vec::new(),
         })));
 
         let inner = self.inner.borrow();
@@ -546,10 +526,6 @@ impl GStreamerPlayer {
                 );
 
                 inner.set_app_src(appsrc);
-
-                if inner.flush_queued_data().is_err() {
-                    eprintln!("Could not flush queued data");
-                }
 
                 None
             });
