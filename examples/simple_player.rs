@@ -58,8 +58,6 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let player_clone = Arc::clone(&player);
     let shutdown = Arc::new(AtomicBool::new(false));
     let shutdown_clone = shutdown.clone();
-    let seek_done = Arc::new(AtomicBool::new(false));
-    let seek_done_clone = seek_done.clone();
     let (seek_sender, seek_receiver) = mpsc::channel();
     let t = thread::spawn(move || {
         let player = &player_clone;
@@ -90,13 +88,20 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         };
 
         read(0);
-        read(seek_receiver.recv().unwrap());
-        read(seek_receiver.recv().unwrap());
-        seek_done_clone.store(true, Ordering::Relaxed);
+        loop {
+            if let Ok(position) = seek_receiver.try_recv() {
+                read(position);
+            }
+
+            if shutdown_clone.load(Ordering::Relaxed) {
+                break;
+            }
+        }
     });
 
     player.lock().unwrap().play().unwrap();
 
+    let mut seek_requested = false;
     while let Ok(event) = receiver.recv() {
         match event {
             PlayerEvent::EndOfStream => {
@@ -116,20 +121,12 @@ fn run_example(servo_media: Arc<ServoMedia>) {
             PlayerEvent::FrameUpdated => eprint!("."),
             PlayerEvent::PositionChanged(p) => {
                 let player = player.lock().unwrap();
-                if seek_done.load(Ordering::Relaxed) {
-                    continue;
-                }
-                if p == 1 {
-                    println!("\nPosition changed to 1sec, seeking to 4sec");
-                    if let Err(e) = player.seek(4.) {
-                        eprintln!("{:?}", e);
-                    }
-                }
-
-                if p == 9 {
-                    println!("\nPosition changed to 9sec, seeking to 0sec");
+                if p == 4 && !seek_requested {
+                    println!("\nPosition changed to 4sec, seeking back to 0sec");
                     if let Err(e) = player.seek(0.) {
                         eprintln!("{:?}", e);
+                    } else {
+                        seek_requested = true;
                     }
                 }
             }
