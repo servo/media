@@ -20,9 +20,14 @@ pub enum PlaybackState {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum PlayerEvent {
     EndOfStream,
+    /// The player has enough data. The client should stop pushing data into.
+    EnoughData,
     Error,
     FrameUpdated,
     MetadataUpdated(metadata::Metadata),
+    /// The internal player queue is running out of data. The client should start
+    /// pushing more data.
+    NeedData,
     PositionChanged(u64),
     /// The player needs the data to perform a seek to the given offset.
     /// The next push_data should get the buffers from the new offset.

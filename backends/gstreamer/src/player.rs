@@ -12,6 +12,7 @@ use servo_media_player::metadata::Metadata;
 use servo_media_player::{PlaybackState, Player, PlayerEvent, StreamType};
 use std::cell::RefCell;
 use std::error::Error;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::time;
@@ -249,12 +250,16 @@ impl PlayerInner {
 
 pub struct GStreamerPlayer {
     inner: RefCell<Option<Arc<Mutex<PlayerInner>>>>,
+    /// Indicates whether the setup was succesfully performance and
+    /// we are ready to consume a/v data.
+    is_ready: Arc<AtomicBool>,
 }
 
 impl GStreamerPlayer {
     pub fn new() -> GStreamerPlayer {
         Self {
             inner: RefCell::new(None),
+            is_ready: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -460,6 +465,7 @@ impl GStreamerPlayer {
 
             let sender = Arc::new(Mutex::new(sender));
             let sender_clone = sender.clone();
+            let is_ready_clone = self.is_ready.clone();
             let connect_result = pipeline.connect("source-setup", false, move |args| {
                 let source = args[1].get::<gst::Element>();
                 if source.is_none() {
@@ -477,6 +483,7 @@ impl GStreamerPlayer {
                     .expect("Source element is expected to be an appsrc!");
 
                 appsrc.set_max_bytes(MAX_SRC_QUEUE_SIZE);
+                appsrc.set_property_block(false);
 
                 appsrc.set_property_format(gst::Format::Bytes);
                 if inner.input_size > 0 {
@@ -488,29 +495,29 @@ impl GStreamerPlayer {
                 }
 
                 let sender_clone = sender.clone();
-
-                let need_data_id = Arc::new(Mutex::new(None));
-                let need_data_id_clone = need_data_id.clone();
-                *need_data_id.lock().unwrap() = Some(
-                    appsrc
-                        .connect("need-data", false, move |args| {
-                            let _ = sender_clone.lock().unwrap().send(Ok(()));
-                            if let Some(id) = need_data_id_clone.lock().unwrap().take() {
-                                glib::signal::signal_handler_disconnect(
-                                    &args[0].get::<gst::Element>().unwrap(),
-                                    id,
-                                );
-                            }
-                            None
-                        })
-                        .unwrap(),
-                );
-
-                let inner_clone = inner_clone.clone();
+                let is_ready_ = is_ready_clone.clone();
+                let inner_ = inner_clone.clone();
+                let inner__ = inner_clone.clone();
+                let inner___ = inner_clone.clone();
                 appsrc.set_callbacks(
                     AppSrcCallbacks::new()
+                        .need_data(move |_, _| {
+                            // We block the caller of the setup method until we get
+                            // the first need-data signal, so we ensure that we
+                            // don't miss any data between the moment the client
+                            // calls setup and the player is actually ready to
+                            // get any data.
+                            if !is_ready_.load(Ordering::Relaxed) {
+                                is_ready_.store(true, Ordering::Relaxed);
+                                let _ = sender_clone.lock().unwrap().send(Ok(()));
+                            }
+                            inner_.lock().unwrap().notify(PlayerEvent::NeedData);
+                        })
+                        .enough_data(move |_| {
+                            inner__.lock().unwrap().notify(PlayerEvent::EnoughData);
+                        })
                         .seek_data(move |_, offset| {
-                            inner_clone
+                            inner___
                                 .lock()
                                 .unwrap()
                                 .notify(PlayerEvent::SeekData(offset));

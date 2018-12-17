@@ -120,6 +120,8 @@ impl PlayerWrapper {
                         PlayerEvent::PositionChanged(_) => (),
                         PlayerEvent::SeekData(_) => (),
                         PlayerEvent::SeekDone(_) => (),
+                        PlayerEvent::NeedData => (),
+                        PlayerEvent::EnoughData => (),
                     }
                 }
                 player.lock().unwrap().stop().unwrap();
