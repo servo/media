@@ -17,6 +17,8 @@ use std::sync::{Arc, Mutex};
 use std::time;
 use std::u64;
 
+const MAX_SRC_QUEUE_SIZE: u64 = 50 * 1024 * 1024; // 50 MB.
+
 fn frame_from_sample(sample: &gst::Sample) -> Result<Frame, ()> {
     let buffer = sample.get_buffer().ok_or_else(|| ())?;
     let info = sample
@@ -473,6 +475,8 @@ impl GStreamerPlayer {
                     .clone()
                     .dynamic_cast::<gst_app::AppSrc>()
                     .expect("Source element is expected to be an appsrc!");
+
+                appsrc.set_max_bytes(MAX_SRC_QUEUE_SIZE);
 
                 appsrc.set_property_format(gst::Format::Bytes);
                 if inner.input_size > 0 {
