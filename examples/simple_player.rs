@@ -64,6 +64,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         let mut buf_reader = BufReader::new(file);
         let mut buffer = [0; 1024];
         let mut read = |offset| {
+            println!("READ {:?}", offset);
             if buf_reader.seek(SeekFrom::Start(offset)).is_err() {
                 eprintln!("BufReader - Could not seek to {:?}", offset);
             }
@@ -87,7 +88,6 @@ fn run_example(servo_media: Arc<ServoMedia>) {
             }
         };
 
-        read(0);
         loop {
             if let Ok(position) = seek_receiver.try_recv() {
                 read(position);
@@ -100,6 +100,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     });
 
     player.lock().unwrap().play().unwrap();
+    seek_sender.send(0).unwrap();
 
     let mut seek_requested = false;
     while let Ok(event) = receiver.recv() {
@@ -129,12 +130,14 @@ fn run_example(servo_media: Arc<ServoMedia>) {
                         seek_requested = true;
                     }
                 }
-            },
+            }
             PlayerEvent::SeekData(p) => {
                 println!("\nSeek requested to position {:?}", p);
                 seek_sender.send(p).unwrap();
             }
             PlayerEvent::SeekDone(p) => println!("\nSeeked to {:?}", p),
+            PlayerEvent::NeedData => println!("\nNeedData"),
+            PlayerEvent::EnoughData => println!("\nEnoughData"),
         }
     }
 
