@@ -401,16 +401,6 @@ impl GStreamerPlayer {
             .lock()
             .unwrap()
             .player
-            .connect_property_rate_notify(move |_| {
-                let inner = inner_clone.lock().unwrap();
-                inner.notify(PlayerEvent::RateChanged(inner.rate));
-            });
-
-        let inner_clone = inner.clone();
-        inner
-            .lock()
-            .unwrap()
-            .player
             .connect_duration_changed(move |_, duration| {
                 let duration = if duration != gst::ClockTime::none() {
                     let nanos = duration.nanoseconds();

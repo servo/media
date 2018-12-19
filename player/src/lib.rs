@@ -24,7 +24,6 @@ pub enum PlayerEvent {
     FrameUpdated,
     MetadataUpdated(metadata::Metadata),
     PositionChanged(u64),
-    RateChanged(f64),
     /// The player needs the data to perform a seek to the given offset.
     /// The next push_data should get the buffers from the new offset.
     /// This event is only received for seekable stream types.
