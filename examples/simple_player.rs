@@ -30,8 +30,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     player
         .lock()
         .unwrap()
-        .register_event_handler(sender)
-        .unwrap();
+        .register_event_handler(sender);
 
     let path = Path::new(filename);
     let display = path.display();

@@ -50,12 +50,8 @@ pub enum StreamType {
 
 pub trait Player: Send {
     type Error: Debug;
-    fn register_event_handler(&self, sender: IpcSender<PlayerEvent>) -> Result<(), Self::Error>;
-    fn register_frame_renderer(
-        &self,
-        renderer: Arc<Mutex<frame::FrameRenderer>>,
-    ) -> Result<(), Self::Error>;
-
+    fn register_event_handler(&self, sender: IpcSender<PlayerEvent>);
+    fn register_frame_renderer(&self, renderer: Arc<Mutex<frame::FrameRenderer>>);
     fn play(&self) -> Result<(), Self::Error>;
     fn pause(&self) -> Result<(), Self::Error>;
     fn stop(&self) -> Result<(), Self::Error>;
@@ -72,12 +68,9 @@ pub struct DummyPlayer {}
 
 impl Player for DummyPlayer {
     type Error = ();
-    fn register_event_handler(&self, _: IpcSender<PlayerEvent>) -> Result<(), ()> {
-        Ok(())
+    fn register_event_handler(&self, _: IpcSender<PlayerEvent>) {
     }
-    fn register_frame_renderer(&self, _: Arc<Mutex<frame::FrameRenderer>>) -> Result<(), ()> {
-        Ok(())
-    }
+    fn register_frame_renderer(&self, _: Arc<Mutex<frame::FrameRenderer>>) {}
 
     fn play(&self) -> Result<(), ()> {
         Ok(())

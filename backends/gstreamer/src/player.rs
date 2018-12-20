@@ -98,44 +98,10 @@ struct PlayerInner {
     input_size: u64,
     rate: f64,
     stream_type: Option<AppStreamType>,
-    subscribers: Vec<IpcSender<PlayerEvent>>,
-    renderers: Vec<Arc<Mutex<FrameRenderer>>>,
     last_metadata: Option<Metadata>,
 }
 
 impl PlayerInner {
-    pub fn register_event_handler(
-        &mut self,
-        sender: IpcSender<PlayerEvent>,
-    ) -> Result<(), BackendError> {
-        self.subscribers.push(sender);
-        Ok(())
-    }
-
-    pub fn register_frame_renderer(
-        &mut self,
-        renderer: Arc<Mutex<FrameRenderer>>,
-    ) -> Result<(), BackendError> {
-        self.renderers.push(renderer);
-        Ok(())
-    }
-
-    pub fn notify(&self, event: PlayerEvent) {
-        for sender in &self.subscribers {
-            sender.send(event.clone()).unwrap();
-        }
-    }
-
-    pub fn render(&self, sample: &gst::Sample) -> Result<(), ()> {
-        let frame = frame_from_sample(&sample)?;
-
-        for renderer in &self.renderers {
-            renderer.lock().unwrap().render(frame.clone());
-        }
-        self.notify(PlayerEvent::FrameUpdated);
-        Ok(())
-    }
-
     pub fn set_input_size(&mut self, size: u64) -> Result<(), BackendError> {
         // Set input_size to proxy its value, since it
         // could be set by the user before calling .setup().
@@ -248,8 +214,58 @@ impl PlayerInner {
     }
 }
 
+type PlayerEventObserver = IpcSender<PlayerEvent>;
+struct PlayerEventObserverList {
+    observers: Vec<PlayerEventObserver>,
+}
+
+impl PlayerEventObserverList {
+    fn new() -> Self {
+        Self {
+            observers: Vec::new(),
+        }
+    }
+
+    fn register(&mut self, observer: PlayerEventObserver) {
+        self.observers.push(observer);
+    }
+
+    fn notify(&self, event: PlayerEvent) {
+        for observer in &self.observers {
+            observer.send(event.clone()).unwrap();
+        }
+    }
+}
+
+struct FrameRendererList {
+    renderers: Vec<Arc<Mutex<FrameRenderer>>>,
+}
+
+impl FrameRendererList {
+    fn new() -> Self {
+        Self {
+            renderers: Vec::new(),
+        }
+    }
+
+    fn register(&mut self, renderer: Arc<Mutex<FrameRenderer>>) {
+        self.renderers.push(renderer);
+    }
+
+    fn render(&self, sample: &gst::Sample) -> Result<(), ()> {
+        let frame = frame_from_sample(&sample)?;
+
+        for renderer in &self.renderers {
+            renderer.lock().unwrap().render(frame.clone());
+        }
+        Ok(())
+    }
+}
+
 pub struct GStreamerPlayer {
     inner: RefCell<Option<Arc<Mutex<PlayerInner>>>>,
+    observers: Arc<Mutex<PlayerEventObserverList>>,
+    renderers: Arc<Mutex<FrameRendererList>>,
     /// Indicates whether the setup was succesfully performance and
     /// we are ready to consume a/v data.
     is_ready: Arc<AtomicBool>,
@@ -259,6 +275,8 @@ impl GStreamerPlayer {
     pub fn new() -> GStreamerPlayer {
         Self {
             inner: RefCell::new(None),
+            observers: Arc::new(Mutex::new(PlayerEventObserverList::new())),
+            renderers: Arc::new(Mutex::new(FrameRendererList::new())),
             is_ready: Arc::new(AtomicBool::new(false)),
         }
     }
@@ -320,30 +338,26 @@ impl GStreamerPlayer {
             input_size: 0,
             rate: 1.0,
             stream_type: None,
-            subscribers: Vec::new(),
-            renderers: Vec::new(),
             last_metadata: None,
         })));
 
         let inner = self.inner.borrow();
         let inner = inner.as_ref().unwrap();
-        let inner_clone = inner.clone();
+        let observers = self.observers.clone();
         inner
             .lock()
             .unwrap()
             .player
             .connect_end_of_stream(move |_| {
-                let inner = inner_clone.lock().unwrap();
-                inner.notify(PlayerEvent::EndOfStream);
+                observers.lock().unwrap().notify(PlayerEvent::EndOfStream);
             });
 
-        let inner_clone = inner.clone();
+        let observers = self.observers.clone();
         inner.lock().unwrap().player.connect_error(move |_, _| {
-            let inner = inner_clone.lock().unwrap();
-            inner.notify(PlayerEvent::Error);
+            observers.lock().unwrap().notify(PlayerEvent::Error);
         });
 
-        let inner_clone = inner.clone();
+        let observers = self.observers.clone();
         inner
             .lock()
             .unwrap()
@@ -356,36 +370,43 @@ impl GStreamerPlayer {
                     _ => None,
                 };
                 if let Some(v) = state {
-                    let inner = inner_clone.lock().unwrap();
-                    inner.notify(PlayerEvent::StateChanged(v));
+                    observers
+                        .lock()
+                        .unwrap()
+                        .notify(PlayerEvent::StateChanged(v));
                 }
             });
 
-        let inner_clone = inner.clone();
+        let observers = self.observers.clone();
         inner
             .lock()
             .unwrap()
             .player
             .connect_position_updated(move |_, position| {
                 if let Some(seconds) = position.seconds() {
-                    let inner = inner_clone.lock().unwrap();
-                    inner.notify(PlayerEvent::PositionChanged(seconds));
+                    observers
+                        .lock()
+                        .unwrap()
+                        .notify(PlayerEvent::PositionChanged(seconds));
                 }
             });
 
-        let inner_clone = inner.clone();
+        let observers = self.observers.clone();
         inner
             .lock()
             .unwrap()
             .player
             .connect_seek_done(move |_, position| {
                 if let Some(seconds) = position.seconds() {
-                    let inner = inner_clone.lock().unwrap();
-                    inner.notify(PlayerEvent::SeekDone(seconds));
+                    observers
+                        .lock()
+                        .unwrap()
+                        .notify(PlayerEvent::SeekDone(seconds));
                 }
             });
 
         let inner_clone = inner.clone();
+        let observers = self.observers.clone();
         inner
             .lock()
             .unwrap()
@@ -398,12 +419,16 @@ impl GStreamerPlayer {
                         if metadata.is_seekable {
                             inner.player.set_rate(inner.rate);
                         }
-                        inner.notify(PlayerEvent::MetadataUpdated(metadata));
+                        observers
+                            .lock()
+                            .unwrap()
+                            .notify(PlayerEvent::MetadataUpdated(metadata));
                     }
                 }
             });
 
         let inner_clone = inner.clone();
+        let observers = self.observers.clone();
         inner
             .lock()
             .unwrap()
@@ -434,11 +459,15 @@ impl GStreamerPlayer {
                     updated_metadata = Some(metadata.clone());
                 }
                 if updated_metadata.is_some() {
-                    inner.notify(PlayerEvent::MetadataUpdated(updated_metadata.unwrap()));
+                    observers
+                        .lock()
+                        .unwrap()
+                        .notify(PlayerEvent::MetadataUpdated(updated_metadata.unwrap()));
                 }
             });
 
-        let inner_clone = inner.clone();
+        let observers = self.observers.clone();
+        let renderers = self.renderers.clone();
         inner.lock().unwrap().appsink.set_callbacks(
             gst_app::AppSinkCallbacks::new()
                 .new_preroll(|_| gst::FlowReturn::Ok)
@@ -448,8 +477,11 @@ impl GStreamerPlayer {
                         Some(sample) => sample,
                     };
 
-                    match inner_clone.lock().unwrap().render(&sample) {
-                        Ok(_) => return gst::FlowReturn::Ok,
+                    match renderers.lock().unwrap().render(&sample) {
+                        Ok(_) => {
+                            observers.lock().unwrap().notify(PlayerEvent::FrameUpdated);
+                            return gst::FlowReturn::Ok;
+                        }
                         Err(_) => return gst::FlowReturn::Error,
                     };
                 })
@@ -466,6 +498,7 @@ impl GStreamerPlayer {
             let sender = Arc::new(Mutex::new(sender));
             let sender_clone = sender.clone();
             let is_ready_clone = self.is_ready.clone();
+            let observers = self.observers.clone();
             let connect_result = pipeline.connect("source-setup", false, move |args| {
                 let source = args[1].get::<gst::Element>();
                 if source.is_none() {
@@ -496,9 +529,9 @@ impl GStreamerPlayer {
 
                 let sender_clone = sender.clone();
                 let is_ready_ = is_ready_clone.clone();
-                let inner_ = inner_clone.clone();
-                let inner__ = inner_clone.clone();
-                let inner___ = inner_clone.clone();
+                let observers_ = observers.clone();
+                let observers__ = observers.clone();
+                let observers___ = observers.clone();
                 appsrc.set_callbacks(
                     AppSrcCallbacks::new()
                         .need_data(move |_, _| {
@@ -511,13 +544,15 @@ impl GStreamerPlayer {
                                 is_ready_.store(true, Ordering::Relaxed);
                                 let _ = sender_clone.lock().unwrap().send(Ok(()));
                             }
-                            inner_.lock().unwrap().notify(PlayerEvent::NeedData);
+                            println!("NEEEEEEEEEEED");
+                            observers_.lock().unwrap().notify(PlayerEvent::NeedData);
                         })
                         .enough_data(move |_| {
-                            inner__.lock().unwrap().notify(PlayerEvent::EnoughData);
+                            println!("ENOOOOOOOOUGH");
+                            observers__.lock().unwrap().notify(PlayerEvent::EnoughData);
                         })
                         .seek_data(move |_, offset| {
-                            inner___
+                            observers___
                                 .lock()
                                 .unwrap()
                                 .notify(PlayerEvent::SeekData(offset));
@@ -582,8 +617,6 @@ macro_rules! inner_player_proxy {
 impl Player for GStreamerPlayer {
     type Error = BackendError;
 
-    inner_player_proxy!(register_event_handler, sender, IpcSender<PlayerEvent>);
-    inner_player_proxy!(register_frame_renderer, renderer, Arc<Mutex<FrameRenderer>>);
     inner_player_proxy!(play);
     inner_player_proxy!(pause);
     inner_player_proxy!(stop);
@@ -594,4 +627,12 @@ impl Player for GStreamerPlayer {
     inner_player_proxy!(push_data, data, Vec<u8>);
     inner_player_proxy!(seek, time, f64);
     inner_player_proxy!(set_volume, value, f64);
+
+    fn register_event_handler(&self, sender: IpcSender<PlayerEvent>) {
+        self.observers.lock().unwrap().register(sender);
+    }
+
+    fn register_frame_renderer(&self, renderer: Arc<Mutex<FrameRenderer>>) {
+        self.renderers.lock().unwrap().register(renderer);
+    }
 }
