@@ -1,12 +1,15 @@
 pub extern crate servo_media_audio as audio;
-#[cfg(any(all(target_os = "android", target_arch = "arm"), target_arch = "x86_64"))]
+#[cfg(any(
+    all(target_os = "android", target_arch = "arm"),
+    target_arch = "x86_64"
+))]
 extern crate servo_media_gstreamer;
 pub extern crate servo_media_player as player;
 use std::sync::{self, Arc, Mutex, Once};
 
 use audio::context::{AudioContext, AudioContextOptions};
 use audio::decoder::DummyAudioDecoder;
-use audio::sink::DummyAudioSink;
+use audio::sink::{AudioSinkError, DummyAudioSink};
 use audio::AudioBackend;
 use player::{DummyPlayer, Player, PlayerBackend};
 
@@ -24,7 +27,7 @@ impl AudioBackend for DummyBackend {
         DummyAudioDecoder
     }
 
-    fn make_sink() -> Result<Self::Sink, ()> {
+    fn make_sink() -> Result<Self::Sink, AudioSinkError> {
         Ok(DummyAudioSink)
     }
 }
@@ -40,15 +43,16 @@ impl DummyBackend {
     pub fn init() {}
 }
 
-#[cfg(any(all(target_os = "android", target_arch = "arm"), target_arch = "x86_64"))]
+#[cfg(any(
+    all(target_os = "android", target_arch = "arm"),
+    target_arch = "x86_64"
+))]
 pub type Backend = servo_media_gstreamer::GStreamerBackend;
-#[cfg(not(any(all(target_os = "android", target_arch = "arm"), target_arch = "x86_64")))]
+#[cfg(not(any(
+    all(target_os = "android", target_arch = "arm"),
+    target_arch = "x86_64"
+)))]
 pub type Backend = DummyBackend;
-
-#[cfg(any(all(target_os = "android", target_arch = "arm"), target_arch = "x86_64"))]
-pub type Error = servo_media_gstreamer::BackendError;
-#[cfg(not(any(all(target_os = "android", target_arch = "arm"), target_arch = "x86_64")))]
-pub type Error = ();
 
 impl ServoMedia {
     pub fn new() -> Self {
@@ -72,7 +76,7 @@ impl ServoMedia {
         AudioContext::new(options)
     }
 
-    pub fn create_player(&self) -> Box<Player<Error=Error>> {
+    pub fn create_player(&self) -> Box<Player> {
         Box::new(Backend::make_player())
     }
 }

@@ -19,7 +19,6 @@ use gleam::gl;
 use ipc_channel::ipc;
 use servo_media::player::frame::{Frame, FrameRenderer};
 use servo_media::player::{Player, PlayerEvent};
-use servo_media::Error as ServoMediaError;
 use servo_media::ServoMedia;
 use std::env;
 use std::fs::File;
@@ -38,7 +37,7 @@ use webrender::api::*;
 mod ui;
 
 struct PlayerWrapper {
-    player: Arc<Mutex<Box<Player<Error = ServoMediaError>>>>,
+    player: Arc<Mutex<Box<Player>>>,
     shutdown: Arc<AtomicBool>,
 }
 
@@ -54,10 +53,7 @@ impl PlayerWrapper {
             .set_input_size(metadata.len())
             .unwrap();
         let (sender, receiver) = ipc::channel().unwrap();
-        player
-            .lock()
-            .unwrap()
-            .register_event_handler(sender);
+        player.lock().unwrap().register_event_handler(sender);
         let player_ = player.clone();
         let player__ = player.clone();
         let shutdown = Arc::new(AtomicBool::new(false));

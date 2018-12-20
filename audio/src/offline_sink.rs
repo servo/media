@@ -1,6 +1,6 @@
 use block::{Chunk, FRAMES_PER_BLOCK_USIZE};
 use render_thread::AudioRenderThreadMsg;
-use sink::AudioSink;
+use sink::{AudioSink, AudioSinkError};
 use std::cell::{Cell, RefCell};
 use std::sync::mpsc::Sender;
 
@@ -34,22 +34,17 @@ impl OfflineAudioSink {
     }
 }
 
-// replace with ! when it stabilizes
-#[derive(Debug)]
-pub enum OfflineError {}
-
 impl AudioSink for OfflineAudioSink {
-    type Error = OfflineError;
-    fn init(&self, _: f32, _: Sender<AudioRenderThreadMsg>) -> Result<(), OfflineError> {
+    fn init(&self, _: f32, _: Sender<AudioRenderThreadMsg>) -> Result<(), AudioSinkError> {
         Ok(())
     }
 
-    fn play(&self) -> Result<(), OfflineError> {
+    fn play(&self) -> Result<(), AudioSinkError> {
         self.has_enough_data.set(false);
         Ok(())
     }
 
-    fn stop(&self) -> Result<(), OfflineError> {
+    fn stop(&self) -> Result<(), AudioSinkError> {
         self.has_enough_data.set(true);
         Ok(())
     }
@@ -59,7 +54,7 @@ impl AudioSink for OfflineAudioSink {
             || (self.rendered_blocks.get() * FRAMES_PER_BLOCK_USIZE >= self.length)
     }
 
-    fn push_data(&self, mut chunk: Chunk) -> Result<(), OfflineError> {
+    fn push_data(&self, mut chunk: Chunk) -> Result<(), AudioSinkError> {
         let offset = self.rendered_blocks.get() * FRAMES_PER_BLOCK_USIZE;
         let (last, copy_len) = if self.length - offset <= FRAMES_PER_BLOCK_USIZE {
             (true, self.length - offset)
