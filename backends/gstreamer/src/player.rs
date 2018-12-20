@@ -200,6 +200,9 @@ impl PlayerInner {
 
     pub fn push_data(&mut self, data: Vec<u8>) -> Result<(), BackendError> {
         if let Some(ref mut appsrc) = self.appsrc {
+            if appsrc.get_current_level_bytes() + data.len() as u64 >= appsrc.get_max_bytes() {
+                return Err(BackendError::EnoughData);
+            }
             let buffer =
                 gst::Buffer::from_slice(data).ok_or_else(|| BackendError::PlayerPushDataFailed)?;
             if appsrc.push_buffer(buffer) == gst::FlowReturn::Ok {
