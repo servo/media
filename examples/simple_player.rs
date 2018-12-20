@@ -130,9 +130,6 @@ fn run_example(servo_media: Arc<ServoMedia>) {
                     }
                 }
             },
-            PlayerEvent::RateChanged(r) => {
-                println!("\nRate changed to {:?}", r);
-            },
             PlayerEvent::SeekData(p) => {
                 println!("\nSeek requested to position {:?}", p);
                 seek_sender.send(p).unwrap();
