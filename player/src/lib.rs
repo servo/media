@@ -6,7 +6,6 @@ pub mod frame;
 pub mod metadata;
 
 use ipc_channel::ipc::IpcSender;
-use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -15,6 +14,22 @@ pub enum PlaybackState {
     // Buffering,
     Paused,
     Playing,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum PlayerError {
+    /// Backend specific error.
+    Backend(String),
+    /// Could not push buffer contents to the player.
+    BufferPushFailed,
+    /// The player cannot consume more data.
+    EnoughData,
+    /// Setting End Of Stream failed.
+    EOSFailed,
+    /// The media stream is not seekable.
+    NonSeekableStream,
+    /// Tried to seek out of range.
+    SeekOutOfRange,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -49,60 +64,57 @@ pub enum StreamType {
 }
 
 pub trait Player: Send {
-    type Error: Debug;
     fn register_event_handler(&self, sender: IpcSender<PlayerEvent>);
     fn register_frame_renderer(&self, renderer: Arc<Mutex<frame::FrameRenderer>>);
-    fn play(&self) -> Result<(), Self::Error>;
-    fn pause(&self) -> Result<(), Self::Error>;
-    fn stop(&self) -> Result<(), Self::Error>;
-    fn seek(&self, time: f64) -> Result<(), Self::Error>;
-    fn set_volume(&self, value: f64) -> Result<(), Self::Error>;
-    fn set_input_size(&self, size: u64) -> Result<(), Self::Error>;
-    fn set_rate(&self, rate: f64) -> Result<(), Self::Error>;
-    fn set_stream_type(&self, type_: StreamType) -> Result<(), Self::Error>;
-    fn push_data(&self, data: Vec<u8>) -> Result<(), Self::Error>;
-    fn end_of_stream(&self) -> Result<(), Self::Error>;
+    fn play(&self) -> Result<(), PlayerError>;
+    fn pause(&self) -> Result<(), PlayerError>;
+    fn stop(&self) -> Result<(), PlayerError>;
+    fn seek(&self, time: f64) -> Result<(), PlayerError>;
+    fn set_volume(&self, value: f64) -> Result<(), PlayerError>;
+    fn set_input_size(&self, size: u64) -> Result<(), PlayerError>;
+    fn set_rate(&self, rate: f64) -> Result<(), PlayerError>;
+    fn set_stream_type(&self, type_: StreamType) -> Result<(), PlayerError>;
+    fn push_data(&self, data: Vec<u8>) -> Result<(), PlayerError>;
+    fn end_of_stream(&self) -> Result<(), PlayerError>;
 }
 
 pub struct DummyPlayer {}
 
 impl Player for DummyPlayer {
-    type Error = ();
-    fn register_event_handler(&self, _: IpcSender<PlayerEvent>) {
-    }
+    fn register_event_handler(&self, _: IpcSender<PlayerEvent>) {}
     fn register_frame_renderer(&self, _: Arc<Mutex<frame::FrameRenderer>>) {}
 
-    fn play(&self) -> Result<(), ()> {
+    fn play(&self) -> Result<(), PlayerError> {
         Ok(())
     }
-    fn pause(&self) -> Result<(), ()> {
+    fn pause(&self) -> Result<(), PlayerError> {
         Ok(())
     }
-    fn stop(&self) -> Result<(), ()> {
+    fn stop(&self) -> Result<(), PlayerError> {
         Ok(())
     }
-    fn seek(&self, _: f64) -> Result<(), ()> {
-        Ok(())
-    }
-
-    fn set_volume(&self, _: f64) -> Result<(), ()> {
+    fn seek(&self, _: f64) -> Result<(), PlayerError> {
         Ok(())
     }
 
-    fn set_input_size(&self, _: u64) -> Result<(), ()> {
+    fn set_volume(&self, _: f64) -> Result<(), PlayerError> {
         Ok(())
     }
-    fn set_rate(&self, _: f64) -> Result<(), ()> {
+
+    fn set_input_size(&self, _: u64) -> Result<(), PlayerError> {
         Ok(())
     }
-    fn set_stream_type(&self, _: StreamType) -> Result<(), ()> {
+    fn set_rate(&self, _: f64) -> Result<(), PlayerError> {
         Ok(())
     }
-    fn push_data(&self, _: Vec<u8>) -> Result<(), ()> {
-        Err(())
+    fn set_stream_type(&self, _: StreamType) -> Result<(), PlayerError> {
+        Ok(())
     }
-    fn end_of_stream(&self) -> Result<(), ()> {
-        Err(())
+    fn push_data(&self, _: Vec<u8>) -> Result<(), PlayerError> {
+        Ok(())
+    }
+    fn end_of_stream(&self) -> Result<(), PlayerError> {
+        Ok(())
     }
 }
 

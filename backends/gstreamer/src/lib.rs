@@ -11,39 +11,13 @@ extern crate ipc_channel;
 extern crate servo_media_audio;
 extern crate servo_media_player;
 
-use servo_media_audio::sink::AudioSink;
+use servo_media_audio::sink::AudioSinkError;
 use servo_media_audio::AudioBackend;
 use servo_media_player::PlayerBackend;
 
 pub mod audio_decoder;
 pub mod audio_sink;
 pub mod player;
-
-#[derive(Debug, PartialEq)]
-pub enum BackendError {
-    AudioInfoFailed,
-    BufferReadError,
-    Caps(&'static str),
-    ElementCreationFailed(&'static str),
-    EnoughData,
-    Flow(gst::FlowError),
-    GetStaticPadFailed(&'static str),
-    Gstreamer(gst::Error),
-    InvalidMediaFormat,
-    InvalidSample,
-    MissingElement(&'static str),
-    PadLinkFailed,
-    PipelineBusError(String),
-    PipelineFailed(&'static str),
-    PlayerError(String),
-    PlayerPushDataFailed,
-    PlayerEOSFailed,
-    PlayerNonSeekable,
-    PlayerSeekOutOfRange,
-    PlayerSourceSetupFailed,
-    SetPropertyFailed(&'static str),
-    StateChangeFailed,
-}
 
 pub struct GStreamerBackend;
 
@@ -53,7 +27,7 @@ impl AudioBackend for GStreamerBackend {
     fn make_decoder() -> Self::Decoder {
         audio_decoder::GStreamerAudioDecoder::new()
     }
-    fn make_sink() -> Result<Self::Sink, <Self::Sink as AudioSink>::Error> {
+    fn make_sink() -> Result<Self::Sink, AudioSinkError> {
         audio_sink::GStreamerAudioSink::new()
     }
 }

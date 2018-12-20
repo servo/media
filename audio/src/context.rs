@@ -142,7 +142,8 @@ impl<B: AudioBackend + 'static> AudioContext<B> {
                     graph,
                     options,
                 );
-            }).unwrap();
+            })
+            .unwrap();
         Self {
             sender,
             state: Cell::new(ProcessingState::Suspended),
@@ -251,11 +252,7 @@ impl<B: AudioBackend + 'static> AudioContext<B> {
 
     /// Asynchronously decodes the audio file data contained in the given
     /// buffer.
-    pub fn decode_audio_data(
-        &self,
-        data: Vec<u8>,
-        callbacks: AudioDecoderCallbacks<<B::Decoder as AudioDecoder>::Error>,
-    ) {
+    pub fn decode_audio_data(&self, data: Vec<u8>, callbacks: AudioDecoderCallbacks) {
         let mut options = AudioDecoderOptions::default();
         options.sample_rate = self.sample_rate;
         Builder::new()
@@ -264,7 +261,8 @@ impl<B: AudioBackend + 'static> AudioContext<B> {
                 let audio_decoder = B::make_decoder();
 
                 audio_decoder.decode(data, callbacks, Some(options));
-            }).unwrap();
+            })
+            .unwrap();
     }
 
     pub fn set_eos_callback(&self, callback: Box<Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>) {

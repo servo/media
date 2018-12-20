@@ -12,7 +12,7 @@ use node::{BlockInfo, ChannelInfo};
 use offline_sink::OfflineAudioSink;
 use oscillator_node::OscillatorNode;
 use panner_node::PannerNode;
-use sink::{AudioSink, DummyAudioSink};
+use sink::{AudioSink, AudioSinkError, DummyAudioSink};
 use std::sync::mpsc::{Receiver, Sender};
 
 pub enum AudioRenderThreadMsg {
@@ -41,27 +41,25 @@ pub enum Sink<S: AudioSink> {
 }
 
 impl<S: AudioSink> AudioSink for Sink<S> {
-    type Error = S::Error;
-
     fn init(
         &self,
         sample_rate: f32,
         sender: Sender<AudioRenderThreadMsg>,
-    ) -> Result<(), Self::Error> {
+    ) -> Result<(), AudioSinkError> {
         match *self {
             Sink::RealTime(ref sink) => sink.init(sample_rate, sender),
             Sink::Offline(ref sink) => Ok(sink.init(sample_rate, sender).unwrap()),
         }
     }
 
-    fn play(&self) -> Result<(), Self::Error> {
+    fn play(&self) -> Result<(), AudioSinkError> {
         match *self {
             Sink::RealTime(ref sink) => sink.play(),
             Sink::Offline(ref sink) => Ok(sink.play().unwrap()),
         }
     }
 
-    fn stop(&self) -> Result<(), Self::Error> {
+    fn stop(&self) -> Result<(), AudioSinkError> {
         match *self {
             Sink::RealTime(ref sink) => sink.stop(),
             Sink::Offline(ref sink) => Ok(sink.stop().unwrap()),
@@ -75,7 +73,7 @@ impl<S: AudioSink> AudioSink for Sink<S> {
         }
     }
 
-    fn push_data(&self, chunk: Chunk) -> Result<(), Self::Error> {
+    fn push_data(&self, chunk: Chunk) -> Result<(), AudioSinkError> {
         match *self {
             Sink::RealTime(ref sink) => sink.push_data(chunk),
             Sink::Offline(ref sink) => Ok(sink.push_data(chunk).unwrap()),
@@ -109,9 +107,9 @@ impl<S: AudioSink + 'static> AudioRenderThread<S> {
         sample_rate: f32,
         graph: AudioGraph,
         options: AudioContextOptions,
-    ) -> Result<Self, (AudioGraph, S::Error)>
+    ) -> Result<Self, (AudioGraph, AudioSinkError)>
     where
-        F: FnOnce() -> Result<S, S::Error>,
+        F: FnOnce() -> Result<S, AudioSinkError>,
     {
         let sink = match options {
             AudioContextOptions::RealTimeAudioContext(_) => {
@@ -152,7 +150,7 @@ impl<S: AudioSink + 'static> AudioRenderThread<S> {
         graph: AudioGraph,
         options: AudioContextOptions,
     ) where
-        F: FnOnce() -> Result<S, S::Error>,
+        F: FnOnce() -> Result<S, AudioSinkError>,
     {
         let thread = Self::prepare_thread(make_sink, sender.clone(), sample_rate, graph, options);
         match thread {
@@ -169,7 +167,8 @@ impl<S: AudioSink + 'static> AudioRenderThread<S> {
                     sample_rate,
                     graph,
                     options,
-                ).map_err(|_| ())
+                )
+                .map_err(|_| ())
                 .unwrap();
                 thread.event_loop(event_queue)
             }

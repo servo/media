@@ -1,4 +1,3 @@
-use super::BackendError;
 use glib;
 use glib::*;
 use gst;
@@ -9,7 +8,7 @@ use gst_video::{VideoFrame, VideoInfo};
 use ipc_channel::ipc::IpcSender;
 use servo_media_player::frame::{Frame, FrameRenderer};
 use servo_media_player::metadata::Metadata;
-use servo_media_player::{PlaybackState, Player, PlayerEvent, StreamType};
+use servo_media_player::{PlaybackState, Player, PlayerError, PlayerEvent, StreamType};
 use std::cell::RefCell;
 use std::error::Error;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -102,7 +101,7 @@ struct PlayerInner {
 }
 
 impl PlayerInner {
-    pub fn set_input_size(&mut self, size: u64) -> Result<(), BackendError> {
+    pub fn set_input_size(&mut self, size: u64) -> Result<(), PlayerError> {
         // Set input_size to proxy its value, since it
         // could be set by the user before calling .setup().
         self.input_size = size;
@@ -116,21 +115,21 @@ impl PlayerInner {
         Ok(())
     }
 
-    pub fn set_rate(&mut self, rate: f64) -> Result<(), BackendError> {
+    pub fn set_rate(&mut self, rate: f64) -> Result<(), PlayerError> {
         // This method may be called before the player setup is done, so we safe the rate value
         // and set it once the player is ready and after getting the media info
         self.rate = rate;
         if let Some(ref metadata) = self.last_metadata {
             if !metadata.is_seekable {
                 eprintln!("Player must be seekable in order to set the playback rate");
-                return Err(BackendError::PlayerNonSeekable);
+                return Err(PlayerError::NonSeekableStream);
             }
             self.player.set_rate(rate);
         }
         Ok(())
     }
 
-    pub fn set_stream_type(&mut self, type_: StreamType) -> Result<(), BackendError> {
+    pub fn set_stream_type(&mut self, type_: StreamType) -> Result<(), PlayerError> {
         let type_ = match type_ {
             StreamType::Stream => AppStreamType::Stream,
             StreamType::Seekable => AppStreamType::Seekable,
@@ -145,45 +144,45 @@ impl PlayerInner {
         Ok(())
     }
 
-    pub fn play(&mut self) -> Result<(), BackendError> {
+    pub fn play(&mut self) -> Result<(), PlayerError> {
         self.player.play();
         Ok(())
     }
 
-    pub fn stop(&mut self) -> Result<(), BackendError> {
+    pub fn stop(&mut self) -> Result<(), PlayerError> {
         self.player.stop();
         self.last_metadata = None;
         self.appsrc = None;
         Ok(())
     }
 
-    pub fn pause(&mut self) -> Result<(), BackendError> {
+    pub fn pause(&mut self) -> Result<(), PlayerError> {
         self.player.pause();
         Ok(())
     }
 
-    pub fn end_of_stream(&mut self) -> Result<(), BackendError> {
+    pub fn end_of_stream(&mut self) -> Result<(), PlayerError> {
         if let Some(ref mut appsrc) = self.appsrc {
             if appsrc.end_of_stream() == gst::FlowReturn::Ok {
                 return Ok(());
             }
         }
-        Err(BackendError::PlayerEOSFailed)
+        Err(PlayerError::EOSFailed)
     }
 
-    pub fn seek(&mut self, time: f64) -> Result<(), BackendError> {
+    pub fn seek(&mut self, time: f64) -> Result<(), PlayerError> {
         // XXX Support AppStreamType::RandomAccess. The callback model changes
         // if the stream type is set to RandomAccess (i.e. the seek-data
         // callback is received right after pushing the first chunk of data,
         // even if player.seek() is not called).
         if self.stream_type.is_none() || self.stream_type.unwrap() != AppStreamType::Seekable {
-            return Err(BackendError::PlayerNonSeekable);
+            return Err(PlayerError::NonSeekableStream);
         }
         if let Some(ref metadata) = self.last_metadata {
             if let Some(ref duration) = metadata.duration {
                 if duration < &time::Duration::new(time as u64, 0) {
                     eprintln!("Trying to seek out of range");
-                    return Err(BackendError::PlayerSeekOutOfRange);
+                    return Err(PlayerError::SeekOutOfRange);
                 }
             }
         }
@@ -193,23 +192,23 @@ impl PlayerInner {
         Ok(())
     }
 
-    pub fn set_volume(&mut self, value: f64) -> Result<(), BackendError> {
+    pub fn set_volume(&mut self, value: f64) -> Result<(), PlayerError> {
         self.player.set_volume(value);
         Ok(())
     }
 
-    pub fn push_data(&mut self, data: Vec<u8>) -> Result<(), BackendError> {
+    pub fn push_data(&mut self, data: Vec<u8>) -> Result<(), PlayerError> {
         if let Some(ref mut appsrc) = self.appsrc {
             if appsrc.get_current_level_bytes() + data.len() as u64 >= appsrc.get_max_bytes() {
-                return Err(BackendError::EnoughData);
+                return Err(PlayerError::EnoughData);
             }
             let buffer =
-                gst::Buffer::from_slice(data).ok_or_else(|| BackendError::PlayerPushDataFailed)?;
+                gst::Buffer::from_slice(data).ok_or_else(|| PlayerError::BufferPushFailed)?;
             if appsrc.push_buffer(buffer) == gst::FlowReturn::Ok {
                 return Ok(());
             }
         }
-        Err(BackendError::PlayerPushDataFailed)
+        Err(PlayerError::BufferPushFailed)
     }
 
     pub fn set_app_src(&mut self, appsrc: gst_app::AppSrc) {
@@ -284,7 +283,7 @@ impl GStreamerPlayer {
         }
     }
 
-    fn setup(&self) -> Result<(), BackendError> {
+    fn setup(&self) -> Result<(), PlayerError> {
         if self.inner.borrow().is_some() {
             return Ok(());
         }
@@ -293,7 +292,10 @@ impl GStreamerPlayer {
         // need to make this work.
         for element in vec!["playbin", "queue"].iter() {
             if gst::ElementFactory::find(element).is_none() {
-                return Err(BackendError::MissingElement(element));
+                return Err(PlayerError::Backend(format!(
+                    "Missing dependency: {}",
+                    element
+                )));
             }
         }
 
@@ -306,14 +308,14 @@ impl GStreamerPlayer {
         config.set_position_update_interval(500u32);
         player
             .set_config(config)
-            .map_err(|e| BackendError::SetPropertyFailed(e.0))?;
+            .map_err(|e| PlayerError::Backend(e.0.to_owned()))?;
 
         let video_sink = gst::ElementFactory::make("appsink", None)
-            .ok_or(BackendError::ElementCreationFailed("appsink"))?;
+            .ok_or(PlayerError::Backend("appsink creation failed".to_owned()))?;
         let pipeline = player.get_pipeline();
         pipeline
             .set_property("video-sink", &video_sink.to_value())
-            .map_err(|e| BackendError::SetPropertyFailed(e.0))?;
+            .map_err(|e| PlayerError::Backend(e.0.to_owned()))?;
         let video_sink = video_sink.dynamic_cast::<gst_app::AppSink>().unwrap();
         video_sink.set_caps(&gst::Caps::new_simple(
             "video/x-raw",
@@ -332,7 +334,7 @@ impl GStreamerPlayer {
         // https://github.com/servo/servo/issues/22010#issuecomment-432599657
         player
             .set_property("uri", &Value::from("appsrc://"))
-            .map_err(|e| BackendError::SetPropertyFailed(e.0))?;
+            .map_err(|e| PlayerError::Backend(e.0.to_owned()))?;
 
         *self.inner.borrow_mut() = Some(Arc::new(Mutex::new(PlayerInner {
             player,
@@ -508,7 +510,7 @@ impl GStreamerPlayer {
                     let _ = sender
                         .lock()
                         .unwrap()
-                        .send(Err(BackendError::PlayerSourceSetupFailed));
+                        .send(Err(PlayerError::Backend("Source setup failed".to_owned())));
                     return None;
                 }
                 let source = source.unwrap();
@@ -573,16 +575,14 @@ impl GStreamerPlayer {
                 let _ = sender_clone
                     .lock()
                     .unwrap()
-                    .send(Err(BackendError::PlayerSourceSetupFailed));
+                    .send(Err(PlayerError::Backend("Source setup failed".to_owned())));
             }
 
             let error_handler_id = inner.player.connect_error(move |player, error| {
                 let _ = sender_clone
                     .lock()
                     .unwrap()
-                    .send(Err(BackendError::PlayerError(
-                        error.description().to_string(),
-                    )));
+                    .send(Err(PlayerError::Backend(error.description().to_string())));
                 player.stop();
             });
 
@@ -599,7 +599,7 @@ impl GStreamerPlayer {
 
 macro_rules! inner_player_proxy {
     ($fn_name:ident) => (
-        fn $fn_name(&self) -> Result<(), BackendError> {
+        fn $fn_name(&self) -> Result<(), PlayerError> {
             self.setup()?;
             let inner = self.inner.borrow();
             let mut inner = inner.as_ref().unwrap().lock().unwrap();
@@ -608,7 +608,7 @@ macro_rules! inner_player_proxy {
     );
 
     ($fn_name:ident, $arg1:ident, $arg1_type:ty) => (
-        fn $fn_name(&self, $arg1: $arg1_type) -> Result<(), BackendError> {
+        fn $fn_name(&self, $arg1: $arg1_type) -> Result<(), PlayerError> {
             self.setup()?;
             let inner = self.inner.borrow();
             let mut inner = inner.as_ref().unwrap().lock().unwrap();
@@ -618,8 +618,6 @@ macro_rules! inner_player_proxy {
 }
 
 impl Player for GStreamerPlayer {
-    type Error = BackendError;
-
     inner_player_proxy!(play);
     inner_player_proxy!(pause);
     inner_player_proxy!(stop);

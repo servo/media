@@ -1,4 +1,3 @@
-use super::BackendError;
 use byte_slice_cast::*;
 use gst;
 use gst::prelude::*;
@@ -6,7 +5,7 @@ use gst_app::{AppSrc, AppSrcCallbacks};
 use gst_audio;
 use servo_media_audio::block::{Chunk, FRAMES_PER_BLOCK};
 use servo_media_audio::render_thread::AudioRenderThreadMsg;
-use servo_media_audio::sink::AudioSink;
+use servo_media_audio::sink::{AudioSink, AudioSinkError};
 use std::cell::{Cell, RefCell};
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
@@ -23,14 +22,14 @@ pub struct GStreamerAudioSink {
 }
 
 impl GStreamerAudioSink {
-    pub fn new() -> Result<Self, BackendError> {
+    pub fn new() -> Result<Self, AudioSinkError> {
         if let Some(category) = gst::DebugCategory::get("openslessink") {
             category.set_threshold(gst::DebugLevel::Trace);
         }
-        gst::init().map_err(BackendError::Gstreamer)?;
+        gst::init().map_err(|_| AudioSinkError::Backend("GStreamer init failed".to_owned()))?;
 
         let appsrc = gst::ElementFactory::make("appsrc", None)
-            .ok_or(BackendError::ElementCreationFailed("appsrc"))?;
+            .ok_or(AudioSinkError::Backend("appsrc creation failed".to_owned()))?;
         let appsrc = appsrc.downcast::<AppSrc>().unwrap();
         Ok(Self {
             pipeline: gst::Pipeline::new(None),
@@ -43,19 +42,20 @@ impl GStreamerAudioSink {
 }
 
 impl GStreamerAudioSink {
-    fn set_audio_info(&self, sample_rate: f32, channels: u8) -> Result<(), BackendError> {
+    fn set_audio_info(&self, sample_rate: f32, channels: u8) -> Result<(), AudioSinkError> {
         let audio_info = gst_audio::AudioInfo::new(
             gst_audio::AUDIO_FORMAT_F32,
             sample_rate as u32,
             channels.into(),
-        ).build()
-            .ok_or(BackendError::AudioInfoFailed)?;
+        )
+        .build()
+        .ok_or(AudioSinkError::Backend("AudioInfo failed".to_owned()))?;
         self.appsrc.set_caps(&audio_info.to_caps().unwrap());
         *self.audio_info.borrow_mut() = Some(audio_info);
         Ok(())
     }
 
-    fn set_channels_if_changed(&self, channels: u8) -> Result<(), BackendError> {
+    fn set_channels_if_changed(&self, channels: u8) -> Result<(), AudioSinkError> {
         let curr_channels = if let Some(ch) = self.audio_info.borrow().as_ref() {
             ch.channels()
         } else {
@@ -69,12 +69,11 @@ impl GStreamerAudioSink {
 }
 
 impl AudioSink for GStreamerAudioSink {
-    type Error = BackendError;
     fn init(
         &self,
         sample_rate: f32,
         graph_thread_channel: Sender<AudioRenderThreadMsg>,
-    ) -> Result<(), BackendError> {
+    ) -> Result<(), AudioSinkError> {
         self.sample_rate.set(sample_rate);
         self.set_audio_info(sample_rate, 2)?;
         self.appsrc.set_property_format(gst::Format::Time);
@@ -96,42 +95,45 @@ impl AudioSink for GStreamerAudioSink {
             .unwrap();
 
         let appsrc = self.appsrc.as_ref().clone().upcast();
-        let resample = gst::ElementFactory::make("audioresample", None)
-            .ok_or(BackendError::ElementCreationFailed("audioresample"))?;
-        let convert = gst::ElementFactory::make("audioconvert", None)
-            .ok_or(BackendError::ElementCreationFailed("audioconvert"))?;
-        let sink = gst::ElementFactory::make("autoaudiosink", None)
-            .ok_or(BackendError::ElementCreationFailed("autoaudiosink"))?;
+        let resample = gst::ElementFactory::make("audioresample", None).ok_or(
+            AudioSinkError::Backend("audioresample creation failed".to_owned()),
+        )?;
+        let convert = gst::ElementFactory::make("audioconvert", None).ok_or(
+            AudioSinkError::Backend("audioconvert creation failed".to_owned()),
+        )?;
+        let sink = gst::ElementFactory::make("autoaudiosink", None).ok_or(
+            AudioSinkError::Backend("autoaudiosink creation failed".to_owned()),
+        )?;
         self.pipeline
             .add_many(&[&appsrc, &resample, &convert, &sink])
-            .map_err(|e| BackendError::PipelineFailed(e.0))?;
+            .map_err(|e| AudioSinkError::Backend(e.0.to_owned()))?;
         gst::Element::link_many(&[&appsrc, &resample, &convert, &sink])
-            .map_err(|e| BackendError::PipelineFailed(e.0))?;
+            .map_err(|e| AudioSinkError::Backend(e.0.to_owned()))?;
 
         Ok(())
     }
 
-    fn play(&self) -> Result<(), BackendError> {
+    fn play(&self) -> Result<(), AudioSinkError> {
         self.pipeline
             .set_state(gst::State::Playing)
             .into_result()
             .map(|_| ())
-            .map_err(|_| BackendError::StateChangeFailed)
+            .map_err(|_| AudioSinkError::StateChangeFailed)
     }
 
-    fn stop(&self) -> Result<(), BackendError> {
+    fn stop(&self) -> Result<(), AudioSinkError> {
         self.pipeline
             .set_state(gst::State::Paused)
             .into_result()
             .map(|_| ())
-            .map_err(|_| BackendError::StateChangeFailed)
+            .map_err(|_| AudioSinkError::StateChangeFailed)
     }
 
     fn has_enough_data(&self) -> bool {
         self.appsrc.get_current_level_bytes() >= self.appsrc.get_max_bytes()
     }
 
-    fn push_data(&self, mut chunk: Chunk) -> Result<(), BackendError> {
+    fn push_data(&self, mut chunk: Chunk) -> Result<(), AudioSinkError> {
         if let Some(block) = chunk.blocks.get(0) {
             self.set_channels_if_changed(block.chan_count())?;
         }
@@ -184,7 +186,7 @@ impl AudioSink for GStreamerAudioSink {
             .push_buffer(buffer)
             .into_result()
             .map(|_| ())
-            .map_err(BackendError::Flow)
+            .map_err(|_| AudioSinkError::BufferPushFailed)
     }
 
     fn set_eos_callback(&self, _: Box<Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>) {}
