@@ -57,8 +57,7 @@ impl PlayerWrapper {
         player
             .lock()
             .unwrap()
-            .register_event_handler(sender)
-            .unwrap();
+            .register_event_handler(sender);
         let player_ = player.clone();
         let player__ = player.clone();
         let shutdown = Arc::new(AtomicBool::new(false));
@@ -143,8 +142,7 @@ impl PlayerWrapper {
         self.player
             .lock()
             .unwrap()
-            .register_frame_renderer(renderer)
-            .unwrap();
+            .register_frame_renderer(renderer);
     }
 }
 
