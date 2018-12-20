@@ -19,12 +19,13 @@ pub mod audio_decoder;
 pub mod audio_sink;
 pub mod player;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum BackendError {
     AudioInfoFailed,
     BufferReadError,
     Caps(&'static str),
     ElementCreationFailed(&'static str),
+    EnoughData,
     Flow(gst::FlowError),
     GetStaticPadFailed(&'static str),
     Gstreamer(gst::Error),
