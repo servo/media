@@ -199,7 +199,7 @@ impl PlayerInner {
 
     pub fn push_data(&mut self, data: Vec<u8>) -> Result<(), PlayerError> {
         if let Some(ref mut appsrc) = self.appsrc {
-            if appsrc.get_current_level_bytes() + data.len() as u64 >= appsrc.get_max_bytes() {
+            if appsrc.get_current_level_bytes() + data.len() as u64 > appsrc.get_max_bytes() {
                 return Err(PlayerError::EnoughData);
             }
             let buffer =
@@ -549,11 +549,9 @@ impl GStreamerPlayer {
                                 is_ready_.store(true, Ordering::Relaxed);
                                 let _ = sender_clone.lock().unwrap().send(Ok(()));
                             }
-                            println!("NEEEEEEEEEEED");
                             observers_.lock().unwrap().notify(PlayerEvent::NeedData);
                         })
                         .enough_data(move |_| {
-                            println!("ENOOOOOOOOUGH");
                             observers__.lock().unwrap().notify(PlayerEvent::EnoughData);
                         })
                         .seek_data(move |_, offset| {

@@ -63,7 +63,6 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         let mut buf_reader = BufReader::new(file);
         let mut buffer = [0; 1024];
         let mut read = |offset| {
-            println!("READ {:?}", offset);
             if buf_reader.seek(SeekFrom::Start(offset)).is_err() {
                 eprintln!("BufReader - Could not seek to {:?}", offset);
             }
