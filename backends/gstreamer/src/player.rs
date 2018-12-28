@@ -11,12 +11,12 @@ use servo_media_player::metadata::Metadata;
 use servo_media_player::{PlaybackState, Player, PlayerError, PlayerEvent, StreamType};
 use std::cell::RefCell;
 use std::error::Error;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, Once};
 use std::time;
 use std::u64;
 
+static PLAYER_INIT: Once = Once::new();
 const MAX_SRC_QUEUE_SIZE: u64 = 50 * 1024 * 1024; // 50 MB.
 
 fn frame_from_sample(sample: &gst::Sample) -> Result<Frame, ()> {
@@ -268,9 +268,6 @@ pub struct GStreamerPlayer {
     inner: RefCell<Option<Arc<Mutex<PlayerInner>>>>,
     observers: Arc<Mutex<PlayerEventObserverList>>,
     renderers: Arc<Mutex<FrameRendererList>>,
-    /// Indicates whether the setup was succesfully performance and
-    /// we are ready to consume a/v data.
-    is_ready: Arc<AtomicBool>,
 }
 
 impl GStreamerPlayer {
@@ -279,7 +276,6 @@ impl GStreamerPlayer {
             inner: RefCell::new(None),
             observers: Arc::new(Mutex::new(PlayerEventObserverList::new())),
             renderers: Arc::new(Mutex::new(FrameRendererList::new())),
-            is_ready: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -502,7 +498,6 @@ impl GStreamerPlayer {
 
             let sender = Arc::new(Mutex::new(sender));
             let sender_clone = sender.clone();
-            let is_ready_clone = self.is_ready.clone();
             let observers = self.observers.clone();
             let connect_result = pipeline.connect("source-setup", false, move |args| {
                 let source = args[1].get::<gst::Element>();
@@ -533,7 +528,6 @@ impl GStreamerPlayer {
                 }
 
                 let sender_clone = sender.clone();
-                let is_ready_ = is_ready_clone.clone();
                 let observers_ = observers.clone();
                 let observers__ = observers.clone();
                 let observers___ = observers.clone();
@@ -545,10 +539,9 @@ impl GStreamerPlayer {
                             // don't miss any data between the moment the client
                             // calls setup and the player is actually ready to
                             // get any data.
-                            if !is_ready_.load(Ordering::Relaxed) {
-                                is_ready_.store(true, Ordering::Relaxed);
+                            PLAYER_INIT.call_once(|| {
                                 let _ = sender_clone.lock().unwrap().send(Ok(()));
-                            }
+                            });
                             observers_.lock().unwrap().notify(PlayerEvent::NeedData);
                         })
                         .enough_data(move |_| {
