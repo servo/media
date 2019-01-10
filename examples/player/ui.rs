@@ -10,7 +10,6 @@ extern crate euclid;
 use gleam::gl;
 use glutin::{self, GlContext};
 use std::env;
-use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use webrender;
 use webrender::api::*;
@@ -110,13 +109,6 @@ pub fn main_wrapper<E: Example>(
 ) {
     env_logger::init();
 
-    let args: Vec<String> = env::args().collect();
-    let res_path = if args.len() > 1 {
-        Some(PathBuf::from(&args[1]))
-    } else {
-        None
-    };
-
     let mut events_loop = winit::EventsLoop::new();
     let context_builder = glutin::ContextBuilder::new().with_gl(glutin::GlRequest::GlThenGles {
         opengl_version: (3, 2),
@@ -146,13 +138,12 @@ pub fn main_wrapper<E: Example>(
     };
 
     println!("OpenGL version {}", gl.get_string(gl::VERSION));
-    println!("Shader resource path: {:?}", res_path);
     let device_pixel_ratio = window.get_hidpi_factor() as f32;
     println!("Device pixel ratio: {}", device_pixel_ratio);
 
     println!("Loading shaders...");
     let opts = webrender::RendererOptions {
-        resource_override_path: res_path,
+        resource_override_path: None,
         precache_shaders: E::PRECACHE_SHADERS,
         device_pixel_ratio,
         clear_color: Some(ColorF::new(0.3, 0.0, 0.0, 1.0)),
