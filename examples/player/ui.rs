@@ -76,15 +76,7 @@ pub trait Example {
     const WIDTH: u32 = 1920;
     const HEIGHT: u32 = 1080;
 
-    fn render(
-        &mut self,
-        api: &RenderApi,
-        builder: &mut DisplayListBuilder,
-        txn: &mut Transaction,
-        framebuffer_size: DeviceUintSize,
-        pipeline_id: PipelineId,
-        document_id: DocumentId,
-    );
+    fn render(&mut self, api: &RenderApi, builder: &mut DisplayListBuilder, txn: &mut Transaction);
     fn on_event(&self, winit::WindowEvent, &RenderApi, DocumentId) -> bool {
         false
     }
@@ -180,14 +172,7 @@ pub fn main_wrapper<E: Example>(
     let mut builder = DisplayListBuilder::new(pipeline_id, layout_size);
     let mut txn = Transaction::new();
 
-    example.lock().unwrap().render(
-        &api,
-        &mut builder,
-        &mut txn,
-        framebuffer_size,
-        pipeline_id,
-        document_id,
-    );
+    example.lock().unwrap().render(&api, &mut builder, &mut txn);
     txn.set_display_list(epoch, None, layout_size, builder.finalize(), true);
     txn.set_root_pipeline(pipeline_id);
     txn.generate_frame();
@@ -272,14 +257,7 @@ pub fn main_wrapper<E: Example>(
         if custom_event || example.lock().unwrap().needs_repaint() {
             let mut builder = DisplayListBuilder::new(pipeline_id, layout_size);
 
-            example.lock().unwrap().render(
-                &api,
-                &mut builder,
-                &mut txn,
-                framebuffer_size,
-                pipeline_id,
-                document_id,
-            );
+            example.lock().unwrap().render(&api, &mut builder, &mut txn);
             txn.set_display_list(epoch, None, layout_size, builder.finalize(), true);
             txn.generate_frame();
         }

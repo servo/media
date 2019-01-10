@@ -158,15 +158,7 @@ impl App {
 
 #[cfg(not(target_os = "android"))]
 impl ui::Example for App {
-    fn render(
-        &mut self,
-        api: &RenderApi,
-        builder: &mut DisplayListBuilder,
-        txn: &mut Transaction,
-        _framebuffer_size: DeviceUintSize,
-        _pipeline_id: PipelineId,
-        _document_id: DocumentId,
-    ) {
+    fn render(&mut self, api: &RenderApi, builder: &mut DisplayListBuilder, txn: &mut Transaction) {
         let frame = if self.frame_queue.is_empty() {
             if self.current_frame.is_none() {
                 return;
