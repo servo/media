@@ -6,7 +6,6 @@ pub mod frame;
 pub mod metadata;
 
 use ipc_channel::ipc::IpcSender;
-use std::fmt::Debug;
 use std::ops::Range;
 use std::sync::{Arc, Mutex};
 
