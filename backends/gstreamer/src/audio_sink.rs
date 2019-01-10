@@ -106,9 +106,9 @@ impl AudioSink for GStreamerAudioSink {
         )?;
         self.pipeline
             .add_many(&[&appsrc, &resample, &convert, &sink])
-            .map_err(|e| AudioSinkError::Backend(e.0.to_owned()))?;
+            .map_err(|e| AudioSinkError::Backend(e.to_string()))?;
         gst::Element::link_many(&[&appsrc, &resample, &convert, &sink])
-            .map_err(|e| AudioSinkError::Backend(e.0.to_owned()))?;
+            .map_err(|e| AudioSinkError::Backend(e.to_string()))?;
 
         Ok(())
     }

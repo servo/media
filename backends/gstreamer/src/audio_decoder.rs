@@ -58,11 +58,11 @@ impl AudioDecoder for GStreamerAudioDecoder {
         // a pad that will show up when a certain condition is met,
         // in decodebins case that is media being decoded
         if let Err(e) = pipeline.add_many(&[&appsrc, &decodebin]) {
-            return callbacks.error(AudioDecoderError::Backend(e.0.to_owned()));
+            return callbacks.error(AudioDecoderError::Backend(e.to_string()));
         }
 
         if let Err(e) = gst::Element::link_many(&[&appsrc, &decodebin]) {
-            return callbacks.error(AudioDecoderError::Backend(e.0.to_owned()));
+            return callbacks.error(AudioDecoderError::Backend(e.to_string()));
         }
 
         let appsrc = appsrc.downcast::<AppSrc>().unwrap();
@@ -161,7 +161,7 @@ impl AudioDecoder for GStreamerAudioDecoder {
 
                 deinterleave
                     .set_property("keep-positions", &true.to_value())
-                    .map_err(|e| AudioDecoderError::Backend(e.0.to_owned()))?;
+                    .map_err(|e| AudioDecoderError::Backend(e.to_string()))?;
                 let pipeline_ = pipeline.downgrade();
                 let callbacks_ = callbacks.clone();
                 deinterleave.connect_pad_added(move |_, src_pad| {
@@ -189,7 +189,7 @@ impl AudioDecoder for GStreamerAudioDecoder {
                         )?;
                         let appsink = sink.clone().dynamic_cast::<AppSink>().unwrap();
                         sink.set_property("sync", &false.to_value())
-                            .map_err(|e| AudioDecoderError::Backend(e.0.to_owned()))?;
+                            .map_err(|e| AudioDecoderError::Backend(e.to_string()))?;
 
                         let callbacks_ = callbacks.clone();
                         appsink.set_callbacks(
@@ -262,13 +262,13 @@ impl AudioDecoder for GStreamerAudioDecoder {
                         let elements = &[&queue, &sink];
                         pipeline
                             .add_many(elements)
-                            .map_err(|e| AudioDecoderError::Backend(e.0.to_owned()))?;
+                            .map_err(|e| AudioDecoderError::Backend(e.to_string()))?;
                         gst::Element::link_many(elements)
-                            .map_err(|e| AudioDecoderError::Backend(e.0.to_owned()))?;
+                            .map_err(|e| AudioDecoderError::Backend(e.to_string()))?;
 
                         for e in elements {
                             e.sync_state_with_parent()
-                                .map_err(|e| AudioDecoderError::Backend(e.0.to_owned()))?;
+                                .map_err(|e| AudioDecoderError::Backend(e.to_string()))?;
                         }
 
                         let sink_pad =
@@ -308,13 +308,13 @@ impl AudioDecoder for GStreamerAudioDecoder {
                 let elements = &[&convert, &resample, &filter, &deinterleave];
                 pipeline
                     .add_many(elements)
-                    .map_err(|e| AudioDecoderError::Backend(e.0.to_owned()))?;
+                    .map_err(|e| AudioDecoderError::Backend(e.to_string()))?;
                 gst::Element::link_many(elements)
-                    .map_err(|e| AudioDecoderError::Backend(e.0.to_owned()))?;
+                    .map_err(|e| AudioDecoderError::Backend(e.to_string()))?;
 
                 for e in elements {
                     e.sync_state_with_parent()
-                        .map_err(|e| AudioDecoderError::Backend(e.0.to_owned()))?;
+                        .map_err(|e| AudioDecoderError::Backend(e.to_string()))?;
                 }
 
                 let sink_pad = convert

@@ -304,14 +304,14 @@ impl GStreamerPlayer {
         config.set_position_update_interval(500u32);
         player
             .set_config(config)
-            .map_err(|e| PlayerError::Backend(e.0.to_owned()))?;
+            .map_err(|e| PlayerError::Backend(e.to_string()))?;
 
         let video_sink = gst::ElementFactory::make("appsink", None)
             .ok_or(PlayerError::Backend("appsink creation failed".to_owned()))?;
         let pipeline = player.get_pipeline();
         pipeline
             .set_property("video-sink", &video_sink.to_value())
-            .map_err(|e| PlayerError::Backend(e.0.to_owned()))?;
+            .map_err(|e| PlayerError::Backend(e.to_string()))?;
         let video_sink = video_sink.dynamic_cast::<gst_app::AppSink>().unwrap();
         video_sink.set_caps(&gst::Caps::new_simple(
             "video/x-raw",
@@ -330,7 +330,7 @@ impl GStreamerPlayer {
         // https://github.com/servo/servo/issues/22010#issuecomment-432599657
         player
             .set_property("uri", &Value::from("appsrc://"))
-            .map_err(|e| PlayerError::Backend(e.0.to_owned()))?;
+            .map_err(|e| PlayerError::Backend(e.to_string()))?;
 
         *self.inner.borrow_mut() = Some(Arc::new(Mutex::new(PlayerInner {
             player,
