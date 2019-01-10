@@ -9,11 +9,15 @@ extern crate euclid;
 
 use gleam::gl;
 use glutin::{self, GlContext};
+use servo_media::player::frame::FrameRenderer;
 use std::env;
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 use webrender;
 use webrender::api::*;
 use winit;
+
+use player_wrapper::PlayerWrapper;
 
 struct Notifier {
     events_proxy: winit::EventsLoopProxy,
@@ -76,7 +80,12 @@ pub trait Example {
     const WIDTH: u32 = 1920;
     const HEIGHT: u32 = 1080;
 
-    fn render(&mut self, api: &RenderApi, builder: &mut DisplayListBuilder, txn: &mut Transaction);
+    fn push_txn(
+        &mut self,
+        api: &RenderApi,
+        builder: &mut DisplayListBuilder,
+        txn: &mut Transaction,
+    );
     fn on_event(&self, winit::WindowEvent, &RenderApi, DocumentId) -> bool {
         false
     }
@@ -95,8 +104,9 @@ pub trait Example {
     fn draw_custom(&self, _gl: &gl::Gl) {}
 }
 
-pub fn main_wrapper<E: Example>(
+pub fn main_wrapper<E: Example + FrameRenderer>(
     example: Arc<Mutex<E>>,
+    path: &Path,
     options: Option<webrender::RendererOptions>,
 ) {
     env_logger::init();
@@ -172,11 +182,17 @@ pub fn main_wrapper<E: Example>(
     let mut builder = DisplayListBuilder::new(pipeline_id, layout_size);
     let mut txn = Transaction::new();
 
-    example.lock().unwrap().render(&api, &mut builder, &mut txn);
+    example
+        .lock()
+        .unwrap()
+        .push_txn(&api, &mut builder, &mut txn);
     txn.set_display_list(epoch, None, layout_size, builder.finalize(), true);
     txn.set_root_pipeline(pipeline_id);
     txn.generate_frame();
     api.send_transaction(document_id, txn);
+
+    let player_wrapper = PlayerWrapper::new(path);
+    player_wrapper.register_frame_renderer(example.clone());
 
     println!("Entering event loop");
     events_loop.run_forever(|global_event| {
@@ -257,7 +273,10 @@ pub fn main_wrapper<E: Example>(
         if custom_event || example.lock().unwrap().needs_repaint() {
             let mut builder = DisplayListBuilder::new(pipeline_id, layout_size);
 
-            example.lock().unwrap().render(&api, &mut builder, &mut txn);
+            example
+                .lock()
+                .unwrap()
+                .push_txn(&api, &mut builder, &mut txn);
             txn.set_display_list(epoch, None, layout_size, builder.finalize(), true);
             txn.generate_frame();
         }
@@ -272,5 +291,6 @@ pub fn main_wrapper<E: Example>(
         winit::ControlFlow::Continue
     });
 
+    player_wrapper.shutdown();
     renderer.deinit();
 }
