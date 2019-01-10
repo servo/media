@@ -220,29 +220,32 @@ impl PlayerInner {
         self.servosrc = Some(servosrc);
     }
 
-    pub fn buffered(&mut self) -> Result<Vec<Range<u32>>, PlayerError> {
+    pub fn buffered(&mut self) -> Result<Vec<Range<f64>>, PlayerError> {
         let mut result = vec![];
-        let pipeline = self.player.get_pipeline();
-        let mut buffering = gst::Query::new_buffering(gst::Format::Percent);
-        if pipeline.query(&mut buffering) {
-            let ranges = buffering.get_ranges();
-            for i in 0..ranges.len() {
-                let start = ranges[i].0;
-                let end = ranges[i].1;
-                let start = if let Percent(start) = start {
-                    start.unwrap()
-                } else {
-                    0
-                } / (gst::FORMAT_PERCENT_MAX / 100);
-                let end = if let Percent(end) = end {
-                    end.unwrap()
-                } else {
-                    0
-                } / (gst::FORMAT_PERCENT_MAX / 100);
-                result.push(Range { start, end });
+        if let Some(ref metadata) = self.last_metadata {
+            if let Some(ref duration) = metadata.duration {
+                let pipeline = self.player.get_pipeline();
+                let mut buffering = gst::Query::new_buffering(gst::Format::Percent);
+                if pipeline.query(&mut buffering) {
+                    let ranges = buffering.get_ranges();
+                    for i in 0..ranges.len() {
+                        let start = ranges[i].0;
+                        let end = ranges[i].1;
+                        let start = (if let Percent(start) = start {
+                            start.unwrap()
+                        } else {
+                            0
+                        } * duration.as_secs() as u32 / (gst::FORMAT_PERCENT_MAX)) as f64;
+                        let end = (if let Percent(end) = end {
+                            end.unwrap()
+                        } else {
+                            0
+                        } * duration.as_secs() as u32 / (gst::FORMAT_PERCENT_MAX)) as f64;
+                        result.push(Range { start, end });
+                    }
+                }
             }
         }
-
         Ok(result)
     }
 }
@@ -713,7 +716,7 @@ impl Player for GStreamerPlayer {
     inner_player_proxy!(push_data, data, Vec<u8>);
     inner_player_proxy!(seek, time, f64);
     inner_player_proxy!(set_volume, value, f64);
-    inner_player_proxy!(buffered, Vec<Range<u32>>);
+    inner_player_proxy!(buffered, Vec<Range<f64>>);
 
     fn register_event_handler(&self, sender: IpcSender<PlayerEvent>) {
         self.observers.lock().unwrap().register(sender);

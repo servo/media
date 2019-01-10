@@ -77,9 +77,8 @@ pub trait Player: Send {
     fn set_stream_type(&self, type_: StreamType) -> Result<(), PlayerError>;
     fn push_data(&self, data: Vec<u8>) -> Result<(), PlayerError>;
     fn end_of_stream(&self) -> Result<(), PlayerError>;
-    /// Get the list of time ranges in seconds that have been
-    /// buffered.
-    fn buffered(&self) -> Result<Vec<Range<u32>>, PlayerError>;
+    /// Get the list of time ranges in seconds that have been buffered.
+    fn buffered(&self) -> Result<Vec<Range<f64>>, PlayerError>;
 }
 
 pub struct DummyPlayer {}
@@ -120,7 +119,7 @@ impl Player for DummyPlayer {
     fn end_of_stream(&self) -> Result<(), PlayerError> {
         Ok(())
     }
-    fn buffered(&self) -> Result<Vec<Range<u32>>, PlayerError> {
+    fn buffered(&self) -> Result<Vec<Range<f64>>, PlayerError> {
         Ok(vec![])
     }
 }
