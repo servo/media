@@ -52,4 +52,3 @@ impl GStreamerBackend {
         gst::init().unwrap();
     }
 }
-

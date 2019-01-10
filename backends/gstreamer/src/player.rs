@@ -1,7 +1,7 @@
 use glib;
 use glib::*;
-use gst::{self, ElementExtManual};
 use gst::GenericFormattedValue::Percent;
+use gst::{self, ElementExtManual};
 use gst_app::{self, AppSrcCallbacks, AppStreamType};
 use gst_player;
 use gst_player::{PlayerMediaInfo, PlayerStreamInfoExt};
@@ -220,7 +220,7 @@ impl PlayerInner {
         self.servosrc = Some(servosrc);
     }
 
-    pub fn buffered(&mut self) -> Result<Vec<Range<u32>>, BackendError> {
+    pub fn buffered(&mut self) -> Result<Vec<Range<u32>>, PlayerError> {
         let mut result = vec![];
         let pipeline = self.player.get_pipeline();
         let mut buffering = gst::Query::new_buffering(gst::Format::Percent);
@@ -329,9 +329,11 @@ impl GStreamerPlayer {
                 )));
             }
         }
-        
+
         if !register_servo_src() {
-            return Err(PlayerError::Backend("servosrc registration error".to_owned()));
+            return Err(PlayerError::Backend(
+                "servosrc registration error".to_owned(),
+            ));
         }
 
         let player = gst_player::Player::new(
@@ -345,27 +347,39 @@ impl GStreamerPlayer {
         // faster playback of already-downloaded chunks.
         let flags = pipeline
             .get_property("flags")
-            .map_err(|e| BackendError::GetPropertyFailed(e.0))?;
+            .map_err(|e| PlayerError::Backend(e.0.to_owned()))?;
         let flags_class = match FlagsClass::new(flags.type_()) {
             Some(flags) => flags,
-            None => return Err(BackendError::PlayerFlagsSetupFailed),
+            None => {
+                return Err(PlayerError::Backend(
+                    "FlagsClass creation failed".to_owned(),
+                ))
+            }
         };
         let flags_class = match flags_class.builder_with_value(flags) {
             Some(class) => class,
-            None => return Err(BackendError::PlayerFlagsSetupFailed),
+            None => {
+                return Err(PlayerError::Backend(
+                    "FlagsClass creation failed".to_owned(),
+                ))
+            }
         };
         let flags = match flags_class.set_by_nick("download").build() {
             Some(flags) => flags,
-            None => return Err(BackendError::PlayerFlagsSetupFailed),
+            None => {
+                return Err(PlayerError::Backend(
+                    "FlagsClass creation failed".to_owned(),
+                ))
+            }
         };
         pipeline
             .set_property("flags", &flags)
-            .map_err(|e| BackendError::SetPropertyFailed(e.0))?;
+            .map_err(|e| PlayerError::Backend(e.0.to_owned()))?;
 
         // Set max size for the player buffer.
         pipeline
             .set_property("buffer-size", &MAX_BUFFER_SIZE)
-            .map_err(|e| BackendError::SetPropertyFailed(e.0))?;
+            .map_err(|e| PlayerError::Backend(e.0.to_owned()))?;
 
         // Set player position interval update to 0.5 seconds.
         let mut config = player.get_config();
