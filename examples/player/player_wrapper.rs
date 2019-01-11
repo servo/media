@@ -4,7 +4,7 @@
 
 use ipc_channel::ipc;
 use servo_media::player::frame::{Frame, FrameRenderer};
-use servo_media::player::{Player, PlayerEvent};
+use servo_media::player::{GlContext, Player, PlayerEvent};
 use servo_media::ServoMedia;
 use std::fs::File;
 use std::io::{BufReader, Read};
@@ -20,10 +20,37 @@ pub struct PlayerWrapper {
 }
 
 impl PlayerWrapper {
-    pub fn new(path: &Path, use_gl: bool) -> Self {
+    fn set_gl_params(
+        player: &Arc<Mutex<Box<Player>>>,
+        window: &glutin::GlWindow,
+    ) -> Result<(), ()> {
+        use glutin::os::unix::RawHandle;
+        use glutin::os::GlContextExt;
+
+        let context = window.context();
+        match unsafe { context.raw_handle() } {
+            RawHandle::Egl(egl_context) => {
+                let gl_context = GlContext::Egl(egl_context as usize);
+                if let Some(gl_display) = unsafe { context.get_egl_display() } {
+                    return player
+                        .lock()
+                        .unwrap()
+                        .set_gl_params(gl_context, gl_display as usize);
+                }
+                Err(())
+            }
+            RawHandle::Glx(_) => Err(()),
+        }
+    }
+
+    pub fn new(path: &Path, window: Option<&glutin::GlWindow>) -> Self {
         let servo_media = ServoMedia::get().unwrap();
         let player = Arc::new(Mutex::new(servo_media.create_player()));
-        // TODO: verify if gl is possible
+        let use_gl = if let Some(win) = window {
+            PlayerWrapper::set_gl_params(&player, win).is_ok()
+        } else {
+            false
+        };
         let file = File::open(&path).unwrap();
         let metadata = file.metadata().unwrap();
         player
