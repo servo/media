@@ -323,6 +323,31 @@ impl GStreamerPlayer {
         }
     }
 
+    fn setup_video_sink(
+        &self,
+        player: &gst_player::Player,
+    ) -> Result<gst_app::AppSink, PlayerError> {
+        let pipeline = player.get_pipeline();
+
+        let video_sink = gst::ElementFactory::make("appsink", None)
+            .ok_or(PlayerError::Backend("appsink creation failed".to_owned()))?;
+
+        pipeline
+            .set_property("video-sink", &video_sink.to_value())
+            .map_err(|e| PlayerError::Backend(e.to_string()))?;
+
+        let video_sink = video_sink.dynamic_cast::<gst_app::AppSink>().unwrap();
+        video_sink.set_caps(&gst::Caps::new_simple(
+            "video/x-raw",
+            &[
+                ("format", &"BGRA"),
+                ("pixel-aspect-ratio", &gst::Fraction::from((1, 1))),
+            ],
+        ));
+
+        Ok(video_sink)
+    }
+
     fn setup(&self) -> Result<(), PlayerError> {
         if self.inner.borrow().is_some() {
             return Ok(());
@@ -397,19 +422,7 @@ impl GStreamerPlayer {
             .set_config(config)
             .map_err(|e| PlayerError::Backend(e.to_string()))?;
 
-        let video_sink = gst::ElementFactory::make("appsink", None)
-            .ok_or(PlayerError::Backend("appsink creation failed".to_owned()))?;
-        pipeline
-            .set_property("video-sink", &video_sink.to_value())
-            .map_err(|e| PlayerError::Backend(e.to_string()))?;
-        let video_sink = video_sink.dynamic_cast::<gst_app::AppSink>().unwrap();
-        video_sink.set_caps(&gst::Caps::new_simple(
-            "video/x-raw",
-            &[
-                ("format", &"BGRA"),
-                ("pixel-aspect-ratio", &gst::Fraction::from((1, 1))),
-            ],
-        ));
+        let video_sink = self.setup_video_sink(&player)?;
 
         // There's a known bug in gstreamer that may cause a wrong transition
         // to the ready state while setting the uri property:
