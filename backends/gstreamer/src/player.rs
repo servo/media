@@ -363,29 +363,82 @@ impl GStreamerPlayer {
         }
     }
 
+    fn set_bus_sync_handler(&self, pipeline: &gst::Element) -> Result<(), PlayerError> {
+        let bus = pipeline.get_bus().expect("pipeline without bus");
+
+        let gl_context = self.gl_context.replace(None).unwrap();
+        let gl_display = self.gl_display.replace(None).unwrap();
+
+        bus.set_sync_handler(move |_, msg| {
+            match msg.view() {
+                gst::MessageView::NeedContext(ctxt) => {
+                    if let Some(el) = msg.get_src().map(|s| s.downcast::<gst::Element>().unwrap()) {
+                        let context_type = ctxt.get_context_type();
+                        if context_type == *gst_gl::GL_DISPLAY_CONTEXT_TYPE {
+                            let context = gst::Context::new(context_type, true);
+                            context.set_gl_display(&gl_display);
+                            el.set_context(&context);
+                        } else if context_type == "gst.gl.app_context" {
+                            let mut context = gst::Context::new(context_type, true);
+                            let s = context.get_mut().unwrap().get_mut_structure();
+                            s.set_value("context", gl_context.to_send_value());
+                            el.set_context(&context);
+                        }
+                    }
+                }
+                _ => (),
+            }
+
+            gst::BusSyncReply::Pass
+        });
+
+        Ok(())
+    }
+
     fn setup_video_sink(
         &self,
         player: &gst_player::Player,
     ) -> Result<gst_app::AppSink, PlayerError> {
         let pipeline = player.get_pipeline();
 
-        let video_sink = gst::ElementFactory::make("appsink", None)
-            .ok_or(PlayerError::Backend("appsink creation failed".to_owned()))?;
+        let appsink = gst::ElementFactory::make("appsink", None)
+            .ok_or(PlayerError::Backend("appsink creation failed".to_owned()))?
+            .dynamic_cast::<gst_app::AppSink>()
+            .unwrap();
 
-        pipeline
-            .set_property("video-sink", &video_sink.to_value())
-            .expect("playbin doesn't have expected 'video-sink' property");
+        if self.gl_context.borrow().is_some() {
+            let glsink = gst::ElementFactory::make("glsinkbin", None)
+                .ok_or(PlayerError::Backend("glsinkbin creation failed".to_owned()))?;
 
-        let video_sink = video_sink.dynamic_cast::<gst_app::AppSink>().unwrap();
-        video_sink.set_caps(&gst::Caps::new_simple(
-            "video/x-raw",
-            &[
-                ("format", &"BGRA"),
-                ("pixel-aspect-ratio", &gst::Fraction::from((1, 1))),
-            ],
-        ));
+            let caps = gst::Caps::builder("video/x-raw")
+                .features(&[&gst_gl::CAPS_FEATURE_MEMORY_GL_MEMORY])
+                .field("format", &gst_video::VideoFormat::Rgba.to_string())
+                .field("texture-target", &"2D")
+                .build();
+            appsink.set_caps(&caps);
 
-        Ok(video_sink)
+            glsink
+                .set_property("sink", &appsink)
+                .expect("glsinkbin doesn't have expected 'sink' property");
+
+            pipeline
+                .set_property("video-sink", &glsink.to_value())
+                .expect("playbin doesn't have expected 'video-sink' property");
+
+            self.set_bus_sync_handler(&pipeline)?;
+        } else {
+            let caps = gst::Caps::builder("video/x-raw")
+                .field("format", &gst_video::VideoFormat::Bgra.to_string())
+                .field("pixel-aspect-ratio", &gst::Fraction::from((1, 1)))
+                .build();
+            appsink.set_caps(&caps);
+
+            pipeline
+                .set_property("video-sink", &appsink.to_value())
+                .expect("playbin doesn't have expected 'video-sink' property");
+        };
+
+        Ok(appsink)
     }
 
     fn setup(&self) -> Result<(), PlayerError> {
