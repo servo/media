@@ -3,13 +3,14 @@ use glib::prelude::*;
 use gst;
 use gst::prelude::*;
 use gst_app;
+use gst_gl;
 use gst_player;
 use gst_player::prelude::*;
 use gst_video;
 use ipc_channel::ipc::IpcSender;
 use servo_media_player::frame::{Buffer, Frame, FrameData, FrameRenderer};
 use servo_media_player::metadata::Metadata;
-use servo_media_player::{PlaybackState, Player, PlayerError, PlayerEvent, StreamType};
+use servo_media_player::{GlContext, PlaybackState, Player, PlayerError, PlayerEvent, StreamType};
 use source::{register_servo_src, ServoSrc};
 use std::cell::RefCell;
 use std::error::Error;
@@ -335,6 +336,8 @@ pub struct GStreamerPlayer {
     /// Indicates whether the setup was succesfully performed and
     /// we are ready to consume a/v data.
     is_ready: Arc<Once>,
+    gl_context: RefCell<Option<gst_gl::GLContext>>,
+    gl_display: RefCell<Option<gst_gl::GLDisplay>>,
 }
 
 impl GStreamerPlayer {
@@ -344,6 +347,8 @@ impl GStreamerPlayer {
             observers: Arc::new(Mutex::new(PlayerEventObserverList::new())),
             renderers: Arc::new(Mutex::new(FrameRendererList::new())),
             is_ready: Arc::new(Once::new()),
+            gl_context: RefCell::new(None),
+            gl_display: RefCell::new(None),
         }
     }
 
@@ -768,5 +773,36 @@ impl Player for GStreamerPlayer {
 
     fn register_frame_renderer(&self, renderer: Arc<Mutex<FrameRenderer>>) {
         self.renderers.lock().unwrap().register(renderer);
+    }
+
+    fn set_gl_params(&self, gl_context: GlContext, gl_display: usize) -> Result<(), ()> {
+        let (display, context) = match gl_context {
+            GlContext::Egl(ctxt) => {
+                let display = unsafe { gst_gl::GLDisplayEGL::new_with_egl_display(gl_display) };
+
+                if let Some(display) = display {
+                    let context = unsafe {
+                        gst_gl::GLContext::new_wrapped(
+                            &display,
+                            ctxt,
+                            gst_gl::GLPlatform::EGL,
+                            gst_gl::GLAPI::ANY,
+                        )
+                    };
+
+                    (Some(display.upcast::<gst_gl::GLDisplay>()), context)
+                } else {
+                    (None, None)
+                }
+            }
+            _ => (None, None),
+        };
+
+        let ret = if context.is_some() { Ok(()) } else { Err(()) };
+
+        *self.gl_context.borrow_mut() = context;
+        *self.gl_display.borrow_mut() = display;
+
+        ret
     }
 }
