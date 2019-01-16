@@ -51,3 +51,6 @@ path = "../../audio"
 
 [dependencies.servo-media-player]
 path = "../../player"
+
+[dependencies.url]
+version = "1.7.2"
