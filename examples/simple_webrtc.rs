@@ -1,3 +1,11 @@
+//! To run this, clone https://github.com/centricular/gstwebrtc-demos, then:
+//! $ cd signalling
+//! $ ./simple-server.py
+//! $ cd ../js
+//! $ python -m SimpleHTTPServer
+//! Then load http://localhost:8000 in a web browser, note the client id.
+//! Then run this example with arguments `8443 {id}`.
+
 extern crate env_logger;
 extern crate rand;
 extern crate serde;
@@ -6,7 +14,6 @@ extern crate serde_derive;
 extern crate serde_json;
 extern crate servo_media;
 extern crate websocket;
-//extern crate ws;
 
 use rand::Rng;
 use servo_media::ServoMedia;
@@ -119,7 +126,6 @@ impl State {
             let signaller = Signaller(self.send_msg_tx.clone());
             self.webrtc = Some(self.media.create_webrtc(Box::new(signaller)));
         }
-        //self.webrtc.as_ref().unwrap().trigger_negotiation();
     }
 }
 
@@ -164,9 +170,6 @@ fn receive_loop(
                     if let Some(ref mut controller) = state.webrtc {
                         controller.notify_signal_server_error();
                     }
-                    /*let mbuilder =
-                        gst::Message::new_application(gst::Structure::new("ws-error", &[]));
-                    let _ = bus.post(&mbuilder.build());*/
                     let _ = send_msg_tx.send(OwnedMessage::Close(None));
                     return;
                 }
@@ -209,11 +212,6 @@ fn receive_loop(
                             };
                         }
                     }
-                    /*let mbuilder = gst::Message::new_application(gst::Structure::new(
-                        "ws-message",
-                        &[("body", &msg)],
-                    ));
-                    let _ = bus.post(&mbuilder.build());*/
                 }
 
                 _ => {
@@ -232,11 +230,6 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let server = format!("ws://localhost:{}", server_port);
     let peer_id = args.next();
 
-    /*let sender = start_server2();
-    start_client(sender.clone(), false);
-    start_client(sender.clone(), true);*/
-    //start_server(server_port);
-
     println!("Connecting to server {}", server);
     let client = match websocket::client::ClientBuilder::new(&server)
         .unwrap()
@@ -249,51 +242,26 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         }
     };
     let (receiver, sender) = client.split().unwrap();
-    //start_client(peer_id, sender, receiver);
 
+    let (send_msg_tx, send_msg_rx) = mpsc::channel::<OwnedMessage>();
+    let send_loop = send_loop(sender, send_msg_rx);
 
-        //thread::spawn(move || {
-        let (send_msg_tx, send_msg_rx) = mpsc::channel::<OwnedMessage>();
-        let send_loop = send_loop(sender, send_msg_rx);
+    let our_id = rand::thread_rng().gen_range(10, 10_000);
+    println!("Registering id {} with server", our_id);
+    send_msg_tx.send(OwnedMessage::Text(format!("HELLO {}", our_id))).expect("error sending");
 
-        let our_id = rand::thread_rng().gen_range(10, 10_000);
-        println!("Registering id {} with server", our_id);
-        //server_sender.send((SignalMsg::Session(send_msg_tx), our_id));
-        send_msg_tx.send(OwnedMessage::Text(format!("HELLO {}", our_id))).expect("error sending");
+    let state = State {
+        app_state: AppState::ServerRegistering,
+        send_msg_tx: send_msg_tx.clone(),
+        _uid: our_id,
+        peer_id: peer_id,
+        media: servo_media,
+        webrtc: None,
+    };
 
-        let state = State {
-            app_state: AppState::ServerRegistering,
-            send_msg_tx: send_msg_tx.clone(),
-            _uid: our_id,
-            peer_id: peer_id,
-            media: servo_media,
-            webrtc: None,
-        };
-
-        //let bus_clone = bus.clone();
-        //let webrtc = servo_media.create_webrtc();
-
-        let receive_loop = receive_loop(receiver, send_msg_tx, state);
-        let _ = send_loop.join();
-        let _ = receive_loop.join();
-
-        /*while let Ok(msg) = send_msg_rx.recv() {
-            match msg {
-                SignalNotification::Registered => {
-                    println!("{} registered", our_id);
-                    state.handle_registered();
-                    if initial_offer {
-                        state.webrtc.as_ref().unwrap().trigger_negotiation();
-                    }
-                }
-
-            }
-        }*/
-        
-    //});
-
-    //let client = ws::connect(&server, |out| 
-
+    let receive_loop = receive_loop(receiver, send_msg_tx, state);
+    let _ = send_loop.join();
+    let _ = receive_loop.join();
 }
 
 fn main() {

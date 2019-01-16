@@ -58,6 +58,8 @@ pub type Backend = DummyBackend;
 
 pub type WebRtcController = servo_media_gstreamer::webrtc::GStreamerWebRtcController;
 
+pub type MediaStream = servo_media_gstreamer::media_stream::GStreamerMediaStream;
+
 impl ServoMedia {
     pub fn new() -> Self {
         Backend::init();
@@ -86,5 +88,8 @@ impl ServoMedia {
 
     pub fn create_webrtc(&self, signaller: Box<WebRtcSignaller>) -> Box<WebRtcController> {
         Box::new(Backend::start_webrtc_controller(signaller))
+    }
+
+    pub fn create_mediastream(&self) -> Box<MediaStream> {
     }
 }
