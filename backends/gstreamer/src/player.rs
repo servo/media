@@ -19,8 +19,7 @@ use std::sync::{Arc, Mutex, Once};
 use std::time;
 use std::u64;
 
-const MAX_SRC_QUEUE_SIZE: u64 = 50 * 1024 * 1024; // 50 MB.
-const MAX_BUFFER_SIZE: i32 = 500 * 1024;
+const MAX_BUFFER_SIZE: i32 = 500 * 1024 * 1024;
 
 fn frame_from_sample(sample: &gst::Sample) -> Result<Frame, ()> {
     let buffer = sample.get_buffer().ok_or_else(|| ())?;
@@ -611,10 +610,6 @@ impl GStreamerPlayer {
                     .dynamic_cast::<ServoSrc>()
                     .expect("Source element is expected to be a servosrc!");
 
-                servosrc.set_max_bytes(MAX_SRC_QUEUE_SIZE);
-                servosrc.set_property_block(false);
-
-                servosrc.set_property_format(gst::Format::Bytes);
                 if inner.input_size > 0 {
                     servosrc.set_size(inner.input_size as i64);
                 }

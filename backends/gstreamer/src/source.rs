@@ -15,6 +15,8 @@ use std::mem;
 use std::ptr;
 use std::sync::{Once, ONCE_INIT};
 
+const MAX_SRC_QUEUE_SIZE: u64 = 50 * 1024 * 1024; // 50 MB.
+
 mod imp {
     use super::*;
     use glib::prelude::*;
@@ -44,6 +46,10 @@ mod imp {
             let appsrc = gst::ElementFactory::make("appsrc", None)
                 .map(|elem| elem.downcast::<AppSrc>().unwrap())
                 .expect("Could not create appsrc element");
+
+            appsrc.set_max_bytes(MAX_SRC_QUEUE_SIZE);
+            appsrc.set_property_block(false);
+            appsrc.set_property_format(gst::Format::Bytes);
 
             // At this point the bin is not completely created,
             // so we cannot add anything to it yet.
@@ -86,9 +92,6 @@ mod imp {
         inner_appsrc_proxy!(get_max_bytes, u64);
         inner_appsrc_proxy!(push_buffer, buffer, gst::Buffer, gst::FlowReturn);
         inner_appsrc_proxy!(set_callbacks, callbacks, AppSrcCallbacks, ());
-        inner_appsrc_proxy!(set_max_bytes, bytes, u64, ());
-        inner_appsrc_proxy!(set_property_block, block, bool, ());
-        inner_appsrc_proxy!(set_property_format, format, gst::Format, ());
         inner_appsrc_proxy!(set_stream_type, type_, AppStreamType, ());
     }
 
