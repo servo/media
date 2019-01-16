@@ -4,7 +4,7 @@ use glib_ffi;
 use gobject_ffi;
 use gobject_subclass::object::*;
 use gst;
-use gst::query::QueryView;
+use gst::query::{QueryRef, QueryView};
 use gst_app::{self, AppSrc, AppSrcCallbacks, AppStreamType};
 use gst_ffi;
 use gst_plugin::bin::*;
@@ -20,7 +20,7 @@ const MAX_SRC_QUEUE_SIZE: u64 = 50 * 1024 * 1024; // 50 MB.
 mod imp {
     use super::*;
     use glib::prelude::*;
-    use gst::{ElementExt, PadExtManual};
+    use gst::ElementExt;
     use gst_plugin::element::ElementClassExt;
 
     macro_rules! inner_appsrc_proxy {
@@ -109,6 +109,13 @@ mod imp {
             let ghost_pad =
                 gst::GhostPad::new("src", &pad).expect("Could not create src ghost pad");
 
+            bin.add_pad(&ghost_pad)
+                .expect("Could not add src ghost pad to bin");
+        }
+    }
+
+    impl ElementImpl<Bin> for ServoSrc {
+        fn query(&self, _element: &Bin, query: &mut QueryRef) -> bool {
             // In order to make buffering/downloading work as we want, apart from
             // setting the appropriate flags on the player playbin,
             // the source needs to either:
@@ -122,29 +129,20 @@ mod imp {
             //
             // For 2. we need to make servosrc handle the scheduling properties query
             // to report that it "is bandwidth limited".
-            ghost_pad.add_probe(gst::PadProbeType::QUERY_UPSTREAM, |_, probe_info| {
-                if let Some(gst::PadProbeData::Query(ref mut query)) = probe_info.data {
-                    if let QueryView::Scheduling(ref mut query) = query.view_mut() {
-                        query.set(
-                            gst::SchedulingFlags::SEQUENTIAL
-                                | gst::SchedulingFlags::BANDWIDTH_LIMITED,
-                            1,
-                            -1,
-                            0,
-                        );
-                        query.add_scheduling_modes(&[gst::PadMode::Push]);
-                        return gst::PadProbeReturn::Handled;
-                    }
-                }
-                gst::PadProbeReturn::Ok
-            });
-
-            bin.add_pad(&ghost_pad)
-                .expect("Could not add src ghost pad to bin");
+             if let QueryView::Scheduling(ref mut query) = query.view_mut() {
+                query.set(
+                    gst::SchedulingFlags::SEQUENTIAL
+                        | gst::SchedulingFlags::BANDWIDTH_LIMITED,
+                    1,
+                    -1,
+                    0,
+                );
+                query.add_scheduling_modes(&[gst::PadMode::Push]);
+                return true;
+            }
+            false
         }
     }
-
-    impl ElementImpl<Bin> for ServoSrc {}
 
     impl BinImpl<Bin> for ServoSrc {}
 
