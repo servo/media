@@ -349,7 +349,7 @@ impl GStreamerPlayer {
         // faster playback of already-downloaded chunks.
         let flags = pipeline
             .get_property("flags")
-            .map_err(|e| PlayerError::Backend(e.0.to_owned()))?;
+            .map_err(|e| PlayerError::Backend(e.to_string()))?;
         let flags_class = match FlagsClass::new(flags.type_()) {
             Some(flags) => flags,
             None => {
@@ -376,12 +376,12 @@ impl GStreamerPlayer {
         };
         pipeline
             .set_property("flags", &flags)
-            .map_err(|e| PlayerError::Backend(e.0.to_owned()))?;
+            .map_err(|e| PlayerError::Backend(e.to_string()))?;
 
         // Set max size for the player buffer.
         pipeline
             .set_property("buffer-size", &MAX_BUFFER_SIZE)
-            .map_err(|e| PlayerError::Backend(e.0.to_owned()))?;
+            .map_err(|e| PlayerError::Backend(e.to_string()))?;
 
         // Set player position interval update to 0.5 seconds.
         let mut config = player.get_config();
