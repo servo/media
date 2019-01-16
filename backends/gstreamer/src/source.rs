@@ -72,23 +72,6 @@ mod imp {
                 "Feed player with media data",
                 "Servo developers",
             );
-
-            let caps = gst::Caps::new_simple(
-                "video/x-raw",
-                &[
-                    ("format", &"BGRA"),
-                    ("pixel-aspect-ratio", &gst::Fraction::from((1, 1))),
-                ],
-            );
-
-            let src_pad_template = gst::PadTemplate::new(
-                "src",
-                gst::PadDirection::Src,
-                gst::PadPresence::Always,
-                &caps,
-            );
-
-            klass.add_pad_template(src_pad_template);
         }
 
         pub fn set_size(&self, size: i64) {
