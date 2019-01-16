@@ -14,9 +14,9 @@ extern crate gstreamer_player as gst_player;
 extern crate gstreamer_sys as gst_ffi;
 extern crate gstreamer_video as gst_video;
 extern crate ipc_channel;
-
 extern crate servo_media_audio;
 extern crate servo_media_player;
+extern crate url;
 
 use servo_media_audio::sink::AudioSinkError;
 use servo_media_audio::AudioBackend;

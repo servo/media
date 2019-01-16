@@ -14,6 +14,7 @@ use gst_plugin::uri_handler::{register_uri_handler, URIHandlerImpl, URIHandlerIm
 use std::mem;
 use std::ptr;
 use std::sync::{Once, ONCE_INIT};
+use url::Url;
 
 const MAX_SRC_QUEUE_SIZE: u64 = 50 * 1024 * 1024; // 50 MB.
 
@@ -154,9 +155,19 @@ mod imp {
         fn set_uri(
             &self,
             _element: &gst::URIHandler,
-            _uri: Option<String>,
+            uri: Option<String>,
         ) -> Result<(), glib::Error> {
-            Ok(())
+            if let Some(ref uri) = uri {
+                if let Ok(uri) = Url::parse(uri) {
+                    if uri.scheme() == "servosrc" {
+                        return Ok(())
+                    }
+                }
+            }
+            Err(glib::Error::new(
+                gst::URIError::BadUri,
+                format!("Invalid URI '{:?}'", uri,).as_str(),
+            ))
         }
     }
 
