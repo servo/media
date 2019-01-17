@@ -17,7 +17,7 @@ extern crate websocket;
 
 use rand::Rng;
 use servo_media::ServoMedia;
-use servo_media::webrtc::{RTCSessionDescription, WebRtcController, WebRtcSignaller};
+use servo_media::webrtc::{SessionDescription, WebRtcController, WebRtcSignaller};
 use std::env;
 use std::net;
 use std::sync::{Arc, mpsc};
@@ -204,7 +204,7 @@ fn receive_loop(
 
                             match json_msg {
                                 JsonMsg::Sdp { type_, sdp } => {
-                                    let desc = RTCSessionDescription {
+                                    let desc = SessionDescription {
                                         type_: type_.parse().unwrap(),
                                         sdp: sdp.into()
                                     };

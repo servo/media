@@ -3,7 +3,7 @@ use glib::{self, ObjectExt};
 use gst::{self, ElementExt, BinExt, PadExt, BinExtManual, GObjectExtManualGst};
 use gst_sdp;
 use gst_webrtc;
-use servo_media_webrtc::{RTCSdpType, RTCSessionDescription, WebRtcController, WebRtcSignaller};
+use servo_media_webrtc::{SdpType, SessionDescription, WebRtcController, WebRtcSignaller};
 use std::sync::{Arc, Mutex};
 
 // TODO:
@@ -85,17 +85,17 @@ impl WebRtcController for GStreamerWebRtcController {
             .unwrap();
     }
 
-    fn set_remote_description(&self, desc: RTCSessionDescription) {
+    fn set_remote_description(&self, desc: SessionDescription) {
         use gst_webrtc::WebRTCSDPType;
         if !self.assert_app_state_is(AppState::PeerCallNegotiating, "Not ready to handle sdp") {
             return;
         }
 
         let ty = match desc.type_ {
-            RTCSdpType::Answer => WebRTCSDPType::Answer,
-            RTCSdpType::Offer => WebRTCSDPType::Offer,
-            RTCSdpType::Pranswer => WebRTCSDPType::Pranswer,
-            RTCSdpType::Rollback => WebRTCSDPType::Rollback,
+            SdpType::Answer => WebRTCSDPType::Answer,
+            SdpType::Offer => WebRTCSDPType::Offer,
+            SdpType::Pranswer => WebRTCSDPType::Pranswer,
+            SdpType::Rollback => WebRTCSDPType::Rollback,
         };
 
         let mut app_control = self.0.lock().unwrap();
