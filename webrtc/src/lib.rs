@@ -1,4 +1,9 @@
+use std::any::Any;
 use std::str::FromStr;
+
+pub trait MediaStream: Any {
+    fn as_any(&self) -> &Any;
+}
 
 pub trait WebRtcController: Send {
     fn notify_signal_server_error(&self);
@@ -17,7 +22,11 @@ pub trait WebRtcSignaller: Send {
 pub trait WebRtcBackend {
     type Controller: WebRtcController;
 
-    fn start_webrtc_controller(signaller: Box<WebRtcSignaller>) -> Self::Controller;
+    fn start_webrtc_controller(
+        signaller: Box<WebRtcSignaller>,
+        audio: &MediaStream,
+        video: &MediaStream,
+    ) -> Self::Controller;
 }
 
 /// https://www.w3.org/TR/webrtc/#rtcsdptype

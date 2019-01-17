@@ -3,6 +3,7 @@ use glib::{self, ObjectExt};
 use gst::{self, ElementExt, BinExt, PadExt, BinExtManual, GObjectExtManualGst};
 use gst_sdp;
 use gst_webrtc;
+use media_stream::GStreamerMediaStream;
 use servo_media_webrtc::*;
 use std::sync::{Arc, Mutex};
 
@@ -12,28 +13,6 @@ use std::sync::{Arc, Mutex};
 // - figure out purpose of glib loop
 
 const STUN_SERVER: &str = "stun://stun.l.google.com:19302";
-lazy_static! {
-    static ref RTP_CAPS_OPUS: gst::Caps = {
-        gst::Caps::new_simple(
-            "application/x-rtp",
-            &[
-                ("media", &"audio"),
-                ("encoding-name", &"OPUS"),
-                ("payload", &(97i32)),
-            ],
-        )
-    };
-    static ref RTP_CAPS_VP8: gst::Caps = {
-        gst::Caps::new_simple(
-            "application/x-rtp",
-            &[
-                ("media", &"video"),
-                ("encoding-name", &"VP8"),
-                ("payload", &(96i32)),
-            ],
-        )
-    };
-}
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum MediaType {
@@ -106,8 +85,8 @@ impl WebRtcController for GStreamerWebRtcController {
 }
 
 impl GStreamerWebRtcController {
-    fn start_pipeline(&self) -> Result<(), Error> {
-        self.0.lock().unwrap().start_pipeline(self.clone())
+    fn start_pipeline(&self, audio: &MediaStream, video: &MediaStream) {
+        self.0.lock().unwrap().start_pipeline(self.clone(), audio, video)
     }
 
     fn set_description(&self, desc: SessionDescription, local: bool) {
@@ -199,48 +178,59 @@ struct WebRtcControllerState {
 }
 
 impl WebRtcControllerState {
-    fn construct_pipeline(&self) -> Result<gst::Pipeline, Error> {
-        let pipeline = self.pipeline.clone();
-
+    fn construct_pipeline(
+        pipeline: gst::Pipeline,
+        audio: &MediaStream,
+        video: &MediaStream,
+    ) -> gst::Pipeline {
         let webrtcbin = gst::ElementFactory::make("webrtcbin", "sendrecv").unwrap();
-        pipeline.add(&webrtcbin)?;
+        pipeline.add(&webrtcbin).unwrap();
 
         webrtcbin.set_property_from_str("stun-server", STUN_SERVER);
         webrtcbin.set_property_from_str("bundle-policy", "max-bundle");
 
-        add_video_source(&pipeline, &webrtcbin)?;
-        add_audio_source(&pipeline, &webrtcbin)?;
+        let audio = audio.as_any().downcast_ref::<GStreamerMediaStream>().unwrap();
+        audio.attach_to_pipeline(&pipeline, &webrtcbin);
+        let video = video.as_any().downcast_ref::<GStreamerMediaStream>().unwrap();
+        video.attach_to_pipeline(&pipeline, &webrtcbin);
 
-        Ok(pipeline)
+        pipeline
     }
 
-    fn start_pipeline(&mut self, target: GStreamerWebRtcController) -> Result<(), Error> {
-        let pipe = self.construct_pipeline()?;
+    fn start_pipeline(
+        &mut self,
+        target: GStreamerWebRtcController,
+        audio: &MediaStream,
+        video: &MediaStream
+    ) {
+        let pipe = Self::construct_pipeline(
+            self.pipeline.clone(),
+            audio,
+            video,
+        );
         let webrtc = pipe.get_by_name("sendrecv").unwrap();
 
         let app_control_clone = target.clone();
         webrtc.connect("on-negotiation-needed", false, move |values| {
             on_negotiation_needed(&app_control_clone, values).unwrap();
             None
-        })?;
+        }).unwrap();
 
         let app_control_clone = target.clone();
         webrtc.connect("on-ice-candidate", false, move |values| {
             send_ice_candidate_message(&app_control_clone, values);
             None
-        })?;
+        }).unwrap();
 
         let pipe_clone = pipe.clone();
         let app_control_clone = target.clone();
         webrtc.connect("pad-added", false, move |values| {
             on_incoming_stream(&app_control_clone, values, &pipe_clone)
-        })?;
+        }).unwrap();
 
-        pipe.set_state(gst::State::Playing).into_result()?;
+        pipe.set_state(gst::State::Playing).into_result().unwrap();
 
         self.webrtc = Some(webrtc);
-
-        Ok(())
     }
 
     fn update_state(&mut self, state: AppState) {
@@ -248,7 +238,11 @@ impl WebRtcControllerState {
     }
 }
 
-pub fn start(signaller: Box<WebRtcSignaller>) -> GStreamerWebRtcController {
+pub fn start(
+    signaller: Box<WebRtcSignaller>,
+    audio: &MediaStream,
+    video: &MediaStream,
+) -> GStreamerWebRtcController {
     let main_loop = glib::MainLoop::new(None, false);
     let pipeline = gst::Pipeline::new("main");
     //let bus = pipeline.get_bus().unwrap();
@@ -261,7 +255,7 @@ pub fn start(signaller: Box<WebRtcSignaller>) -> GStreamerWebRtcController {
         _main_loop: main_loop,
     };
     let controller = GStreamerWebRtcController(Arc::new(Mutex::new(controller)));
-    controller.start_pipeline().unwrap();
+    controller.start_pipeline(audio, video);
 
     let controller_clone = controller.clone();
             
@@ -309,82 +303,6 @@ pub fn start(signaller: Box<WebRtcSignaller>) -> GStreamerWebRtcController {
         }
     }
 }*/
-
-fn add_video_source(pipeline: &gst::Pipeline, webrtcbin: &gst::Element) -> Result<(), Error> {
-    let videotestsrc = gst::ElementFactory::make("videotestsrc", None).unwrap();
-    let videoconvert = gst::ElementFactory::make("videoconvert", None).unwrap();
-    let queue = gst::ElementFactory::make("queue", None).unwrap();
-    let vp8enc = gst::ElementFactory::make("vp8enc", None).unwrap();
-
-    videotestsrc.set_property_from_str("pattern", "ball");
-    videotestsrc.set_property("is-live", &true).unwrap();
-    vp8enc.set_property("deadline", &1i64).unwrap();
-
-    let rtpvp8pay = gst::ElementFactory::make("rtpvp8pay", None).unwrap();
-    let queue2 = gst::ElementFactory::make("queue", None).unwrap();
-
-    pipeline.add_many(&[
-        &videotestsrc,
-        &videoconvert,
-        &queue,
-        &vp8enc,
-        &rtpvp8pay,
-        &queue2,
-    ])?;
-
-    gst::Element::link_many(&[
-        &videotestsrc,
-        &videoconvert,
-        &queue,
-        &vp8enc,
-        &rtpvp8pay,
-        &queue2,
-    ])?;
-
-    queue2.link_filtered(webrtcbin, &*RTP_CAPS_VP8)?;
-
-    Ok(())
-}
-
-fn add_audio_source(pipeline: &gst::Pipeline, webrtcbin: &gst::Element) -> Result<(), Error> {
-    let audiotestsrc = gst::ElementFactory::make("audiotestsrc", None).unwrap();
-    let queue = gst::ElementFactory::make("queue", None).unwrap();
-    let audioconvert = gst::ElementFactory::make("audioconvert", None).unwrap();
-    let audioresample = gst::ElementFactory::make("audioresample", None).unwrap();
-    let queue2 = gst::ElementFactory::make("queue", None).unwrap();
-    let opusenc = gst::ElementFactory::make("opusenc", None).unwrap();
-    let rtpopuspay = gst::ElementFactory::make("rtpopuspay", None).unwrap();
-    let queue3 = gst::ElementFactory::make("queue", None).unwrap();
-
-    audiotestsrc.set_property_from_str("wave", "red-noise");
-    audiotestsrc.set_property("is-live", &true).unwrap();
-
-    pipeline.add_many(&[
-        &audiotestsrc,
-        &queue,
-        &audioconvert,
-        &audioresample,
-        &queue2,
-        &opusenc,
-        &rtpopuspay,
-        &queue3,
-    ])?;
-
-    gst::Element::link_many(&[
-        &audiotestsrc,
-        &queue,
-        &audioconvert,
-        &audioresample,
-        &queue2,
-        &opusenc,
-        &rtpopuspay,
-        &queue3,
-    ])?;
-
-    queue3.link_filtered(webrtcbin, &*RTP_CAPS_OPUS)?;
-
-    Ok(())
-}
 
 fn send_sdp_offer(app_control: &GStreamerWebRtcController, offer: &gst_webrtc::WebRTCSessionDescription) {
     if !app_control.assert_app_state_is_at_least(

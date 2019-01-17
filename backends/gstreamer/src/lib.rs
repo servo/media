@@ -29,7 +29,7 @@ extern crate url;
 use servo_media_audio::sink::AudioSinkError;
 use servo_media_audio::AudioBackend;
 use servo_media_player::PlayerBackend;
-use servo_media_webrtc::{WebRtcBackend, WebRtcSignaller};
+use servo_media_webrtc::{WebRtcBackend, WebRtcSignaller, MediaStream};
 
 pub mod audio_decoder;
 pub mod audio_sink;
@@ -60,8 +60,13 @@ impl PlayerBackend for GStreamerBackend {
 
 impl WebRtcBackend for GStreamerBackend {
     type Controller = webrtc::GStreamerWebRtcController;
-    fn start_webrtc_controller(signaller: Box<WebRtcSignaller>) -> Self::Controller {
-        webrtc::start(signaller)
+
+    fn start_webrtc_controller(
+        signaller: Box<WebRtcSignaller>,
+        audio: &MediaStream,
+        video: &MediaStream,
+    ) -> Self::Controller {
+        webrtc::start(signaller, audio, video)
     }
 }
 
@@ -70,7 +75,11 @@ impl GStreamerBackend {
         gst::init().unwrap();
     }
 
-    pub fn create_mediastream() -> media_stream::GStreamerMediaStream {
-        media_stream::GStreamerMediaStream
+    pub fn create_audiostream() -> media_stream::GStreamerMediaStream {
+        media_stream::GStreamerMediaStream::create_audio()
+    }
+
+    pub fn create_videostream() -> media_stream::GStreamerMediaStream {
+        media_stream::GStreamerMediaStream::create_video()
     }
 }

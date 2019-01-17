@@ -6,6 +6,7 @@ pub extern crate servo_media_audio as audio;
 extern crate servo_media_gstreamer;
 pub extern crate servo_media_player as player;
 pub extern crate servo_media_webrtc as webrtc;
+use std::any::Any;
 use std::sync::{self, Arc, Mutex, Once};
 
 use audio::context::{AudioContext, AudioContextOptions};
@@ -13,7 +14,7 @@ use audio::decoder::DummyAudioDecoder;
 use audio::sink::{AudioSinkError, DummyAudioSink};
 use audio::AudioBackend;
 use player::{DummyPlayer, Player, PlayerBackend};
-use webrtc::{WebRtcBackend, WebRtcSignaller};
+use webrtc::{WebRtcBackend, WebRtcSignaller, MediaStream};
 
 pub struct ServoMedia;
 
@@ -21,6 +22,10 @@ static INITIALIZER: Once = sync::ONCE_INIT;
 static mut INSTANCE: *mut Mutex<Option<Arc<ServoMedia>>> = 0 as *mut _;
 
 pub struct DummyMediaStream;
+impl MediaStream for DummyMediaStream {
+    fn as_any(&self) -> &Any { self }
+}
+
 pub struct DummyBackend {}
 
 impl AudioBackend for DummyBackend {
@@ -44,7 +49,11 @@ impl PlayerBackend for DummyBackend {
 
 impl DummyBackend {
     pub fn init() {}
-    pub fn create_mediastream() -> DummyMediaStream {
+    pub fn create_audiostream() -> DummyMediaStream {
+        DummyMediaStream
+    }
+
+    pub fn create_videostream() -> DummyMediaStream {
         DummyMediaStream
     }
 }
@@ -61,8 +70,6 @@ pub type Backend = servo_media_gstreamer::GStreamerBackend;
 pub type Backend = DummyBackend;
 
 pub type WebRtcController = servo_media_gstreamer::webrtc::GStreamerWebRtcController;
-
-pub type MediaStream = servo_media_gstreamer::media_stream::GStreamerMediaStream;
 
 impl ServoMedia {
     pub fn new() -> Self {
@@ -91,10 +98,18 @@ impl ServoMedia {
     }
 
     pub fn create_webrtc(&self, signaller: Box<WebRtcSignaller>) -> Box<WebRtcController> {
-        Box::new(Backend::start_webrtc_controller(signaller))
+        Box::new(Backend::start_webrtc_controller(
+            signaller,
+            &*Self::create_audiostream(),
+            &*Self::create_videostream()),
+        )
     }
 
-    pub fn create_mediastream(&self) -> Box<MediaStream> {
-        Box::new(Backend::create_mediastream())
+    pub fn create_audiostream() -> Box<MediaStream> {
+        Box::new(Backend::create_audiostream())
+    }
+
+    pub fn create_videostream() -> Box<MediaStream> {
+        Box::new(Backend::create_videostream())
     }
 }
