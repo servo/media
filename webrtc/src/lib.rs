@@ -3,6 +3,7 @@ use std::str::FromStr;
 pub trait WebRtcController: Send {
     fn notify_signal_server_error(&self);
     fn set_remote_description(&self, SessionDescription);
+    fn set_local_description(&self, SessionDescription);
     fn add_ice_candidate(&self, candidate: IceCandidate);
     fn trigger_negotiation(&self);
 }

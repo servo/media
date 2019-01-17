@@ -86,10 +86,32 @@ impl WebRtcController for GStreamerWebRtcController {
     }
 
     fn set_remote_description(&self, desc: SessionDescription) {
-        use gst_webrtc::WebRTCSDPType;
         if !self.assert_app_state_is(AppState::PeerCallNegotiating, "Not ready to handle sdp") {
             return;
         }
+
+        self.set_description(desc, false);
+
+        let mut app_control = self.0.lock().unwrap();
+        app_control.app_state = AppState::PeerCallStarted;
+    }
+
+    fn set_local_description(&self, desc: SessionDescription) {
+        if !self.assert_app_state_is(AppState::PeerCallNegotiating, "Not ready to handle sdp") {
+            return;
+        }
+
+        self.set_description(desc, true);
+    }
+}
+
+impl GStreamerWebRtcController {
+    fn start_pipeline(&self) -> Result<(), Error> {
+        self.0.lock().unwrap().start_pipeline(self.clone())
+    }
+
+    fn set_description(&self, desc: SessionDescription, local: bool) {
+        use gst_webrtc::WebRTCSDPType;
 
         let ty = match desc.type_ {
             SdpType::Answer => WebRTCSDPType::Answer,
@@ -97,6 +119,8 @@ impl WebRtcController for GStreamerWebRtcController {
             SdpType::Pranswer => WebRTCSDPType::Pranswer,
             SdpType::Rollback => WebRTCSDPType::Rollback,
         };
+
+        let kind = if local { "set-local-description" } else { "set-remote-description" };
 
         let mut app_control = self.0.lock().unwrap();
         let ret = gst_sdp::SDPMessage::parse_buffer(desc.sdp.as_bytes()).unwrap();
@@ -107,15 +131,8 @@ impl WebRtcController for GStreamerWebRtcController {
             .webrtc
             .as_ref()
             .unwrap()
-            .emit("set-remote-description", &[&answer, &promise])
+            .emit(kind, &[&answer, &promise])
             .unwrap();
-        app_control.app_state = AppState::PeerCallStarted;
-    }
-}
-
-impl GStreamerWebRtcController {
-    fn start_pipeline(&self) -> Result<(), Error> {
-        self.0.lock().unwrap().start_pipeline(self.clone())
     }
 
     fn assert_app_state_is(&self, state: AppState, error_msg: &'static str) -> bool {
