@@ -1704,6 +1704,7 @@ dependencies = [
 name = "servo-media-gstreamer"
 version = "0.1.0"
 dependencies = [
+ "boxfnonce 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "byte-slice-cast 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "glib 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1741,6 +1742,9 @@ dependencies = [
 [[package]]
 name = "servo-media-webrtc"
 version = "0.1.0"
+dependencies = [
+ "boxfnonce 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "servo_media_android"

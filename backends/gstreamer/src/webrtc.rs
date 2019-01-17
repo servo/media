@@ -1,8 +1,9 @@
+use boxfnonce::SendBoxFnOnce;
 use failure::Error;
 use glib::{self, ObjectExt};
 use gst::{self, ElementExt, BinExt, PadExt, BinExtManual, GObjectExtManualGst};
 use gst_sdp;
-use gst_webrtc;
+use gst_webrtc::{self, WebRTCSDPType};
 use media_stream::GStreamerMediaStream;
 use servo_media_webrtc::*;
 use std::sync::{Arc, Mutex};
@@ -64,24 +65,36 @@ impl WebRtcController for GStreamerWebRtcController {
             .unwrap();
     }
 
-    fn set_remote_description(&self, desc: SessionDescription) {
+    fn set_remote_description(&self, desc: SessionDescription, cb: SendBoxFnOnce<'static, ()>) {
         if !self.assert_app_state_is(AppState::PeerCallNegotiating, "Not ready to handle sdp") {
             return;
         }
 
-        self.set_description(desc, false);
+        self.set_description(desc, false, cb);
 
         let mut app_control = self.0.lock().unwrap();
         app_control.app_state = AppState::PeerCallStarted;
     }
 
-    fn set_local_description(&self, desc: SessionDescription) {
+    fn set_local_description(&self, desc: SessionDescription, cb: SendBoxFnOnce<'static, ()>) {
         if !self.assert_app_state_is(AppState::PeerCallNegotiating, "Not ready to handle sdp") {
             return;
         }
 
-        self.set_description(desc, true);
+        self.set_description(desc, true, cb);
     }
+
+    fn create_offer(&self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) {
+
+        let app_control_clone = self.clone();
+        let this = self.0.lock().unwrap();
+        let webrtc = this.webrtc.as_ref().unwrap();;
+        let promise = gst::Promise::new_with_change_func(move |promise| {
+            on_offer_created(app_control_clone, promise, cb);
+        });
+
+        webrtc.emit("create-offer", &[&None::<gst::Structure>, &promise]).unwrap();
+    } 
 }
 
 impl GStreamerWebRtcController {
@@ -89,9 +102,7 @@ impl GStreamerWebRtcController {
         self.0.lock().unwrap().start_pipeline(self.clone(), audio, video)
     }
 
-    fn set_description(&self, desc: SessionDescription, local: bool) {
-        use gst_webrtc::WebRTCSDPType;
-
+    fn set_description(&self, desc: SessionDescription, local: bool, cb: SendBoxFnOnce<'static, ()>) {
         let ty = match desc.type_ {
             SdpType::Answer => WebRTCSDPType::Answer,
             SdpType::Offer => WebRTCSDPType::Offer,
@@ -105,7 +116,9 @@ impl GStreamerWebRtcController {
         let ret = gst_sdp::SDPMessage::parse_buffer(desc.sdp.as_bytes()).unwrap();
         let answer =
             gst_webrtc::WebRTCSessionDescription::new(ty, ret);
-        let promise = gst::Promise::new();
+        let promise = gst::Promise::new_with_change_func(move |_promise| {
+            cb.call()
+        });
         app_control
             .webrtc
             .as_ref()
@@ -211,8 +224,10 @@ impl WebRtcControllerState {
         let webrtc = pipe.get_by_name("sendrecv").unwrap();
 
         let app_control_clone = target.clone();
-        webrtc.connect("on-negotiation-needed", false, move |values| {
-            on_negotiation_needed(&app_control_clone, values).unwrap();
+        webrtc.connect("on-negotiation-needed", false, move |_| {
+            let mut control = app_control_clone.0.lock().unwrap();
+            control.app_state = AppState::PeerCallNegotiating;
+            control.signaller.on_negotiation_needed();
             None
         }).unwrap();
 
@@ -304,29 +319,16 @@ pub fn start(
     }
 }*/
 
-fn send_sdp_offer(app_control: &GStreamerWebRtcController, offer: &gst_webrtc::WebRTCSessionDescription) {
-    if !app_control.assert_app_state_is_at_least(
-        AppState::PeerCallNegotiating,
-        "Can't send offer, not in call",
-    ) {
-        return;
-    }
-
-    app_control.0.lock().unwrap().signaller.send_sdp_offer(
-        offer.get_sdp().as_text().unwrap()
-    );
-}
-
 fn on_offer_created(
-    app_control: &GStreamerWebRtcController,
-    webrtc: &gst::Element,
+    app_control: GStreamerWebRtcController,
     promise: &gst::Promise,
-) -> Result<(), Error> {
+    cb: SendBoxFnOnce<'static, (SessionDescription,)>,
+) {
     if !app_control.assert_app_state_is(
         AppState::PeerCallNegotiating,
         "Not negotiating call when creating offer",
     ) {
-        return Ok(());
+        return;
     }
 
     let reply = promise.get_reply().unwrap();
@@ -336,26 +338,20 @@ fn on_offer_created(
         .unwrap()
         .get::<gst_webrtc::WebRTCSessionDescription>()
         .expect("Invalid argument");
-    webrtc.emit("set-local-description", &[&offer, &None::<gst::Promise>])?;
 
-    send_sdp_offer(&app_control, &offer);
+    let type_ = match offer.get_type() {
+        WebRTCSDPType::Answer => SdpType::Answer,
+        WebRTCSDPType::Offer => SdpType::Offer,
+        WebRTCSDPType::Pranswer => SdpType::Pranswer,
+        WebRTCSDPType::Rollback => SdpType::Rollback,
+        _ => panic!("unknown sdp response")
+    };
 
-    Ok(())
-}
-
-fn on_negotiation_needed(app_control: &GStreamerWebRtcController, values: &[glib::Value]) -> Result<(), Error> {
-    app_control.0.lock().unwrap().app_state = AppState::PeerCallNegotiating;
-
-    let webrtc = values[0].get::<gst::Element>().unwrap();
-    let webrtc_clone = webrtc.clone();
-    let app_control_clone = app_control.clone();
-    let promise = gst::Promise::new_with_change_func(move |promise| {
-        on_offer_created(&app_control_clone, &webrtc, promise).unwrap();
-    });
-
-    webrtc_clone.emit("create-offer", &[&None::<gst::Structure>, &promise])?;
-
-    Ok(())
+    let desc = SessionDescription {
+        sdp: offer.get_sdp().as_text().unwrap(),
+        type_,
+    };
+    cb.call(desc);
 }
 
 fn handle_media_stream(

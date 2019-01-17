@@ -7,6 +7,9 @@ authors = ["The Servo Project Developers"]
 regex = "1.0"
 zip = "0.3.1"
 
+[dependencies]
+boxfnonce = "0.1.0"
+
 [dependencies.byte-slice-cast]
 version = "0.2"
 

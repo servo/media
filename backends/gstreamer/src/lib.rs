@@ -1,3 +1,4 @@
+extern crate boxfnonce;
 extern crate byte_slice_cast;
 
 #[macro_use]

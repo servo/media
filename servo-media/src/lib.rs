@@ -97,8 +97,8 @@ impl ServoMedia {
         Box::new(Backend::make_player())
     }
 
-    pub fn create_webrtc(&self, signaller: Box<WebRtcSignaller>) -> Box<WebRtcController> {
-        Box::new(Backend::start_webrtc_controller(
+    pub fn create_webrtc_arc(&self, signaller: Box<WebRtcSignaller>) -> Arc<WebRtcController> {
+        Arc::new(Backend::start_webrtc_controller(
             signaller,
             &*Self::create_audiostream(),
             &*Self::create_videostream()),

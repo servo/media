@@ -20,7 +20,7 @@ use servo_media::ServoMedia;
 use servo_media::webrtc::*;
 use std::env;
 use std::net;
-use std::sync::{Arc, mpsc};
+use std::sync::{Arc, Mutex, mpsc, Weak};
 use std::thread;
 use websocket::OwnedMessage;
 
@@ -85,7 +85,7 @@ struct State {
     _uid: u32,
     peer_id: Option<String>,
     media: Arc<ServoMedia>,
-    webrtc: Option<Box<WebRtcController>>,
+    webrtc: Option<Arc<WebRtcController>>,
 }
 
 impl State {
@@ -113,8 +113,10 @@ impl State {
             self.app_state = AppState::PeerConnecting;
         }
         if self.peer_id.is_none() {
-            let signaller = Signaller(self.send_msg_tx.clone());
-            self.webrtc = Some(self.media.create_webrtc(Box::new(signaller)));
+            let signaller = SignallerWrap::new(self.send_msg_tx.clone());
+            let s = signaller.clone();
+            self.webrtc = Some(self.media.create_webrtc_arc(Box::new(signaller)));
+            s.0.lock().unwrap().1 = Some(Arc::downgrade(self.webrtc.as_ref().unwrap()));
         }
     }
 
@@ -123,36 +125,69 @@ impl State {
         assert_eq!(self.app_state, AppState::PeerConnecting);
         self.app_state = AppState::PeerConnected;
         if self.peer_id.is_some() {
-            let signaller = Signaller(self.send_msg_tx.clone());
-            self.webrtc = Some(self.media.create_webrtc(Box::new(signaller)));
+            let signaller = SignallerWrap::new(self.send_msg_tx.clone());
+            let s = signaller.clone();
+            self.webrtc = Some(self.media.create_webrtc_arc(Box::new(signaller)));
+            s.0.lock().unwrap().1 = Some(Arc::downgrade(self.webrtc.as_ref().unwrap()));
         }
     }
 }
 
-struct Signaller(mpsc::Sender<OwnedMessage>);
+struct Signaller(mpsc::Sender<OwnedMessage>, Option<Weak<WebRtcController>>);
 
-impl WebRtcSignaller for Signaller {
+#[derive(Clone)]
+struct SignallerWrap(Arc<Mutex<Signaller>>);
+
+impl WebRtcSignaller for SignallerWrap {
     fn close(&self, reason: String) {
-        let _ = self.0.send(OwnedMessage::Close(Some(websocket::message::CloseData {
+        let signaller = self.0.lock().unwrap();
+        let _ = signaller.0.send(OwnedMessage::Close(Some(websocket::message::CloseData {
             status_code: 1011, //Internal Error
             reason: reason,
         })));
     }
 
-    fn send_sdp_offer(&self, offer: String) {
-        let message = serde_json::to_string(&JsonMsg::Sdp {
-            type_: "offer".to_string(),
-            sdp: offer,
-        }).unwrap();
-        self.0.send(OwnedMessage::Text(message)).unwrap();
-    }
-
     fn on_ice_candidate(&self, candidate: IceCandidate) {
+        let signaller = self.0.lock().unwrap();
         let message = serde_json::to_string(&JsonMsg::Ice {
             candidate: candidate.candidate,
             sdp_mline_index: candidate.sdp_mline_index,
         }).unwrap();
+        signaller.0.send(OwnedMessage::Text(message)).unwrap();
+    }
+
+    fn on_negotiation_needed(&self) {
+        let s2 = self.0.clone();
+        let signaller = self.0.lock().unwrap();
+        let controller = signaller.1.as_ref().unwrap().upgrade().unwrap();
+        let c2 = controller.clone();
+        thread::spawn(move || {
+            controller.create_offer((move |offer: SessionDescription| {
+                thread::spawn(move || {
+                    c2.set_local_description(offer.clone(), (move || {
+                        s2.lock().unwrap().send_sdp(offer);
+                    }).into());
+                });
+
+            }).into());
+        });
+    }
+}
+
+impl Signaller {
+    fn send_sdp(&self, desc: SessionDescription) {
+        let message = serde_json::to_string(&JsonMsg::Sdp {
+            type_: desc.type_.as_str().into(),
+            sdp: desc.sdp,
+        }).unwrap();
         self.0.send(OwnedMessage::Text(message)).unwrap();
+    }
+}
+
+impl SignallerWrap {
+    fn new(sender: mpsc::Sender<OwnedMessage>) -> Self {
+        let signaller = Signaller(sender, None);
+        SignallerWrap(Arc::new(Mutex::new(signaller)))
     }
 }
 
@@ -208,7 +243,7 @@ fn receive_loop(
                                         type_: type_.parse().unwrap(),
                                         sdp: sdp.into()
                                     };
-                                    state.webrtc.as_ref().unwrap().set_remote_description(desc);
+                                    state.webrtc.as_ref().unwrap().set_remote_description(desc, (|| {}).into());
                                 }
                                 JsonMsg::Ice {
                                     sdp_mline_index,
@@ -217,7 +252,7 @@ fn receive_loop(
                                     let candidate = IceCandidate {
                                         sdp_mline_index, candidate
                                     };
-                                    state.webrtc.as_ref().unwrap().add_ice_candidate(candidate)
+                                    state.webrtc.as_ref().unwrap().add_ice_candidate(candidate).into()
                                 }
                             };
                         }
@@ -236,7 +271,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     env_logger::init();
     let mut args = env::args();
     let _ = args.next();
-    let server_port = args.next().unwrap().parse::<u32>().unwrap();
+    let server_port = args.next().expect("Usage: simple_webrtc <port> <peer id>").parse::<u32>().unwrap();
     let server = format!("ws://localhost:{}", server_port);
     let peer_id = args.next();
 
