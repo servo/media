@@ -1,7 +1,7 @@
 //! To run this, clone https://github.com/centricular/gstwebrtc-demos, then:
 //! $ cd signalling
 //! $ ./simple-server.py
-//! $ cd ../js
+//! $ cd ../sendrcv/js
 //! $ python -m SimpleHTTPServer
 //! Then load http://localhost:8000 in a web browser, note the client id.
 //! Then run this example with arguments `8443 {id}`.
