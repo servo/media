@@ -101,7 +101,7 @@ impl GStreamerWebRtcController {
 
         let kind = if local { "set-local-description" } else { "set-remote-description" };
 
-        let mut app_control = self.0.lock().unwrap();
+        let app_control = self.0.lock().unwrap();
         let ret = gst_sdp::SDPMessage::parse_buffer(desc.sdp.as_bytes()).unwrap();
         let answer =
             gst_webrtc::WebRTCSessionDescription::new(ty, ret);
