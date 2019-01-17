@@ -3,7 +3,7 @@ use glib::{self, ObjectExt};
 use gst::{self, ElementExt, BinExt, PadExt, BinExtManual, GObjectExtManualGst};
 use gst_sdp;
 use gst_webrtc;
-use servo_media_webrtc::{WebRtcController, WebRtcSignaller};
+use servo_media_webrtc::{RTCSdpType, RTCSessionDescription, WebRtcController, WebRtcSignaller};
 use std::sync::{Arc, Mutex};
 
 // TODO:
@@ -85,41 +85,23 @@ impl WebRtcController for GStreamerWebRtcController {
             .unwrap();
     }
 
-    fn notify_sdp(&self, type_: String, sdp: String) {
+    fn set_remote_description(&self, desc: RTCSessionDescription) {
+        use gst_webrtc::WebRTCSDPType;
         if !self.assert_app_state_is(AppState::PeerCallNegotiating, "Not ready to handle sdp") {
             return;
         }
 
-        if type_ == "offer" {
-            let app_control = self.0.lock().unwrap();
-
-            print!("Received offer:\n{}\n", sdp);
-
-            let ret = gst_sdp::SDPMessage::parse_buffer(sdp.as_bytes()).unwrap();
-            let answer =
-                gst_webrtc::WebRTCSessionDescription::new(gst_webrtc::WebRTCSDPType::Offer, ret);
-            let promise = gst::Promise::new();
-            app_control
-                .webrtc
-                .as_ref()
-                .unwrap()
-                .emit("set-remote-description", &[&answer, &promise])
-                .unwrap();
-            return;
-        }
-
-        if type_ != "answer" {
-            self.send_bus_error("Sdp type is not \"answer\"");
-            return;
-        }
+        let ty = match desc.type_ {
+            RTCSdpType::Answer => WebRTCSDPType::Answer,
+            RTCSdpType::Offer => WebRTCSDPType::Offer,
+            RTCSdpType::Pranswer => WebRTCSDPType::Pranswer,
+            RTCSdpType::Rollback => WebRTCSDPType::Rollback,
+        };
 
         let mut app_control = self.0.lock().unwrap();
-
-        print!("Received answer:\n{}\n", sdp);
-
-        let ret = gst_sdp::SDPMessage::parse_buffer(sdp.as_bytes()).unwrap();
+        let ret = gst_sdp::SDPMessage::parse_buffer(desc.sdp.as_bytes()).unwrap();
         let answer =
-            gst_webrtc::WebRTCSessionDescription::new(gst_webrtc::WebRTCSDPType::Answer, ret);
+            gst_webrtc::WebRTCSessionDescription::new(ty, ret);
         let promise = gst::Promise::new();
         app_control
             .webrtc
@@ -127,7 +109,6 @@ impl WebRtcController for GStreamerWebRtcController {
             .unwrap()
             .emit("set-remote-description", &[&answer, &promise])
             .unwrap();
-
         app_control.app_state = AppState::PeerCallStarted;
     }
 }
