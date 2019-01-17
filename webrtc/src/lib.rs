@@ -3,7 +3,7 @@ use std::str::FromStr;
 pub trait WebRtcController: Send {
     fn notify_signal_server_error(&self);
     fn set_remote_description(&self, SessionDescription);
-    fn notify_ice(&self, sdp_mline_index: u32, candidate: String);
+    fn add_ice_candidate(&self, candidate: IceCandidate);
     fn trigger_negotiation(&self);
 }
 
@@ -57,4 +57,13 @@ impl FromStr for SdpType {
 pub struct SessionDescription {
     pub type_: SdpType,
     pub sdp: String,
+}
+
+/// https://www.w3.org/TR/webrtc/#rtcicecandidate-interface
+///
+/// https://developer.mozilla.org/en-US/docs/Web/API/RTCIceCandidate
+pub struct IceCandidate {
+    pub sdp_mline_index: u32,
+    pub candidate: String,
+    // XXXManishearth this is missing a bunch
 }

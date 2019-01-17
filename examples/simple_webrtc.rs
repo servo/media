@@ -17,7 +17,7 @@ extern crate websocket;
 
 use rand::Rng;
 use servo_media::ServoMedia;
-use servo_media::webrtc::{SessionDescription, WebRtcController, WebRtcSignaller};
+use servo_media::webrtc::*;
 use std::env;
 use std::net;
 use std::sync::{Arc, mpsc};
@@ -213,7 +213,12 @@ fn receive_loop(
                                 JsonMsg::Ice {
                                     sdp_mline_index,
                                     candidate,
-                                } => state.webrtc.as_ref().unwrap().notify_ice(sdp_mline_index, candidate),
+                                } => {
+                                    let candidate = IceCandidate {
+                                        sdp_mline_index, candidate
+                                    };
+                                    state.webrtc.as_ref().unwrap().add_ice_candidate(candidate)
+                                }
                             };
                         }
                     }

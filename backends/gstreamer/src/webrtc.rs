@@ -3,7 +3,7 @@ use glib::{self, ObjectExt};
 use gst::{self, ElementExt, BinExt, PadExt, BinExtManual, GObjectExtManualGst};
 use gst_sdp;
 use gst_webrtc;
-use servo_media_webrtc::{SdpType, SessionDescription, WebRtcController, WebRtcSignaller};
+use servo_media_webrtc::*;
 use std::sync::{Arc, Mutex};
 
 // TODO:
@@ -75,13 +75,13 @@ impl WebRtcController for GStreamerWebRtcController {
         //TODO
     }
 
-    fn notify_ice(&self, sdp_mline_index: u32, candidate: String) {
+    fn add_ice_candidate(&self, candidate: IceCandidate) {
         let app_control = self.0.lock().unwrap();
         app_control
             .webrtc
             .as_ref()
             .unwrap()
-            .emit("add-ice-candidate", &[&sdp_mline_index, &candidate])
+            .emit("add-ice-candidate", &[&candidate.sdp_mline_index, &candidate.candidate])
             .unwrap();
     }
 
