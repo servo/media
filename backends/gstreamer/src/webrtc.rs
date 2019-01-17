@@ -544,11 +544,12 @@ fn send_ice_candidate_message(app_control: &GStreamerWebRtcController, values: &
     }
 
     let _webrtc = values[0].get::<gst::Element>().expect("Invalid argument");
-    let mlineindex = values[1].get::<u32>().expect("Invalid argument");
+    let sdp_mline_index = values[1].get::<u32>().expect("Invalid argument");
     let candidate = values[2].get::<String>().expect("Invalid argument");
 
-    app_control.0.lock().unwrap().signaller.send_ice_candidate(
-        mlineindex,
+    let candidate = IceCandidate {
+        sdp_mline_index,
         candidate,
-    );
+    };
+    app_control.0.lock().unwrap().signaller.on_ice_candidate(candidate);
 }

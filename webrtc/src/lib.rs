@@ -10,7 +10,7 @@ pub trait WebRtcController: Send {
 
 pub trait WebRtcSignaller: Send {
     fn send_sdp_offer(&self, offer: String);
-    fn send_ice_candidate(&self, mlineindex: u32, candidate: String);
+    fn on_ice_candidate(&self, candidate: IceCandidate);
     fn close(&self, reason: String);
 }
 

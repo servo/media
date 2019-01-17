@@ -147,10 +147,10 @@ impl WebRtcSignaller for Signaller {
         self.0.send(OwnedMessage::Text(message)).unwrap();
     }
 
-    fn send_ice_candidate(&self, mline_index: u32, candidate: String) {
+    fn on_ice_candidate(&self, candidate: IceCandidate) {
         let message = serde_json::to_string(&JsonMsg::Ice {
-            candidate,
-            sdp_mline_index: mline_index,
+            candidate: candidate.candidate,
+            sdp_mline_index: candidate.sdp_mline_index,
         }).unwrap();
         self.0.send(OwnedMessage::Text(message)).unwrap();
     }
