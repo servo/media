@@ -91,7 +91,7 @@ impl WebRtcController for GStreamerWebRtcController {
         }
 
         if type_ == "offer" {
-            let mut app_control = self.0.lock().unwrap();
+            let app_control = self.0.lock().unwrap();
 
             print!("Received offer:\n{}\n", sdp);
 
@@ -196,7 +196,7 @@ struct WebRtcControllerState {
     signaller: Box<WebRtcSignaller>,
     //send_msg_tx: mpsc::Sender<OwnedMessage>,
     //peer_id: String,
-    main_loop: glib::MainLoop,
+    _main_loop: glib::MainLoop,
     //bus: gst::Bus,
 }
 
@@ -260,7 +260,7 @@ pub fn start(signaller: Box<WebRtcSignaller>) -> GStreamerWebRtcController {
         pipeline,
         signaller,
         app_state: AppState::ServerConnected,
-        main_loop,
+        _main_loop: main_loop,
     };
     let controller = GStreamerWebRtcController(Arc::new(Mutex::new(controller)));
     controller.start_pipeline().unwrap();

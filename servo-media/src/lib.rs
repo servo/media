@@ -20,6 +20,7 @@ pub struct ServoMedia;
 static INITIALIZER: Once = sync::ONCE_INIT;
 static mut INSTANCE: *mut Mutex<Option<Arc<ServoMedia>>> = 0 as *mut _;
 
+pub struct DummyMediaStream;
 pub struct DummyBackend {}
 
 impl AudioBackend for DummyBackend {
@@ -43,6 +44,9 @@ impl PlayerBackend for DummyBackend {
 
 impl DummyBackend {
     pub fn init() {}
+    pub fn create_mediastream() -> DummyMediaStream {
+        DummyMediaStream
+    }
 }
 
 #[cfg(any(
@@ -91,5 +95,6 @@ impl ServoMedia {
     }
 
     pub fn create_mediastream(&self) -> Box<MediaStream> {
+        Box::new(Backend::create_mediastream())
     }
 }
