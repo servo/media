@@ -119,6 +119,11 @@ impl PlayerInner {
         Ok(())
     }
 
+    pub fn set_mute(&mut self, val: bool) -> Result<(), PlayerError> {
+        self.player.set_mute(val);
+        Ok(())
+    }
+
     pub fn set_rate(&mut self, rate: f64) -> Result<(), PlayerError> {
         // This method may be called before the player setup is done, so we safe the rate value
         // and set it once the player is ready and after getting the media info
@@ -706,6 +711,7 @@ impl Player for GStreamerPlayer {
     inner_player_proxy!(stop, ());
     inner_player_proxy!(end_of_stream, ());
     inner_player_proxy!(set_input_size, size, u64);
+    inner_player_proxy!(set_mute, val, bool);
     inner_player_proxy!(set_rate, rate, f64);
     inner_player_proxy!(set_stream_type, type_, StreamType);
     inner_player_proxy!(push_data, data, Vec<u8>);

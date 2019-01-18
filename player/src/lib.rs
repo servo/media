@@ -71,6 +71,7 @@ pub trait Player: Send {
     fn pause(&self) -> Result<(), PlayerError>;
     fn stop(&self) -> Result<(), PlayerError>;
     fn seek(&self, time: f64) -> Result<(), PlayerError>;
+    fn set_mute(&self, val: bool) -> Result<(), PlayerError>;
     fn set_volume(&self, value: f64) -> Result<(), PlayerError>;
     fn set_input_size(&self, size: u64) -> Result<(), PlayerError>;
     fn set_rate(&self, rate: f64) -> Result<(), PlayerError>;
@@ -97,6 +98,10 @@ impl Player for DummyPlayer {
         Ok(())
     }
     fn seek(&self, _: f64) -> Result<(), PlayerError> {
+        Ok(())
+    }
+
+    fn set_mute(&self, _: bool) -> Result<(), PlayerError> {
         Ok(())
     }
 
