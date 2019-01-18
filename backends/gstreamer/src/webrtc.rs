@@ -33,6 +33,8 @@ enum AppState {
     PeerConnectionError,
     PeerConnected,
     PeerCallNegotiating = 4000,
+    PeerCallNegotiatingHaveLocal,
+    PeerCallNegotiatingHaveRemote,
     PeerCallStarted,
     PeerCallError,
 }
@@ -48,6 +50,7 @@ macro_rules! assert_state {
         }
     }
 }
+
 impl WebRtcController for GStreamerWebRtcController {
     fn init(&self, audio: &MediaStream, video: &MediaStream) {
         self.0.lock().unwrap().start_pipeline(self.clone(), audio, video)
@@ -77,20 +80,33 @@ impl WebRtcController for GStreamerWebRtcController {
     }
 
     fn set_remote_description(&self, desc: SessionDescription, cb: SendBoxFnOnce<'static, ()>) {
-        assert_state!(self, state, state == AppState::PeerCallNegotiating, "Not ready to handle sdp");
+        assert_state!(self, state,
+                      state == AppState::PeerCallNegotiating || state == AppState::PeerCallNegotiatingHaveLocal,
+                      "Not ready to handle sdp");
 
         self.set_description(desc, false, cb);
 
         let mut app_control = self.0.lock().unwrap();
-        app_control.app_state = AppState::PeerCallStarted;
+        if app_control.app_state == AppState::PeerCallNegotiating {
+            app_control.app_state = AppState::PeerCallNegotiatingHaveRemote;
+        } else {
+            app_control.app_state = AppState::PeerCallStarted;
+        }
     }
 
     fn set_local_description(&self, desc: SessionDescription, cb: SendBoxFnOnce<'static, ()>) {
-        // if !self.assert_app_state_is(AppState::PeerCallNegotiating, "Not ready to handle sdp") {
-        //     return;
-        // }
+        assert_state!(self, state,
+                      state == AppState::PeerCallNegotiating || state == AppState::PeerCallNegotiatingHaveRemote,
+                      "Not ready to handle sdp");
 
         self.set_description(desc, true, cb);
+
+        let mut app_control = self.0.lock().unwrap();
+        if app_control.app_state == AppState::PeerCallNegotiating {
+            app_control.app_state = AppState::PeerCallNegotiatingHaveLocal;
+        } else {
+            app_control.app_state = AppState::PeerCallStarted;
+        }
     }
 
     fn create_offer(&self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) {
@@ -276,7 +292,10 @@ fn on_offer_or_answer_created(
 ) {
     if ty == "offer" {
         assert_state!(app_control, state, state == AppState::PeerCallNegotiating,
-                      "Not negotiating call when creating offer/answer")
+                      "Not negotiating call when creating offer")
+    } else {
+        assert_state!(app_control, state, state == AppState::PeerCallNegotiatingHaveRemote,
+                      "No offfer received when creating answer")
     }
 
     let reply = promise.get_reply().unwrap();
