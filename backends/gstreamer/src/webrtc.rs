@@ -40,6 +40,14 @@ enum AppState {
 #[derive(Clone)]
 pub struct GStreamerWebRtcController(Arc<Mutex<WebRtcControllerState>>);
 
+macro_rules! assert_state {
+    ($controller:ident, $state:ident, $condition:expr, $string:expr) => {
+        {
+            let $state = $controller.0.lock().unwrap().app_state;
+            assert!($condition, $string);
+        }
+    }
+}
 impl WebRtcController for GStreamerWebRtcController {
     fn init(&self, audio: &MediaStream, video: &MediaStream) {
         self.0.lock().unwrap().start_pipeline(self.clone(), audio, video)
@@ -69,9 +77,7 @@ impl WebRtcController for GStreamerWebRtcController {
     }
 
     fn set_remote_description(&self, desc: SessionDescription, cb: SendBoxFnOnce<'static, ()>) {
-        if !self.assert_app_state_is(AppState::PeerCallNegotiating, "Not ready to handle sdp") {
-            return;
-        }
+        assert_state!(self, state, state == AppState::PeerCallNegotiating, "Not ready to handle sdp");
 
         self.set_description(desc, false, cb);
 
@@ -137,26 +143,6 @@ impl GStreamerWebRtcController {
             .unwrap()
             .emit(kind, &[&answer, &promise])
             .unwrap();
-    }
-
-    fn assert_app_state_is(&self, state: AppState, error_msg: &'static str) -> bool {
-        if self.0.lock().unwrap().app_state != state {
-            self.send_bus_error(error_msg);
-
-            false
-        } else {
-            true
-        }
-    }
-
-    fn assert_app_state_is_at_least(&self, state: AppState, error_msg: &'static str) -> bool {
-        if self.0.lock().unwrap().app_state < state {
-            self.send_bus_error(error_msg);
-
-            false
-        } else {
-            true
-        }
     }
 
     //#[allow(unused)]
@@ -289,12 +275,8 @@ fn on_offer_or_answer_created(
     cb: SendBoxFnOnce<'static, (SessionDescription,)>,
 ) {
     if ty == "offer" {
-        if !app_control.assert_app_state_is(
-            AppState::PeerCallNegotiating,
-            "Not negotiating call when creating offer/answer",
-        ) {
-            return;
-        }
+        assert_state!(app_control, state, state == AppState::PeerCallNegotiating,
+                      "Not negotiating call when creating offer/answer")
     }
 
     let reply = promise.get_reply().unwrap();
@@ -417,11 +399,7 @@ fn on_incoming_stream(
 }
 
 fn send_ice_candidate_message(app_control: &GStreamerWebRtcController, values: &[glib::Value]) {
-    if !app_control
-        .assert_app_state_is_at_least(AppState::PeerCallNegotiating, "Can't send ICE, not in call")
-    {
-        return;
-    }
+    assert_state!(app_control, state, state >= AppState::PeerCallNegotiating, "Can't send ICE, not in call");
 
     let _webrtc = values[0].get::<gst::Element>().expect("Invalid argument");
     let sdp_mline_index = values[1].get::<u32>().expect("Invalid argument");
