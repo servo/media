@@ -5,7 +5,7 @@ use std::str::FromStr;
 
 use boxfnonce::SendBoxFnOnce;
 
-pub trait MediaStream: Any {
+pub trait MediaStream: Any + Send {
     fn as_any(&self) -> &Any;
 }
 

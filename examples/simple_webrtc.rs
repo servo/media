@@ -89,6 +89,7 @@ struct State {
     media: Arc<ServoMedia>,
     webrtc: Option<Arc<WebRtcController>>,
     signaller: Option<SignallerWrap>,
+    streams: Vec<Box<MediaStream>>,
 }
 
 impl State {
@@ -138,8 +139,18 @@ impl State {
         self.signaller = Some(s);
         let webrtc = self.webrtc.as_ref().unwrap();
         webrtc.init();
-        webrtc.add_stream(&*self.media.create_videostream());
-        webrtc.add_stream(&*self.media.create_audiostream());
+        let video = self
+            .media
+            .create_videoinput_stream()
+            .unwrap_or_else(|| self.media.create_videostream());
+        let audio = self
+            .media
+            .create_audioinput_stream()
+            .unwrap_or_else(|| self.media.create_audiostream());
+        webrtc.add_stream(&*video);
+        self.streams.push(video);
+        webrtc.add_stream(&*audio);
+        self.streams.push(audio);
         webrtc.configure(STUN_SERVER, BundlePolicy::MaxBundle);
     }
 }
@@ -344,6 +355,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         media: servo_media,
         webrtc: None,
         signaller: None,
+        streams: vec![],
     };
 
     let receive_loop = receive_loop(receiver, send_msg_tx, state);

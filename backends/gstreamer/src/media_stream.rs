@@ -26,8 +26,8 @@ lazy_static! {
     };
 }
 
-#[derive(Debug)]
-enum StreamType {
+#[derive(Debug, PartialEq)]
+pub enum StreamType {
     Audio,
     Video,
 }
@@ -45,6 +45,7 @@ impl MediaStream for GStreamerMediaStream {
 
 impl GStreamerMediaStream {
     pub fn attach_to_pipeline(&self, pipeline: &gst::Pipeline, webrtcbin: &gst::Element) {
+        println!("atttaching a {:?} stream", self.type_);
         let elements: Vec<_> = self.elements.iter().collect();
         pipeline.add_many(&elements[..]).unwrap();
         gst::Element::link_many(&elements[..]).unwrap();
@@ -53,18 +54,23 @@ impl GStreamerMediaStream {
             StreamType::Audio => &*RTP_CAPS_OPUS,
             StreamType::Video => &*RTP_CAPS_VP8,
         };
-        println!("atttaching a {:?} stream", self.type_);
         self.elements.last().as_ref().unwrap().link_filtered(webrtcbin, caps).unwrap();
+        pipeline.set_state(gst::State::Playing).into_result().unwrap();
     }
 
     pub fn create_video() -> GStreamerMediaStream {
         let videotestsrc = gst::ElementFactory::make("videotestsrc", None).unwrap();
+        videotestsrc.set_property_from_str("pattern", "ball");
+        videotestsrc.set_property("is-live", &true).unwrap();
+
+        Self::create_video_from(videotestsrc)
+    }
+
+    pub fn create_video_from(source: gst::Element) -> GStreamerMediaStream {
         let videoconvert = gst::ElementFactory::make("videoconvert", None).unwrap();
         let queue = gst::ElementFactory::make("queue", None).unwrap();
         let vp8enc = gst::ElementFactory::make("vp8enc", None).unwrap();
 
-        videotestsrc.set_property_from_str("pattern", "ball");
-        videotestsrc.set_property("is-live", &true).unwrap();
         vp8enc.set_property("deadline", &1i64).unwrap();
 
         let rtpvp8pay = gst::ElementFactory::make("rtpvp8pay", None).unwrap();
@@ -73,7 +79,7 @@ impl GStreamerMediaStream {
         GStreamerMediaStream {
             type_: StreamType::Video,
             elements: vec![
-                videotestsrc,
+                source,
                 videoconvert,
                 queue,
                 vp8enc,
@@ -85,6 +91,13 @@ impl GStreamerMediaStream {
 
     pub fn create_audio() -> GStreamerMediaStream {
         let audiotestsrc = gst::ElementFactory::make("audiotestsrc", None).unwrap();
+        audiotestsrc.set_property_from_str("wave", "red-noise");
+        audiotestsrc.set_property("is-live", &true).unwrap();
+
+        Self::create_audio_from(audiotestsrc)
+    }
+
+    pub fn create_audio_from(source: gst::Element) -> GStreamerMediaStream {
         let queue = gst::ElementFactory::make("queue", None).unwrap();
         let audioconvert = gst::ElementFactory::make("audioconvert", None).unwrap();
         let audioresample = gst::ElementFactory::make("audioresample", None).unwrap();
@@ -93,13 +106,10 @@ impl GStreamerMediaStream {
         let rtpopuspay = gst::ElementFactory::make("rtpopuspay", None).unwrap();
         let queue3 = gst::ElementFactory::make("queue", None).unwrap();
 
-        audiotestsrc.set_property_from_str("wave", "red-noise");
-        audiotestsrc.set_property("is-live", &true).unwrap();
-
         GStreamerMediaStream {
             type_: StreamType::Audio,
             elements: vec![
-                audiotestsrc,
+                source,
                 queue,
                 audioconvert,
                 audioresample,

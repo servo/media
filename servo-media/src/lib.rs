@@ -56,6 +56,14 @@ impl DummyBackend {
     pub fn create_videostream() -> DummyMediaStream {
         DummyMediaStream
     }
+
+    pub fn create_audioinput_stream(&self) -> Option<DummyMediaStream> {
+        Some(DummyMediaStream)
+    }
+
+    pub fn create_videoinput_stream(&self) -> Option<DummyMediaStream> {
+        Some(DummyMediaStream)
+    }
 }
 
 #[cfg(any(
@@ -107,5 +115,13 @@ impl ServoMedia {
 
     pub fn create_videostream(&self) -> Box<MediaStream> {
         Box::new(Backend::create_videostream())
+    }
+
+    pub fn create_audioinput_stream(&self) -> Option<Box<MediaStream>> {
+        Backend::create_audioinput_stream().map(|s| Box::new(s) as Box<MediaStream>)
+    }
+
+    pub fn create_videoinput_stream(&self) -> Option<Box<MediaStream>> {
+        Backend::create_videoinput_stream().map(|s| Box::new(s) as Box<MediaStream>)
     }
 }
