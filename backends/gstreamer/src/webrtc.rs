@@ -115,7 +115,7 @@ impl WebRtcController for GStreamerWebRtcController {
         let this = self.0.lock().unwrap();
         let webrtc = this.webrtc.as_ref().unwrap();;
         let promise = gst::Promise::new_with_change_func(move |promise| {
-            on_offer_or_answer_created("offer", app_control_clone, promise, cb);
+            on_offer_or_answer_created(SdpType::Offer, app_control_clone, promise, cb);
         });
 
         webrtc.emit("create-offer", &[&None::<gst::Structure>, &promise]).unwrap();
@@ -127,7 +127,7 @@ impl WebRtcController for GStreamerWebRtcController {
         let this = self.0.lock().unwrap();
         let webrtc = this.webrtc.as_ref().unwrap();;
         let promise = gst::Promise::new_with_change_func(move |promise| {
-            on_offer_or_answer_created("answer", app_control_clone, promise, cb);
+            on_offer_or_answer_created(SdpType::Answer, app_control_clone, promise, cb);
         });
 
         webrtc.emit("create-answer", &[&None::<gst::Structure>, &promise]).unwrap();
@@ -285,12 +285,13 @@ pub fn construct(
 }
 
 fn on_offer_or_answer_created(
-    ty: &str,
+    ty: SdpType,
     app_control: GStreamerWebRtcController,
     promise: &gst::Promise,
     cb: SendBoxFnOnce<'static, (SessionDescription,)>,
 ) {
-    if ty == "offer" {
+    debug_assert!(ty == SdpType::Offer || ty == SdpType::Answer);
+    if ty == SdpType::Offer {
         assert_state!(app_control, state, state == AppState::PeerCallNegotiating,
                       "Not negotiating call when creating offer")
     } else {
@@ -301,7 +302,7 @@ fn on_offer_or_answer_created(
     let reply = promise.get_reply().unwrap();
 
     let reply = reply
-        .get_value(ty)
+        .get_value(ty.as_str())
         .unwrap()
         .get::<gst_webrtc::WebRTCSessionDescription>()
         .expect("Invalid argument");
