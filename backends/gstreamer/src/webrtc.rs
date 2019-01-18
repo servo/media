@@ -77,9 +77,9 @@ impl WebRtcController for GStreamerWebRtcController {
     }
 
     fn set_local_description(&self, desc: SessionDescription, cb: SendBoxFnOnce<'static, ()>) {
-        if !self.assert_app_state_is(AppState::PeerCallNegotiating, "Not ready to handle sdp") {
-            return;
-        }
+        // if !self.assert_app_state_is(AppState::PeerCallNegotiating, "Not ready to handle sdp") {
+        //     return;
+        // }
 
         self.set_description(desc, true, cb);
     }
@@ -90,10 +90,22 @@ impl WebRtcController for GStreamerWebRtcController {
         let this = self.0.lock().unwrap();
         let webrtc = this.webrtc.as_ref().unwrap();;
         let promise = gst::Promise::new_with_change_func(move |promise| {
-            on_offer_created(app_control_clone, promise, cb);
+            on_offer_or_answer_created("offer", app_control_clone, promise, cb);
         });
 
         webrtc.emit("create-offer", &[&None::<gst::Structure>, &promise]).unwrap();
+    }
+
+    fn create_answer(&self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) {
+
+        let app_control_clone = self.clone();
+        let this = self.0.lock().unwrap();
+        let webrtc = this.webrtc.as_ref().unwrap();;
+        let promise = gst::Promise::new_with_change_func(move |promise| {
+            on_offer_or_answer_created("answer", app_control_clone, promise, cb);
+        });
+
+        webrtc.emit("create-answer", &[&None::<gst::Structure>, &promise]).unwrap();
     } 
 }
 
@@ -319,27 +331,30 @@ pub fn start(
     }
 }*/
 
-fn on_offer_created(
+fn on_offer_or_answer_created(
+    ty: &str,
     app_control: GStreamerWebRtcController,
     promise: &gst::Promise,
     cb: SendBoxFnOnce<'static, (SessionDescription,)>,
 ) {
-    if !app_control.assert_app_state_is(
-        AppState::PeerCallNegotiating,
-        "Not negotiating call when creating offer",
-    ) {
-        return;
+    if ty == "offer" {
+        if !app_control.assert_app_state_is(
+            AppState::PeerCallNegotiating,
+            "Not negotiating call when creating offer/answer",
+        ) {
+            return;
+        }
     }
 
     let reply = promise.get_reply().unwrap();
 
-    let offer = reply
-        .get_value("offer")
+    let reply = reply
+        .get_value(ty)
         .unwrap()
         .get::<gst_webrtc::WebRTCSessionDescription>()
         .expect("Invalid argument");
 
-    let type_ = match offer.get_type() {
+    let type_ = match reply.get_type() {
         WebRTCSDPType::Answer => SdpType::Answer,
         WebRTCSDPType::Offer => SdpType::Offer,
         WebRTCSDPType::Pranswer => SdpType::Pranswer,
@@ -348,7 +363,7 @@ fn on_offer_created(
     };
 
     let desc = SessionDescription {
-        sdp: offer.get_sdp().as_text().unwrap(),
+        sdp: reply.get_sdp().as_text().unwrap(),
         type_,
     };
     cb.call(desc);

@@ -86,6 +86,7 @@ struct State {
     peer_id: Option<String>,
     media: Arc<ServoMedia>,
     webrtc: Option<Arc<WebRtcController>>,
+    signaller: Option<SignallerWrap>,
 }
 
 impl State {
@@ -113,10 +114,11 @@ impl State {
             self.app_state = AppState::PeerConnecting;
         }
         if self.peer_id.is_none() {
-            let signaller = SignallerWrap::new(self.send_msg_tx.clone());
+            let signaller = SignallerWrap::new(self.send_msg_tx.clone(), self.peer_id.is_some());
             let s = signaller.clone();
             self.webrtc = Some(self.media.create_webrtc_arc(Box::new(signaller)));
             s.0.lock().unwrap().1 = Some(Arc::downgrade(self.webrtc.as_ref().unwrap()));
+            self.signaller = Some(s);
         }
     }
 
@@ -125,15 +127,16 @@ impl State {
         assert_eq!(self.app_state, AppState::PeerConnecting);
         self.app_state = AppState::PeerConnected;
         if self.peer_id.is_some() {
-            let signaller = SignallerWrap::new(self.send_msg_tx.clone());
+            let signaller = SignallerWrap::new(self.send_msg_tx.clone(), self.peer_id.is_some());
             let s = signaller.clone();
             self.webrtc = Some(self.media.create_webrtc_arc(Box::new(signaller)));
             s.0.lock().unwrap().1 = Some(Arc::downgrade(self.webrtc.as_ref().unwrap()));
+            self.signaller = Some(s);
         }
     }
 }
 
-struct Signaller(mpsc::Sender<OwnedMessage>, Option<Weak<WebRtcController>>);
+struct Signaller(mpsc::Sender<OwnedMessage>, Option<Weak<WebRtcController>>, bool);
 
 #[derive(Clone)]
 struct SignallerWrap(Arc<Mutex<Signaller>>);
@@ -159,6 +162,9 @@ impl WebRtcSignaller for SignallerWrap {
     fn on_negotiation_needed(&self) {
         let s2 = self.0.clone();
         let signaller = self.0.lock().unwrap();
+        if !signaller.2 {
+            return
+        }
         let controller = signaller.1.as_ref().unwrap().upgrade().unwrap();
         let c2 = controller.clone();
         thread::spawn(move || {
@@ -185,8 +191,8 @@ impl Signaller {
 }
 
 impl SignallerWrap {
-    fn new(sender: mpsc::Sender<OwnedMessage>) -> Self {
-        let signaller = Signaller(sender, None);
+    fn new(sender: mpsc::Sender<OwnedMessage>, initiate: bool) -> Self {
+        let signaller = Signaller(sender, None, initiate);
         SignallerWrap(Arc::new(Mutex::new(signaller)))
     }
 }
@@ -243,7 +249,28 @@ fn receive_loop(
                                         type_: type_.parse().unwrap(),
                                         sdp: sdp.into()
                                     };
-                                    state.webrtc.as_ref().unwrap().set_remote_description(desc, (|| {}).into());
+                                    let controller = state.webrtc.as_ref().unwrap();
+                                    if state.peer_id.is_some() {
+                                        controller.set_remote_description(desc, (|| {}).into());
+                                    } else {
+                                        let c2 = controller.clone();
+                                        let c3 = controller.clone();
+                                        let s2 = state.signaller.clone().unwrap().0;
+                                        controller.set_remote_description(desc, (move || {
+                                            thread::spawn(move || {
+                                                c3.create_answer((move |answer: SessionDescription| {
+                                                    thread::spawn(move || {
+                                                        c2.set_local_description(answer.clone(), (move || {
+                                                            s2.lock().unwrap().send_sdp(answer);
+                                                        }).into());
+                                                    });
+
+                                                }).into());
+                                            });
+                                        }).into());
+                                    }
+                                    
+                                    
                                 }
                                 JsonMsg::Ice {
                                     sdp_mline_index,
@@ -302,6 +329,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         peer_id: peer_id,
         media: servo_media,
         webrtc: None,
+        signaller: None,
     };
 
     let receive_loop = receive_loop(receiver, send_msg_tx, state);

@@ -17,6 +17,7 @@ pub trait WebRtcController: Send + Sync {
     fn set_local_description(&self, SessionDescription, cb: SendBoxFnOnce<'static, ()>);
     fn add_ice_candidate(&self, candidate: IceCandidate);
     fn create_offer(&self, cb: SendBoxFnOnce<'static, (SessionDescription,)>);
+    fn create_answer(&self, cb: SendBoxFnOnce<'static, (SessionDescription,)>);
     fn trigger_negotiation(&self);
 }
 
