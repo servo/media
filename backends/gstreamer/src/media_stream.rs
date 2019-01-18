@@ -26,6 +26,7 @@ lazy_static! {
     };
 }
 
+#[derive(Debug)]
 enum StreamType {
     Audio,
     Video,
@@ -52,6 +53,7 @@ impl GStreamerMediaStream {
             StreamType::Audio => &*RTP_CAPS_OPUS,
             StreamType::Video => &*RTP_CAPS_VP8,
         };
+        println!("atttaching a {:?} stream", self.type_);
         self.elements.last().as_ref().unwrap().link_filtered(webrtcbin, caps).unwrap();
     }
 

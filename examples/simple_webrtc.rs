@@ -24,6 +24,8 @@ use std::sync::{Arc, Mutex, mpsc, Weak};
 use std::thread;
 use websocket::OwnedMessage;
 
+const STUN_SERVER: &str = "stun://stun.l.google.com:19302";
+
 #[derive(PartialEq, PartialOrd, Eq, Debug, Copy, Clone, Ord)]
 #[allow(unused)]
 enum AppState {
@@ -134,7 +136,11 @@ impl State {
         self.webrtc = Some(self.media.create_webrtc_arc(Box::new(signaller)));
         s.0.lock().unwrap().controller = Some(Arc::downgrade(self.webrtc.as_ref().unwrap()));
         self.signaller = Some(s);
-        self.webrtc.as_ref().unwrap().init(&*ServoMedia::create_audiostream(), &*ServoMedia::create_videostream());
+        let webrtc = self.webrtc.as_ref().unwrap();
+        webrtc.init();
+        webrtc.add_stream(&*self.media.create_videostream());
+        webrtc.add_stream(&*self.media.create_audiostream());
+        webrtc.configure(STUN_SERVER, BundlePolicy::MaxBundle);
     }
 }
 
@@ -218,9 +224,6 @@ fn receive_loop(
                 Ok(m) => m,
                 Err(e) => {
                     println!("Receive Loop error: {:?}", e);
-                    if let Some(ref mut controller) = state.webrtc {
-                        controller.notify_signal_server_error();
-                    }
                     let _ = send_msg_tx.send(OwnedMessage::Close(None));
                     return;
                 }

@@ -12,8 +12,8 @@ pub trait MediaStream: Any {
 pub trait WebRtcController: Send + Sync {
     // currently simple_webrtc needs to be able to hook up the signaller after construction
     // but before initialization. We split out init() to avoid a race.
-    fn init(&self, audio: &MediaStream, video: &MediaStream);
-    fn notify_signal_server_error(&self);
+    fn init(&self);
+    fn configure(&self, stun_server: &str, policy: BundlePolicy);
     /// Invariant: Callback must not reentrantly invoke any methods on the controller
     fn set_remote_description(&self, SessionDescription, cb: SendBoxFnOnce<'static, ()>);
     /// Invariant: Callback must not reentrantly invoke any methods on the controller
@@ -21,7 +21,7 @@ pub trait WebRtcController: Send + Sync {
     fn add_ice_candidate(&self, candidate: IceCandidate);
     fn create_offer(&self, cb: SendBoxFnOnce<'static, (SessionDescription,)>);
     fn create_answer(&self, cb: SendBoxFnOnce<'static, (SessionDescription,)>);
-    fn trigger_negotiation(&self);
+    fn add_stream(&self, stream: &MediaStream);
 }
 
 pub trait WebRtcSignaller: Send {
@@ -89,4 +89,21 @@ pub struct IceCandidate {
     pub sdp_mline_index: u32,
     pub candidate: String,
     // XXXManishearth this is missing a bunch
+}
+
+/// https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection#RTCBundlePolicy_enum
+pub enum BundlePolicy {
+    Balanced,
+    MaxCompat,
+    MaxBundle,
+}
+
+impl BundlePolicy {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            BundlePolicy::Balanced => "balanced",
+            BundlePolicy::MaxCompat => "max-compat",
+            BundlePolicy::MaxBundle => "max-bundle",
+        }
+    }
 }

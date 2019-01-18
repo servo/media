@@ -1,7 +1,7 @@
 use boxfnonce::SendBoxFnOnce;
 use failure::Error;
 use glib::{self, ObjectExt};
-use gst::{self, ElementExt, BinExt, PadExt, BinExtManual, GObjectExtManualGst};
+use gst::{self, ElementExt, BinExt, BinExtManual, GObjectExtManualGst, PadDirection, PadExt};
 use gst_sdp;
 use gst_webrtc::{self, WebRTCSDPType};
 use media_stream::GStreamerMediaStream;
@@ -9,11 +9,8 @@ use servo_media_webrtc::*;
 use std::sync::{Arc, Mutex};
 
 // TODO:
-// - configurable STUN server?
 // - remove use of failure?
 // - figure out purpose of glib loop
-
-const STUN_SERVER: &str = "stun://stun.l.google.com:19302";
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum MediaType {
@@ -52,21 +49,8 @@ macro_rules! assert_state {
 }
 
 impl WebRtcController for GStreamerWebRtcController {
-    fn init(&self, audio: &MediaStream, video: &MediaStream) {
-        self.0.lock().unwrap().start_pipeline(self.clone(), audio, video)
-    }
-    fn trigger_negotiation(&self) {
-        let app_control = self.0.lock().unwrap();
-        app_control
-            .webrtc
-            .as_ref()
-            .unwrap()
-            .emit("on-negotiation-needed", &[])
-            .unwrap();
-    }
-
-    fn notify_signal_server_error(&self) {
-        //TODO
+    fn init(&self) {
+        self.0.lock().unwrap().start_pipeline(self.clone())
     }
 
     fn add_ice_candidate(&self, candidate: IceCandidate) {
@@ -122,7 +106,6 @@ impl WebRtcController for GStreamerWebRtcController {
     }
 
     fn create_answer(&self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) {
-
         let app_control_clone = self.clone();
         let this = self.0.lock().unwrap();
         let webrtc = this.webrtc.as_ref().unwrap();;
@@ -132,9 +115,39 @@ impl WebRtcController for GStreamerWebRtcController {
 
         webrtc.emit("create-answer", &[&None::<gst::Structure>, &promise]).unwrap();
     } 
+
+    fn add_stream(&self, stream: &MediaStream) {
+        println!("adding a stream");
+        let (pipeline, webrtc) = {
+            let mut controller = self.0.lock().unwrap();
+            (controller.pipeline.clone(), controller.webrtc.clone().unwrap())
+        };
+        let stream = stream.as_any().downcast_ref::<GStreamerMediaStream>().unwrap();
+        stream.attach_to_pipeline(&pipeline, &webrtc);
+        self.0.lock().unwrap().prepare_for_negotiation(self.clone());
+    }
+
+    fn configure(&self, stun_server: &str, policy: BundlePolicy) {
+        let data = self.0.lock().unwrap();
+        let webrtc = data.webrtc.as_ref().unwrap();
+        webrtc.set_property_from_str("stun-server", stun_server);
+        webrtc.set_property_from_str("bundle-policy", policy.as_str());
+    }
 }
 
 impl GStreamerWebRtcController {
+    fn process_new_stream(
+        &self,
+        values: &[glib::Value],
+        pipe: &gst::Pipeline,
+    ) -> Option<glib::Value> {
+        let pad = values[1].get::<gst::Pad>().expect("not a pad??");
+        if pad.get_direction() != PadDirection::Src {
+            // Ignore outgoing pad notifications.
+            return None;
+        }
+        on_incoming_stream(self, values, pipe)
+    }
 
     fn set_description(&self, desc: SessionDescription, local: bool, cb: SendBoxFnOnce<'static, ()>) {
         let ty = match desc.type_ {
@@ -198,6 +211,7 @@ struct WebRtcControllerState {
     app_state: AppState,
     pipeline: gst::Pipeline,
     signaller: Box<WebRtcSignaller>,
+    ready_to_negotiate: bool,
     //send_msg_tx: mpsc::Sender<OwnedMessage>,
     //peer_id: String,
     _main_loop: glib::MainLoop,
@@ -205,59 +219,45 @@ struct WebRtcControllerState {
 }
 
 impl WebRtcControllerState {
-    fn construct_pipeline(
-        pipeline: gst::Pipeline,
-        audio: &MediaStream,
-        video: &MediaStream,
-    ) -> gst::Pipeline {
-        let webrtcbin = gst::ElementFactory::make("webrtcbin", "sendrecv").unwrap();
-        pipeline.add(&webrtcbin).unwrap();
-
-        webrtcbin.set_property_from_str("stun-server", STUN_SERVER);
-        webrtcbin.set_property_from_str("bundle-policy", "max-bundle");
-
-        let audio = audio.as_any().downcast_ref::<GStreamerMediaStream>().unwrap();
-        audio.attach_to_pipeline(&pipeline, &webrtcbin);
-        let video = video.as_any().downcast_ref::<GStreamerMediaStream>().unwrap();
-        video.attach_to_pipeline(&pipeline, &webrtcbin);
-
-        pipeline
-    }
-
-    fn start_pipeline(
-        &mut self,
-        target: GStreamerWebRtcController,
-        audio: &MediaStream,
-        video: &MediaStream
-    ) {
-        let pipe = Self::construct_pipeline(
-            self.pipeline.clone(),
-            audio,
-            video,
-        );
-        let webrtc = pipe.get_by_name("sendrecv").unwrap();
-
-        let app_control_clone = target.clone();
-        webrtc.connect("on-negotiation-needed", false, move |_| {
-            let mut control = app_control_clone.0.lock().unwrap();
+    fn prepare_for_negotiation(&mut self, target: GStreamerWebRtcController) {
+        if self.ready_to_negotiate {
+            return;
+        }
+        self.ready_to_negotiate = true;
+        let webrtc = self.webrtc.as_ref().unwrap();
+        // If the pipeline starts playing and this signal is present before there are any
+        // media streams, an invalid SDP offer will be created. Therefore, delay setting up
+        // the signal and starting the pipeline until after the first stream has been added.
+        webrtc.connect("on-negotiation-needed", false, move |_values| {
+            println!("on-negotiation-needed");
+            let mut control = target.0.lock().unwrap();
             control.app_state = AppState::PeerCallNegotiating;
             control.signaller.on_negotiation_needed();
             None
         }).unwrap();
+        self.pipeline.set_state(gst::State::Playing).into_result().unwrap();
+    }
+
+    fn start_pipeline(&mut self, target: GStreamerWebRtcController) {
+        let webrtc = gst::ElementFactory::make("webrtcbin", "sendrecv").unwrap();
+        self.pipeline.add(&webrtc).unwrap();
 
         let app_control_clone = target.clone();
         webrtc.connect("on-ice-candidate", false, move |values| {
+            println!("on-ice-candidate");
             send_ice_candidate_message(&app_control_clone, values);
             None
         }).unwrap();
 
-        let pipe_clone = pipe.clone();
+        let pipe_clone = self.pipeline.clone();
         let app_control_clone = target.clone();
         webrtc.connect("pad-added", false, move |values| {
-            on_incoming_stream(&app_control_clone, values, &pipe_clone)
+            println!("pad-added");
+            app_control_clone.process_new_stream(
+                values,
+                &pipe_clone,
+            )
         }).unwrap();
-
-        pipe.set_state(gst::State::Playing).into_result().unwrap();
 
         self.webrtc = Some(webrtc);
     }
@@ -272,13 +272,13 @@ pub fn construct(
 ) -> GStreamerWebRtcController {
     let main_loop = glib::MainLoop::new(None, false);
     let pipeline = gst::Pipeline::new("main");
-    //let bus = pipeline.get_bus().unwrap();
 
     let controller = WebRtcControllerState {
         webrtc: None,
         pipeline,
         signaller,
         app_state: AppState::ServerConnected,
+        ready_to_negotiate: false,
         _main_loop: main_loop,
     };
     GStreamerWebRtcController(Arc::new(Mutex::new(controller)))
@@ -406,6 +406,7 @@ fn on_incoming_stream(
     let app_control_clone = app_control.clone();
     decodebin
         .connect("pad-added", false, move |values| {
+            println!("decodebin pad-added");
             on_incoming_decodebin_stream(&app_control_clone, values, &pipe_clone)
         })
         .unwrap();

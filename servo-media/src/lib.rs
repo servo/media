@@ -101,11 +101,11 @@ impl ServoMedia {
         Arc::new(Backend::construct_webrtc_controller(signaller))
     }
 
-    pub fn create_audiostream() -> Box<MediaStream> {
+    pub fn create_audiostream(&self) -> Box<MediaStream> {
         Box::new(Backend::create_audiostream())
     }
 
-    pub fn create_videostream() -> Box<MediaStream> {
+    pub fn create_videostream(&self) -> Box<MediaStream> {
         Box::new(Backend::create_videostream())
     }
 }
