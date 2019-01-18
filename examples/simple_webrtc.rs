@@ -119,6 +119,7 @@ impl State {
             self.webrtc = Some(self.media.create_webrtc_arc(Box::new(signaller)));
             s.0.lock().unwrap().1 = Some(Arc::downgrade(self.webrtc.as_ref().unwrap()));
             self.signaller = Some(s);
+            self.webrtc.as_ref().unwrap().init(&*ServoMedia::create_audiostream(), &*ServoMedia::create_videostream());
         }
     }
 
@@ -132,6 +133,7 @@ impl State {
             self.webrtc = Some(self.media.create_webrtc_arc(Box::new(signaller)));
             s.0.lock().unwrap().1 = Some(Arc::downgrade(self.webrtc.as_ref().unwrap()));
             self.signaller = Some(s);
+            self.webrtc.as_ref().unwrap().init(&*ServoMedia::create_audiostream(), &*ServoMedia::create_videostream());
         }
     }
 }

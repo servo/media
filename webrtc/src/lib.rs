@@ -10,6 +10,9 @@ pub trait MediaStream: Any {
 }
 
 pub trait WebRtcController: Send + Sync {
+    // currently simple_webrtc needs to be able to hook up the signaller after construction
+    // but before initialization. We split out init() to avoid a race.
+    fn init(&self, audio: &MediaStream, video: &MediaStream);
     fn notify_signal_server_error(&self);
     /// Invariant: Callback must not reentrantly invoke any methods on the controller
     fn set_remote_description(&self, SessionDescription, cb: SendBoxFnOnce<'static, ()>);
@@ -31,10 +34,8 @@ pub trait WebRtcSignaller: Send {
 pub trait WebRtcBackend {
     type Controller: WebRtcController;
 
-    fn start_webrtc_controller(
+    fn construct_webrtc_controller(
         signaller: Box<WebRtcSignaller>,
-        audio: &MediaStream,
-        video: &MediaStream,
     ) -> Self::Controller;
 }
 

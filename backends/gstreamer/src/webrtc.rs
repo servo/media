@@ -41,6 +41,9 @@ enum AppState {
 pub struct GStreamerWebRtcController(Arc<Mutex<WebRtcControllerState>>);
 
 impl WebRtcController for GStreamerWebRtcController {
+    fn init(&self, audio: &MediaStream, video: &MediaStream) {
+        self.0.lock().unwrap().start_pipeline(self.clone(), audio, video)
+    }
     fn trigger_negotiation(&self) {
         let app_control = self.0.lock().unwrap();
         app_control
@@ -110,9 +113,6 @@ impl WebRtcController for GStreamerWebRtcController {
 }
 
 impl GStreamerWebRtcController {
-    fn start_pipeline(&self, audio: &MediaStream, video: &MediaStream) {
-        self.0.lock().unwrap().start_pipeline(self.clone(), audio, video)
-    }
 
     fn set_description(&self, desc: SessionDescription, local: bool, cb: SendBoxFnOnce<'static, ()>) {
         let ty = match desc.type_ {
@@ -265,10 +265,8 @@ impl WebRtcControllerState {
     }
 }
 
-pub fn start(
+pub fn construct(
     signaller: Box<WebRtcSignaller>,
-    audio: &MediaStream,
-    video: &MediaStream,
 ) -> GStreamerWebRtcController {
     let main_loop = glib::MainLoop::new(None, false);
     let pipeline = gst::Pipeline::new("main");
@@ -281,55 +279,8 @@ pub fn start(
         app_state: AppState::ServerConnected,
         _main_loop: main_loop,
     };
-    let controller = GStreamerWebRtcController(Arc::new(Mutex::new(controller)));
-    controller.start_pipeline(audio, video);
-
-    let controller_clone = controller.clone();
-            
-    /*bus.add_watch(move |_, msg| {
-        use gst::message::MessageView;
-
-        match msg.view() {
-            MessageView::Error(err) => controller.close_and_quit(&Error::from(err.get_error())),
-            MessageView::Warning(warning) => {
-                println!("Warning: \"{}\"", warning.get_debug().unwrap());
-            }
-            MessageView::Application(a) => {
-                let struc = a.get_structure().unwrap();
-                if let Err(err) = handle_application_msg(&controller, struc) {
-                    controller.close_and_quit(&err)
-                }
-            }
-            _ => {}
-        };
-
-        glib::Continue(true)
-    });*/
-
-    controller_clone
+    GStreamerWebRtcController(Arc::new(Mutex::new(controller)))
 }
-
-/*fn handle_application_msg(
-    app_control: &GStreamerWebRtcController,
-    struc: &gst::StructureRef,
-) -> Result<(), Error> {
-    match struc.get_name() {
-        "ws-message" => {
-            let msg = struc.get_value("body").unwrap();
-            app_control.on_message(msg.get().unwrap())
-        }
-        "ws-error" => Err(WsError(app_control.0.lock().unwrap().app_state))?,
-        "error" => {
-            let msg: String = struc.get_value("body").unwrap().get().unwrap();
-            Err(BusError(msg))?
-        }
-        u => {
-            println!("Got unknown application message {:?}", u);
-
-            Ok(())
-        }
-    }
-}*/
 
 fn on_offer_or_answer_created(
     ty: &str,
