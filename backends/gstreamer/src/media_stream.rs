@@ -49,13 +49,15 @@ impl GStreamerMediaStream {
         let elements: Vec<_> = self.elements.iter().collect();
         pipeline.add_many(&elements[..]).unwrap();
         gst::Element::link_many(&elements[..]).unwrap();
+        for element in elements {
+            element.sync_state_with_parent();
+        }
 
         let caps = match self.type_ {
             StreamType::Audio => &*RTP_CAPS_OPUS,
             StreamType::Video => &*RTP_CAPS_VP8,
         };
         self.elements.last().as_ref().unwrap().link_filtered(webrtcbin, caps).unwrap();
-        pipeline.set_state(gst::State::Playing).into_result().unwrap();
     }
 
     pub fn create_video() -> GStreamerMediaStream {
