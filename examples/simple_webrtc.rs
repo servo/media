@@ -139,14 +139,18 @@ impl State {
         self.signaller = Some(s);
         let webrtc = self.webrtc.as_ref().unwrap();
         webrtc.init();
-        let video = self
+        let (video, audio) = if self.peer_id.is_some() {
+            (self
             .media
             .create_videoinput_stream()
-            .unwrap_or_else(|| self.media.create_videostream());
-        let audio = self
+            .unwrap_or_else(|| self.media.create_videostream()),
+            self
             .media
             .create_audioinput_stream()
-            .unwrap_or_else(|| self.media.create_audiostream());
+            .unwrap_or_else(|| self.media.create_audiostream()))
+        } else {
+            (self.media.create_videostream(), self.media.create_audiostream())
+        };
         webrtc.add_stream(&*video);
         self.streams.push(video);
         webrtc.add_stream(&*audio);
