@@ -113,13 +113,13 @@ impl ui::Example for App {
         }
 
         let frame = self.frame_queue.lock().unwrap().get().unwrap();
-        let width = frame.get_width() as u32;
-        let height = frame.get_height() as u32;
+        let width = frame.get_width();
+        let height = frame.get_height();
 
         if self.image_key.is_some() {
             if let Some(old_frame) = self.frame_queue.lock().unwrap().prev() {
-                let old_width = old_frame.get_width() as u32;
-                let old_height = old_frame.get_height() as u32;
+                let old_width = old_frame.get_width();
+                let old_height = old_frame.get_height();
                 if (width != old_width) || (height != old_height) {
                     txn.delete_image(self.image_key.unwrap());
                     self.image_key = None;
@@ -144,7 +144,7 @@ impl ui::Example for App {
                 self.image_key.clone().unwrap(),
                 image_descriptor,
                 image_data,
-                None,
+                &DirtyRect::All,
             );
         }
 
@@ -155,9 +155,10 @@ impl ui::Example for App {
             None,
             TransformStyle::Flat,
             MixBlendMode::Normal,
-            Vec::new(),
-            GlyphRasterSpace::Screen,
+            &[],
+            RasterSpace::Screen,
         );
+
         let image_size = LayoutSize::new(width as f32, height as f32);
         let info = LayoutPrimitiveInfo::new(bounds);
         builder.push_image(
@@ -167,6 +168,7 @@ impl ui::Example for App {
             ImageRendering::Auto,
             AlphaType::PremultipliedAlpha,
             self.image_key.clone().unwrap(),
+            ColorF::WHITE,
         );
         builder.pop_stacking_context();
     }
