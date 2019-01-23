@@ -8,6 +8,7 @@ extern crate gobject_sys as gobject_ffi;
 #[macro_use]
 extern crate gobject_subclass;
 extern crate gst_plugin;
+#[macro_use]
 extern crate gstreamer as gst;
 extern crate gstreamer_app as gst_app;
 extern crate gstreamer_audio as gst_audio;
