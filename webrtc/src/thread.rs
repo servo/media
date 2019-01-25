@@ -18,11 +18,11 @@ impl WebRtcController {
 
         let t = WebRtcController { sender };
 
-        let controller = T::construct_webrtc_controller(signaller, t.clone());
+        let mut controller = T::construct_webrtc_controller(signaller, t.clone());
 
         thread::spawn(move || {
             while let Ok(event) = receiver.recv() {
-                handle_rtc_event(&controller, event)
+                handle_rtc_event(&mut controller, event)
             }
         });
 
@@ -49,6 +49,11 @@ impl WebRtcController {
     pub fn add_stream(&self, stream: Box<MediaStream>) {
         let _ = self.sender.send(RtcThreadEvent::AddStream(stream));
     }
+
+    /// This should not be invoked by clients
+    pub fn internal_event(&self, event: InternalEvent) {
+        let _ = self.sender.send(RtcThreadEvent::InternalEvent(event));
+    }
 }
 
 pub enum RtcThreadEvent {
@@ -59,9 +64,20 @@ pub enum RtcThreadEvent {
     CreateOffer(SendBoxFnOnce<'static, (SessionDescription,)>),
     CreateAnswer(SendBoxFnOnce<'static, (SessionDescription,)>),
     AddStream(Box<MediaStream>),
+    InternalEvent(InternalEvent),
 }
 
-pub fn handle_rtc_event(controller: &WebRtcControllerBackend, event: RtcThreadEvent) {
+/// To allow everything to occur on the event loop,
+/// the backend may need to send signals to itself
+///
+/// This is a somewhat leaky abstraction, but we don't
+/// plan on having too many backends anyway
+pub enum InternalEvent {
+    OnNegotiationNeeded,
+    OnIceCandidate(IceCandidate),
+}
+
+pub fn handle_rtc_event(controller: &mut WebRtcControllerBackend, event: RtcThreadEvent) {
     match event {
         RtcThreadEvent::ConfigureStun(server, policy) => controller.configure(&server, policy),
         RtcThreadEvent::SetRemoteDescription(desc, cb) => {
@@ -72,5 +88,6 @@ pub fn handle_rtc_event(controller: &WebRtcControllerBackend, event: RtcThreadEv
         RtcThreadEvent::CreateOffer(cb) => controller.create_offer(cb),
         RtcThreadEvent::CreateAnswer(cb) => controller.create_answer(cb),
         RtcThreadEvent::AddStream(media) => controller.add_stream(&*media),
+        RtcThreadEvent::InternalEvent(e) => controller.internal_event(e),
     }
 }
