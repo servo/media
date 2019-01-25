@@ -38,15 +38,6 @@ enum AppState {
     PeerCallError,
 }
 
-macro_rules! assert_state {
-    ($controller:ident, $state:ident, $condition:expr, $string:expr) => {
-        {
-            let $state = $controller.app_state;
-            assert!($condition, $string);
-        }
-    }
-}
-
 pub struct GStreamerWebRtcController {
     webrtc: Option<gst::Element>,
     app_state: AppState,
@@ -71,9 +62,9 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
     }
 
     fn set_remote_description(&mut self, desc: SessionDescription, cb: SendBoxFnOnce<'static, ()>) {
-        assert_state!(self, state,
-                      state == AppState::PeerCallNegotiating || state == AppState::PeerCallNegotiatingHaveLocal,
-                      "Not ready to handle sdp");
+        assert!(self.app_state == AppState::PeerCallNegotiating ||
+                self.app_state == AppState::PeerCallNegotiatingHaveLocal,
+                "Not ready to handle sdp");
 
         self.set_description(desc, false, cb);
 
@@ -85,9 +76,9 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
     }
 
     fn set_local_description(&mut self, desc: SessionDescription, cb: SendBoxFnOnce<'static, ()>) {
-        assert_state!(self, state,
-                      state == AppState::PeerCallNegotiating || state == AppState::PeerCallNegotiatingHaveRemote,
-                      "Not ready to handle sdp");
+        assert!(self.app_state == AppState::PeerCallNegotiating ||
+                self.app_state == AppState::PeerCallNegotiatingHaveRemote,
+                "Not ready to handle sdp");
 
         self.set_description(desc, true, cb);
 
@@ -100,8 +91,8 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
 
     fn create_offer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) {
         let webrtc = self.webrtc.as_ref().unwrap();
-        assert_state!(self, state, state == AppState::PeerCallNegotiating,
-                      "Not negotiating call when creating offer");
+        assert!(self.app_state == AppState::PeerCallNegotiating,
+                "Not negotiating call when creating offer");
         let promise = gst::Promise::new_with_change_func(move |promise| {
             on_offer_or_answer_created(SdpType::Offer, promise, cb);
         });
@@ -111,8 +102,8 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
 
     fn create_answer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) {
         let webrtc = self.webrtc.as_ref().unwrap();
-        assert_state!(self, state, state == AppState::PeerCallNegotiatingHaveRemote,
-                      "No offfer received when creating answer");
+        assert!(self.app_state == AppState::PeerCallNegotiatingHaveRemote,
+                "No offfer received when creating answer");
         let promise = gst::Promise::new_with_change_func(move |promise| {
             on_offer_or_answer_created(SdpType::Answer, promise, cb);
         });
