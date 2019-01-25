@@ -1,7 +1,6 @@
 extern crate boxfnonce;
 extern crate byte_slice_cast;
 
-extern crate failure;
 #[macro_use]
 extern crate glib;
 extern crate glib_sys as glib_ffi;

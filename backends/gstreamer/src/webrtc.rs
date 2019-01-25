@@ -1,5 +1,4 @@
 use boxfnonce::SendBoxFnOnce;
-use failure::Error;
 use glib::{self, ObjectExt};
 use gst::{self, BinExt, BinExtManual, ElementExt, GObjectExtManualGst, PadDirection, PadExt};
 use gst_sdp;
@@ -9,9 +8,10 @@ use servo_media_webrtc::thread::InternalEvent;
 use servo_media_webrtc::WebRtcController as WebRtcThread;
 use servo_media_webrtc::*;
 use std::sync::Mutex;
+use std::error::Error;
 
 // TODO:
-// - remove use of failure?
+// - add a proper error enum
 // - figure out purpose of glib loop
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -308,7 +308,7 @@ fn handle_media_stream(
     pad: &gst::Pad,
     pipe: &gst::Pipeline,
     media_type: MediaType,
-) -> Result<(), Error> {
+) -> Result<(), Box<Error>> {
     println!("Trying to handle stream {:?}", media_type);
 
     let (q, conv, sink) = match media_type {
