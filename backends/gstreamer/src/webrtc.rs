@@ -6,6 +6,7 @@ use gst_sdp;
 use gst_webrtc::{self, WebRTCSDPType};
 use media_stream::GStreamerMediaStream;
 use servo_media_webrtc::*;
+use servo_media_webrtc::WebRtcController as WebRtcThread;
 use std::sync::{Arc, Mutex};
 
 // TODO:
@@ -48,11 +49,7 @@ macro_rules! assert_state {
     }
 }
 
-impl WebRtcController for GStreamerWebRtcController {
-    fn init(&self) {
-        self.0.lock().unwrap().start_pipeline(self.clone())
-    }
-
+impl WebRtcControllerBackend for GStreamerWebRtcController {
     fn add_ice_candidate(&self, candidate: IceCandidate) {
         let app_control = self.0.lock().unwrap();
         app_control
@@ -210,6 +207,7 @@ struct WebRtcControllerState {
     webrtc: Option<gst::Element>,
     app_state: AppState,
     pipeline: gst::Pipeline,
+    thread: WebRtcThread,
     signaller: Box<WebRtcSignaller>,
     ready_to_negotiate: bool,
     //send_msg_tx: mpsc::Sender<OwnedMessage>,
@@ -232,7 +230,7 @@ impl WebRtcControllerState {
             println!("on-negotiation-needed");
             let mut control = target.0.lock().unwrap();
             control.app_state = AppState::PeerCallNegotiating;
-            control.signaller.on_negotiation_needed();
+            control.signaller.on_negotiation_needed(&control.thread);
             None
         }).unwrap();
         self.pipeline.set_state(gst::State::Playing).into_result().unwrap();
@@ -269,6 +267,7 @@ impl WebRtcControllerState {
 
 pub fn construct(
     signaller: Box<WebRtcSignaller>,
+    thread: WebRtcThread,
 ) -> GStreamerWebRtcController {
     let main_loop = glib::MainLoop::new(None, false);
     let pipeline = gst::Pipeline::new("main");
@@ -277,11 +276,15 @@ pub fn construct(
         webrtc: None,
         pipeline,
         signaller,
+        thread,
         app_state: AppState::ServerConnected,
         ready_to_negotiate: false,
         _main_loop: main_loop,
     };
-    GStreamerWebRtcController(Arc::new(Mutex::new(controller)))
+    let controller = GStreamerWebRtcController(Arc::new(Mutex::new(controller)));
+    controller.0.lock().unwrap().start_pipeline(controller.clone());
+    controller
+    
 }
 
 fn on_offer_or_answer_created(
@@ -430,5 +433,6 @@ fn send_ice_candidate_message(app_control: &GStreamerWebRtcController, values: &
         sdp_mline_index,
         candidate,
     };
-    app_control.0.lock().unwrap().signaller.on_ice_candidate(candidate);
+    let control = app_control.0.lock().unwrap();
+    control.signaller.on_ice_candidate(&control.thread, candidate);
 }

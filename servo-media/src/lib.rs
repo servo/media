@@ -14,7 +14,7 @@ use audio::decoder::DummyAudioDecoder;
 use audio::sink::{AudioSinkError, DummyAudioSink};
 use audio::AudioBackend;
 use player::{DummyPlayer, Player, PlayerBackend};
-use webrtc::{WebRtcBackend, WebRtcSignaller, MediaStream};
+use webrtc::{WebRtcController, WebRtcSignaller, MediaStream};
 
 pub struct ServoMedia;
 
@@ -77,7 +77,6 @@ pub type Backend = servo_media_gstreamer::GStreamerBackend;
 )))]
 pub type Backend = DummyBackend;
 
-pub type WebRtcController = servo_media_gstreamer::webrtc::GStreamerWebRtcController;
 
 impl ServoMedia {
     pub fn new() -> Self {
@@ -105,8 +104,8 @@ impl ServoMedia {
         Box::new(Backend::make_player())
     }
 
-    pub fn create_webrtc_arc(&self, signaller: Box<WebRtcSignaller>) -> Arc<WebRtcController> {
-        Arc::new(Backend::construct_webrtc_controller(signaller))
+    pub fn create_webrtc(&self, signaller: Box<WebRtcSignaller>) -> WebRtcController {
+        WebRtcController::new::<Backend>(signaller)
     }
 
     pub fn create_audiostream(&self) -> Box<MediaStream> {

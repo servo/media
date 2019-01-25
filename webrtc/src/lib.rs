@@ -5,14 +5,17 @@ use std::str::FromStr;
 
 use boxfnonce::SendBoxFnOnce;
 
+pub mod thread;
+
 pub trait MediaStream: Any + Send {
     fn as_any(&self) -> &Any;
 }
 
-pub trait WebRtcController: Send + Sync {
-    // currently simple_webrtc needs to be able to hook up the signaller after construction
-    // but before initialization. We split out init() to avoid a race.
-    fn init(&self);
+pub use thread::WebRtcController;
+
+/// This trait is implemented by backends and should never be used directly by
+/// the client. Use WebRtcController instead
+pub trait WebRtcControllerBackend: Send + Sync {
     fn configure(&self, stun_server: &str, policy: BundlePolicy);
     /// Invariant: Callback must not reentrantly invoke any methods on the controller
     fn set_remote_description(&self, SessionDescription, cb: SendBoxFnOnce<'static, ()>);
@@ -25,17 +28,18 @@ pub trait WebRtcController: Send + Sync {
 }
 
 pub trait WebRtcSignaller: Send {
-    fn on_ice_candidate(&self, candidate: IceCandidate);
+    fn on_ice_candidate(&self, controller: &WebRtcController, candidate: IceCandidate);
     /// Invariant: Must not reentrantly invoke any methods on the controller
-    fn on_negotiation_needed(&self);
+    fn on_negotiation_needed(&self, controller: &WebRtcController);
     fn close(&self, reason: String);
 }
 
 pub trait WebRtcBackend {
-    type Controller: WebRtcController;
+    type Controller: WebRtcControllerBackend + 'static;
 
     fn construct_webrtc_controller(
         signaller: Box<WebRtcSignaller>,
+        thread: WebRtcController,
     ) -> Self::Controller;
 }
 
@@ -67,7 +71,7 @@ impl FromStr for SdpType {
             "offer" => SdpType::Offer,
             "pranswer" => SdpType::Pranswer,
             "rollback" => SdpType::Rollback,
-            _ => return Err(())
+            _ => return Err(()),
         })
     }
 }

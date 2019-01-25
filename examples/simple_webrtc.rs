@@ -20,7 +20,7 @@ use servo_media::ServoMedia;
 use servo_media::webrtc::*;
 use std::env;
 use std::net;
-use std::sync::{Arc, Mutex, mpsc, Weak};
+use std::sync::{Arc, mpsc};
 use std::thread;
 use websocket::OwnedMessage;
 
@@ -87,9 +87,8 @@ struct State {
     _uid: u32,
     peer_id: Option<String>,
     media: Arc<ServoMedia>,
-    webrtc: Option<Arc<WebRtcController>>,
-    signaller: Option<SignallerWrap>,
-    streams: Vec<Box<MediaStream>>,
+    webrtc: Option<WebRtcController>,
+    signaller: Option<Signaller>,
 }
 
 impl State {
@@ -132,13 +131,11 @@ impl State {
     }
 
     fn start_rtc(&mut self) {
-        let signaller = SignallerWrap::new(self.send_msg_tx.clone(), self.peer_id.is_some());
+        let signaller = Signaller::new(self.send_msg_tx.clone(), self.peer_id.is_some());
         let s = signaller.clone();
-        self.webrtc = Some(self.media.create_webrtc_arc(Box::new(signaller)));
-        s.0.lock().unwrap().controller = Some(Arc::downgrade(self.webrtc.as_ref().unwrap()));
+        self.webrtc = Some(self.media.create_webrtc(Box::new(signaller)));
         self.signaller = Some(s);
         let webrtc = self.webrtc.as_ref().unwrap();
-        webrtc.init();
         let (video, audio) = if self.peer_id.is_some() {
             (self
             .media
@@ -151,59 +148,45 @@ impl State {
         } else {
             (self.media.create_videostream(), self.media.create_audiostream())
         };
-        webrtc.add_stream(&*video);
-        self.streams.push(video);
-        webrtc.add_stream(&*audio);
-        self.streams.push(audio);
-        webrtc.configure(STUN_SERVER, BundlePolicy::MaxBundle);
+        webrtc.add_stream(video);
+        webrtc.add_stream(audio);
+        webrtc.configure(STUN_SERVER.into(), BundlePolicy::MaxBundle);
     }
 }
 
+#[derive(Clone)]
 struct Signaller {
     sender: mpsc::Sender<OwnedMessage>,
-    controller: Option<Weak<WebRtcController>>,
     initiate_negotiation: bool
 }
 
-#[derive(Clone)]
-struct SignallerWrap(Arc<Mutex<Signaller>>);
-
-impl WebRtcSignaller for SignallerWrap {
+impl WebRtcSignaller for Signaller {
     fn close(&self, reason: String) {
-        let signaller = self.0.lock().unwrap();
-        let _ = signaller.sender.send(OwnedMessage::Close(Some(websocket::message::CloseData {
+        let _ = self.sender.send(OwnedMessage::Close(Some(websocket::message::CloseData {
             status_code: 1011, //Internal Error
             reason: reason,
         })));
     }
 
-    fn on_ice_candidate(&self, candidate: IceCandidate) {
-        let signaller = self.0.lock().unwrap();
+    fn on_ice_candidate(&self, _: &WebRtcController, candidate: IceCandidate) {
         let message = serde_json::to_string(&JsonMsg::Ice {
             candidate: candidate.candidate,
             sdp_mline_index: candidate.sdp_mline_index,
         }).unwrap();
-        signaller.sender.send(OwnedMessage::Text(message)).unwrap();
+        self.sender.send(OwnedMessage::Text(message)).unwrap();
     }
 
-    fn on_negotiation_needed(&self) {
-        let s2 = self.0.clone();
-        let signaller = self.0.lock().unwrap();
-        if !signaller.initiate_negotiation {
+    fn on_negotiation_needed(&self, controller: &WebRtcController) {
+        if !self.initiate_negotiation {
             return
         }
-        let controller = signaller.controller.as_ref().unwrap().upgrade().unwrap();
         let c2 = controller.clone();
-        thread::spawn(move || {
-            controller.create_offer((move |offer: SessionDescription| {
-                thread::spawn(move || {
-                    c2.set_local_description(offer.clone(), (move || {
-                        s2.lock().unwrap().send_sdp(offer);
-                    }).into());
-                });
-
-            }).into());
-        });
+        let s2 = self.clone();
+        controller.create_offer((move |offer: SessionDescription| {
+            c2.set_local_description(offer.clone(), (move || {
+                s2.send_sdp(offer)
+            }).into())
+        }).into());
     }
 }
 
@@ -215,16 +198,11 @@ impl Signaller {
         }).unwrap();
         self.sender.send(OwnedMessage::Text(message)).unwrap();
     }
-}
-
-impl SignallerWrap {
     fn new(sender: mpsc::Sender<OwnedMessage>, initiate_negotiation: bool) -> Self {
-        let signaller = Signaller {
+        Signaller {
             sender,
-            controller: None,
             initiate_negotiation
-        };
-        SignallerWrap(Arc::new(Mutex::new(signaller)))
+        }
     }
 }
 
@@ -284,18 +262,13 @@ fn receive_loop(
                                     } else {
                                         let c2 = controller.clone();
                                         let c3 = controller.clone();
-                                        let s2 = state.signaller.clone().unwrap().0;
+                                        let s2 = state.signaller.clone().unwrap();
                                         controller.set_remote_description(desc, (move || {
-                                            thread::spawn(move || {
-                                                c3.create_answer((move |answer: SessionDescription| {
-                                                    thread::spawn(move || {
-                                                        c2.set_local_description(answer.clone(), (move || {
-                                                            s2.lock().unwrap().send_sdp(answer);
-                                                        }).into());
-                                                    });
-
-                                                }).into());
-                                            });
+                                            c3.create_answer((move |answer: SessionDescription| {
+                                                c2.set_local_description(answer.clone(), (move || {
+                                                    s2.send_sdp(answer)
+                                                }).into())
+                                            }).into())
                                         }).into());
                                     }
                                     
@@ -359,7 +332,6 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         media: servo_media,
         webrtc: None,
         signaller: None,
-        streams: vec![],
     };
 
     let receive_loop = receive_loop(receiver, send_msg_tx, state);
