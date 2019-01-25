@@ -17,15 +17,26 @@ pub use thread::WebRtcController;
 /// the client. Use WebRtcController instead
 pub trait WebRtcControllerBackend: Send {
     fn configure(&mut self, stun_server: &str, policy: BundlePolicy);
-    /// Invariant: Callback must not reentrantly invoke any methods on the controller
     fn set_remote_description(&mut self, SessionDescription, cb: SendBoxFnOnce<'static, ()>);
-    /// Invariant: Callback must not reentrantly invoke any methods on the controller
     fn set_local_description(&mut self, SessionDescription, cb: SendBoxFnOnce<'static, ()>);
     fn add_ice_candidate(&mut self, candidate: IceCandidate);
     fn create_offer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>);
     fn create_answer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>);
     fn add_stream(&mut self, stream: &MediaStream);
     fn internal_event(&mut self, event: thread::InternalEvent);
+}
+
+pub struct DummyWebRtcController;
+
+impl WebRtcControllerBackend for DummyWebRtcController {
+    fn configure(&mut self, _: &str, _: BundlePolicy) {}
+    fn set_remote_description(&mut self, _: SessionDescription, _: SendBoxFnOnce<'static, ()>) {}
+    fn set_local_description(&mut self, _: SessionDescription, _: SendBoxFnOnce<'static, ()>) {}
+    fn add_ice_candidate(&mut self, _: IceCandidate) {}
+    fn create_offer(&mut self, _: SendBoxFnOnce<'static, (SessionDescription,)>) {}
+    fn create_answer(&mut self, _: SendBoxFnOnce<'static, (SessionDescription,)>) {}
+    fn add_stream(&mut self, _: &MediaStream) {}
+    fn internal_event(&mut self, _: thread::InternalEvent) {}
 }
 
 pub trait WebRtcSignaller: Send {

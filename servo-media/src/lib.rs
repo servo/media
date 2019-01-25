@@ -15,6 +15,7 @@ use audio::sink::{AudioSinkError, DummyAudioSink};
 use audio::AudioBackend;
 use player::{DummyPlayer, Player, PlayerBackend};
 use webrtc::{WebRtcController, WebRtcSignaller, MediaStream};
+use webrtc::{WebRtcBackend, DummyWebRtcController};
 
 pub struct ServoMedia;
 
@@ -44,6 +45,16 @@ impl PlayerBackend for DummyBackend {
     type Player = DummyPlayer;
     fn make_player() -> Self::Player {
         DummyPlayer {}
+    }
+}
+
+impl WebRtcBackend for DummyBackend {
+    type Controller = DummyWebRtcController;
+    fn construct_webrtc_controller(
+        _: Box<WebRtcSignaller>,
+        _: WebRtcController,
+    ) -> Self::Controller {
+        DummyWebRtcController
     }
 }
 
