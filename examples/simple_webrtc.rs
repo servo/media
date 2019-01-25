@@ -161,10 +161,10 @@ struct Signaller {
 }
 
 impl WebRtcSignaller for Signaller {
-    fn close(&self, reason: String) {
+    fn close(&self) {
         let _ = self.sender.send(OwnedMessage::Close(Some(websocket::message::CloseData {
             status_code: 1011, //Internal Error
-            reason: reason,
+            reason: "explicitly closed".into(),
         })));
     }
 

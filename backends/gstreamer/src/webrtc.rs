@@ -135,6 +135,16 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
             }
         }
     }
+
+
+
+    fn quit(&mut self) {
+        self.signaller.close();
+
+        self.pipeline.set_state(gst::State::Null).into_result().unwrap();
+
+        //main_loop.quit();
+    }
 }
 
 impl GStreamerWebRtcController {
@@ -162,23 +172,6 @@ impl GStreamerWebRtcController {
             .unwrap()
             .emit(kind, &[&answer, &promise])
             .unwrap();
-    }
-
-
-    #[allow(unused)]
-    fn close_and_quit(&self, err: &Error) {
-        println!("{}\nquitting", err);
-
-        // Must not hold mutex while shutting down the pipeline
-        // as something might call into here and take the mutex too
-        let pipeline = {
-            self.signaller.close(err.to_string());
-            self.pipeline.clone()
-        };
-
-        pipeline.set_state(gst::State::Null).into_result().unwrap();
-
-        //main_loop.quit();
     }
 }
 

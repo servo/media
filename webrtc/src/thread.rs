@@ -22,7 +22,10 @@ impl WebRtcController {
 
         thread::spawn(move || {
             while let Ok(event) = receiver.recv() {
-                handle_rtc_event(&mut controller, event)
+                if !handle_rtc_event(&mut controller, event) {
+                    // shut down event loop
+                    break;
+                }
             }
         });
 
@@ -54,6 +57,10 @@ impl WebRtcController {
     pub fn internal_event(&self, event: InternalEvent) {
         let _ = self.sender.send(RtcThreadEvent::InternalEvent(event));
     }
+
+    pub fn quit(&self) {
+        let _ = self.sender.send(RtcThreadEvent::Quit);
+    }
 }
 
 pub enum RtcThreadEvent {
@@ -65,6 +72,7 @@ pub enum RtcThreadEvent {
     CreateAnswer(SendBoxFnOnce<'static, (SessionDescription,)>),
     AddStream(Box<MediaStream>),
     InternalEvent(InternalEvent),
+    Quit
 }
 
 /// To allow everything to occur on the event loop,
@@ -77,7 +85,7 @@ pub enum InternalEvent {
     OnIceCandidate(IceCandidate),
 }
 
-pub fn handle_rtc_event(controller: &mut WebRtcControllerBackend, event: RtcThreadEvent) {
+pub fn handle_rtc_event(controller: &mut WebRtcControllerBackend, event: RtcThreadEvent) -> bool {
     match event {
         RtcThreadEvent::ConfigureStun(server, policy) => controller.configure(&server, policy),
         RtcThreadEvent::SetRemoteDescription(desc, cb) => {
@@ -89,5 +97,10 @@ pub fn handle_rtc_event(controller: &mut WebRtcControllerBackend, event: RtcThre
         RtcThreadEvent::CreateAnswer(cb) => controller.create_answer(cb),
         RtcThreadEvent::AddStream(media) => controller.add_stream(&*media),
         RtcThreadEvent::InternalEvent(e) => controller.internal_event(e),
+        RtcThreadEvent::Quit => {
+            controller.quit();
+            return false
+        }
     }
+    true
 }
