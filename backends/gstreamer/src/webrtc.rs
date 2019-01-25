@@ -1,13 +1,13 @@
 use boxfnonce::SendBoxFnOnce;
 use failure::Error;
 use glib::{self, ObjectExt};
-use gst::{self, ElementExt, BinExt, BinExtManual, GObjectExtManualGst, PadDirection, PadExt};
+use gst::{self, BinExt, BinExtManual, ElementExt, GObjectExtManualGst, PadDirection, PadExt};
 use gst_sdp;
 use gst_webrtc::{self, WebRTCSDPType};
 use media_stream::GStreamerMediaStream;
-use servo_media_webrtc::*;
-use servo_media_webrtc::WebRtcController as WebRtcThread;
 use servo_media_webrtc::thread::InternalEvent;
+use servo_media_webrtc::WebRtcController as WebRtcThread;
+use servo_media_webrtc::*;
 use std::sync::Mutex;
 
 // TODO:
@@ -53,18 +53,22 @@ pub struct GStreamerWebRtcController {
 
 impl WebRtcControllerBackend for GStreamerWebRtcController {
     fn add_ice_candidate(&mut self, candidate: IceCandidate) {
-        self
-            .webrtc
+        self.webrtc
             .as_ref()
             .unwrap()
-            .emit("add-ice-candidate", &[&candidate.sdp_mline_index, &candidate.candidate])
+            .emit(
+                "add-ice-candidate",
+                &[&candidate.sdp_mline_index, &candidate.candidate],
+            )
             .unwrap();
     }
 
     fn set_remote_description(&mut self, desc: SessionDescription, cb: SendBoxFnOnce<'static, ()>) {
-        assert!(self.app_state == AppState::PeerCallNegotiating ||
-                self.app_state == AppState::PeerCallNegotiatingHaveLocal,
-                "Not ready to handle sdp");
+        assert!(
+            self.app_state == AppState::PeerCallNegotiating
+                || self.app_state == AppState::PeerCallNegotiatingHaveLocal,
+            "Not ready to handle sdp"
+        );
 
         self.set_description(desc, false, cb);
 
@@ -76,9 +80,11 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
     }
 
     fn set_local_description(&mut self, desc: SessionDescription, cb: SendBoxFnOnce<'static, ()>) {
-        assert!(self.app_state == AppState::PeerCallNegotiating ||
-                self.app_state == AppState::PeerCallNegotiatingHaveRemote,
-                "Not ready to handle sdp");
+        assert!(
+            self.app_state == AppState::PeerCallNegotiating
+                || self.app_state == AppState::PeerCallNegotiatingHaveRemote,
+            "Not ready to handle sdp"
+        );
 
         self.set_description(desc, true, cb);
 
@@ -91,29 +97,40 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
 
     fn create_offer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) {
         let webrtc = self.webrtc.as_ref().unwrap();
-        assert!(self.app_state == AppState::PeerCallNegotiating,
-                "Not negotiating call when creating offer");
+        assert!(
+            self.app_state == AppState::PeerCallNegotiating,
+            "Not negotiating call when creating offer"
+        );
         let promise = gst::Promise::new_with_change_func(move |promise| {
             on_offer_or_answer_created(SdpType::Offer, promise, cb);
         });
 
-        webrtc.emit("create-offer", &[&None::<gst::Structure>, &promise]).unwrap();
+        webrtc
+            .emit("create-offer", &[&None::<gst::Structure>, &promise])
+            .unwrap();
     }
 
     fn create_answer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) {
         let webrtc = self.webrtc.as_ref().unwrap();
-        assert!(self.app_state == AppState::PeerCallNegotiatingHaveRemote,
-                "No offfer received when creating answer");
+        assert!(
+            self.app_state == AppState::PeerCallNegotiatingHaveRemote,
+            "No offfer received when creating answer"
+        );
         let promise = gst::Promise::new_with_change_func(move |promise| {
             on_offer_or_answer_created(SdpType::Answer, promise, cb);
         });
 
-        webrtc.emit("create-answer", &[&None::<gst::Structure>, &promise]).unwrap();
-    } 
+        webrtc
+            .emit("create-answer", &[&None::<gst::Structure>, &promise])
+            .unwrap();
+    }
 
     fn add_stream(&mut self, stream: &MediaStream) {
         println!("adding a stream");
-        let stream = stream.as_any().downcast_ref::<GStreamerMediaStream>().unwrap();
+        let stream = stream
+            .as_any()
+            .downcast_ref::<GStreamerMediaStream>()
+            .unwrap();
         stream.attach_to_pipeline(&self.pipeline, self.webrtc.as_ref().unwrap());
         self.prepare_for_negotiation();
     }
@@ -136,21 +153,25 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         }
     }
 
-
-
     fn quit(&mut self) {
         self.signaller.close();
 
-        self.pipeline.set_state(gst::State::Null).into_result().unwrap();
+        self.pipeline
+            .set_state(gst::State::Null)
+            .into_result()
+            .unwrap();
 
         //main_loop.quit();
     }
 }
 
 impl GStreamerWebRtcController {
-
-
-    fn set_description(&self, desc: SessionDescription, local: bool, cb: SendBoxFnOnce<'static, ()>) {
+    fn set_description(
+        &self,
+        desc: SessionDescription,
+        local: bool,
+        cb: SendBoxFnOnce<'static, ()>,
+    ) {
         let ty = match desc.type_ {
             SdpType::Answer => WebRTCSDPType::Answer,
             SdpType::Offer => WebRTCSDPType::Offer,
@@ -158,16 +179,16 @@ impl GStreamerWebRtcController {
             SdpType::Rollback => WebRTCSDPType::Rollback,
         };
 
-        let kind = if local { "set-local-description" } else { "set-remote-description" };
+        let kind = if local {
+            "set-local-description"
+        } else {
+            "set-remote-description"
+        };
 
         let ret = gst_sdp::SDPMessage::parse_buffer(desc.sdp.as_bytes()).unwrap();
-        let answer =
-            gst_webrtc::WebRTCSessionDescription::new(ty, ret);
-        let promise = gst::Promise::new_with_change_func(move |_promise| {
-            cb.call()
-        });
-        self
-            .webrtc
+        let answer = gst_webrtc::WebRTCSessionDescription::new(ty, ret);
+        let promise = gst::Promise::new_with_change_func(move |_promise| cb.call());
+        self.webrtc
             .as_ref()
             .unwrap()
             .emit(kind, &[&answer, &promise])
@@ -188,11 +209,19 @@ impl GStreamerWebRtcController {
         // If the pipeline starts playing and this signal is present before there are any
         // media streams, an invalid SDP offer will be created. Therefore, delay setting up
         // the signal and starting the pipeline until after the first stream has been added.
-        webrtc.connect("on-negotiation-needed", false, move |_values| {
-            thread.lock().unwrap().internal_event(InternalEvent::OnNegotiationNeeded);
-            None
-        }).unwrap();
-        self.pipeline.set_state(gst::State::Playing).into_result().unwrap();
+        webrtc
+            .connect("on-negotiation-needed", false, move |_values| {
+                thread
+                    .lock()
+                    .unwrap()
+                    .internal_event(InternalEvent::OnNegotiationNeeded);
+                None
+            })
+            .unwrap();
+        self.pipeline
+            .set_state(gst::State::Playing)
+            .into_result()
+            .unwrap();
     }
 
     fn start_pipeline(&mut self) {
@@ -202,17 +231,24 @@ impl GStreamerWebRtcController {
         // gstreamer needs Sync on these callbacks for some reason
         // https://github.com/sdroege/gstreamer-rs/issues/154
         let thread = Mutex::new(self.thread.clone());
-        webrtc.connect("on-ice-candidate", false, move |values| {
-            thread.lock().unwrap().internal_event(InternalEvent::OnIceCandidate(candidate(values)));
-            None
-        }).unwrap();
+        webrtc
+            .connect("on-ice-candidate", false, move |values| {
+                thread
+                    .lock()
+                    .unwrap()
+                    .internal_event(InternalEvent::OnIceCandidate(candidate(values)));
+                None
+            })
+            .unwrap();
 
         let pipe_clone = self.pipeline.clone();
-        webrtc.connect("pad-added", false, move |values| {
-            println!("pad-added");
-            process_new_stream(values, &pipe_clone);
-            None
-        }).unwrap();
+        webrtc
+            .connect("pad-added", false, move |values| {
+                println!("pad-added");
+                process_new_stream(values, &pipe_clone);
+                None
+            })
+            .unwrap();
 
         self.webrtc = Some(webrtc);
     }
@@ -236,7 +272,6 @@ pub fn construct(
     };
     controller.start_pipeline();
     controller
-    
 }
 
 fn on_offer_or_answer_created(
@@ -259,7 +294,7 @@ fn on_offer_or_answer_created(
         WebRTCSDPType::Offer => SdpType::Offer,
         WebRTCSDPType::Pranswer => SdpType::Pranswer,
         WebRTCSDPType::Rollback => SdpType::Rollback,
-        _ => panic!("unknown sdp response")
+        _ => panic!("unknown sdp response"),
     };
 
     let desc = SessionDescription {
@@ -340,10 +375,7 @@ fn on_incoming_decodebin_stream(
     None
 }
 
-fn on_incoming_stream(
-    values: &[glib::Value],
-    pipe: &gst::Pipeline,
-) -> Option<glib::Value> {
+fn on_incoming_stream(values: &[glib::Value], pipe: &gst::Pipeline) -> Option<glib::Value> {
     let webrtc = values[0].get::<gst::Element>().expect("Invalid argument");
 
     let decodebin = gst::ElementFactory::make("decodebin", None).unwrap();
@@ -363,10 +395,7 @@ fn on_incoming_stream(
     None
 }
 
-fn process_new_stream(
-    values: &[glib::Value],
-    pipe: &gst::Pipeline,
-) -> Option<glib::Value> {
+fn process_new_stream(values: &[glib::Value], pipe: &gst::Pipeline) -> Option<glib::Value> {
     let pad = values[1].get::<gst::Pad>().expect("not a pad??");
     if pad.get_direction() != PadDirection::Src {
         // Ignore outgoing pad notifications.

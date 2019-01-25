@@ -4,7 +4,7 @@ use std::thread;
 use boxfnonce::SendBoxFnOnce;
 
 use crate::{BundlePolicy, IceCandidate, MediaStream, SessionDescription};
-use crate::{WebRtcControllerBackend, WebRtcSignaller, WebRtcBackend};
+use crate::{WebRtcBackend, WebRtcControllerBackend, WebRtcSignaller};
 
 #[derive(Clone)]
 /// Entry point for all client webrtc interactions.
@@ -32,13 +32,19 @@ impl WebRtcController {
         t
     }
     pub fn configure(&self, stun_server: String, policy: BundlePolicy) {
-        let _ = self.sender.send(RtcThreadEvent::ConfigureStun(stun_server, policy));
+        let _ = self
+            .sender
+            .send(RtcThreadEvent::ConfigureStun(stun_server, policy));
     }
     pub fn set_remote_description(&self, desc: SessionDescription, cb: SendBoxFnOnce<'static, ()>) {
-        let _ = self.sender.send(RtcThreadEvent::SetRemoteDescription(desc, cb));
+        let _ = self
+            .sender
+            .send(RtcThreadEvent::SetRemoteDescription(desc, cb));
     }
     pub fn set_local_description(&self, desc: SessionDescription, cb: SendBoxFnOnce<'static, ()>) {
-        let _ = self.sender.send(RtcThreadEvent::SetLocalDescription(desc, cb));
+        let _ = self
+            .sender
+            .send(RtcThreadEvent::SetLocalDescription(desc, cb));
     }
     pub fn add_ice_candidate(&self, candidate: IceCandidate) {
         let _ = self.sender.send(RtcThreadEvent::AddIceCandidate(candidate));
@@ -72,7 +78,7 @@ pub enum RtcThreadEvent {
     CreateAnswer(SendBoxFnOnce<'static, (SessionDescription,)>),
     AddStream(Box<MediaStream>),
     InternalEvent(InternalEvent),
-    Quit
+    Quit,
 }
 
 /// To allow everything to occur on the event loop,
@@ -99,7 +105,7 @@ pub fn handle_rtc_event(controller: &mut WebRtcControllerBackend, event: RtcThre
         RtcThreadEvent::InternalEvent(e) => controller.internal_event(e),
         RtcThreadEvent::Quit => {
             controller.quit();
-            return false
+            return false;
         }
     }
     true

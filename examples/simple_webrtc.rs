@@ -16,11 +16,11 @@ extern crate servo_media;
 extern crate websocket;
 
 use rand::Rng;
-use servo_media::ServoMedia;
 use servo_media::webrtc::*;
+use servo_media::ServoMedia;
 use std::env;
 use std::net;
-use std::sync::{Arc, mpsc};
+use std::sync::{mpsc, Arc};
 use std::thread;
 use websocket::OwnedMessage;
 
@@ -113,7 +113,9 @@ impl State {
         self.app_state = AppState::ServerRegistered;
         // if we know who we want to connect to, request a connection
         if let Some(ref peer_id) = self.peer_id {
-            self.send_msg_tx.send(OwnedMessage::Text(format!("SESSION {}", peer_id))).unwrap();
+            self.send_msg_tx
+                .send(OwnedMessage::Text(format!("SESSION {}", peer_id)))
+                .unwrap();
             self.app_state = AppState::PeerConnecting;
         } else {
             // else just spin up the RTC object and wait
@@ -122,8 +124,10 @@ impl State {
     }
 
     fn handle_session_ok(&mut self) {
-        assert!(self.peer_id.is_some(),
-                "SESSION OK should only be received by those attempting to connect to an existing peer");
+        assert!(
+            self.peer_id.is_some(),
+            "SESSION OK should only be received by those attempting to connect to an existing peer"
+        );
         println!("session is ok; creating webrtc objects");
         assert_eq!(self.app_state, AppState::PeerConnecting);
         self.app_state = AppState::PeerConnected;
@@ -137,16 +141,19 @@ impl State {
         self.signaller = Some(s);
         let webrtc = self.webrtc.as_ref().unwrap();
         let (video, audio) = if self.peer_id.is_some() {
-            (self
-            .media
-            .create_videoinput_stream()
-            .unwrap_or_else(|| self.media.create_videostream()),
-            self
-            .media
-            .create_audioinput_stream()
-            .unwrap_or_else(|| self.media.create_audiostream()))
+            (
+                self.media
+                    .create_videoinput_stream()
+                    .unwrap_or_else(|| self.media.create_videostream()),
+                self.media
+                    .create_audioinput_stream()
+                    .unwrap_or_else(|| self.media.create_audiostream()),
+            )
         } else {
-            (self.media.create_videostream(), self.media.create_audiostream())
+            (
+                self.media.create_videostream(),
+                self.media.create_audiostream(),
+            )
         };
         webrtc.add_stream(video);
         webrtc.add_stream(audio);
@@ -157,36 +164,40 @@ impl State {
 #[derive(Clone)]
 struct Signaller {
     sender: mpsc::Sender<OwnedMessage>,
-    initiate_negotiation: bool
+    initiate_negotiation: bool,
 }
 
 impl WebRtcSignaller for Signaller {
     fn close(&self) {
-        let _ = self.sender.send(OwnedMessage::Close(Some(websocket::message::CloseData {
-            status_code: 1011, //Internal Error
-            reason: "explicitly closed".into(),
-        })));
+        let _ = self
+            .sender
+            .send(OwnedMessage::Close(Some(websocket::message::CloseData {
+                status_code: 1011, //Internal Error
+                reason: "explicitly closed".into(),
+            })));
     }
 
     fn on_ice_candidate(&self, _: &WebRtcController, candidate: IceCandidate) {
         let message = serde_json::to_string(&JsonMsg::Ice {
             candidate: candidate.candidate,
             sdp_mline_index: candidate.sdp_mline_index,
-        }).unwrap();
+        })
+        .unwrap();
         self.sender.send(OwnedMessage::Text(message)).unwrap();
     }
 
     fn on_negotiation_needed(&self, controller: &WebRtcController) {
         if !self.initiate_negotiation {
-            return
+            return;
         }
         let c2 = controller.clone();
         let s2 = self.clone();
-        controller.create_offer((move |offer: SessionDescription| {
-            c2.set_local_description(offer.clone(), (move || {
-                s2.send_sdp(offer)
-            }).into())
-        }).into());
+        controller.create_offer(
+            (move |offer: SessionDescription| {
+                c2.set_local_description(offer.clone(), (move || s2.send_sdp(offer)).into())
+            })
+            .into(),
+        );
     }
 }
 
@@ -195,13 +206,14 @@ impl Signaller {
         let message = serde_json::to_string(&JsonMsg::Sdp {
             type_: desc.type_.as_str().into(),
             sdp: desc.sdp,
-        }).unwrap();
+        })
+        .unwrap();
         self.sender.send(OwnedMessage::Text(message)).unwrap();
     }
     fn new(sender: mpsc::Sender<OwnedMessage>, initiate_negotiation: bool) -> Self {
         Signaller {
             sender,
-            initiate_negotiation
+            initiate_negotiation,
         }
     }
 }
@@ -254,7 +266,7 @@ fn receive_loop(
                                 JsonMsg::Sdp { type_, sdp } => {
                                     let desc = SessionDescription {
                                         type_: type_.parse().unwrap(),
-                                        sdp: sdp.into()
+                                        sdp: sdp.into(),
                                     };
                                     let controller = state.webrtc.as_ref().unwrap();
                                     if state.peer_id.is_some() {
@@ -263,25 +275,37 @@ fn receive_loop(
                                         let c2 = controller.clone();
                                         let c3 = controller.clone();
                                         let s2 = state.signaller.clone().unwrap();
-                                        controller.set_remote_description(desc, (move || {
-                                            c3.create_answer((move |answer: SessionDescription| {
-                                                c2.set_local_description(answer.clone(), (move || {
-                                                    s2.send_sdp(answer)
-                                                }).into())
-                                            }).into())
-                                        }).into());
+                                        controller.set_remote_description(
+                                            desc,
+                                            (move || {
+                                                c3.create_answer(
+                                                    (move |answer: SessionDescription| {
+                                                        c2.set_local_description(
+                                                            answer.clone(),
+                                                            (move || s2.send_sdp(answer)).into(),
+                                                        )
+                                                    })
+                                                    .into(),
+                                                )
+                                            })
+                                            .into(),
+                                        );
                                     }
-                                    
-                                    
                                 }
                                 JsonMsg::Ice {
                                     sdp_mline_index,
                                     candidate,
                                 } => {
                                     let candidate = IceCandidate {
-                                        sdp_mline_index, candidate
+                                        sdp_mline_index,
+                                        candidate,
                                     };
-                                    state.webrtc.as_ref().unwrap().add_ice_candidate(candidate).into()
+                                    state
+                                        .webrtc
+                                        .as_ref()
+                                        .unwrap()
+                                        .add_ice_candidate(candidate)
+                                        .into()
                                 }
                             };
                         }
@@ -329,7 +353,9 @@ fn run_example(servo_media: Arc<ServoMedia>) {
 
     let our_id = rand::thread_rng().gen_range(10, 10_000);
     println!("Registering id {} with server", our_id);
-    send_msg_tx.send(OwnedMessage::Text(format!("HELLO {}", our_id))).expect("error sending");
+    send_msg_tx
+        .send(OwnedMessage::Text(format!("HELLO {}", our_id)))
+        .expect("error sending");
 
     let state = State {
         app_state: AppState::ServerRegistering,
