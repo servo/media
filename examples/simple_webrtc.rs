@@ -300,7 +300,14 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     env_logger::init();
     let mut args = env::args();
     let _ = args.next();
-    let server_port = args.next().expect("Usage: simple_webrtc <port> <peer id>").parse::<u32>().unwrap();
+    let server_port = if let Some(port) = args.next() {
+        port.parse::<u32>().unwrap()
+    } else {
+        // we don't panic here so that we can run this
+        // as a test on Travis
+        println!("Usage: simple_webrtc <port> <peer id>");
+        return;
+    };
     let server = format!("ws://localhost:{}", server_port);
     let peer_id = args.next();
 
