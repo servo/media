@@ -50,7 +50,7 @@ impl GStreamerMediaStream {
         pipeline.add_many(&elements[..]).unwrap();
         gst::Element::link_many(&elements[..]).unwrap();
         for element in elements {
-            element.sync_state_with_parent();
+            element.sync_state_with_parent().unwrap();
         }
 
         let caps = match self.type_ {
