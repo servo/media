@@ -21,10 +21,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         Default::default(),
     );
     options.freq = 100.;
-    let osc3 = context.create_node(
-        AudioNodeInit::OscillatorNode(options),
-        Default::default(),
-    );
+    let osc3 = context.create_node(AudioNodeInit::OscillatorNode(options), Default::default());
     let mut options = GainNodeOptions::default();
     options.gain = 0.7;
     let gain = context.create_node(AudioNodeInit::GainNode(options.clone()), Default::default());

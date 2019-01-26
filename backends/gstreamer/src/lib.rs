@@ -12,8 +12,8 @@ extern crate gstreamer as gst;
 extern crate gstreamer_app as gst_app;
 extern crate gstreamer_audio as gst_audio;
 extern crate gstreamer_player as gst_player;
-extern crate gstreamer_sys as gst_ffi;
 extern crate gstreamer_sdp as gst_sdp;
+extern crate gstreamer_sys as gst_ffi;
 extern crate gstreamer_video as gst_video;
 extern crate gstreamer_webrtc as gst_webrtc;
 extern crate ipc_channel;
@@ -28,7 +28,7 @@ extern crate url;
 use servo_media_audio::sink::AudioSinkError;
 use servo_media_audio::AudioBackend;
 use servo_media_player::PlayerBackend;
-use servo_media_webrtc::{WebRtcBackend, WebRtcSignaller, WebRtcController};
+use servo_media_webrtc::{WebRtcBackend, WebRtcController, WebRtcSignaller};
 
 pub mod audio_decoder;
 pub mod audio_sink;

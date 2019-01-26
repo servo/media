@@ -27,10 +27,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     };
 
     let (sender, receiver) = ipc::channel().unwrap();
-    player
-        .lock()
-        .unwrap()
-        .register_event_handler(sender);
+    player.lock().unwrap().register_event_handler(sender);
 
     let path = Path::new(filename);
     let display = path.display();

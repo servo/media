@@ -2,13 +2,13 @@
 extern crate servo_media;
 
 #[cfg(target_os = "android")]
-use servo_media::audio::gain_node::GainNodeOptions;
-#[cfg(target_os = "android")]
 use servo_media::audio::context::AudioContext;
 #[cfg(target_os = "android")]
-use servo_media::audio::node::{AudioNodeInit, AudioNodeMessage};
+use servo_media::audio::gain_node::GainNodeOptions;
 #[cfg(target_os = "android")]
 use servo_media::audio::node::AudioScheduledSourceNodeMessage;
+#[cfg(target_os = "android")]
+use servo_media::audio::node::{AudioNodeInit, AudioNodeMessage};
 #[cfg(target_os = "android")]
 use servo_media::{Backend, ServoMedia};
 
@@ -20,8 +20,13 @@ struct AudioStream {
 #[cfg(target_os = "android")]
 impl AudioStream {
     pub fn new() -> Self {
-        let context = ServoMedia::get().unwrap().create_audio_context(Default::default());
-        let osc = context.create_node(AudioNodeInit::OscillatorNode(Default::default()), Default::default());
+        let context = ServoMedia::get()
+            .unwrap()
+            .create_audio_context(Default::default());
+        let osc = context.create_node(
+            AudioNodeInit::OscillatorNode(Default::default()),
+            Default::default(),
+        );
         let mut options = GainNodeOptions::default();
         options.gain = 0.5;
         let gain = context.create_node(AudioNodeInit::GainNode(options), Default::default());

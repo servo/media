@@ -57,7 +57,12 @@ impl GStreamerMediaStream {
             StreamType::Audio => &*RTP_CAPS_OPUS,
             StreamType::Video => &*RTP_CAPS_VP8,
         };
-        self.elements.last().as_ref().unwrap().link_filtered(webrtcbin, caps).unwrap();
+        self.elements
+            .last()
+            .as_ref()
+            .unwrap()
+            .link_filtered(webrtcbin, caps)
+            .unwrap();
     }
 
     pub fn create_video() -> GStreamerMediaStream {
@@ -80,14 +85,7 @@ impl GStreamerMediaStream {
 
         GStreamerMediaStream {
             type_: StreamType::Video,
-            elements: vec![
-                source,
-                videoconvert,
-                queue,
-                vp8enc,
-                rtpvp8pay,
-                queue2,
-            ],
+            elements: vec![source, videoconvert, queue, vp8enc, rtpvp8pay, queue2],
         }
     }
 

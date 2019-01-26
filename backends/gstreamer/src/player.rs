@@ -239,12 +239,14 @@ impl PlayerInner {
                             start.unwrap()
                         } else {
                             0
-                        } * duration.as_secs() as u32 / (gst::FORMAT_PERCENT_MAX)) as f64;
+                        } * duration.as_secs() as u32
+                            / (gst::FORMAT_PERCENT_MAX)) as f64;
                         let end = (if let Percent(end) = end {
                             end.unwrap()
                         } else {
                             0
-                        } * duration.as_secs() as u32 / (gst::FORMAT_PERCENT_MAX)) as f64;
+                        } * duration.as_secs() as u32
+                            / (gst::FORMAT_PERCENT_MAX)) as f64;
                         result.push(Range { start, end });
                     }
                 }
@@ -360,7 +362,7 @@ impl GStreamerPlayer {
             None => {
                 return Err(PlayerError::Backend(
                     "FlagsClass creation failed".to_owned(),
-                ))
+                ));
             }
         };
         let flags_class = match flags_class.builder_with_value(flags) {
@@ -368,7 +370,7 @@ impl GStreamerPlayer {
             None => {
                 return Err(PlayerError::Backend(
                     "FlagsClass creation failed".to_owned(),
-                ))
+                ));
             }
         };
         let flags = match flags_class.set_by_nick("download").build() {
@@ -376,7 +378,7 @@ impl GStreamerPlayer {
             None => {
                 return Err(PlayerError::Backend(
                     "FlagsClass creation failed".to_owned(),
-                ))
+                ));
             }
         };
         pipeline

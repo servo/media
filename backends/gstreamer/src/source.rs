@@ -130,10 +130,9 @@ mod imp {
             //
             // For 2. we need to make servosrc handle the scheduling properties query
             // to report that it "is bandwidth limited".
-             if let QueryView::Scheduling(ref mut query) = query.view_mut() {
+            if let QueryView::Scheduling(ref mut query) = query.view_mut() {
                 query.set(
-                    gst::SchedulingFlags::SEQUENTIAL
-                        | gst::SchedulingFlags::BANDWIDTH_LIMITED,
+                    gst::SchedulingFlags::SEQUENTIAL | gst::SchedulingFlags::BANDWIDTH_LIMITED,
                     1,
                     -1,
                     0,
@@ -160,7 +159,7 @@ mod imp {
             if let Some(ref uri) = uri {
                 if let Ok(uri) = Url::parse(uri) {
                     if uri.scheme() == "servosrc" {
-                        return Ok(())
+                        return Ok(());
                     }
                 }
             }
