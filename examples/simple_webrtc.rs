@@ -20,7 +20,7 @@ use servo_media::webrtc::*;
 use servo_media::ServoMedia;
 use std::env;
 use std::net;
-use std::sync::{mpsc, Arc};
+use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use websocket::OwnedMessage;
 
@@ -135,7 +135,11 @@ impl State {
     }
 
     fn start_rtc(&mut self) {
-        let signaller = Signaller::new(self.send_msg_tx.clone(), self.peer_id.is_some());
+        let signaller = Signaller::new(
+            self.send_msg_tx.clone(),
+            self.peer_id.is_some(),
+            self.media.create_stream_output(),
+        );
         let s = signaller.clone();
         self.webrtc = Some(self.media.create_webrtc(Box::new(signaller)));
         self.signaller = Some(s);
@@ -165,6 +169,7 @@ impl State {
 struct Signaller {
     sender: mpsc::Sender<OwnedMessage>,
     initiate_negotiation: bool,
+    output: Arc<Mutex<Box<MediaOutput>>>,
 }
 
 impl WebRtcSignaller for Signaller {
@@ -199,6 +204,10 @@ impl WebRtcSignaller for Signaller {
             .into(),
         );
     }
+
+    fn on_add_stream(&self, stream: Box<MediaStream>) {
+        self.output.lock().unwrap().add_stream(stream);
+    }
 }
 
 impl Signaller {
@@ -210,10 +219,15 @@ impl Signaller {
         .unwrap();
         self.sender.send(OwnedMessage::Text(message)).unwrap();
     }
-    fn new(sender: mpsc::Sender<OwnedMessage>, initiate_negotiation: bool) -> Self {
+    fn new(
+        sender: mpsc::Sender<OwnedMessage>,
+        initiate_negotiation: bool,
+        output: Box<MediaOutput>,
+    ) -> Self {
         Signaller {
             sender,
             initiate_negotiation,
+            output: Arc::new(Mutex::new(output)),
         }
     }
 }

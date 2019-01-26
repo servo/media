@@ -9,6 +9,7 @@ pub mod thread;
 
 pub trait MediaStream: Any + Send {
     fn as_any(&self) -> &Any;
+    fn as_mut_any(&mut self) -> &mut Any;
 }
 
 pub use thread::WebRtcController;
@@ -22,7 +23,7 @@ pub trait WebRtcControllerBackend: Send {
     fn add_ice_candidate(&mut self, candidate: IceCandidate);
     fn create_offer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>);
     fn create_answer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>);
-    fn add_stream(&mut self, stream: &MediaStream);
+    fn add_stream(&mut self, stream: &mut MediaStream);
     fn internal_event(&mut self, event: thread::InternalEvent);
     fn quit(&mut self);
 }
@@ -36,7 +37,7 @@ impl WebRtcControllerBackend for DummyWebRtcController {
     fn add_ice_candidate(&mut self, _: IceCandidate) {}
     fn create_offer(&mut self, _: SendBoxFnOnce<'static, (SessionDescription,)>) {}
     fn create_answer(&mut self, _: SendBoxFnOnce<'static, (SessionDescription,)>) {}
-    fn add_stream(&mut self, _: &MediaStream) {}
+    fn add_stream(&mut self, _: &mut MediaStream) {}
     fn internal_event(&mut self, _: thread::InternalEvent) {}
     fn quit(&mut self) {}
 }
@@ -46,6 +47,18 @@ pub trait WebRtcSignaller: Send {
     /// Invariant: Must not reentrantly invoke any methods on the controller
     fn on_negotiation_needed(&self, controller: &WebRtcController);
     fn close(&self);
+    fn on_add_stream(&self, stream: Box<MediaStream>);
+}
+
+pub struct DummyMediaOutput;
+impl MediaOutput for DummyMediaOutput {
+    fn add_stream(&mut self, _stream: Box<MediaStream>) {}
+}
+
+/// This isn't part of the webrtc spec; it's a leaky abstaction while media streams
+/// are under development and example consumers need to be able to inspect them.
+pub trait MediaOutput: Send {
+    fn add_stream(&mut self, stream: Box<MediaStream>);
 }
 
 pub trait WebRtcBackend {
