@@ -7,8 +7,8 @@ use media_stream::GStreamerMediaStream;
 use servo_media_webrtc::thread::InternalEvent;
 use servo_media_webrtc::WebRtcController as WebRtcThread;
 use servo_media_webrtc::*;
-use std::sync::Mutex;
 use std::error::Error;
+use std::sync::Mutex;
 
 // TODO:
 // - add a proper error enum

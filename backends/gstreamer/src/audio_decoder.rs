@@ -41,7 +41,7 @@ impl AudioDecoder for GStreamerAudioDecoder {
             None => {
                 return callbacks.error(AudioDecoderError::Backend(
                     "appsrc creation failed".to_owned(),
-                ))
+                ));
             }
         };
 
@@ -50,7 +50,7 @@ impl AudioDecoder for GStreamerAudioDecoder {
             None => {
                 return callbacks.error(AudioDecoderError::Backend(
                     "decodebin creation failed".to_owned(),
-                ))
+                ));
             }
         };
 
@@ -177,7 +177,7 @@ impl AudioDecoder for GStreamerAudioDecoder {
                         None => {
                             return callbacks.error(AudioDecoderError::Backend(
                                 "Pipeline failedupgrade".to_owned(),
-                            ))
+                            ));
                         }
                     };
                     let insert_sink = || -> Result<(), AudioDecoderError> {

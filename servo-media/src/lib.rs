@@ -14,8 +14,8 @@ use audio::decoder::DummyAudioDecoder;
 use audio::sink::{AudioSinkError, DummyAudioSink};
 use audio::AudioBackend;
 use player::{DummyPlayer, Player, PlayerBackend};
-use webrtc::{WebRtcController, WebRtcSignaller, MediaStream};
-use webrtc::{WebRtcBackend, DummyWebRtcController};
+use webrtc::{DummyWebRtcController, WebRtcBackend};
+use webrtc::{MediaStream, WebRtcController, WebRtcSignaller};
 
 pub struct ServoMedia;
 
@@ -24,7 +24,9 @@ static mut INSTANCE: *mut Mutex<Option<Arc<ServoMedia>>> = 0 as *mut _;
 
 pub struct DummyMediaStream;
 impl MediaStream for DummyMediaStream {
-    fn as_any(&self) -> &Any { self }
+    fn as_any(&self) -> &Any {
+        self
+    }
 }
 
 pub struct DummyBackend {}
@@ -87,7 +89,6 @@ pub type Backend = servo_media_gstreamer::GStreamerBackend;
     target_arch = "x86_64"
 )))]
 pub type Backend = DummyBackend;
-
 
 impl ServoMedia {
     pub fn new() -> Self {

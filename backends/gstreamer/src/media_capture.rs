@@ -1,12 +1,12 @@
 use crate::media_stream::{GStreamerMediaStream, StreamType};
-use gst::{DeviceMonitor, DeviceMonitorExt, DeviceExt};
-use gst::{Fraction, FractionRange, List, IntRange};
 use gst::caps::{Builder, Caps};
+use gst::{DeviceExt, DeviceMonitor, DeviceMonitorExt};
+use gst::{Fraction, FractionRange, IntRange, List};
 use std::i32;
 
 pub enum Constrain<T> {
     Value(T),
-    Range(ConstrainRange<T>)
+    Range(ConstrainRange<T>),
 }
 
 impl Constrain<u64> {
@@ -42,8 +42,14 @@ impl Constrain<f64> {
         match self {
             Constrain::Value(v) => Some(builder.field("name", &Fraction::approximate_f64(v)?)),
             Constrain::Range(r) => {
-                let min = r.min.and_then(|v| Fraction::approximate_f64(v)).unwrap_or(Fraction::new(min, 1));
-                let max = r.max.and_then(|v| Fraction::approximate_f64(v)).unwrap_or(Fraction::new(max, 1));
+                let min = r
+                    .min
+                    .and_then(|v| Fraction::approximate_f64(v))
+                    .unwrap_or(Fraction::new(min, 1));
+                let max = r
+                    .max
+                    .and_then(|v| Fraction::approximate_f64(v))
+                    .unwrap_or(Fraction::new(max, 1));
                 let range = FractionRange::new(min, max);
                 if let Some(ideal) = r.ideal.and_then(|v| Fraction::approximate_f64(v)) {
                     let array = gst::List::new(&[&ideal, &range]);
@@ -106,12 +112,20 @@ struct GstMediaDevices {
 impl GstMediaDevices {
     pub fn new() -> Self {
         Self {
-            monitor: DeviceMonitor::new()
+            monitor: DeviceMonitor::new(),
         }
     }
 
-    pub fn get_track(&self, video: bool, constraints: MediaTrackConstraintSet) -> Option<GstMediaTrack> {
-        let (format, filter) = if video { ("video/x-raw", "Video/Source") } else { ("audio/x-raw", "Audio/Source") };
+    pub fn get_track(
+        &self,
+        video: bool,
+        constraints: MediaTrackConstraintSet,
+    ) -> Option<GstMediaTrack> {
+        let (format, filter) = if video {
+            ("video/x-raw", "Video/Source")
+        } else {
+            ("audio/x-raw", "Audio/Source")
+        };
         let caps = constraints.into_caps(format)?;
         println!("requesting {:?}", caps);
         let f = self.monitor.add_filter(filter, &caps);
@@ -122,9 +136,7 @@ impl GstMediaDevices {
         if let Some(d) = devices.get(0) {
             println!("{:?}", d.get_caps());
             let element = d.create_element(None)?;
-            Some(GstMediaTrack {
-                element
-            })
+            Some(GstMediaTrack { element })
         } else {
             None
         }
