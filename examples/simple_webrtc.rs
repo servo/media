@@ -92,22 +92,6 @@ struct State {
 }
 
 impl State {
-    fn handle_error(&self) {
-        let _error = match self.app_state {
-            AppState::ServerRegistering => AppState::ServerRegisteringError,
-            AppState::PeerConnecting => AppState::PeerConnectionError,
-            AppState::PeerConnected => AppState::PeerCallError,
-            AppState::PeerCallNegotiating => AppState::PeerCallError,
-            AppState::ServerRegisteringError => AppState::ServerRegisteringError,
-            AppState::PeerConnectionError => AppState::PeerConnectionError,
-            AppState::PeerCallError => AppState::PeerCallError,
-            AppState::Error => AppState::Error,
-            AppState::ServerConnected => AppState::Error,
-            AppState::ServerRegistered => AppState::Error,
-            AppState::PeerCallStarted => AppState::Error,
-        };
-    }
-
     fn handle_hello(&mut self) {
         assert_eq!(self.app_state, AppState::ServerRegistering);
         self.app_state = AppState::ServerRegistered;
@@ -269,8 +253,7 @@ fn receive_loop(
                         "SESSION_OK" => state.handle_session_ok(),
 
                         x if x.starts_with("ERROR") => {
-                            println!("Got error message! {}", msg);
-                            state.handle_error()
+                            eprintln!("Got error message! {}", msg);
                         }
 
                         _ => {
