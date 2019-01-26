@@ -5,6 +5,8 @@ pub extern crate servo_media_audio as audio;
 ))]
 extern crate servo_media_gstreamer;
 pub extern crate servo_media_player as player;
+pub extern crate servo_media_webrtc as webrtc;
+use std::any::Any;
 use std::sync::{self, Arc, Mutex, Once};
 
 use audio::context::{AudioContext, AudioContextOptions};
@@ -12,11 +14,18 @@ use audio::decoder::DummyAudioDecoder;
 use audio::sink::{AudioSinkError, DummyAudioSink};
 use audio::AudioBackend;
 use player::{DummyPlayer, Player, PlayerBackend};
+use webrtc::{WebRtcController, WebRtcSignaller, MediaStream};
+use webrtc::{WebRtcBackend, DummyWebRtcController};
 
 pub struct ServoMedia;
 
 static INITIALIZER: Once = sync::ONCE_INIT;
 static mut INSTANCE: *mut Mutex<Option<Arc<ServoMedia>>> = 0 as *mut _;
+
+pub struct DummyMediaStream;
+impl MediaStream for DummyMediaStream {
+    fn as_any(&self) -> &Any { self }
+}
 
 pub struct DummyBackend {}
 
@@ -39,8 +48,33 @@ impl PlayerBackend for DummyBackend {
     }
 }
 
+impl WebRtcBackend for DummyBackend {
+    type Controller = DummyWebRtcController;
+    fn construct_webrtc_controller(
+        _: Box<WebRtcSignaller>,
+        _: WebRtcController,
+    ) -> Self::Controller {
+        DummyWebRtcController
+    }
+}
+
 impl DummyBackend {
     pub fn init() {}
+    pub fn create_audiostream() -> DummyMediaStream {
+        DummyMediaStream
+    }
+
+    pub fn create_videostream() -> DummyMediaStream {
+        DummyMediaStream
+    }
+
+    pub fn create_audioinput_stream(&self) -> Option<DummyMediaStream> {
+        Some(DummyMediaStream)
+    }
+
+    pub fn create_videoinput_stream(&self) -> Option<DummyMediaStream> {
+        Some(DummyMediaStream)
+    }
 }
 
 #[cfg(any(
@@ -53,6 +87,7 @@ pub type Backend = servo_media_gstreamer::GStreamerBackend;
     target_arch = "x86_64"
 )))]
 pub type Backend = DummyBackend;
+
 
 impl ServoMedia {
     pub fn new() -> Self {
@@ -78,5 +113,25 @@ impl ServoMedia {
 
     pub fn create_player(&self) -> Box<Player> {
         Box::new(Backend::make_player())
+    }
+
+    pub fn create_webrtc(&self, signaller: Box<WebRtcSignaller>) -> WebRtcController {
+        WebRtcController::new::<Backend>(signaller)
+    }
+
+    pub fn create_audiostream(&self) -> Box<MediaStream> {
+        Box::new(Backend::create_audiostream())
+    }
+
+    pub fn create_videostream(&self) -> Box<MediaStream> {
+        Box::new(Backend::create_videostream())
+    }
+
+    pub fn create_audioinput_stream(&self) -> Option<Box<MediaStream>> {
+        Backend::create_audioinput_stream().map(|s| Box::new(s) as Box<MediaStream>)
+    }
+
+    pub fn create_videoinput_stream(&self) -> Option<Box<MediaStream>> {
+        Backend::create_videoinput_stream().map(|s| Box::new(s) as Box<MediaStream>)
     }
 }
