@@ -43,7 +43,6 @@ impl WebRtcControllerBackend for DummyWebRtcController {
 
 pub trait WebRtcSignaller: Send {
     fn on_ice_candidate(&self, controller: &WebRtcController, candidate: IceCandidate);
-    /// Invariant: Must not reentrantly invoke any methods on the controller
     fn on_negotiation_needed(&self, controller: &WebRtcController);
     fn close(&self);
 }
