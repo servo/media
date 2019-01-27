@@ -14,8 +14,8 @@ use audio::decoder::DummyAudioDecoder;
 use audio::sink::{AudioSinkError, DummyAudioSink};
 use audio::AudioBackend;
 use player::{DummyPlayer, Player, PlayerBackend};
-use webrtc::{DummyWebRtcController, WebRtcBackend};
-use webrtc::{MediaStream, WebRtcController, WebRtcSignaller};
+use webrtc::{DummyMediaOutput, DummyWebRtcController, WebRtcBackend};
+use webrtc::{MediaStream, MediaOutput, WebRtcController, WebRtcSignaller};
 
 pub struct ServoMedia;
 
@@ -25,6 +25,9 @@ static mut INSTANCE: *mut Mutex<Option<Arc<ServoMedia>>> = 0 as *mut _;
 pub struct DummyMediaStream;
 impl MediaStream for DummyMediaStream {
     fn as_any(&self) -> &Any {
+        self
+    }
+    fn as_mut_any(&mut self) -> &mut Any {
         self
     }
 }
@@ -68,6 +71,10 @@ impl DummyBackend {
 
     pub fn create_videostream() -> DummyMediaStream {
         DummyMediaStream
+    }
+
+    pub fn create_strema_output() -> DummyMediaOutput {
+        DummyMediaOutput
     }
 
     pub fn create_audioinput_stream(&self) -> Option<DummyMediaStream> {
@@ -126,6 +133,10 @@ impl ServoMedia {
 
     pub fn create_videostream(&self) -> Box<MediaStream> {
         Box::new(Backend::create_videostream())
+    }
+
+    pub fn create_stream_output(&self) -> Box<MediaOutput> {
+        Box::new(Backend::create_stream_output())
     }
 
     pub fn create_audioinput_stream(&self) -> Option<Box<MediaStream>> {

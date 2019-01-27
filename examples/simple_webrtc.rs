@@ -20,7 +20,7 @@ use servo_media::webrtc::*;
 use servo_media::ServoMedia;
 use std::env;
 use std::net;
-use std::sync::{mpsc, Arc};
+use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use websocket::OwnedMessage;
 
@@ -92,22 +92,6 @@ struct State {
 }
 
 impl State {
-    fn handle_error(&self) {
-        let _error = match self.app_state {
-            AppState::ServerRegistering => AppState::ServerRegisteringError,
-            AppState::PeerConnecting => AppState::PeerConnectionError,
-            AppState::PeerConnected => AppState::PeerCallError,
-            AppState::PeerCallNegotiating => AppState::PeerCallError,
-            AppState::ServerRegisteringError => AppState::ServerRegisteringError,
-            AppState::PeerConnectionError => AppState::PeerConnectionError,
-            AppState::PeerCallError => AppState::PeerCallError,
-            AppState::Error => AppState::Error,
-            AppState::ServerConnected => AppState::Error,
-            AppState::ServerRegistered => AppState::Error,
-            AppState::PeerCallStarted => AppState::Error,
-        };
-    }
-
     fn handle_hello(&mut self) {
         assert_eq!(self.app_state, AppState::ServerRegistering);
         self.app_state = AppState::ServerRegistered;
@@ -135,7 +119,11 @@ impl State {
     }
 
     fn start_rtc(&mut self) {
-        let signaller = Signaller::new(self.send_msg_tx.clone(), self.peer_id.is_some());
+        let signaller = Signaller::new(
+            self.send_msg_tx.clone(),
+            self.peer_id.is_some(),
+            self.media.create_stream_output(),
+        );
         let s = signaller.clone();
         self.webrtc = Some(self.media.create_webrtc(Box::new(signaller)));
         self.signaller = Some(s);
@@ -165,6 +153,7 @@ impl State {
 struct Signaller {
     sender: mpsc::Sender<OwnedMessage>,
     initiate_negotiation: bool,
+    output: Arc<Mutex<Box<MediaOutput>>>,
 }
 
 impl WebRtcSignaller for Signaller {
@@ -199,6 +188,10 @@ impl WebRtcSignaller for Signaller {
             .into(),
         );
     }
+
+    fn on_add_stream(&self, stream: Box<MediaStream>) {
+        self.output.lock().unwrap().add_stream(stream);
+    }
 }
 
 impl Signaller {
@@ -210,10 +203,15 @@ impl Signaller {
         .unwrap();
         self.sender.send(OwnedMessage::Text(message)).unwrap();
     }
-    fn new(sender: mpsc::Sender<OwnedMessage>, initiate_negotiation: bool) -> Self {
+    fn new(
+        sender: mpsc::Sender<OwnedMessage>,
+        initiate_negotiation: bool,
+        output: Box<MediaOutput>,
+    ) -> Self {
         Signaller {
             sender,
             initiate_negotiation,
+            output: Arc::new(Mutex::new(output)),
         }
     }
 }
@@ -255,8 +253,7 @@ fn receive_loop(
                         "SESSION_OK" => state.handle_session_ok(),
 
                         x if x.starts_with("ERROR") => {
-                            println!("Got error message! {}", msg);
-                            state.handle_error()
+                            eprintln!("Got error message! {}", msg);
                         }
 
                         _ => {

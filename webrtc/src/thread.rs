@@ -89,6 +89,7 @@ pub enum RtcThreadEvent {
 pub enum InternalEvent {
     OnNegotiationNeeded,
     OnIceCandidate(IceCandidate),
+    OnAddStream(Box<MediaStream>),
 }
 
 pub fn handle_rtc_event(controller: &mut WebRtcControllerBackend, event: RtcThreadEvent) -> bool {
@@ -101,7 +102,7 @@ pub fn handle_rtc_event(controller: &mut WebRtcControllerBackend, event: RtcThre
         RtcThreadEvent::AddIceCandidate(candidate) => controller.add_ice_candidate(candidate),
         RtcThreadEvent::CreateOffer(cb) => controller.create_offer(cb),
         RtcThreadEvent::CreateAnswer(cb) => controller.create_answer(cb),
-        RtcThreadEvent::AddStream(media) => controller.add_stream(&*media),
+        RtcThreadEvent::AddStream(mut media) => controller.add_stream(&mut *media),
         RtcThreadEvent::InternalEvent(e) => controller.internal_event(e),
         RtcThreadEvent::Quit => {
             controller.quit();

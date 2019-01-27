@@ -82,6 +82,10 @@ impl GStreamerBackend {
         media_stream::GStreamerMediaStream::create_video()
     }
 
+    pub fn create_stream_output() -> media_stream::MediaSink {
+        media_stream::MediaSink::new()
+    }
+
     pub fn create_audioinput_stream() -> Option<media_stream::GStreamerMediaStream> {
         media_capture::create_audioinput_stream()
     }
