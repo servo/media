@@ -86,6 +86,10 @@ For macOS, Windows, and Linux, simply run:
 ```bash
 cargo build
 ```
+To also build the xamples:
+```bash
+cargo build --all
+```
 For Android, run:
 ```bash
 PKG_CONFIG_ALLOW_CROSS=1 cargo build --target=arm-linux-androideabi

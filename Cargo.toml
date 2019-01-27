@@ -9,4 +9,12 @@ members = [
   "servo-media-derive",
   "webrtc"
 ]
+default-members = [
+  "audio",
+  "backends/gstreamer",
+  "player",
+  "servo-media",
+  "servo-media-derive",
+  "webrtc"
+]
 license = "MPL-2.0"
