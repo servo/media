@@ -1,8 +1,10 @@
 use boxfnonce::SendBoxFnOnce;
-use glib::{self, ObjectExt};
-use gst::{self, BinExt, BinExtManual, ElementExt, GObjectExtManualGst, PadDirection, PadExt};
+use glib;
+use glib::prelude::*;
+use gst;
+use gst::prelude::*;
 use gst_sdp;
-use gst_webrtc::{self, WebRTCSDPType};
+use gst_webrtc;
 use media_stream::{GStreamerMediaStream, StreamType};
 use servo_media_webrtc::thread::InternalEvent;
 use servo_media_webrtc::WebRtcController as WebRtcThread;
@@ -13,7 +15,6 @@ use std::sync::{Arc, Mutex};
 // TODO:
 // - add a proper error enum
 // - figure out purpose of glib loop
-
 
 pub struct GStreamerWebRtcController {
     webrtc: Option<gst::Element>,
@@ -40,14 +41,11 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
     }
 
     fn set_remote_description(&mut self, desc: SessionDescription, cb: SendBoxFnOnce<'static, ()>) {
-
         self.set_description(desc, false, cb);
     }
 
     fn set_local_description(&mut self, desc: SessionDescription, cb: SendBoxFnOnce<'static, ()>) {
-
         self.set_description(desc, true, cb);
-
     }
 
     fn create_offer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) {
@@ -124,10 +122,10 @@ impl GStreamerWebRtcController {
         cb: SendBoxFnOnce<'static, ()>,
     ) {
         let ty = match desc.type_ {
-            SdpType::Answer => WebRTCSDPType::Answer,
-            SdpType::Offer => WebRTCSDPType::Offer,
-            SdpType::Pranswer => WebRTCSDPType::Pranswer,
-            SdpType::Rollback => WebRTCSDPType::Rollback,
+            SdpType::Answer => gst_webrtc::WebRTCSDPType::Answer,
+            SdpType::Offer => gst_webrtc::WebRTCSDPType::Offer,
+            SdpType::Pranswer => gst_webrtc::WebRTCSDPType::Pranswer,
+            SdpType::Rollback => gst_webrtc::WebRTCSDPType::Rollback,
         };
 
         let kind = if local {
@@ -241,10 +239,10 @@ fn on_offer_or_answer_created(
         .expect("Invalid argument");
 
     let type_ = match reply.get_type() {
-        WebRTCSDPType::Answer => SdpType::Answer,
-        WebRTCSDPType::Offer => SdpType::Offer,
-        WebRTCSDPType::Pranswer => SdpType::Pranswer,
-        WebRTCSDPType::Rollback => SdpType::Rollback,
+        gst_webrtc::WebRTCSDPType::Answer => SdpType::Answer,
+        gst_webrtc::WebRTCSDPType::Offer => SdpType::Offer,
+        gst_webrtc::WebRTCSDPType::Pranswer => SdpType::Pranswer,
+        gst_webrtc::WebRTCSDPType::Rollback => SdpType::Rollback,
         _ => panic!("unknown sdp response"),
     };
 
@@ -297,9 +295,12 @@ fn handle_media_stream(
     let stream = Box::new(GStreamerMediaStream::create_stream_with_pipeline(
         media_type,
         elements,
-        pipe.clone()
+        pipe.clone(),
     ));
-    thread.lock().unwrap().internal_event(InternalEvent::OnAddStream(stream));
+    thread
+        .lock()
+        .unwrap()
+        .internal_event(InternalEvent::OnAddStream(stream));
 
     Ok(())
 }
@@ -364,7 +365,7 @@ fn process_new_stream(
     thread: Arc<Mutex<WebRtcThread>>,
 ) -> Option<glib::Value> {
     let pad = values[1].get::<gst::Pad>().expect("not a pad??");
-    if pad.get_direction() != PadDirection::Src {
+    if pad.get_direction() != gst::PadDirection::Src {
         // Ignore outgoing pad notifications.
         return None;
     }
