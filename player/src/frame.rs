@@ -3,6 +3,7 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub enum FrameData {
     Raw(Arc<Vec<u8>>),
+    Texture(u32),
 }
 
 pub trait Buffer: Send + Sync {
@@ -40,6 +41,14 @@ impl Frame {
     pub fn get_data(&self) -> Arc<Vec<u8>> {
         match self.data {
             FrameData::Raw(ref data) => data.clone(),
+            _ => unreachable!("invalid raw data request for texture frame"),
+        }
+    }
+
+    pub fn get_texture_id(&self) -> u32 {
+        match self.data {
+            FrameData::Texture(data) => data,
+            _ => unreachable!("invalid texture id request for raw data frame"),
         }
     }
 }

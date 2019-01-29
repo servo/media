@@ -4,6 +4,7 @@ use gst;
 use gst::prelude::*;
 use gst_app;
 use gst_gl;
+use gst_gl::prelude::*;
 use gst_player;
 use gst_player::prelude::*;
 use gst_video;
@@ -23,13 +24,17 @@ use std::u64;
 const MAX_BUFFER_SIZE: i32 = 500 * 1024 * 1024;
 
 struct GStreamerBuffer {
+    is_gl: bool,
     frame: gst_video::VideoFrame<gst_video::video_frame::Readable>,
 }
 
 impl Buffer for GStreamerBuffer {
     fn to_vec(&self) -> Result<FrameData, ()> {
         // packed formats are guaranteed to be in a single plane
-        if self.frame.format() == gst_video::VideoFormat::Bgra {
+        if self.is_gl && self.frame.format() == gst_video::VideoFormat::Rgba {
+            let texid = self.frame.get_texture_id(0).ok_or_else(|| ())?;
+            Ok(FrameData::Texture(texid))
+        } else if !self.is_gl && self.frame.format() == gst_video::VideoFormat::Bgra {
             let data = self.frame.plane_data(0).ok_or_else(|| ())?;
             Ok(FrameData::Raw(Arc::new(data.to_vec())))
         } else {
@@ -40,12 +45,18 @@ impl Buffer for GStreamerBuffer {
 
 fn frame_from_sample(sample: &gst::Sample) -> Result<Frame, ()> {
     let buffer = sample.get_buffer().ok_or_else(|| ())?;
-    let info = sample
-        .get_caps()
-        .and_then(|caps| gst_video::VideoInfo::from_caps(caps.as_ref()))
+    let caps = sample.get_caps().ok_or_else(|| ())?;
+    let info = gst_video::VideoInfo::from_caps(caps.as_ref()).ok_or_else(|| ())?;
+    let is_gl = caps
+        .get_features(0)
+        .and_then(|features| Some(features.contains(&gst_gl::CAPS_FEATURE_MEMORY_GL_MEMORY)))
         .ok_or_else(|| ())?;
-    let frame = gst_video::VideoFrame::from_buffer_readable(buffer, &info).or_else(|_| Err(()))?;
-    let buffer = GStreamerBuffer { frame };
+    let frame = if !is_gl {
+        gst_video::VideoFrame::from_buffer_readable(buffer, &info).or_else(|_| Err(()))?
+    } else {
+        gst_video::VideoFrame::from_buffer_readable_gl(buffer, &info).or_else(|_| Err(()))?
+    };
+    let buffer = GStreamerBuffer { is_gl, frame };
 
     Frame::new(info.width() as i32, info.height() as i32, Arc::new(buffer))
 }
