@@ -31,17 +31,70 @@ mod ui;
 #[path = "player_wrapper.rs"]
 mod player_wrapper;
 
+struct FrameQueue {
+    next_frame: Option<Frame>,
+    curr_frame: Option<Frame>,
+    prev_frame: Option<Frame>,
+    repaint: bool,
+}
+
+impl FrameQueue {
+    fn new() -> Self {
+        Self {
+            next_frame: None,
+            curr_frame: None,
+            prev_frame: None,
+            repaint: false,
+        }
+    }
+
+    fn add(&mut self, frame: Frame) {
+        let _ = self.next_frame.replace(frame);
+        self.repaint = true;
+    }
+
+    fn get(&mut self) -> Option<Frame> {
+        if self.is_empty() {
+            return None;
+        }
+
+        if self.next_frame.is_some() {
+            self.prev_frame = self.curr_frame.take();
+            self.curr_frame = self.next_frame.take();
+        } else {
+            if self.curr_frame.is_none() {
+                self.repaint = true;
+                return self.prev_frame.clone();
+            } else {
+                self.repaint = false;
+            }
+        }
+
+        self.curr_frame.clone()
+    }
+
+    fn prev(&mut self) -> Option<Frame> {
+        self.prev_frame.clone()
+    }
+
+    fn needs_repaint(&self) -> bool {
+        self.repaint
+    }
+
+    fn is_empty(&self) -> bool {
+        self.next_frame.is_none() && self.curr_frame.is_none() && self.next_frame.is_none()
+    }
+}
+
 struct App {
-    frame_queue: Vec<Frame>,
-    current_frame: Option<Frame>,
+    frame_queue: Mutex<FrameQueue>,
     image_key: Option<ImageKey>,
 }
 
 impl App {
     fn new() -> Self {
         Self {
-            frame_queue: Vec::new(),
-            current_frame: None,
+            frame_queue: Mutex::new(FrameQueue::new()),
             image_key: None,
         }
     }
@@ -55,31 +108,28 @@ impl ui::Example for App {
         builder: &mut DisplayListBuilder,
         txn: &mut Transaction,
     ) {
-        let frame = if self.frame_queue.is_empty() {
-            if self.current_frame.is_none() {
-                return;
-            }
-            self.current_frame.take().unwrap()
-        } else {
-            self.frame_queue.pop().unwrap()
-        };
+        if self.frame_queue.lock().unwrap().is_empty() {
+            return; /* we are not ready yet, sir */
+        }
+
+        let frame = self.frame_queue.lock().unwrap().get().unwrap();
         let width = frame.get_width() as u32;
         let height = frame.get_height() as u32;
 
-        if self.image_key.is_some() && self.current_frame.is_some() {
-            let old_frame = self.current_frame.take().unwrap();
-            let old_width = old_frame.get_width() as u32;
-            let old_height = old_frame.get_height() as u32;
-            if (width != old_width) || (height != old_height) {
-                txn.delete_image(self.image_key.unwrap());
-                self.image_key = None;
+        if self.image_key.is_some() {
+            if let Some(old_frame) = self.frame_queue.lock().unwrap().prev() {
+                let old_width = old_frame.get_width() as u32;
+                let old_height = old_frame.get_height() as u32;
+                if (width != old_width) || (height != old_height) {
+                    txn.delete_image(self.image_key.unwrap());
+                    self.image_key = None;
+                }
             }
         }
 
         let image_descriptor =
             ImageDescriptor::new(width, height, ImageFormat::BGRA8, false, false);
         let image_data = ImageData::new_shared(frame.get_data().clone());
-        self.current_frame = Some(frame);
 
         if self.image_key.is_none() {
             self.image_key = Some(api.generate_image_key());
@@ -126,7 +176,7 @@ impl ui::Example for App {
     }
 
     fn needs_repaint(&self) -> bool {
-        !self.frame_queue.is_empty()
+        self.frame_queue.lock().unwrap().needs_repaint()
     }
 
     fn get_image_handlers(
@@ -144,7 +194,7 @@ impl ui::Example for App {
 
 impl FrameRenderer for App {
     fn render(&mut self, frame: Frame) {
-        self.frame_queue.push(frame);
+        self.frame_queue.lock().unwrap().add(frame)
     }
 }
 
