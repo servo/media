@@ -16,12 +16,14 @@ use std::thread::Builder;
 pub struct PlayerWrapper {
     player: Arc<Mutex<Box<Player>>>,
     shutdown: Arc<AtomicBool>,
+    use_gl: bool,
 }
 
 impl PlayerWrapper {
-    pub fn new(path: &Path) -> Self {
+    pub fn new(path: &Path, use_gl: bool) -> Self {
         let servo_media = ServoMedia::get().unwrap();
         let player = Arc::new(Mutex::new(servo_media.create_player()));
+        // TODO: verify if gl is possible
         let file = File::open(&path).unwrap();
         let metadata = file.metadata().unwrap();
         player
@@ -103,12 +105,20 @@ impl PlayerWrapper {
 
         player.lock().unwrap().play().unwrap();
 
-        PlayerWrapper { player, shutdown }
+        PlayerWrapper {
+            player,
+            shutdown,
+            use_gl,
+        }
     }
 
     pub fn shutdown(&self) {
         self.player.lock().unwrap().stop().unwrap();
         self.shutdown.store(true, Ordering::Relaxed);
+    }
+
+    pub fn use_gl(&self) -> bool {
+        self.use_gl
     }
 
     pub fn register_frame_renderer(&self, renderer: Arc<Mutex<FrameRenderer>>) {

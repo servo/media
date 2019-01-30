@@ -89,6 +89,7 @@ impl FrameQueue {
 struct App {
     frame_queue: Mutex<FrameQueue>,
     image_key: Option<ImageKey>,
+    use_gl: bool,
 }
 
 impl App {
@@ -96,6 +97,7 @@ impl App {
         Self {
             frame_queue: Mutex::new(FrameQueue::new()),
             image_key: None,
+            use_gl: false,
         }
     }
 }
@@ -192,6 +194,10 @@ impl ui::Example for App {
     }
 
     fn draw_custom(&self, _gl: &gl::Gl) {}
+
+    fn use_gl(&mut self, use_gl: bool) {
+        self.use_gl = use_gl;
+    }
 }
 
 impl FrameRenderer for App {
@@ -208,13 +214,21 @@ fn main() {
 #[cfg(not(target_os = "android"))]
 fn main() {
     let args: Vec<_> = env::args().collect();
-    let filename: &str = if args.len() == 2 {
-        args[1].as_ref()
+    let (use_gl, filename) = if args.len() == 2 {
+        let fname: &str = args[1].as_ref();
+        (false, fname)
+    } else if args.len() == 3 {
+        if args[1] == "--gl" {
+            let fname: &str = args[2].as_ref();
+            (true, fname)
+        } else {
+            panic!("Usage: cargo run --bin player [--gl] <file_path>")
+        }
     } else {
-        panic!("Usage: cargo run --bin player <file_path>")
+        panic!("Usage: cargo run --bin player [--gl] <file_path>")
     };
 
     let path = Path::new(filename);
     let app = Arc::new(Mutex::new(App::new()));
-    ui::main_wrapper(app, &path, None);
+    ui::main_wrapper(app, &path, use_gl, None);
 }
