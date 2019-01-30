@@ -73,15 +73,15 @@ impl DummyBackend {
         DummyMediaStream
     }
 
-    pub fn create_strema_output() -> DummyMediaOutput {
+    pub fn create_stream_output() -> DummyMediaOutput {
         DummyMediaOutput
     }
 
-    pub fn create_audioinput_stream(&self) -> Option<DummyMediaStream> {
+    pub fn create_audioinput_stream() -> Option<DummyMediaStream> {
         Some(DummyMediaStream)
     }
 
-    pub fn create_videoinput_stream(&self) -> Option<DummyMediaStream> {
+    pub fn create_videoinput_stream() -> Option<DummyMediaStream> {
         Some(DummyMediaStream)
     }
 }
