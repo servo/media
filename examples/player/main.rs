@@ -100,6 +100,41 @@ impl App {
             use_gl: false,
         }
     }
+
+    fn init_image_key(&mut self, api: &RenderApi, txn: &mut Transaction, frame: &Frame) {
+        if self.image_key.is_some() {
+            return;
+        }
+
+        self.image_key = Some(api.generate_image_key());
+        let image_descriptor = ImageDescriptor::new(
+            frame.get_width(),
+            frame.get_height(),
+            ImageFormat::BGRA8,
+            false,
+            false,
+        );
+
+        if self.use_gl {
+            txn.add_image(
+                self.image_key.clone().unwrap(),
+                image_descriptor,
+                ImageData::External(ExternalImageData {
+                    id: ExternalImageId(0),
+                    channel_index: 0,
+                    image_type: ExternalImageType::TextureHandle(TextureTarget::Default),
+                }),
+                None,
+            );
+        } else {
+            txn.add_image(
+                self.image_key.clone().unwrap(),
+                image_descriptor,
+                ImageData::new_shared(frame.get_data()),
+                None,
+            );
+        }
+    }
 }
 
 #[cfg(not(target_os = "android"))]
@@ -129,23 +164,13 @@ impl ui::Example for App {
             }
         }
 
-        let image_descriptor =
-            ImageDescriptor::new(width, height, ImageFormat::BGRA8, false, false);
-        let image_data = ImageData::new_shared(frame.get_data());
-
         if self.image_key.is_none() {
-            self.image_key = Some(api.generate_image_key());
-            txn.add_image(
-                self.image_key.clone().unwrap(),
-                image_descriptor,
-                image_data,
-                None,
-            );
-        } else {
+            self.init_image_key(api, txn, &frame);
+        } else if !self.use_gl {
             txn.update_image(
                 self.image_key.clone().unwrap(),
-                image_descriptor,
-                image_data,
+                ImageDescriptor::new(width, height, ImageFormat::BGRA8, false, false),
+                ImageData::new_shared(frame.get_data()),
                 &DirtyRect::All,
             );
         }
