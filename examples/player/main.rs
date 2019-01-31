@@ -31,6 +31,40 @@ mod ui;
 #[path = "player_wrapper.rs"]
 mod player_wrapper;
 
+struct FrameProvider {
+    frame_queue: Arc<Mutex<FrameQueue>>,
+    curr_frame: Option<Frame>,
+}
+
+impl webrender::ExternalImageHandler for FrameProvider {
+    fn lock(
+        &mut self,
+        _key: ExternalImageId,
+        _channel_index: u8,
+        _rendering: ImageRendering,
+    ) -> webrender::ExternalImage {
+        self.curr_frame = self.frame_queue.lock().unwrap().get();
+
+        let (id, height, width) = self
+            .curr_frame
+            .clone() // clone it because we want to keep the current texture alive
+            .and_then(|frame| {
+                Some((
+                    frame.get_texture_id(),
+                    frame.get_height(),
+                    frame.get_width(),
+                ))
+            })
+            .unwrap();
+
+        webrender::ExternalImage {
+            uv: TexelRect::new(0.0, 0.0, width as f32, height as f32),
+            source: webrender::ExternalImageSource::NativeTexture(id),
+        }
+    }
+    fn unlock(&mut self, _key: ExternalImageId, _channel_index: u8) {}
+}
+
 struct FrameQueue {
     next_frame: Option<Frame>,
     curr_frame: Option<Frame>,
@@ -87,7 +121,7 @@ impl FrameQueue {
 }
 
 struct App {
-    frame_queue: Mutex<FrameQueue>,
+    frame_queue: Arc<Mutex<FrameQueue>>,
     image_key: Option<ImageKey>,
     use_gl: bool,
 }
@@ -95,7 +129,7 @@ struct App {
 impl App {
     fn new() -> Self {
         Self {
-            frame_queue: Mutex::new(FrameQueue::new()),
+            frame_queue: Arc::new(Mutex::new(FrameQueue::new())),
             image_key: None,
             use_gl: false,
         }
@@ -215,7 +249,16 @@ impl ui::Example for App {
         Option<Box<webrender::ExternalImageHandler>>,
         Option<Box<webrender::OutputImageHandler>>,
     ) {
-        (None, None)
+        if !self.use_gl {
+            (None, None)
+        } else {
+            let queue = self.frame_queue.clone();
+            let provider = FrameProvider {
+                frame_queue: queue,
+                curr_frame: None,
+            };
+            (Some(Box::new(provider)), None)
+        }
     }
 
     fn draw_custom(&self, _gl: &gl::Gl) {}
