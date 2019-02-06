@@ -7,7 +7,7 @@ use gst_player;
 use gst_player::prelude::*;
 use gst_video;
 use ipc_channel::ipc::IpcSender;
-use servo_media_player::frame::{Frame, FrameRenderer};
+use servo_media_player::frame::{Buffer, Frame, FrameData, FrameRenderer};
 use servo_media_player::metadata::Metadata;
 use servo_media_player::{PlaybackState, Player, PlayerError, PlayerEvent, StreamType};
 use source::{register_servo_src, ServoSrc};
@@ -21,6 +21,22 @@ use std::u64;
 
 const MAX_BUFFER_SIZE: i32 = 500 * 1024 * 1024;
 
+struct GStreamerBuffer {
+    frame: gst_video::VideoFrame<gst_video::video_frame::Readable>,
+}
+
+impl Buffer for GStreamerBuffer {
+    fn to_vec(&self) -> Result<FrameData, ()> {
+        // packed formats are guaranteed to be in a single plane
+        if self.frame.format() == gst_video::VideoFormat::Bgra {
+            let data = self.frame.plane_data(0).ok_or_else(|| ())?;
+            Ok(FrameData::Raw(Arc::new(data.to_vec())))
+        } else {
+            Err(())
+        }
+    }
+}
+
 fn frame_from_sample(sample: &gst::Sample) -> Result<Frame, ()> {
     let buffer = sample.get_buffer().ok_or_else(|| ())?;
     let info = sample
@@ -28,13 +44,9 @@ fn frame_from_sample(sample: &gst::Sample) -> Result<Frame, ()> {
         .and_then(|caps| gst_video::VideoInfo::from_caps(caps.as_ref()))
         .ok_or_else(|| ())?;
     let frame = gst_video::VideoFrame::from_buffer_readable(buffer, &info).or_else(|_| Err(()))?;
-    let data = frame.plane_data(0).ok_or_else(|| ())?;
+    let buffer = GStreamerBuffer { frame };
 
-    Ok(Frame::new(
-        info.width() as i32,
-        info.height() as i32,
-        Arc::new(data.to_vec()),
-    ))
+    Frame::new(info.width() as i32, info.height() as i32, Arc::new(buffer))
 }
 
 fn metadata_from_media_info(media_info: &gst_player::PlayerMediaInfo) -> Result<Metadata, ()> {
