@@ -129,7 +129,7 @@ impl ui::Example for App {
 
         let image_descriptor =
             ImageDescriptor::new(width, height, ImageFormat::BGRA8, false, false);
-        let image_data = ImageData::new_shared(frame.get_data().clone());
+        let image_data = ImageData::new_shared(frame.get_data());
 
         if self.image_key.is_none() {
             self.image_key = Some(api.generate_image_key());
