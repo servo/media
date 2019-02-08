@@ -24,8 +24,8 @@ impl Frame {
         self.height
     }
 
-    pub fn get_data(&self) -> &Arc<Vec<u8>> {
-        &self.data
+    pub fn get_data(&self) -> Arc<Vec<u8>> {
+        self.data.clone()
     }
 }
 
