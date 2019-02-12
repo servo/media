@@ -7,7 +7,6 @@ use std::str::FromStr;
 use boxfnonce::SendBoxFnOnce;
 
 pub mod thread;
-pub mod capture;
 
 pub use thread::WebRtcController;
 

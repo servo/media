@@ -1,5 +1,5 @@
 use crate::media_stream::{GStreamerMediaStream, StreamType};
-use servo_media_webrtc::capture::*;
+use servo_media_streams::capture::*;
 use gst;
 use gst::prelude::*;
 use std::i32;

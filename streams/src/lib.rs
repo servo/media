@@ -1,5 +1,7 @@
 use std::any::Any;
 
+pub mod capture;
+
 pub trait MediaStream: Any + Send {
     fn as_any(&self) -> &Any;
     fn as_mut_any(&mut self) -> &mut Any;

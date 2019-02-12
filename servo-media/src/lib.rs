@@ -16,9 +16,9 @@ use audio::sink::{AudioSinkError, DummyAudioSink};
 use audio::AudioBackend;
 use player::{DummyPlayer, Player, PlayerBackend};
 use streams::{DummyMediaOutput, MediaStream, MediaOutput};
+use streams::capture::MediaTrackConstraintSet;
 use webrtc::{DummyWebRtcController, WebRtcBackend};
 use webrtc::{WebRtcController, WebRtcSignaller};
-use webrtc::capture::MediaTrackConstraintSet;
 
 pub struct ServoMedia;
 
