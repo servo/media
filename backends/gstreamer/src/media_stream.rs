@@ -1,7 +1,7 @@
 use glib::prelude::*;
 use gst;
 use gst::prelude::*;
-use servo_media_webrtc::{MediaOutput, MediaStream};
+use servo_media_streams::{MediaOutput, MediaStream};
 use std::any::Any;
 
 lazy_static! {

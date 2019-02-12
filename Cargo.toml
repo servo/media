@@ -7,6 +7,7 @@ members = [
   "player",
   "servo-media",
   "servo-media-derive",
+  "streams",
   "webrtc"
 ]
 license = "MPL-2.0"

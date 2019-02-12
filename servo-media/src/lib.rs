@@ -6,6 +6,7 @@ pub extern crate servo_media_audio as audio;
 extern crate servo_media_gstreamer;
 pub extern crate servo_media_player as player;
 pub extern crate servo_media_webrtc as webrtc;
+pub extern crate servo_media_streams as streams;
 use std::any::Any;
 use std::sync::{self, Arc, Mutex, Once};
 
@@ -14,8 +15,9 @@ use audio::decoder::DummyAudioDecoder;
 use audio::sink::{AudioSinkError, DummyAudioSink};
 use audio::AudioBackend;
 use player::{DummyPlayer, Player, PlayerBackend};
-use webrtc::{DummyMediaOutput, DummyWebRtcController, WebRtcBackend};
-use webrtc::{MediaStream, MediaOutput, WebRtcController, WebRtcSignaller};
+use streams::{DummyMediaOutput, MediaStream, MediaOutput};
+use webrtc::{DummyWebRtcController, WebRtcBackend};
+use webrtc::{WebRtcController, WebRtcSignaller};
 use webrtc::capture::MediaTrackConstraintSet;
 
 pub struct ServoMedia;

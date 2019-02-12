@@ -9,6 +9,7 @@ use media_stream::{GStreamerMediaStream, StreamType};
 use servo_media_webrtc::thread::InternalEvent;
 use servo_media_webrtc::WebRtcController as WebRtcThread;
 use servo_media_webrtc::*;
+use servo_media_streams::MediaStream;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 

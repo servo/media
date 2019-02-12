@@ -16,6 +16,7 @@ extern crate servo_media;
 extern crate websocket;
 
 use rand::Rng;
+use servo_media::streams::*;
 use servo_media::webrtc::*;
 use servo_media::ServoMedia;
 use std::env;
