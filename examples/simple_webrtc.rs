@@ -131,10 +131,10 @@ impl State {
         let (video, audio) = if self.peer_id.is_some() {
             (
                 self.media
-                    .create_videoinput_stream()
+                    .create_videoinput_stream(Default::default())
                     .unwrap_or_else(|| self.media.create_videostream()),
                 self.media
-                    .create_audioinput_stream()
+                    .create_audioinput_stream(Default::default())
                     .unwrap_or_else(|| self.media.create_audiostream()),
             )
         } else {

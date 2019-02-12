@@ -6,6 +6,7 @@ use std::str::FromStr;
 use boxfnonce::SendBoxFnOnce;
 
 pub mod thread;
+pub mod capture;
 
 pub trait MediaStream: Any + Send {
     fn as_any(&self) -> &Any;

@@ -16,6 +16,7 @@ use audio::AudioBackend;
 use player::{DummyPlayer, Player, PlayerBackend};
 use webrtc::{DummyMediaOutput, DummyWebRtcController, WebRtcBackend};
 use webrtc::{MediaStream, MediaOutput, WebRtcController, WebRtcSignaller};
+use webrtc::capture::MediaTrackConstraintSet;
 
 pub struct ServoMedia;
 
@@ -139,11 +140,11 @@ impl ServoMedia {
         Box::new(Backend::create_stream_output())
     }
 
-    pub fn create_audioinput_stream(&self) -> Option<Box<MediaStream>> {
-        Backend::create_audioinput_stream().map(|s| Box::new(s) as Box<MediaStream>)
+    pub fn create_audioinput_stream(&self, set: MediaTrackConstraintSet) -> Option<Box<MediaStream>> {
+        Backend::create_audioinput_stream(set).map(|s| Box::new(s) as Box<MediaStream>)
     }
 
-    pub fn create_videoinput_stream(&self) -> Option<Box<MediaStream>> {
-        Backend::create_videoinput_stream().map(|s| Box::new(s) as Box<MediaStream>)
+    pub fn create_videoinput_stream(&self, set: MediaTrackConstraintSet) -> Option<Box<MediaStream>> {
+        Backend::create_videoinput_stream(set).map(|s| Box::new(s) as Box<MediaStream>)
     }
 }
