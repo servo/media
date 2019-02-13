@@ -80,11 +80,11 @@ impl DummyBackend {
         DummyMediaOutput
     }
 
-    pub fn create_audioinput_stream() -> Option<DummyMediaStream> {
+    pub fn create_audioinput_stream(_: MediaTrackConstraintSet) -> Option<DummyMediaStream> {
         Some(DummyMediaStream)
     }
 
-    pub fn create_videoinput_stream() -> Option<DummyMediaStream> {
+    pub fn create_videoinput_stream(_: MediaTrackConstraintSet) -> Option<DummyMediaStream> {
         Some(DummyMediaStream)
     }
 }
