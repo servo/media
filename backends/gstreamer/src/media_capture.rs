@@ -14,13 +14,13 @@ trait AddToCaps {
         builder: gst::caps::Builder) -> Option<gst::caps::Builder>;
 }
 
-impl AddToCaps for Constrain<u64> {
-    type Bound = u64;
+impl AddToCaps for Constrain<u32> {
+    type Bound = u32;
     fn add_to_caps(
         &self,
         name: &str,
-        min: u64,
-        max: u64,
+        min: u32,
+        max: u32,
         builder: gst::caps::Builder,
     ) -> Option<gst::caps::Builder> {
         match self {
@@ -41,11 +41,11 @@ impl AddToCaps for Constrain<u64> {
     }
 }
 
-fn into_i32(x: u64) -> i32 {
-    if x > i32::MAX as u64 {
+fn into_i32(x: u32) -> i32 {
+    if x > i32::MAX as u32 {
         i32::MAX
     } else {
-        x as i64 as i32
+        x as i32
     }
 }
 
