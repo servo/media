@@ -16,7 +16,7 @@ pub struct MediaTrackConstraintSet {
     pub height: Option<Constrain<u32>>,
     pub aspect: Option<Constrain<f64>>,
     pub frame_rate: Option<Constrain<f64>>,
-    pub sample_rate: Option<Constrain<f64>>,
+    pub sample_rate: Option<Constrain<u32>>,
 }
 
 pub enum Constrain<T> {
