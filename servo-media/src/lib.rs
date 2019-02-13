@@ -6,6 +6,7 @@ pub extern crate servo_media_audio as audio;
 extern crate servo_media_gstreamer;
 pub extern crate servo_media_player as player;
 pub extern crate servo_media_webrtc as webrtc;
+pub extern crate servo_media_streams as streams;
 use std::any::Any;
 use std::sync::{self, Arc, Mutex, Once};
 
@@ -14,8 +15,10 @@ use audio::decoder::DummyAudioDecoder;
 use audio::sink::{AudioSinkError, DummyAudioSink};
 use audio::AudioBackend;
 use player::{DummyPlayer, Player, PlayerBackend};
-use webrtc::{DummyMediaOutput, DummyWebRtcController, WebRtcBackend};
-use webrtc::{MediaStream, MediaOutput, WebRtcController, WebRtcSignaller};
+use streams::{DummyMediaOutput, MediaStream, MediaOutput};
+use streams::capture::MediaTrackConstraintSet;
+use webrtc::{DummyWebRtcController, WebRtcBackend};
+use webrtc::{WebRtcController, WebRtcSignaller};
 
 pub struct ServoMedia;
 
@@ -139,11 +142,11 @@ impl ServoMedia {
         Box::new(Backend::create_stream_output())
     }
 
-    pub fn create_audioinput_stream(&self) -> Option<Box<MediaStream>> {
-        Backend::create_audioinput_stream().map(|s| Box::new(s) as Box<MediaStream>)
+    pub fn create_audioinput_stream(&self, set: MediaTrackConstraintSet) -> Option<Box<MediaStream>> {
+        Backend::create_audioinput_stream(set).map(|s| Box::new(s) as Box<MediaStream>)
     }
 
-    pub fn create_videoinput_stream(&self) -> Option<Box<MediaStream>> {
-        Backend::create_videoinput_stream().map(|s| Box::new(s) as Box<MediaStream>)
+    pub fn create_videoinput_stream(&self, set: MediaTrackConstraintSet) -> Option<Box<MediaStream>> {
+        Backend::create_videoinput_stream(set).map(|s| Box::new(s) as Box<MediaStream>)
     }
 }

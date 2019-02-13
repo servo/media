@@ -1,14 +1,21 @@
 use crate::media_stream::{GStreamerMediaStream, StreamType};
+use servo_media_streams::capture::*;
 use gst;
 use gst::prelude::*;
 use std::i32;
 
-pub enum Constrain<T> {
-    Value(T),
-    Range(ConstrainRange<T>),
+trait AddToCaps {
+    type Bound;
+    fn add_to_caps(
+        &self,
+        name: &str,
+        min: Self::Bound,
+        max: Self::Bound,
+        builder: gst::caps::Builder) -> Option<gst::caps::Builder>;
 }
 
-impl Constrain<u64> {
+impl AddToCaps for Constrain<u64> {
+    type Bound = u64;
     fn add_to_caps(
         &self,
         name: &str,
@@ -42,7 +49,8 @@ fn into_i32(x: u64) -> i32 {
     }
 }
 
-impl Constrain<f64> {
+impl AddToCaps for Constrain<f64> {
+    type Bound = i32;
     fn add_to_caps(
         &self,
         name: &str,
@@ -75,47 +83,25 @@ impl Constrain<f64> {
     }
 }
 
-pub struct ConstrainRange<T> {
-    min: Option<T>,
-    max: Option<T>,
-    ideal: Option<T>,
-}
-
-pub enum ConstrainBool {
-    Ideal(bool),
-    Exact(bool),
-}
-
-#[derive(Default)]
-pub struct MediaTrackConstraintSet {
-    width: Option<Constrain<u64>>,
-    height: Option<Constrain<u64>>,
-    aspect: Option<Constrain<f64>>,
-    frame_rate: Option<Constrain<f64>>,
-    sample_rate: Option<Constrain<f64>>,
-}
-
 // TODO(Manishearth): Should support a set of constraints
-impl MediaTrackConstraintSet {
-    fn into_caps(self, format: &str) -> Option<gst::Caps> {
-        let mut builder = gst::Caps::builder(format);
-        if let Some(w) = self.width {
-            builder = w.add_to_caps("width", 0, 1000000, builder)?;
-        }
-        if let Some(h) = self.height {
-            builder = h.add_to_caps("height", 0, 1000000, builder)?;
-        }
-        if let Some(aspect) = self.aspect {
-            builder = aspect.add_to_caps("pixel-aspect-ratio", 0, 1000000, builder)?;
-        }
-        if let Some(fr) = self.frame_rate {
-            builder = fr.add_to_caps("framerate", 0, 1000000, builder)?;
-        }
-        if let Some(sr) = self.sample_rate {
-            builder = sr.add_to_caps("rate", 0, 1000000, builder)?;
-        }
-        Some(builder.build())
+fn into_caps(set: MediaTrackConstraintSet, format: &str) -> Option<gst::Caps> {
+    let mut builder = gst::Caps::builder(format);
+    if let Some(w) = set.width {
+        builder = w.add_to_caps("width", 0, 1000000, builder)?;
     }
+    if let Some(h) = set.height {
+        builder = h.add_to_caps("height", 0, 1000000, builder)?;
+    }
+    if let Some(aspect) = set.aspect {
+        builder = aspect.add_to_caps("pixel-aspect-ratio", 0, 1000000, builder)?;
+    }
+    if let Some(fr) = set.frame_rate {
+        builder = fr.add_to_caps("framerate", 0, 1000000, builder)?;
+    }
+    if let Some(sr) = set.sample_rate {
+        builder = sr.add_to_caps("rate", 0, 1000000, builder)?;
+    }
+    Some(builder.build())
 }
 
 struct GstMediaDevices {
@@ -139,7 +125,7 @@ impl GstMediaDevices {
         } else {
             ("audio/x-raw", "Audio/Source")
         };
-        let caps = constraints.into_caps(format)?;
+        let caps = into_caps(constraints, format)?;
         println!("requesting {:?}", caps);
         let f = self.monitor.add_filter(filter, &caps);
         let devices = self.monitor.get_devices();
@@ -160,11 +146,10 @@ pub struct GstMediaTrack {
     element: gst::Element,
 }
 
-fn create_input_stream(stream_type: StreamType) -> Option<GStreamerMediaStream> {
+fn create_input_stream(stream_type: StreamType, constraint_set: MediaTrackConstraintSet) -> Option<GStreamerMediaStream> {
     let devices = GstMediaDevices::new();
-    let constraints = MediaTrackConstraintSet::default();
     devices
-        .get_track(stream_type == StreamType::Video, constraints)
+        .get_track(stream_type == StreamType::Video, constraint_set)
         .map(|track| {
             let f = match stream_type {
                 StreamType::Audio => GStreamerMediaStream::create_audio_from,
@@ -174,10 +159,10 @@ fn create_input_stream(stream_type: StreamType) -> Option<GStreamerMediaStream> 
         })
 }
 
-pub fn create_audioinput_stream() -> Option<GStreamerMediaStream> {
-    create_input_stream(StreamType::Audio)
+pub fn create_audioinput_stream(constraint_set: MediaTrackConstraintSet) -> Option<GStreamerMediaStream> {
+    create_input_stream(StreamType::Audio, constraint_set)
 }
 
-pub fn create_videoinput_stream() -> Option<GStreamerMediaStream> {
-    create_input_stream(StreamType::Video)
+pub fn create_videoinput_stream(constraint_set: MediaTrackConstraintSet) -> Option<GStreamerMediaStream> {
+    create_input_stream(StreamType::Video, constraint_set)
 }

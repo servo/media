@@ -67,5 +67,8 @@ path = "../../player"
 [dependencies.url]
 version = "1.7.2"
 
+[dependencies.servo-media-streams]
+path = "../../streams"
+
 [dependencies.servo-media-webrtc]
 path = "../../webrtc"

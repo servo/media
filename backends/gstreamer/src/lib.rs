@@ -23,12 +23,14 @@ extern crate lazy_static;
 
 extern crate servo_media_audio;
 extern crate servo_media_player;
+extern crate servo_media_streams;
 extern crate servo_media_webrtc;
 extern crate url;
 
 use servo_media_audio::sink::AudioSinkError;
 use servo_media_audio::AudioBackend;
 use servo_media_player::PlayerBackend;
+use servo_media_streams::capture::MediaTrackConstraintSet;
 use servo_media_webrtc::{WebRtcBackend, WebRtcController, WebRtcSignaller};
 
 pub mod audio_decoder;
@@ -87,11 +89,11 @@ impl GStreamerBackend {
         media_stream::MediaSink::new()
     }
 
-    pub fn create_audioinput_stream() -> Option<media_stream::GStreamerMediaStream> {
-        media_capture::create_audioinput_stream()
+    pub fn create_audioinput_stream(set: MediaTrackConstraintSet) -> Option<media_stream::GStreamerMediaStream> {
+        media_capture::create_audioinput_stream(set)
     }
 
-    pub fn create_videoinput_stream() -> Option<media_stream::GStreamerMediaStream> {
-        media_capture::create_videoinput_stream()
+    pub fn create_videoinput_stream(set: MediaTrackConstraintSet) -> Option<media_stream::GStreamerMediaStream> {
+        media_capture::create_videoinput_stream(set)
     }
 }
