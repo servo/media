@@ -12,8 +12,8 @@ pub enum ConstrainBool {
 
 #[derive(Default)]
 pub struct MediaTrackConstraintSet {
-    pub width: Option<Constrain<u64>>,
-    pub height: Option<Constrain<u64>>,
+    pub width: Option<Constrain<u32>>,
+    pub height: Option<Constrain<u32>>,
     pub aspect: Option<Constrain<f64>>,
     pub frame_rate: Option<Constrain<f64>>,
     pub sample_rate: Option<Constrain<f64>>,
