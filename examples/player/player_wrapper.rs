@@ -20,6 +20,7 @@ pub struct PlayerWrapper {
 }
 
 impl PlayerWrapper {
+    #[cfg(target_os = "linux")]
     fn set_gl_params(
         player: &Arc<Mutex<Box<dyn Player>>>,
         window: &glutin::GlWindow,
@@ -41,6 +42,11 @@ impl PlayerWrapper {
             }
             RawHandle::Glx(_) => Err(()),
         }
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    fn set_gl_params(_: &Arc<Mutex<Box<dyn Player>>>, _: &glutin::GlWindow) -> Result<(), ()> {
+        Err(())
     }
 
     pub fn new(path: &Path, window: Option<&glutin::GlWindow>) -> Self {

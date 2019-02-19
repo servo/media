@@ -33,10 +33,6 @@ git = "https://gitlab.freedesktop.org/gstreamer/gstreamer-rs"
 [dependencies.gstreamer-audio]
 git = "https://gitlab.freedesktop.org/gstreamer/gstreamer-rs"
 
-[dependencies.gstreamer-gl]
-git = "https://gitlab.freedesktop.org/gstreamer/gstreamer-rs"
-features = ["egl"]
-
 [dependencies.gstreamer-player]
 git = "https://gitlab.freedesktop.org/gstreamer/gstreamer-rs"
 
@@ -48,6 +44,12 @@ git = "https://gitlab.freedesktop.org/gstreamer/gstreamer-rs"
 
 [dependencies.gstreamer-video]
 git = "https://gitlab.freedesktop.org/gstreamer/gstreamer-rs"
+
+[target.'cfg(not(target_os = "linux"))'.dependencies]
+gstreamer-gl = { git = "https://gitlab.freedesktop.org/gstreamer/gstreamer-rs" }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+gstreamer-gl = { git = "https://gitlab.freedesktop.org/gstreamer/gstreamer-rs", features = ["egl"] }
 
 [dependencies.ipc-channel]
 version = "0.11"

@@ -842,19 +842,23 @@ impl Player for GStreamerPlayer {
     fn set_gl_params(&self, gl_context: GlContext, gl_display: usize) -> Result<(), ()> {
         let (display, context) = match gl_context {
             GlContext::Egl(ctxt) => {
-                let display = unsafe { gst_gl::GLDisplayEGL::new_with_egl_display(gl_display) };
+                if cfg!(target_os = "linux") {
+                    let display = unsafe { gst_gl::GLDisplayEGL::new_with_egl_display(gl_display) };
 
-                if let Some(display) = display {
-                    let context = unsafe {
-                        gst_gl::GLContext::new_wrapped(
-                            &display,
-                            ctxt,
-                            gst_gl::GLPlatform::EGL,
-                            gst_gl::GLAPI::ANY,
-                        )
-                    };
+                    if let Some(display) = display {
+                        let context = unsafe {
+                            gst_gl::GLContext::new_wrapped(
+                                &display,
+                                ctxt,
+                                gst_gl::GLPlatform::EGL,
+                                gst_gl::GLAPI::ANY,
+                            )
+                        };
 
-                    (Some(display.upcast::<gst_gl::GLDisplay>()), context)
+                        (Some(display.upcast::<gst_gl::GLDisplay>()), context)
+                    } else {
+                        (None, None)
+                    }
                 } else {
                     (None, None)
                 }
