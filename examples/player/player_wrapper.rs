@@ -14,14 +14,14 @@ use std::sync::{Arc, Mutex};
 use std::thread::Builder;
 
 pub struct PlayerWrapper {
-    player: Arc<Mutex<Box<Player>>>,
+    player: Arc<Mutex<Box<dyn Player>>>,
     shutdown: Arc<AtomicBool>,
     use_gl: bool,
 }
 
 impl PlayerWrapper {
     fn set_gl_params(
-        player: &Arc<Mutex<Box<Player>>>,
+        player: &Arc<Mutex<Box<dyn Player>>>,
         window: &glutin::GlWindow,
     ) -> Result<(), ()> {
         use glutin::os::unix::RawHandle;
