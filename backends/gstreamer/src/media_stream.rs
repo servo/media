@@ -75,7 +75,9 @@ impl GStreamerMediaStream {
     pub fn create_video() -> GStreamerMediaStream {
         let videotestsrc = gst::ElementFactory::make("videotestsrc", None).unwrap();
         videotestsrc.set_property_from_str("pattern", "ball");
-        videotestsrc.set_property("is-live", &true).unwrap();
+        videotestsrc
+            .set_property("is-live", &true)
+            .expect("videotestsrc doesn't have expected 'is-live' property");
 
         Self::create_video_from(videotestsrc)
     }
@@ -85,7 +87,9 @@ impl GStreamerMediaStream {
         let queue = gst::ElementFactory::make("queue", None).unwrap();
         let vp8enc = gst::ElementFactory::make("vp8enc", None).unwrap();
 
-        vp8enc.set_property("deadline", &1i64).unwrap();
+        vp8enc
+            .set_property("deadline", &1i64)
+            .expect("vp8enc doesn't have expected 'deadline' property");
 
         let rtpvp8pay = gst::ElementFactory::make("rtpvp8pay", None).unwrap();
         let queue2 = gst::ElementFactory::make("queue", None).unwrap();
@@ -100,7 +104,9 @@ impl GStreamerMediaStream {
     pub fn create_audio() -> GStreamerMediaStream {
         let audiotestsrc = gst::ElementFactory::make("audiotestsrc", None).unwrap();
         audiotestsrc.set_property_from_str("wave", "red-noise");
-        audiotestsrc.set_property("is-live", &true).unwrap();
+        audiotestsrc
+            .set_property("is-live", &true)
+            .expect("audiotestsrc doesn't have expected 'is-live' property");
 
         Self::create_audio_from(audiotestsrc)
     }

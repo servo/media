@@ -346,7 +346,7 @@ impl GStreamerPlayer {
 
         pipeline
             .set_property("video-sink", &video_sink.to_value())
-            .map_err(|e| PlayerError::Backend(e.to_string()))?;
+            .expect("playbin doesn't have expected 'video-sink' property");
 
         let video_sink = video_sink.dynamic_cast::<gst_app::AppSink>().unwrap();
         video_sink.set_caps(&gst::Caps::new_simple(
@@ -390,7 +390,7 @@ impl GStreamerPlayer {
         // faster playback of already-downloaded chunks.
         let flags = pipeline
             .get_property("flags")
-            .map_err(|e| PlayerError::Backend(e.to_string()))?;
+            .expect("playbin doesn't have expected 'flags' property");
         let flags_class = match glib::FlagsClass::new(flags.type_()) {
             Some(flags) => flags,
             None => {
@@ -417,12 +417,12 @@ impl GStreamerPlayer {
         };
         pipeline
             .set_property("flags", &flags)
-            .map_err(|e| PlayerError::Backend(e.to_string()))?;
+            .expect("playbin doesn't have expected 'flags' property");
 
         // Set max size for the player buffer.
         pipeline
             .set_property("buffer-size", &MAX_BUFFER_SIZE)
-            .map_err(|e| PlayerError::Backend(e.to_string()))?;
+            .expect("playbin doesn't have expected 'buffer-size' property");
 
         // Set player position interval update to 0.5 seconds.
         let mut config = player.get_config();
@@ -442,7 +442,7 @@ impl GStreamerPlayer {
         // https://github.com/servo/servo/issues/22010#issuecomment-432599657
         player
             .set_property("uri", &glib::Value::from("servosrc://"))
-            .map_err(|e| PlayerError::Backend(e.to_string()))?;
+            .expect("playbin doesn't have expected 'uri' property");
 
         *self.inner.borrow_mut() = Some(Arc::new(Mutex::new(PlayerInner {
             player,

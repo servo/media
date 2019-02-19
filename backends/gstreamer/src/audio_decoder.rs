@@ -160,7 +160,7 @@ impl AudioDecoder for GStreamerAudioDecoder {
 
                 deinterleave
                     .set_property("keep-positions", &true.to_value())
-                    .map_err(|e| AudioDecoderError::Backend(e.to_string()))?;
+                    .expect("deinterleave doesn't have expected 'keep-positions' property");
                 let pipeline_ = pipeline.downgrade();
                 let callbacks_ = callbacks.clone();
                 deinterleave.connect_pad_added(move |_, src_pad| {
@@ -188,7 +188,7 @@ impl AudioDecoder for GStreamerAudioDecoder {
                         )?;
                         let appsink = sink.clone().dynamic_cast::<gst_app::AppSink>().unwrap();
                         sink.set_property("sync", &false.to_value())
-                            .map_err(|e| AudioDecoderError::Backend(e.to_string()))?;
+                            .expect("appsink doesn't handle expected 'sync' property");
 
                         let callbacks_ = callbacks.clone();
                         appsink.set_callbacks(
@@ -277,9 +277,9 @@ impl AudioDecoder for GStreamerAudioDecoder {
                 let caps = audio_info
                     .to_caps()
                     .ok_or(AudioDecoderError::Backend("AudioInfo failed".to_owned()))?;
-                filter.set_property("caps", &caps.to_value()).map_err(|_| {
-                    AudioDecoderError::Backend("Setting caps property failed".to_owned())
-                })?;
+                filter
+                    .set_property("caps", &caps.to_value())
+                    .expect("capsfilter doesn't have expected 'caps' property");
 
                 let elements = &[&convert, &resample, &filter, &deinterleave];
                 pipeline
