@@ -227,7 +227,7 @@ impl AudioDecoder for GStreamerAudioDecoder {
                                         ));
                                         return gst::FlowReturn::Error;
                                     };
-                                    assert_eq!(audio_info.channels(), 1);
+
                                     let positions = if let Some(positions) = audio_info.positions()
                                     {
                                         positions
