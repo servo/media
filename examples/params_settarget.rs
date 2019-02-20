@@ -1,4 +1,5 @@
 extern crate servo_media;
+extern crate servo_media_auto;
 
 use servo_media::audio::node::{AudioNodeInit, AudioNodeMessage, AudioScheduledSourceNodeMessage};
 use servo_media::audio::param::{ParamType, RampKind, UserAutomationEvent};
@@ -57,6 +58,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
 }
 
 fn main() {
+    ServoMedia::init::<servo_media_auto::Backend>();
     if let Ok(servo_media) = ServoMedia::get() {
         run_example(servo_media);
     } else {

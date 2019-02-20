@@ -21,15 +21,20 @@ extern crate ipc_channel;
 #[macro_use]
 extern crate lazy_static;
 
+extern crate servo_media;
 extern crate servo_media_audio;
 extern crate servo_media_player;
 extern crate servo_media_streams;
 extern crate servo_media_webrtc;
 extern crate url;
 
+use servo_media::{Backend, BackendInit};
+use servo_media_audio::context::{AudioContext, AudioContextOptions};
+use servo_media_audio::decoder::AudioDecoder;
 use servo_media_audio::sink::AudioSinkError;
 use servo_media_audio::AudioBackend;
-use servo_media_player::PlayerBackend;
+use servo_media_player::Player;
+use servo_media_streams::{MediaStream, MediaOutput};
 use servo_media_streams::capture::MediaTrackConstraintSet;
 use servo_media_webrtc::{WebRtcBackend, WebRtcController, WebRtcSignaller};
 
@@ -43,21 +48,47 @@ pub mod webrtc;
 
 pub struct GStreamerBackend;
 
-impl AudioBackend for GStreamerBackend {
-    type Decoder = audio_decoder::GStreamerAudioDecoder;
-    type Sink = audio_sink::GStreamerAudioSink;
-    fn make_decoder() -> Self::Decoder {
-        audio_decoder::GStreamerAudioDecoder::new()
+impl Backend for GStreamerBackend {
+    fn create_player(&self) -> Box<Player> {
+        Box::new(player::GStreamerPlayer::new())
     }
-    fn make_sink() -> Result<Self::Sink, AudioSinkError> {
-        audio_sink::GStreamerAudioSink::new()
+
+    fn create_audio_context(&self, options: AudioContextOptions) -> AudioContext {
+        AudioContext::new::<Self>(options)
+    }
+
+    fn create_webrtc(&self, signaller: Box<WebRtcSignaller>) -> WebRtcController {
+        WebRtcController::new::<Self>(signaller)
+    }
+
+    fn create_audiostream(&self) -> Box<MediaStream> {
+        Box::new(media_stream::GStreamerMediaStream::create_audio())
+    }
+
+    fn create_videostream(&self) -> Box<MediaStream> {
+        Box::new(media_stream::GStreamerMediaStream::create_video())
+    }
+
+    fn create_stream_output(&self) -> Box<MediaOutput> {
+        Box::new(media_stream::MediaSink::new())
+    }
+
+    fn create_audioinput_stream(&self, set: MediaTrackConstraintSet) -> Option<Box<MediaStream>> {
+        media_capture::create_audioinput_stream(set).map(|s| Box::new(s) as Box<MediaStream>)
+    }
+
+    fn create_videoinput_stream(&self, set: MediaTrackConstraintSet) -> Option<Box<MediaStream>> {
+        media_capture::create_videoinput_stream(set).map(|s| Box::new(s) as Box<MediaStream>)
     }
 }
 
-impl PlayerBackend for GStreamerBackend {
-    type Player = player::GStreamerPlayer;
-    fn make_player() -> Self::Player {
-        player::GStreamerPlayer::new()
+impl AudioBackend for GStreamerBackend {
+    type Sink = audio_sink::GStreamerAudioSink;
+    fn make_decoder() -> Box<AudioDecoder> {
+        Box::new(audio_decoder::GStreamerAudioDecoder::new())
+    }
+    fn make_sink() -> Result<Self::Sink, AudioSinkError> {
+        audio_sink::GStreamerAudioSink::new()
     }
 }
 
@@ -72,33 +103,10 @@ impl WebRtcBackend for GStreamerBackend {
     }
 }
 
-impl GStreamerBackend {
-    pub fn init() {
+impl BackendInit for GStreamerBackend {
+    fn init() -> Box<Backend> {
         gst::init().unwrap();
-    }
-
-    pub fn create_audiostream() -> media_stream::GStreamerMediaStream {
-        media_stream::GStreamerMediaStream::create_audio()
-    }
-
-    pub fn create_videostream() -> media_stream::GStreamerMediaStream {
-        media_stream::GStreamerMediaStream::create_video()
-    }
-
-    pub fn create_stream_output() -> media_stream::MediaSink {
-        media_stream::MediaSink::new()
-    }
-
-    pub fn create_audioinput_stream(
-        set: MediaTrackConstraintSet,
-    ) -> Option<media_stream::GStreamerMediaStream> {
-        media_capture::create_audioinput_stream(set)
-    }
-
-    pub fn create_videoinput_stream(
-        set: MediaTrackConstraintSet,
-    ) -> Option<media_stream::GStreamerMediaStream> {
-        media_capture::create_videoinput_stream(set)
+        Box::new(GStreamerBackend)
     }
 }
 

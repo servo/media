@@ -3,8 +3,9 @@ use graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
 use node::{AudioNodeInit, AudioNodeMessage, ChannelInfo};
 use render_thread::AudioRenderThread;
 use render_thread::AudioRenderThreadMsg;
+use sink::AudioSink;
 use std::cell::Cell;
-use std::marker::PhantomData;
+use std::sync::Arc;
 use std::sync::mpsc::{self, Sender};
 use std::thread::Builder;
 use AudioBackend;
@@ -102,7 +103,7 @@ impl Default for AudioContextOptions {
 }
 
 /// Representation of an audio context on the control thread.
-pub struct AudioContext<B> {
+pub struct AudioContext {
     /// Rendering thread communication channel.
     sender: Sender<AudioRenderThreadMsg>,
     /// State of the audio context on the control thread.
@@ -113,12 +114,12 @@ pub struct AudioContext<B> {
     /// representing the final destination for all audio.
     dest_node: NodeId,
     listener: NodeId,
-    backend: PhantomData<B>,
+    make_decoder: Arc<(Fn() -> Box<AudioDecoder>) + Sync + Send>,
 }
 
-impl<B: AudioBackend + 'static> AudioContext<B> {
+impl AudioContext {
     /// Constructs a new audio context.
-    pub fn new(options: AudioContextOptions) -> Self {
+    pub fn new<B: AudioBackend>(options: AudioContextOptions) -> Self {
         let (sample_rate, channels) = match options {
             AudioContextOptions::RealTimeAudioContext(ref options) => (options.sample_rate, 2),
             AudioContextOptions::OfflineAudioContext(ref options) => {
@@ -134,8 +135,8 @@ impl<B: AudioBackend + 'static> AudioContext<B> {
         Builder::new()
             .name("AudioRenderThread".to_owned())
             .spawn(move || {
-                AudioRenderThread::<B::Sink>::start(
-                    || B::make_sink(),
+                AudioRenderThread::start(
+                    || B::make_sink().map(|s| Box::new(s) as Box<AudioSink>),
                     receiver,
                     sender_,
                     sample_rate,
@@ -150,7 +151,7 @@ impl<B: AudioBackend + 'static> AudioContext<B> {
             sample_rate,
             dest_node,
             listener,
-            backend: PhantomData,
+            make_decoder: Arc::new(|| B::make_decoder())
         }
     }
 
@@ -255,10 +256,11 @@ impl<B: AudioBackend + 'static> AudioContext<B> {
     pub fn decode_audio_data(&self, data: Vec<u8>, callbacks: AudioDecoderCallbacks) {
         let mut options = AudioDecoderOptions::default();
         options.sample_rate = self.sample_rate;
+        let make_decoder = self.make_decoder.clone();
         Builder::new()
             .name("AudioDecoder".to_owned())
             .spawn(move || {
-                let audio_decoder = B::make_decoder();
+                let audio_decoder = make_decoder();
 
                 audio_decoder.decode(data, callbacks, Some(options));
             })
@@ -272,7 +274,7 @@ impl<B: AudioBackend + 'static> AudioContext<B> {
     }
 }
 
-impl<T> Drop for AudioContext<T> {
+impl Drop for AudioContext {
     fn drop(&mut self) {
         let (tx, _) = mpsc::channel();
         let _ = self.sender.send(AudioRenderThreadMsg::Close(tx));

@@ -1,5 +1,6 @@
 extern crate rand;
 extern crate servo_media;
+extern crate servo_media_auto;
 
 use servo_media::audio::buffer_source_node::AudioBufferSourceNodeMessage;
 use servo_media::audio::node::OnEndedCallback;
@@ -46,6 +47,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
 }
 
 fn main() {
+    ServoMedia::init::<servo_media_auto::Backend>();
     if let Ok(servo_media) = ServoMedia::get() {
         run_example(servo_media);
     } else {

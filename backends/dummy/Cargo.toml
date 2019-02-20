@@ -1,0 +1,13 @@
+[package]
+name = "servo-media-dummy"
+version = "0.1.0"
+authors = ["The Servo Project Developers"]
+
+[dependencies]
+boxfnonce = "0.1.0"
+ipc-channel = "0.11"
+servo-media = { path = "../../servo-media" }
+servo-media-audio = { path = "../../audio" }
+servo-media-player = { path = "../../player" }
+servo-media-streams = { path = "../../streams" }
+servo-media-webrtc = { path = "../../webrtc" }

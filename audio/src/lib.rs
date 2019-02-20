@@ -3,8 +3,6 @@ extern crate serde_derive;
 
 #[macro_use]
 extern crate servo_media_derive;
-#[macro_use]
-extern crate log;
 
 extern crate boxfnonce;
 extern crate byte_slice_cast;
@@ -36,8 +34,7 @@ pub mod render_thread;
 pub mod sink;
 
 pub trait AudioBackend {
-    type Decoder: decoder::AudioDecoder;
-    type Sink: sink::AudioSink;
-    fn make_decoder() -> Self::Decoder;
+    type Sink: sink::AudioSink + 'static;
+    fn make_decoder() -> Box<decoder::AudioDecoder>;
     fn make_sink() -> Result<Self::Sink, sink::AudioSinkError>;
 }

@@ -57,6 +57,9 @@ version = "0.11"
 [dependencies.lazy_static]
 version = "1.2.0"
 
+[dependencies.servo-media]
+path = "../../servo-media"
+
 [dependencies.servo-media-audio]
 path = "../../audio"
 
