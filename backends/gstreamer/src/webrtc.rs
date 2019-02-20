@@ -51,7 +51,10 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
 
     fn create_offer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) {
         let webrtc = self.webrtc.as_ref().unwrap();
-
+        self.pipeline
+            .set_state(gst::State::Playing)
+            .into_result()
+            .unwrap();
         let promise = gst::Promise::new_with_change_func(move |promise| {
             on_offer_or_answer_created(SdpType::Offer, promise, cb);
         });
@@ -63,7 +66,10 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
 
     fn create_answer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) {
         let webrtc = self.webrtc.as_ref().unwrap();
-
+        self.pipeline
+            .set_state(gst::State::Playing)
+            .into_result()
+            .unwrap();
         let promise = gst::Promise::new_with_change_func(move |promise| {
             on_offer_or_answer_created(SdpType::Answer, promise, cb);
         });
@@ -80,7 +86,10 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
             .downcast_mut::<GStreamerMediaStream>()
             .unwrap();
         stream.attach_to_pipeline(&self.pipeline, self.webrtc.as_ref().unwrap());
-        self.prepare_for_negotiation();
+        self.pipeline
+            .set_state(gst::State::Playing)
+            .into_result()
+            .unwrap();
     }
 
     fn configure(&mut self, stun_server: &str, policy: BundlePolicy) {
@@ -98,6 +107,10 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                 self.signaller.on_ice_candidate(&self.thread, candidate);
             }
             InternalEvent::OnAddStream(stream) => {
+                self.pipeline
+                    .set_state(gst::State::Playing)
+                    .into_result()
+                    .unwrap();
                 self.signaller.on_add_stream(stream);
             }
         }
@@ -144,30 +157,6 @@ impl GStreamerWebRtcController {
 }
 
 impl GStreamerWebRtcController {
-    fn prepare_for_negotiation(&mut self) {
-        if self.ready_to_negotiate {
-            return;
-        }
-        self.ready_to_negotiate = true;
-        let webrtc = self.webrtc.as_ref().unwrap();
-        // gstreamer needs Sync on these callbacks for some reason
-        // https://github.com/sdroege/gstreamer-rs/issues/154
-        let thread = Mutex::new(self.thread.clone());
-        // If the pipeline starts playing and this signal is present before there are any
-        // media streams, an invalid SDP offer will be created. Therefore, delay setting up
-        // the signal and starting the pipeline until after the first stream has been added.
-        webrtc
-            .connect("on-negotiation-needed", false, move |_values| {
-                thread
-                    .lock()
-                    .unwrap()
-                    .internal_event(InternalEvent::OnNegotiationNeeded);
-                None
-            })
-            .unwrap();
-        self.pipeline.set_state(gst::State::Playing).unwrap();
-    }
-
     fn start_pipeline(&mut self) {
         let webrtc = gst::ElementFactory::make("webrtcbin", "sendrecv").unwrap();
         self.pipeline.add(&webrtc).unwrap();
@@ -195,7 +184,29 @@ impl GStreamerWebRtcController {
             })
             .unwrap();
 
+        // gstreamer needs Sync on these callbacks for some reason
+        // https://github.com/sdroege/gstreamer-rs/issues/154
+        let thread = Mutex::new(self.thread.clone());
+        webrtc
+            .connect("on-negotiation-needed", false, move |_values| {
+                thread
+                    .lock()
+                    .unwrap()
+                    .internal_event(InternalEvent::OnNegotiationNeeded);
+                None
+            })
+            .unwrap();
+
+
         self.webrtc = Some(webrtc);
+
+        // If the pipeline starts playing and on-negotiation-needed is present before there are any
+        // media streams, an invalid SDP offer will be created. Therefore, delay setting up
+        // the signal and starting the pipeline until after the first stream has been added. 
+        self.pipeline
+            .set_state(gst::State::Ready)
+            .into_result()
+            .unwrap();
     }
 }
 
