@@ -20,9 +20,10 @@ use std::sync::{Arc, Mutex};
 pub struct GStreamerWebRtcController {
     webrtc: Option<gst::Element>,
     pipeline: gst::Pipeline,
+    has_streams: bool,
+    delayed_negotiation: bool,
     thread: WebRtcThread,
     signaller: Box<WebRtcSignaller>,
-    ready_to_negotiate: bool,
     //send_msg_tx: mpsc::Sender<OwnedMessage>,
     //peer_id: String,
     _main_loop: glib::MainLoop,
@@ -51,10 +52,6 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
 
     fn create_offer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) {
         let webrtc = self.webrtc.as_ref().unwrap();
-        self.pipeline
-            .set_state(gst::State::Playing)
-            .into_result()
-            .unwrap();
         let promise = gst::Promise::new_with_change_func(move |promise| {
             on_offer_or_answer_created(SdpType::Offer, promise, cb);
         });
@@ -66,10 +63,6 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
 
     fn create_answer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) {
         let webrtc = self.webrtc.as_ref().unwrap();
-        self.pipeline
-            .set_state(gst::State::Playing)
-            .into_result()
-            .unwrap();
         let promise = gst::Promise::new_with_change_func(move |promise| {
             on_offer_or_answer_created(SdpType::Answer, promise, cb);
         });
@@ -81,6 +74,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
 
     fn add_stream(&mut self, stream: &mut MediaStream) {
         println!("adding a stream");
+        self.has_streams = true;
         let stream = stream
             .as_mut_any()
             .downcast_mut::<GStreamerMediaStream>()
@@ -88,8 +82,11 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         stream.attach_to_pipeline(&self.pipeline, self.webrtc.as_ref().unwrap());
         self.pipeline
             .set_state(gst::State::Playing)
-            .into_result()
             .unwrap();
+        if self.delayed_negotiation {
+            self.delayed_negotiation = false;
+            self.signaller.on_negotiation_needed(&self.thread);
+        }
     }
 
     fn configure(&mut self, stun_server: &str, policy: BundlePolicy) {
@@ -101,7 +98,13 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
     fn internal_event(&mut self, e: thread::InternalEvent) {
         match e {
             InternalEvent::OnNegotiationNeeded => {
-                self.signaller.on_negotiation_needed(&self.thread);
+                if self.has_streams {
+                    self.signaller.on_negotiation_needed(&self.thread);
+                } else {
+                    // If the pipeline starts playing and on-negotiation-needed is present before there are any
+                    // media streams, an invalid SDP offer will be created. Therefore, delay emitting the signal
+                    self.delayed_negotiation = true;
+                }
             }
             InternalEvent::OnIceCandidate(candidate) => {
                 self.signaller.on_ice_candidate(&self.thread, candidate);
@@ -109,7 +112,6 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
             InternalEvent::OnAddStream(stream) => {
                 self.pipeline
                     .set_state(gst::State::Playing)
-                    .into_result()
                     .unwrap();
                 self.signaller.on_add_stream(stream);
             }
@@ -200,12 +202,8 @@ impl GStreamerWebRtcController {
 
         self.webrtc = Some(webrtc);
 
-        // If the pipeline starts playing and on-negotiation-needed is present before there are any
-        // media streams, an invalid SDP offer will be created. Therefore, delay setting up
-        // the signal and starting the pipeline until after the first stream has been added. 
         self.pipeline
             .set_state(gst::State::Ready)
-            .into_result()
             .unwrap();
     }
 }
@@ -222,7 +220,8 @@ pub fn construct(
         pipeline,
         signaller,
         thread,
-        ready_to_negotiate: false,
+        has_streams: false,
+        delayed_negotiation: false,
         _main_loop: main_loop,
     };
     controller.start_pipeline();

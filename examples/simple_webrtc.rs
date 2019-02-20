@@ -130,7 +130,7 @@ impl State {
         self.webrtc = Some(self.media.create_webrtc(Box::new(signaller)));
         self.signaller = Some(s);
         let webrtc = self.webrtc.as_ref().unwrap();
-        let (video, audio) = if self.peer_id.is_some() {
+        let (video, audio) = if !self.peer_id.is_some() {
             (
                 self.media
                     .create_videoinput_stream(Default::default())
@@ -192,6 +192,7 @@ impl WebRtcSignaller for Signaller {
     }
 
     fn on_add_stream(&self, stream: Box<MediaStream>) {
+        println!("notified of stream!");
         self.output.lock().unwrap().add_stream(stream);
     }
 }
@@ -248,7 +249,6 @@ fn receive_loop(
                 }
 
                 OwnedMessage::Text(msg) => {
-                    println!("{:?}", msg);
                     match &*msg {
                         "HELLO" => state.handle_hello(),
 
