@@ -83,7 +83,6 @@ impl GStreamerMediaStream {
         } else {
             let pipeline = gst::Pipeline::new("gstreamermediastream fresh pipeline");
             self.attach_to_pipeline(&pipeline);
-            pipeline.set_state(gst::State::Playing).unwrap();
             pipeline
         }
     }
@@ -95,10 +94,21 @@ impl GStreamerMediaStream {
             .set_property("is-live", &true)
             .expect("videotestsrc doesn't have expected 'is-live' property");
 
-        Self::create_video_from(videotestsrc)
+        Self::create_video_from_encoded(videotestsrc)
     }
 
     pub fn create_video_from(source: gst::Element) -> GStreamerMediaStream {
+        let videoconvert = gst::ElementFactory::make("videoconvert", None).unwrap();
+        let queue = gst::ElementFactory::make("queue", None).unwrap();
+
+        GStreamerMediaStream {
+            type_: StreamType::Video,
+            elements: vec![source, videoconvert, queue],
+            pipeline: None,
+        }
+    }
+
+    pub fn create_video_from_encoded(source: gst::Element) -> GStreamerMediaStream {
         let videoconvert = gst::ElementFactory::make("videoconvert", None).unwrap();
         let queue = gst::ElementFactory::make("queue", None).unwrap();
         let vp8enc = gst::ElementFactory::make("vp8enc", None).unwrap();
@@ -124,10 +134,29 @@ impl GStreamerMediaStream {
             .set_property("is-live", &true)
             .expect("audiotestsrc doesn't have expected 'is-live' property");
 
-        Self::create_audio_from(audiotestsrc)
+        Self::create_audio_from_encoded(audiotestsrc)
     }
 
     pub fn create_audio_from(source: gst::Element) -> GStreamerMediaStream {
+        let queue = gst::ElementFactory::make("queue", None).unwrap();
+        let audioconvert = gst::ElementFactory::make("audioconvert", None).unwrap();
+        let audioresample = gst::ElementFactory::make("audioresample", None).unwrap();
+        let queue2 = gst::ElementFactory::make("queue", None).unwrap();
+
+        GStreamerMediaStream {
+            type_: StreamType::Audio,
+            elements: vec![
+                source,
+                queue,
+                audioconvert,
+                audioresample,
+                queue2,
+            ],
+            pipeline: None,
+        }
+    }
+
+    pub fn create_audio_from_encoded(source: gst::Element) -> GStreamerMediaStream {
         let queue = gst::ElementFactory::make("queue", None).unwrap();
         let audioconvert = gst::ElementFactory::make("audioconvert", None).unwrap();
         let audioresample = gst::ElementFactory::make("audioresample", None).unwrap();
@@ -181,7 +210,9 @@ impl MediaOutput for MediaSink {
             pipeline.add(&sink).unwrap();
             gst::Element::link_many(&[last_element, &sink][..]).unwrap();
 
+            pipeline.set_state(gst::State::Playing).unwrap();
             sink.sync_state_with_parent().unwrap();
+            // gst::debug_bin_to_dot_file(&pipeline,  gstreamer::DebugGraphDetails::ALL, ::std::path::Path::new("dot.dot"));
         }
 
         self.streams.push(stream);

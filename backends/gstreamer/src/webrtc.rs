@@ -265,6 +265,7 @@ fn on_incoming_stream(
     let pipe_clone = pipe.clone();
     let caps = pad.query_caps(None).unwrap();
     let name = caps.get_structure(0).unwrap().get::<String>("media").unwrap();
+    let decodebin2 = decodebin.clone();
     decodebin
         .connect("pad-added", false, move |values| {
             println!("decodebin pad-added");
@@ -272,11 +273,17 @@ fn on_incoming_stream(
             None
         })
         .unwrap();
+    decodebin
+        .connect("no-more-pads", false, move |_| {
+            println!("no-more-pads");
+            None
+        })
+        .unwrap();
     pipe.add(&decodebin).unwrap();
 
     let decodepad = decodebin.get_static_pad("sink").unwrap();
     pad.link(&decodepad).unwrap();
-    decodebin.sync_state_with_parent().unwrap();
+    decodebin2.sync_state_with_parent().unwrap();
 }
 
 fn on_incoming_decodebin_stream(
