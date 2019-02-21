@@ -278,7 +278,7 @@ impl AudioDecoder for GStreamerAudioDecoder {
                     .to_caps()
                     .ok_or(AudioDecoderError::Backend("AudioInfo failed".to_owned()))?;
                 filter
-                    .set_property("caps", &caps.to_value())
+                    .set_property("caps", &caps)
                     .expect("capsfilter doesn't have expected 'caps' property");
 
                 let elements = &[&convert, &resample, &filter, &deinterleave];
