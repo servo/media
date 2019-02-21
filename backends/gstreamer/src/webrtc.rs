@@ -213,7 +213,9 @@ pub fn construct(
 ) -> GStreamerWebRtcController {
     let main_loop = glib::MainLoop::new(None, false);
     let pipeline = gst::Pipeline::new("webrtc main");
-
+    pipeline.set_start_time(gst::ClockTime::none());
+    pipeline.set_base_time(gst::ClockTime::from_nseconds(0));
+    pipeline.use_clock(Some(&gst::SystemClock::obtain()));
     let mut controller = GStreamerWebRtcController {
         webrtc: None,
         pipeline,
