@@ -422,7 +422,7 @@ impl GStreamerPlayer {
                 .expect("glsinkbin doesn't have expected 'sink' property");
 
             pipeline
-                .set_property("video-sink", &glsink.to_value())
+                .set_property("video-sink", &glsink)
                 .expect("playbin doesn't have expected 'video-sink' property");
 
             self.set_bus_sync_handler(&pipeline)?;
@@ -434,7 +434,7 @@ impl GStreamerPlayer {
             appsink.set_caps(&caps);
 
             pipeline
-                .set_property("video-sink", &appsink.to_value())
+                .set_property("video-sink", &appsink)
                 .expect("playbin doesn't have expected 'video-sink' property");
         };
 
@@ -522,7 +522,7 @@ impl GStreamerPlayer {
         // The estimated version for the fix is 1.14.5 / 1.15.1.
         // https://github.com/servo/servo/issues/22010#issuecomment-432599657
         player
-            .set_property("uri", &glib::Value::from("servosrc://"))
+            .set_property("uri", &"servosrc://".to_value())
             .expect("playbin doesn't have expected 'uri' property");
 
         *self.inner.borrow_mut() = Some(Arc::new(Mutex::new(PlayerInner {
