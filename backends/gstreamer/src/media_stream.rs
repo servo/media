@@ -50,14 +50,9 @@ impl MediaStream for GStreamerMediaStream {
 }
 
 impl GStreamerMediaStream {
-    pub fn attach_to_pipeline(&mut self, pipeline: &gst::Pipeline, webrtcbin: &gst::Element) {
+    pub fn attach_to_webrtc(&mut self, pipeline: &gst::Pipeline, webrtcbin: &gst::Element) {
         println!("atttaching a {:?} stream", self.type_);
-        let elements: Vec<_> = self.elements.iter().collect();
-        pipeline.add_many(&elements[..]).unwrap();
-        gst::Element::link_many(&elements[..]).unwrap();
-        for element in elements {
-            element.sync_state_with_parent().unwrap();
-        }
+        self.attach_to_pipeline(pipeline);
 
         let caps = match self.type_ {
             StreamType::Audio => &*RTP_CAPS_OPUS,
@@ -69,7 +64,28 @@ impl GStreamerMediaStream {
             .unwrap()
             .link_filtered(webrtcbin, caps)
             .unwrap();
+    }
+
+    pub fn attach_to_pipeline(&mut self, pipeline: &gst::Pipeline) {
+        assert!(self.pipeline.is_none());
+        let elements: Vec<_> = self.elements.iter().collect();
+        pipeline.add_many(&elements[..]).unwrap();
+        gst::Element::link_many(&elements[..]).unwrap();
+        for element in elements {
+            element.sync_state_with_parent().unwrap();
+        }
         self.pipeline = Some(pipeline.clone());
+    }
+
+    pub fn pipeline_or_new(&mut self) -> gst::Pipeline {
+        if let Some(ref pipeline) = self.pipeline {
+            pipeline.clone()
+        } else {
+            let pipeline = gst::Pipeline::new("gstreamermediastream fresh pipeline");
+            self.attach_to_pipeline(&pipeline);
+            pipeline.set_state(gst::State::Playing).unwrap();
+            pipeline
+        }
     }
 
     pub fn create_video() -> GStreamerMediaStream {
@@ -135,18 +151,6 @@ impl GStreamerMediaStream {
             pipeline: None,
         }
     }
-
-    pub fn create_stream_with_pipeline(
-        type_: StreamType,
-        elements: Vec<gst::Element>,
-        pipeline: gst::Pipeline,
-    ) -> GStreamerMediaStream {
-        GStreamerMediaStream {
-            type_,
-            elements,
-            pipeline: Some(pipeline),
-        }
-    }
 }
 
 pub struct MediaSink {
@@ -160,12 +164,13 @@ impl MediaSink {
 }
 
 impl MediaOutput for MediaSink {
-    fn add_stream(&mut self, stream: Box<MediaStream>) {
+    fn add_stream(&mut self, mut stream: Box<MediaStream>) {
         {
             let stream = stream
-                .as_any()
-                .downcast_ref::<GStreamerMediaStream>()
+                .as_mut_any()
+                .downcast_mut::<GStreamerMediaStream>()
                 .unwrap();
+            let pipeline = stream.pipeline_or_new();
             let last_element = stream.elements.last();
             let last_element = last_element.as_ref().unwrap();
             let sink = match stream.type_ {
@@ -173,7 +178,7 @@ impl MediaOutput for MediaSink {
                 StreamType::Video => "autovideosink",
             };
             let sink = gst::ElementFactory::make(sink, None).unwrap();
-            stream.pipeline.as_ref().unwrap().add(&sink).unwrap();
+            pipeline.add(&sink).unwrap();
             gst::Element::link_many(&[last_element, &sink][..]).unwrap();
 
             sink.sync_state_with_parent().unwrap();

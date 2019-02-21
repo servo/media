@@ -5,12 +5,11 @@ use gst;
 use gst::prelude::*;
 use gst_sdp;
 use gst_webrtc;
-use media_stream::{GStreamerMediaStream, StreamType};
+use media_stream::{GStreamerMediaStream};
 use servo_media_webrtc::thread::InternalEvent;
 use servo_media_webrtc::WebRtcController as WebRtcThread;
 use servo_media_webrtc::*;
 use servo_media_streams::MediaStream;
-use std::error::Error;
 use std::sync::{Arc, Mutex};
 
 // TODO:
@@ -79,7 +78,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
             .as_mut_any()
             .downcast_mut::<GStreamerMediaStream>()
             .unwrap();
-        stream.attach_to_pipeline(&self.pipeline, self.webrtc.as_ref().unwrap());
+        stream.attach_to_webrtc(&self.pipeline, self.webrtc.as_ref().unwrap());
         self.pipeline
             .set_state(gst::State::Playing)
             .unwrap();
@@ -213,7 +212,7 @@ pub fn construct(
     thread: WebRtcThread,
 ) -> GStreamerWebRtcController {
     let main_loop = glib::MainLoop::new(None, false);
-    let pipeline = gst::Pipeline::new("main");
+    let pipeline = gst::Pipeline::new("webrtc main");
 
     let mut controller = GStreamerWebRtcController {
         webrtc: None,
@@ -257,124 +256,68 @@ fn on_offer_or_answer_created(
     };
     cb.call(desc);
 }
-
-fn handle_media_stream(
-    pad: &gst::Pad,
+fn on_incoming_stream(
     pipe: &gst::Pipeline,
-    media_type: StreamType,
     thread: Arc<Mutex<WebRtcThread>>,
-) -> Result<(), Box<Error>> {
-    println!("Trying to handle stream {:?}", media_type);
+    pad: &gst::Pad,
+) {
+    let decodebin = gst::ElementFactory::make("decodebin", None).unwrap();
+    let pipe_clone = pipe.clone();
+    let caps = pad.query_caps(None).unwrap();
+    let name = caps.get_structure(0).unwrap().get::<String>("media").unwrap();
+    decodebin
+        .connect("pad-added", false, move |values| {
+            println!("decodebin pad-added");
+            on_incoming_decodebin_stream(values, &pipe_clone, thread.clone(), &name);
+            None
+        })
+        .unwrap();
+    pipe.add(&decodebin).unwrap();
 
-    let (q, conv, elements) = match media_type {
-        StreamType::Audio => {
-            let q = gst::ElementFactory::make("queue", None).unwrap();
-            let conv = gst::ElementFactory::make("audioconvert", None).unwrap();
-            let resample = gst::ElementFactory::make("audioresample", None).unwrap();
-
-            pipe.add_many(&[&q, &conv, &resample])?;
-            gst::Element::link_many(&[&q, &conv, &resample])?;
-
-            resample.sync_state_with_parent()?;
-
-            let elements = vec![q.clone(), conv.clone(), resample];
-            (q, conv, elements)
-        }
-        StreamType::Video => {
-            let q = gst::ElementFactory::make("queue", None).unwrap();
-            let conv = gst::ElementFactory::make("videoconvert", None).unwrap();
-
-            pipe.add_many(&[&q, &conv])?;
-            gst::Element::link_many(&[&q, &conv])?;
-
-            let elements = vec![q.clone(), conv.clone()];
-            (q, conv, elements)
-        }
-    };
-    q.sync_state_with_parent()?;
-    conv.sync_state_with_parent()?;
-
-    let qpad = q.get_static_pad("sink").unwrap();
-    pad.link(&qpad)?;
-
-    let stream = Box::new(GStreamerMediaStream::create_stream_with_pipeline(
-        media_type,
-        elements,
-        pipe.clone(),
-    ));
-    thread
-        .lock()
-        .unwrap()
-        .internal_event(InternalEvent::OnAddStream(stream));
-
-    Ok(())
+    let decodepad = decodebin.get_static_pad("sink").unwrap();
+    pad.link(&decodepad).unwrap();
+    decodebin.sync_state_with_parent().unwrap();
 }
 
 fn on_incoming_decodebin_stream(
     values: &[glib::Value],
     pipe: &gst::Pipeline,
     thread: Arc<Mutex<WebRtcThread>>,
-) -> Option<glib::Value> {
-    let pad = values[1].get::<gst::Pad>().expect("Invalid argument");
-    if !pad.has_current_caps() {
-        println!("Pad {:?} has no caps, can't do anything, ignoring", pad);
-        return None;
-    }
+    name: &str,
+) {
+    println!("incoming decodebin");
+    let pad = values[1].get::<gst::Pad>().expect("not a pad??");
+    let proxy_src = gst::ElementFactory::make("proxysrc", None).unwrap();
+    let proxy_sink = gst::ElementFactory::make("proxysink", None).unwrap();
+    proxy_src.set_property("proxysink", &proxy_sink).unwrap();
+    pipe.add(&proxy_sink).unwrap();
+    let sinkpad = proxy_sink.get_static_pad("sink").unwrap();
 
-    let caps = pad.get_current_caps().unwrap();
-    let name = caps.get_structure(0).unwrap().get_name();
+    pad.link(&sinkpad).unwrap();
+    proxy_sink.sync_state_with_parent().unwrap();
 
-    let handled = if name.starts_with("video") {
-        handle_media_stream(&pad, &pipe, StreamType::Video, thread)
-    } else if name.starts_with("audio") {
-        handle_media_stream(&pad, &pipe, StreamType::Audio, thread)
+    let stream = if name == "video" {
+        Box::new(GStreamerMediaStream::create_video_from(proxy_src))
     } else {
-        println!("Unknown pad {:?}, ignoring", pad);
-        Ok(())
+        Box::new(GStreamerMediaStream::create_audio_from(proxy_src))
     };
-
-    if let Err(err) = handled {
-        eprintln!("Error adding pad with caps {} {:?}", name, err);
-    }
-
-    None
-}
-
-fn on_incoming_stream(
-    values: &[glib::Value],
-    pipe: &gst::Pipeline,
-    thread: Arc<Mutex<WebRtcThread>>,
-) -> Option<glib::Value> {
-    let webrtc = values[0].get::<gst::Element>().expect("Invalid argument");
-
-    let decodebin = gst::ElementFactory::make("decodebin", None).unwrap();
-    let pipe_clone = pipe.clone();
-    decodebin
-        .connect("pad-added", false, move |values| {
-            println!("decodebin pad-added");
-            on_incoming_decodebin_stream(values, &pipe_clone, thread.clone())
-        })
-        .unwrap();
-
-    pipe.add(&decodebin).unwrap();
-
-    decodebin.sync_state_with_parent().unwrap();
-    webrtc.link(&decodebin).unwrap();
-
-    None
+    thread
+        .lock()
+        .unwrap()
+        .internal_event(InternalEvent::OnAddStream(stream));
 }
 
 fn process_new_stream(
     values: &[glib::Value],
     pipe: &gst::Pipeline,
     thread: Arc<Mutex<WebRtcThread>>,
-) -> Option<glib::Value> {
+) {
     let pad = values[1].get::<gst::Pad>().expect("not a pad??");
     if pad.get_direction() != gst::PadDirection::Src {
         // Ignore outgoing pad notifications.
-        return None;
+        return;
     }
-    on_incoming_stream(values, pipe, thread)
+    on_incoming_stream(pipe, thread, &pad)
 }
 
 fn candidate(values: &[glib::Value]) -> IceCandidate {
