@@ -15,6 +15,7 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 use webrender;
 use webrender::api::*;
+use webrender::ShaderPrecacheFlags;
 use winit;
 
 use player_wrapper::PlayerWrapper;
@@ -56,6 +57,7 @@ pub trait HandyDandyRectBuilder {
     fn to(&self, x2: i32, y2: i32) -> LayoutRect;
     fn by(&self, w: i32, h: i32) -> LayoutRect;
 }
+
 // Allows doing `(x, y).to(x2, y2)` or `(x, y).by(width, height)` with i32
 // values to build a f32 LayoutRect
 impl HandyDandyRectBuilder for (i32, i32) {
@@ -76,7 +78,6 @@ impl HandyDandyRectBuilder for (i32, i32) {
 
 pub trait Example {
     const TITLE: &'static str = "Servo Media Test Player";
-    const PRECACHE_SHADERS: bool = false;
     const WIDTH: u32 = 1920;
     const HEIGHT: u32 = 1080;
 
@@ -102,11 +103,14 @@ pub trait Example {
         (None, None)
     }
     fn draw_custom(&self, _gl: &gl::Gl) {}
+
+    fn use_gl(&mut self, _use_gl: bool) {}
 }
 
 pub fn main_wrapper<E: Example + FrameRenderer>(
     example: Arc<Mutex<E>>,
     path: &Path,
+    use_gl: bool,
     options: Option<webrender::RendererOptions>,
 ) {
     env_logger::init();
@@ -142,15 +146,16 @@ pub fn main_wrapper<E: Example + FrameRenderer>(
     println!("OpenGL version {}", gl.get_string(gl::VERSION));
     let device_pixel_ratio = window.get_hidpi_factor() as f32;
     println!("Device pixel ratio: {}", device_pixel_ratio);
+    let mut debug_flags = webrender::DebugFlags::ECHO_DRIVER_MESSAGES;
 
     println!("Loading shaders...");
     let opts = webrender::RendererOptions {
         resource_override_path: None,
-        precache_shaders: E::PRECACHE_SHADERS,
+        precache_flags: ShaderPrecacheFlags::EMPTY,
         device_pixel_ratio,
         clear_color: Some(ColorF::new(0.3, 0.0, 0.0, 1.0)),
         //scatter_gpu_cache_updates: false,
-        debug_flags: webrender::DebugFlags::ECHO_DRIVER_MESSAGES,
+        debug_flags,
         ..options.unwrap_or(webrender::RendererOptions::default())
     };
 
@@ -159,12 +164,18 @@ pub fn main_wrapper<E: Example + FrameRenderer>(
             .get_inner_size()
             .unwrap()
             .to_physical(device_pixel_ratio as f64);
-        DeviceUintSize::new(size.width as u32, size.height as u32)
+        DeviceIntSize::new(size.width as i32, size.height as i32)
     };
     let notifier = Box::new(Notifier::new(events_loop.create_proxy()));
-    let (mut renderer, sender) = webrender::Renderer::new(gl.clone(), notifier, opts).unwrap();
+    let (mut renderer, sender) =
+        webrender::Renderer::new(gl.clone(), notifier, opts, None).unwrap();
     let api = sender.create_api();
     let document_id = api.add_document(framebuffer_size, 0);
+
+    let gl_win = if use_gl { Some(&window) } else { None };
+    let player_wrapper = PlayerWrapper::new(path, gl_win);
+    example.lock().unwrap().use_gl(player_wrapper.use_gl());
+    player_wrapper.register_frame_renderer(example.clone());
 
     let (external, output) = example.lock().unwrap().get_image_handlers(&*gl);
 
@@ -191,9 +202,6 @@ pub fn main_wrapper<E: Example + FrameRenderer>(
     txn.generate_frame();
     api.send_transaction(document_id, txn);
 
-    let player_wrapper = PlayerWrapper::new(path);
-    player_wrapper.register_frame_renderer(example.clone());
-
     println!("Entering event loop");
     events_loop.run_forever(|global_event| {
         let mut txn = Transaction::new();
@@ -218,30 +226,28 @@ pub fn main_wrapper<E: Example + FrameRenderer>(
                 ..
             } => match key {
                 winit::VirtualKeyCode::Escape => return winit::ControlFlow::Break,
-                winit::VirtualKeyCode::P => {
-                    renderer.toggle_debug_flags(webrender::DebugFlags::PROFILER_DBG)
-                }
+                winit::VirtualKeyCode::P => debug_flags.toggle(webrender::DebugFlags::PROFILER_DBG),
                 winit::VirtualKeyCode::O => {
-                    renderer.toggle_debug_flags(webrender::DebugFlags::RENDER_TARGET_DBG)
+                    debug_flags.toggle(webrender::DebugFlags::RENDER_TARGET_DBG)
                 }
                 winit::VirtualKeyCode::I => {
-                    renderer.toggle_debug_flags(webrender::DebugFlags::TEXTURE_CACHE_DBG)
+                    debug_flags.toggle(webrender::DebugFlags::TEXTURE_CACHE_DBG)
                 }
                 winit::VirtualKeyCode::S => {
-                    renderer.toggle_debug_flags(webrender::DebugFlags::COMPACT_PROFILER)
+                    debug_flags.toggle(webrender::DebugFlags::COMPACT_PROFILER)
                 }
-                winit::VirtualKeyCode::Q => renderer.toggle_debug_flags(
+                winit::VirtualKeyCode::Q => debug_flags.toggle(
                     webrender::DebugFlags::GPU_TIME_QUERIES
                         | webrender::DebugFlags::GPU_SAMPLE_QUERIES,
                 ),
                 winit::VirtualKeyCode::Key1 => txn.set_window_parameters(
                     framebuffer_size,
-                    DeviceUintRect::new(DeviceUintPoint::zero(), framebuffer_size),
+                    DeviceIntRect::new(DeviceIntPoint::zero(), framebuffer_size),
                     1.0,
                 ),
                 winit::VirtualKeyCode::Key2 => txn.set_window_parameters(
                     framebuffer_size,
-                    DeviceUintRect::new(DeviceUintPoint::zero(), framebuffer_size),
+                    DeviceIntRect::new(DeviceIntPoint::zero(), framebuffer_size),
                     2.0,
                 ),
                 winit::VirtualKeyCode::M => api.notify_memory_pressure(),

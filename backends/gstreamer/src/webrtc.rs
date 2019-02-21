@@ -106,10 +106,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
     fn quit(&mut self) {
         self.signaller.close();
 
-        self.pipeline
-            .set_state(gst::State::Null)
-            .into_result()
-            .unwrap();
+        self.pipeline.set_state(gst::State::Null).unwrap();
 
         //main_loop.quit();
     }
@@ -168,10 +165,7 @@ impl GStreamerWebRtcController {
                 None
             })
             .unwrap();
-        self.pipeline
-            .set_state(gst::State::Playing)
-            .into_result()
-            .unwrap();
+        self.pipeline.set_state(gst::State::Playing).unwrap();
     }
 
     fn start_pipeline(&mut self) {
@@ -291,7 +285,7 @@ fn handle_media_stream(
     conv.sync_state_with_parent()?;
 
     let qpad = q.get_static_pad("sink").unwrap();
-    pad.link(&qpad).into_result()?;
+    pad.link(&qpad)?;
 
     let stream = Box::new(GStreamerMediaStream::create_stream_with_pipeline(
         media_type,

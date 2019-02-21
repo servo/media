@@ -31,6 +31,40 @@ mod ui;
 #[path = "player_wrapper.rs"]
 mod player_wrapper;
 
+struct FrameProvider {
+    frame_queue: Arc<Mutex<FrameQueue>>,
+    curr_frame: Option<Frame>,
+}
+
+impl webrender::ExternalImageHandler for FrameProvider {
+    fn lock(
+        &mut self,
+        _key: ExternalImageId,
+        _channel_index: u8,
+        _rendering: ImageRendering,
+    ) -> webrender::ExternalImage {
+        self.curr_frame = self.frame_queue.lock().unwrap().get();
+
+        let (id, height, width) = self
+            .curr_frame
+            .clone() // clone it because we want to keep the current texture alive
+            .and_then(|frame| {
+                Some((
+                    frame.get_texture_id(),
+                    frame.get_height(),
+                    frame.get_width(),
+                ))
+            })
+            .unwrap();
+
+        webrender::ExternalImage {
+            uv: TexelRect::new(0.0, 0.0, width as f32, height as f32),
+            source: webrender::ExternalImageSource::NativeTexture(id),
+        }
+    }
+    fn unlock(&mut self, _key: ExternalImageId, _channel_index: u8) {}
+}
+
 struct FrameQueue {
     next_frame: Option<Frame>,
     curr_frame: Option<Frame>,
@@ -87,15 +121,52 @@ impl FrameQueue {
 }
 
 struct App {
-    frame_queue: Mutex<FrameQueue>,
+    frame_queue: Arc<Mutex<FrameQueue>>,
     image_key: Option<ImageKey>,
+    use_gl: bool,
 }
 
 impl App {
     fn new() -> Self {
         Self {
-            frame_queue: Mutex::new(FrameQueue::new()),
+            frame_queue: Arc::new(Mutex::new(FrameQueue::new())),
             image_key: None,
+            use_gl: false,
+        }
+    }
+
+    fn init_image_key(&mut self, api: &RenderApi, txn: &mut Transaction, frame: &Frame) {
+        if self.image_key.is_some() {
+            return;
+        }
+
+        self.image_key = Some(api.generate_image_key());
+        let image_descriptor = ImageDescriptor::new(
+            frame.get_width(),
+            frame.get_height(),
+            ImageFormat::BGRA8,
+            false,
+            false,
+        );
+
+        if self.use_gl {
+            txn.add_image(
+                self.image_key.clone().unwrap(),
+                image_descriptor,
+                ImageData::External(ExternalImageData {
+                    id: ExternalImageId(0),
+                    channel_index: 0,
+                    image_type: ExternalImageType::TextureHandle(TextureTarget::Default),
+                }),
+                None,
+            );
+        } else {
+            txn.add_image(
+                self.image_key.clone().unwrap(),
+                image_descriptor,
+                ImageData::new_shared(frame.get_data()),
+                None,
+            );
         }
     }
 }
@@ -113,13 +184,13 @@ impl ui::Example for App {
         }
 
         let frame = self.frame_queue.lock().unwrap().get().unwrap();
-        let width = frame.get_width() as u32;
-        let height = frame.get_height() as u32;
+        let width = frame.get_width();
+        let height = frame.get_height();
 
         if self.image_key.is_some() {
             if let Some(old_frame) = self.frame_queue.lock().unwrap().prev() {
-                let old_width = old_frame.get_width() as u32;
-                let old_height = old_frame.get_height() as u32;
+                let old_width = old_frame.get_width();
+                let old_height = old_frame.get_height();
                 if (width != old_width) || (height != old_height) {
                     txn.delete_image(self.image_key.unwrap());
                     self.image_key = None;
@@ -127,24 +198,14 @@ impl ui::Example for App {
             }
         }
 
-        let image_descriptor =
-            ImageDescriptor::new(width, height, ImageFormat::BGRA8, false, false);
-        let image_data = ImageData::new_shared(frame.get_data());
-
         if self.image_key.is_none() {
-            self.image_key = Some(api.generate_image_key());
-            txn.add_image(
-                self.image_key.clone().unwrap(),
-                image_descriptor,
-                image_data,
-                None,
-            );
-        } else {
+            self.init_image_key(api, txn, &frame);
+        } else if !self.use_gl {
             txn.update_image(
                 self.image_key.clone().unwrap(),
-                image_descriptor,
-                image_data,
-                None,
+                ImageDescriptor::new(width, height, ImageFormat::BGRA8, false, false),
+                ImageData::new_shared(frame.get_data()),
+                &DirtyRect::All,
             );
         }
 
@@ -155,9 +216,10 @@ impl ui::Example for App {
             None,
             TransformStyle::Flat,
             MixBlendMode::Normal,
-            Vec::new(),
-            GlyphRasterSpace::Screen,
+            &[],
+            RasterSpace::Screen,
         );
+
         let image_size = LayoutSize::new(width as f32, height as f32);
         let info = LayoutPrimitiveInfo::new(bounds);
         builder.push_image(
@@ -167,6 +229,7 @@ impl ui::Example for App {
             ImageRendering::Auto,
             AlphaType::PremultipliedAlpha,
             self.image_key.clone().unwrap(),
+            ColorF::WHITE,
         );
         builder.pop_stacking_context();
     }
@@ -186,10 +249,23 @@ impl ui::Example for App {
         Option<Box<webrender::ExternalImageHandler>>,
         Option<Box<webrender::OutputImageHandler>>,
     ) {
-        (None, None)
+        if !self.use_gl {
+            (None, None)
+        } else {
+            let queue = self.frame_queue.clone();
+            let provider = FrameProvider {
+                frame_queue: queue,
+                curr_frame: None,
+            };
+            (Some(Box::new(provider)), None)
+        }
     }
 
     fn draw_custom(&self, _gl: &gl::Gl) {}
+
+    fn use_gl(&mut self, use_gl: bool) {
+        self.use_gl = use_gl;
+    }
 }
 
 impl FrameRenderer for App {
@@ -206,13 +282,21 @@ fn main() {
 #[cfg(not(target_os = "android"))]
 fn main() {
     let args: Vec<_> = env::args().collect();
-    let filename: &str = if args.len() == 2 {
-        args[1].as_ref()
+    let (use_gl, filename) = if args.len() == 2 {
+        let fname: &str = args[1].as_ref();
+        (false, fname)
+    } else if args.len() == 3 {
+        if args[1] == "--gl" {
+            let fname: &str = args[2].as_ref();
+            (true, fname)
+        } else {
+            panic!("Usage: cargo run --bin player [--gl] <file_path>")
+        }
     } else {
-        panic!("Usage: cargo run --bin player <file_path>")
+        panic!("Usage: cargo run --bin player [--gl] <file_path>")
     };
 
     let path = Path::new(filename);
     let app = Arc::new(Mutex::new(App::new()));
-    ui::main_wrapper(app, &path, None);
+    ui::main_wrapper(app, &path, use_gl, None);
 }

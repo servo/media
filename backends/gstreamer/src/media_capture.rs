@@ -1,30 +1,32 @@
 use crate::media_stream::{GStreamerMediaStream, StreamType};
 use servo_media_streams::capture::*;
+
 use gst;
 use gst::prelude::*;
 use std::i32;
 
 trait AddToCaps {
     type Bound;
-    fn add_to_caps(
+    fn add_to_caps<'a>(
         &self,
         name: &str,
         min: Self::Bound,
         max: Self::Bound,
-        builder: gst::caps::Builder) -> Option<gst::caps::Builder>;
+        builder: gst::caps::Builder<'a>,
+    ) -> Option<gst::caps::Builder<'a>>;
 }
 
 impl AddToCaps for Constrain<u32> {
     type Bound = u32;
-    fn add_to_caps(
+    fn add_to_caps<'a>(
         &self,
         name: &str,
         min: u32,
         max: u32,
-        builder: gst::caps::Builder,
-    ) -> Option<gst::caps::Builder> {
+        builder: gst::caps::Builder<'a>,
+    ) -> Option<gst::caps::Builder<'a>> {
         match self {
-            Constrain::Value(v) => Some(builder.field(name, &(*v as i64 as i32))),
+            Constrain::Value(v) => Some(builder.field(name, v)),
             Constrain::Range(r) => {
                 let min = into_i32(r.min.unwrap_or(min));
                 let max = into_i32(r.max.unwrap_or(max));
@@ -51,13 +53,13 @@ fn into_i32(x: u32) -> i32 {
 
 impl AddToCaps for Constrain<f64> {
     type Bound = i32;
-    fn add_to_caps(
+    fn add_to_caps<'a>(
         &self,
         name: &str,
         min: i32,
         max: i32,
-        builder: gst::caps::Builder,
-    ) -> Option<gst::caps::Builder> {
+        builder: gst::caps::Builder<'a>,
+    ) -> Option<gst::caps::Builder<'a>> {
         match self {
             Constrain::Value(v) => {
                 Some(builder.field("name", &gst::Fraction::approximate_f64(*v)?))
@@ -129,8 +131,8 @@ impl GstMediaDevices {
         println!("requesting {:?}", caps);
         let f = self.monitor.add_filter(filter, &caps);
         let devices = self.monitor.get_devices();
-        if f != 0 {
-            self.monitor.remove_filter(f);
+        if let Some(f) = f {
+            let _ = self.monitor.remove_filter(f);
         }
         if let Some(d) = devices.get(0) {
             println!("{:?}", d.get_caps());
@@ -146,7 +148,10 @@ pub struct GstMediaTrack {
     element: gst::Element,
 }
 
-fn create_input_stream(stream_type: StreamType, constraint_set: MediaTrackConstraintSet) -> Option<GStreamerMediaStream> {
+fn create_input_stream(
+    stream_type: StreamType,
+    constraint_set: MediaTrackConstraintSet,
+) -> Option<GStreamerMediaStream> {
     let devices = GstMediaDevices::new();
     devices
         .get_track(stream_type == StreamType::Video, constraint_set)
@@ -159,10 +164,14 @@ fn create_input_stream(stream_type: StreamType, constraint_set: MediaTrackConstr
         })
 }
 
-pub fn create_audioinput_stream(constraint_set: MediaTrackConstraintSet) -> Option<GStreamerMediaStream> {
+pub fn create_audioinput_stream(
+    constraint_set: MediaTrackConstraintSet,
+) -> Option<GStreamerMediaStream> {
     create_input_stream(StreamType::Audio, constraint_set)
 }
 
-pub fn create_videoinput_stream(constraint_set: MediaTrackConstraintSet) -> Option<GStreamerMediaStream> {
+pub fn create_videoinput_stream(
+    constraint_set: MediaTrackConstraintSet,
+) -> Option<GStreamerMediaStream> {
     create_input_stream(StreamType::Video, constraint_set)
 }

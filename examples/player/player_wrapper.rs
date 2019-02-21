@@ -4,7 +4,7 @@
 
 use ipc_channel::ipc;
 use servo_media::player::frame::{Frame, FrameRenderer};
-use servo_media::player::{Player, PlayerEvent};
+use servo_media::player::{GlContext, Player, PlayerEvent};
 use servo_media::ServoMedia;
 use std::fs::File;
 use std::io::{BufReader, Read};
@@ -14,14 +14,49 @@ use std::sync::{Arc, Mutex};
 use std::thread::Builder;
 
 pub struct PlayerWrapper {
-    player: Arc<Mutex<Box<Player>>>,
+    player: Arc<Mutex<Box<dyn Player>>>,
     shutdown: Arc<AtomicBool>,
+    use_gl: bool,
 }
 
 impl PlayerWrapper {
-    pub fn new(path: &Path) -> Self {
+    #[cfg(target_os = "linux")]
+    fn set_gl_params(
+        player: &Arc<Mutex<Box<dyn Player>>>,
+        window: &glutin::GlWindow,
+    ) -> Result<(), ()> {
+        use glutin::os::unix::RawHandle;
+        use glutin::os::GlContextExt;
+
+        let context = window.context();
+        match unsafe { context.raw_handle() } {
+            RawHandle::Egl(egl_context) => {
+                let gl_context = GlContext::Egl(egl_context as usize);
+                if let Some(gl_display) = unsafe { context.get_egl_display() } {
+                    return player
+                        .lock()
+                        .unwrap()
+                        .set_gl_params(gl_context, gl_display as usize);
+                }
+                Err(())
+            }
+            RawHandle::Glx(_) => Err(()),
+        }
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    fn set_gl_params(_: &Arc<Mutex<Box<dyn Player>>>, _: &glutin::GlWindow) -> Result<(), ()> {
+        Err(())
+    }
+
+    pub fn new(path: &Path, window: Option<&glutin::GlWindow>) -> Self {
         let servo_media = ServoMedia::get().unwrap();
         let player = Arc::new(Mutex::new(servo_media.create_player()));
+        let use_gl = if let Some(win) = window {
+            PlayerWrapper::set_gl_params(&player, win).is_ok()
+        } else {
+            false
+        };
         let file = File::open(&path).unwrap();
         let metadata = file.metadata().unwrap();
         player
@@ -103,12 +138,20 @@ impl PlayerWrapper {
 
         player.lock().unwrap().play().unwrap();
 
-        PlayerWrapper { player, shutdown }
+        PlayerWrapper {
+            player,
+            shutdown,
+            use_gl,
+        }
     }
 
     pub fn shutdown(&self) {
         self.player.lock().unwrap().stop().unwrap();
         self.shutdown.store(true, Ordering::Relaxed);
+    }
+
+    pub fn use_gl(&self) -> bool {
+        self.use_gl
     }
 
     pub fn register_frame_renderer(&self, renderer: Arc<Mutex<FrameRenderer>>) {

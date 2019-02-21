@@ -14,13 +14,13 @@ serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
 servo-media = { path = "../servo-media" }
-webrender = { git = "https://github.com/servo/webrender/", rev = "c939a61b" }
+webrender = "0.58.0"
 websocket = "0.20"
 ipc-channel = "0.11"
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 winit = "0.18"
-glutin = "0.19.0"
+glutin = { git = "https://github.com/tomaka/glutin" }
 
 [[bin]]
 name = "audio_decoder"
