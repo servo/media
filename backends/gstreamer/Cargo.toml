@@ -14,42 +14,42 @@ boxfnonce = "0.1.0"
 [dependencies.byte-slice-cast]
 version = "0.2"
 
+[dependencies.glib]
+version = "0.7"
+
 [dependencies.glib-sys]
-git = "https://github.com/gtk-rs/sys"
+version = "0.8"
 
 [dependencies.gstreamer-sys]
-git = "https://gitlab.freedesktop.org/gstreamer/gstreamer-rs-sys"
-
-[dependencies.glib]
-git = "https://github.com/gtk-rs/glib"
+version = "0.7"
 
 [dependencies.gstreamer]
-git = "https://gitlab.freedesktop.org/gstreamer/gstreamer-rs"
+version = "0.13"
 features = ["subclassing"]
 
 [dependencies.gstreamer-app]
-git = "https://gitlab.freedesktop.org/gstreamer/gstreamer-rs"
+version = "0.13"
 
 [dependencies.gstreamer-audio]
-git = "https://gitlab.freedesktop.org/gstreamer/gstreamer-rs"
+version = "0.13"
 
 [dependencies.gstreamer-player]
-git = "https://gitlab.freedesktop.org/gstreamer/gstreamer-rs"
+version = "0.13"
 
 [dependencies.gstreamer-sdp]
-git = "https://gitlab.freedesktop.org/gstreamer/gstreamer-rs"
+version = "0.13"
 
 [dependencies.gstreamer-webrtc]
-git = "https://gitlab.freedesktop.org/gstreamer/gstreamer-rs"
+version = "0.13"
 
 [dependencies.gstreamer-video]
-git = "https://gitlab.freedesktop.org/gstreamer/gstreamer-rs"
+version = "0.13"
 
 [target.'cfg(not(target_os = "linux"))'.dependencies]
-gstreamer-gl = { git = "https://gitlab.freedesktop.org/gstreamer/gstreamer-rs" }
+gstreamer-gl = { version = "0.13" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-gstreamer-gl = { git = "https://gitlab.freedesktop.org/gstreamer/gstreamer-rs", features = ["egl"] }
+gstreamer-gl = { version = "0.13", features = ["egl"] }
 
 [dependencies.ipc-channel]
 version = "0.11"
