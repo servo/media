@@ -90,6 +90,8 @@ pub trait Player: Send {
     /// Get the list of time ranges in seconds that have been buffered.
     fn buffered(&self) -> Result<Vec<Range<f64>>, PlayerError>;
     fn set_gl_params(&self, gl_context: GlContext, gl_display: usize) -> Result<(), ()>;
+    /// Shut the player down. Stops playback and free up resources.
+    fn shutdown(&self) -> Result<(), PlayerError>;
 }
 
 pub struct DummyPlayer {}
@@ -139,6 +141,10 @@ impl Player for DummyPlayer {
     }
     fn set_gl_params(&self, _: GlContext, _: usize) -> Result<(), ()> {
         Err(())
+    }
+
+    fn shutdown(&self) -> Result<(), PlayerError> {
+        Ok(())
     }
 }
 
