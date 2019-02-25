@@ -313,6 +313,10 @@ impl PlayerEventObserverList {
             observer.send(event.clone()).unwrap();
         }
     }
+
+    fn clear(&mut self) {
+        self.observers.clear();
+    }
 }
 
 struct FrameRendererList {
@@ -337,6 +341,10 @@ impl FrameRendererList {
             renderer.lock().unwrap().render(frame.clone());
         }
         Ok(())
+    }
+
+    fn clear(&mut self) {
+        self.renderers.clear();
     }
 }
 
@@ -872,5 +880,11 @@ impl Player for GStreamerPlayer {
         *self.gl_display.borrow_mut() = display;
 
         ret
+    }
+
+    fn shutdown(&self) -> Result<(), PlayerError> {
+        self.observers.lock().unwrap().clear();
+        self.renderers.lock().unwrap().clear();
+        self.stop()
     }
 }

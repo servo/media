@@ -131,7 +131,7 @@ impl PlayerWrapper {
                         PlayerEvent::EnoughData => (),
                     }
                 }
-                player.lock().unwrap().stop().unwrap();
+                player.lock().unwrap().shutdown().unwrap();
                 shutdown.store(true, Ordering::Relaxed);
             })
             .unwrap();
