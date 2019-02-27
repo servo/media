@@ -128,14 +128,12 @@ impl GstMediaDevices {
             ("audio/x-raw", "Audio/Source")
         };
         let caps = into_caps(constraints, format)?;
-        println!("requesting {:?}", caps);
         let f = self.monitor.add_filter(filter, &caps);
         let devices = self.monitor.get_devices();
         if let Some(f) = f {
             let _ = self.monitor.remove_filter(f);
         }
         if let Some(d) = devices.get(0) {
-            println!("{:?}", d.get_caps());
             let element = d.create_element(None)?;
             Some(GstMediaTrack { element })
         } else {

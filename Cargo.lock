@@ -1738,6 +1738,7 @@ dependencies = [
  "gstreamer-gl 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer-player 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer-sdp 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gstreamer-sdp-sys 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer-sys 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer-video 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer-webrtc 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)",
