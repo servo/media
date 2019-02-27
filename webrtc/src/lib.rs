@@ -93,6 +93,7 @@ pub struct IceCandidate {
 }
 
 /// https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection#RTCBundlePolicy_enum
+#[derive(Clone, Copy, Hash, Debug, PartialEq, Eq)]
 pub enum BundlePolicy {
     Balanced,
     MaxCompat,
