@@ -1,6 +1,8 @@
 [workspace]
 members = [
   "audio",
+  "backends/auto",
+  "backends/dummy",
   "backends/gstreamer",
   "examples",
   "examples/android/lib",

@@ -24,20 +24,6 @@ pub trait WebRtcControllerBackend: Send {
     fn quit(&mut self);
 }
 
-pub struct DummyWebRtcController;
-
-impl WebRtcControllerBackend for DummyWebRtcController {
-    fn configure(&mut self, _: &str, _: BundlePolicy) {}
-    fn set_remote_description(&mut self, _: SessionDescription, _: SendBoxFnOnce<'static, ()>) {}
-    fn set_local_description(&mut self, _: SessionDescription, _: SendBoxFnOnce<'static, ()>) {}
-    fn add_ice_candidate(&mut self, _: IceCandidate) {}
-    fn create_offer(&mut self, _: SendBoxFnOnce<'static, (SessionDescription,)>) {}
-    fn create_answer(&mut self, _: SendBoxFnOnce<'static, (SessionDescription,)>) {}
-    fn add_stream(&mut self, _: &mut MediaStream) {}
-    fn internal_event(&mut self, _: thread::InternalEvent) {}
-    fn quit(&mut self) {}
-}
-
 pub trait WebRtcSignaller: Send {
     fn on_ice_candidate(&self, controller: &WebRtcController, candidate: IceCandidate);
     fn on_negotiation_needed(&self, controller: &WebRtcController);

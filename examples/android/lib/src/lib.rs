@@ -1,5 +1,7 @@
 #[cfg(target_os = "android")]
 extern crate servo_media;
+#[cfg(target_os = "android")]
+extern crate servo_media_auto;
 
 #[cfg(target_os = "android")]
 use servo_media::audio::context::AudioContext;
@@ -10,16 +12,17 @@ use servo_media::audio::node::AudioScheduledSourceNodeMessage;
 #[cfg(target_os = "android")]
 use servo_media::audio::node::{AudioNodeInit, AudioNodeMessage};
 #[cfg(target_os = "android")]
-use servo_media::{Backend, ServoMedia};
+use servo_media::{ServoMedia};
 
 #[cfg(target_os = "android")]
 struct AudioStream {
-    context: AudioContext<Backend>,
+    context: AudioContext,
 }
 
 #[cfg(target_os = "android")]
 impl AudioStream {
     pub fn new() -> Self {
+        ServoMedia::init::<servo_media_auto::Backend>();
         let context = ServoMedia::get()
             .unwrap()
             .create_audio_context(Default::default());

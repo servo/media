@@ -10,12 +10,14 @@ extern crate gleam;
 extern crate glutin;
 extern crate ipc_channel;
 extern crate servo_media;
+extern crate servo_media_auto;
 extern crate time;
 extern crate webrender;
 #[cfg(not(target_os = "android"))]
 extern crate winit;
 
 use gleam::gl;
+use servo_media::ServoMedia;
 use servo_media::player::frame::{Frame, FrameRenderer};
 use std::env;
 use std::path::Path;
@@ -298,5 +300,6 @@ fn main() {
 
     let path = Path::new(filename);
     let app = Arc::new(Mutex::new(App::new()));
+    ServoMedia::init::<servo_media_auto::Backend>();
     ui::main_wrapper(app, &path, use_gl, None);
 }

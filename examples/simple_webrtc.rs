@@ -13,6 +13,7 @@ extern crate serde;
 extern crate serde_derive;
 extern crate serde_json;
 extern crate servo_media;
+extern crate servo_media_auto;
 extern crate websocket;
 
 use rand::Rng;
@@ -371,6 +372,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
 }
 
 fn main() {
+    ServoMedia::init::<servo_media_auto::Backend>();
     if let Ok(servo_media) = ServoMedia::get() {
         run_example(servo_media);
     } else {

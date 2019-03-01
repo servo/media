@@ -480,6 +480,8 @@ dependencies = [
  "serde_derive 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.32 (registry+https://github.com/rust-lang/crates.io-index)",
  "servo-media 0.1.0",
+ "servo-media-auto 0.1.0",
+ "servo-media-dummy 0.1.0",
  "time 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
  "webrender 0.58.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "websocket 0.20.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1681,7 +1683,6 @@ name = "servo-media"
 version = "0.1.0"
 dependencies = [
  "servo-media-audio 0.1.0",
- "servo-media-gstreamer 0.1.0",
  "servo-media-player 0.1.0",
  "servo-media-streams 0.1.0",
  "servo-media-webrtc 0.1.0",
@@ -1694,13 +1695,33 @@ dependencies = [
  "boxfnonce 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "byte-slice-cast 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "euclid 0.19.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "log 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "num-traits 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "petgraph 0.4.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
  "servo_media_derive 0.1.0",
  "smallvec 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "servo-media-auto"
+version = "0.1.0"
+dependencies = [
+ "servo-media-dummy 0.1.0",
+ "servo-media-gstreamer 0.1.0",
+]
+
+[[package]]
+name = "servo-media-dummy"
+version = "0.1.0"
+dependencies = [
+ "boxfnonce 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ipc-channel 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "servo-media 0.1.0",
+ "servo-media-audio 0.1.0",
+ "servo-media-player 0.1.0",
+ "servo-media-streams 0.1.0",
+ "servo-media-webrtc 0.1.0",
 ]
 
 [[package]]
@@ -1723,6 +1744,7 @@ dependencies = [
  "ipc-channel 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "servo-media 0.1.0",
  "servo-media-audio 0.1.0",
  "servo-media-player 0.1.0",
  "servo-media-streams 0.1.0",
@@ -1758,6 +1780,7 @@ version = "0.1.0"
 dependencies = [
  "jni 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "servo-media 0.1.0",
+ "servo-media-auto 0.1.0",
 ]
 
 [[package]]

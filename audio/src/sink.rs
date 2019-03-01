@@ -24,24 +24,3 @@ pub trait AudioSink {
     fn push_data(&self, chunk: Chunk) -> Result<(), AudioSinkError>;
     fn set_eos_callback(&self, callback: Box<Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>);
 }
-
-pub struct DummyAudioSink;
-
-impl AudioSink for DummyAudioSink {
-    fn init(&self, _: f32, _: Sender<AudioRenderThreadMsg>) -> Result<(), AudioSinkError> {
-        Ok(())
-    }
-    fn play(&self) -> Result<(), AudioSinkError> {
-        Ok(())
-    }
-    fn stop(&self) -> Result<(), AudioSinkError> {
-        Ok(())
-    }
-    fn has_enough_data(&self) -> bool {
-        true
-    }
-    fn push_data(&self, _: Chunk) -> Result<(), AudioSinkError> {
-        Ok(())
-    }
-    fn set_eos_callback(&self, _: Box<Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>) {}
-}
