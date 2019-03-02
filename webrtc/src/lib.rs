@@ -19,7 +19,7 @@ pub trait WebRtcControllerBackend: Send {
     fn add_ice_candidate(&mut self, candidate: IceCandidate);
     fn create_offer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>);
     fn create_answer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>);
-    fn add_stream(&mut self, stream: &mut MediaStream);
+    fn add_stream(&mut self, stream: Box<MediaStream>);
     fn internal_event(&mut self, event: thread::InternalEvent);
     fn quit(&mut self);
 }
@@ -47,6 +47,12 @@ pub enum SdpType {
     Offer,
     Pranswer,
     Rollback,
+}
+
+#[derive(Copy, Clone, Hash, Debug, PartialEq, Eq)]
+pub enum DescriptionType {
+    Local,
+    Remote
 }
 
 impl SdpType {
@@ -93,6 +99,7 @@ pub struct IceCandidate {
 }
 
 /// https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection#RTCBundlePolicy_enum
+#[derive(Clone, Copy, Hash, Debug, PartialEq, Eq)]
 pub enum BundlePolicy {
     Balanced,
     MaxCompat,

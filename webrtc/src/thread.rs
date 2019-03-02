@@ -3,7 +3,7 @@ use std::thread;
 
 use boxfnonce::SendBoxFnOnce;
 
-use crate::{BundlePolicy, IceCandidate, MediaStream, SessionDescription};
+use crate::{BundlePolicy, DescriptionType, IceCandidate, MediaStream, SessionDescription, SdpType};
 use crate::{WebRtcBackend, WebRtcControllerBackend, WebRtcSignaller};
 
 #[derive(Clone)]
@@ -90,6 +90,7 @@ pub enum InternalEvent {
     OnNegotiationNeeded,
     OnIceCandidate(IceCandidate),
     OnAddStream(Box<MediaStream>),
+    DescriptionAdded(SendBoxFnOnce<'static, ()>, DescriptionType, SdpType),
 }
 
 pub fn handle_rtc_event(controller: &mut WebRtcControllerBackend, event: RtcThreadEvent) -> bool {
@@ -102,7 +103,7 @@ pub fn handle_rtc_event(controller: &mut WebRtcControllerBackend, event: RtcThre
         RtcThreadEvent::AddIceCandidate(candidate) => controller.add_ice_candidate(candidate),
         RtcThreadEvent::CreateOffer(cb) => controller.create_offer(cb),
         RtcThreadEvent::CreateAnswer(cb) => controller.create_answer(cb),
-        RtcThreadEvent::AddStream(mut media) => controller.add_stream(&mut *media),
+        RtcThreadEvent::AddStream(media) => controller.add_stream(media),
         RtcThreadEvent::InternalEvent(e) => controller.internal_event(e),
         RtcThreadEvent::Quit => {
             controller.quit();

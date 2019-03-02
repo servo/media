@@ -11,7 +11,6 @@ lazy_static! {
             &[
                 ("media", &"audio"),
                 ("encoding-name", &"OPUS"),
-                ("payload", &(97i32)),
             ],
         )
     };
@@ -21,7 +20,6 @@ lazy_static! {
             &[
                 ("media", &"video"),
                 ("encoding-name", &"VP8"),
-                ("payload", &(96i32)),
             ],
         )
     };
@@ -50,20 +48,47 @@ impl MediaStream for GStreamerMediaStream {
 }
 
 impl GStreamerMediaStream {
-    pub fn attach_to_webrtc(&mut self, pipeline: &gst::Pipeline, webrtcbin: &gst::Element) {
-        println!("atttaching a {:?} stream", self.type_);
-        self.attach_to_pipeline(pipeline);
-
-        let caps = match self.type_ {
+    pub fn caps(&self) -> &gst::Caps {
+        match self.type_ {
             StreamType::Audio => &*RTP_CAPS_OPUS,
             StreamType::Video => &*RTP_CAPS_VP8,
-        };
-        self.elements
-            .last()
-            .as_ref()
-            .unwrap()
-            .link_filtered(webrtcbin, caps)
-            .unwrap();
+        }
+    }
+
+    pub fn caps_with_payload(&self, payload: i32) -> gst::Caps {
+        match self.type_ {
+            StreamType::Audio => {
+                gst::Caps::new_simple(
+                    "application/x-rtp",
+                    &[
+                        ("media", &"audio"),
+                        ("encoding-name", &"OPUS"),
+                        ("payload", &(payload)),
+                    ],
+                )
+            }
+            StreamType::Video => {
+                gst::Caps::new_simple(
+                    "application/x-rtp",
+                    &[
+                        ("media", &"video"),
+                        ("encoding-name", &"VP8"),
+                        ("payload", &(payload)),
+                    ],
+                )
+            }
+        }
+    }
+
+    pub fn insert_capsfilter(&mut self) {
+        assert!(self.pipeline.is_none());
+        let capsfilter = gst::ElementFactory::make("capsfilter", None).unwrap();
+        capsfilter.set_property("caps", self.caps()).unwrap();
+        self.elements.push(capsfilter);
+    }
+
+    pub fn src_element(&self) -> gst::Element {
+        self.elements.last().unwrap().clone()
     }
 
     pub fn attach_to_pipeline(&mut self, pipeline: &gst::Pipeline) {

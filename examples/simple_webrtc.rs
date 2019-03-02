@@ -147,6 +147,7 @@ impl State {
         };
         webrtc.add_stream(video);
         webrtc.add_stream(audio);
+
         webrtc.configure(STUN_SERVER.into(), BundlePolicy::MaxBundle);
     }
 }

@@ -195,7 +195,7 @@ impl WebRtcControllerBackend for DummyWebRtcController {
     fn add_ice_candidate(&mut self, _: IceCandidate) {}
     fn create_offer(&mut self, _: SendBoxFnOnce<'static, (SessionDescription,)>) {}
     fn create_answer(&mut self, _: SendBoxFnOnce<'static, (SessionDescription,)>) {}
-    fn add_stream(&mut self, _: &mut MediaStream) {}
+    fn add_stream(&mut self, _: Box<MediaStream>) {}
     fn internal_event(&mut self, _: thread::InternalEvent) {}
     fn quit(&mut self) {}
 }
