@@ -157,8 +157,8 @@ fn create_input_stream(
         .get_track(stream_type == StreamType::Video, constraint_set)
         .map(|track| {
             let f = match stream_type {
-                StreamType::Audio => GStreamerMediaStream::create_audio_from,
-                StreamType::Video => GStreamerMediaStream::create_video_from,
+                StreamType::Audio => GStreamerMediaStream::create_audio_from_encoded,
+                StreamType::Video => GStreamerMediaStream::create_video_from_encoded,
             };
             f(track.element)
         })
