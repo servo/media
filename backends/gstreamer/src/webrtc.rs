@@ -193,7 +193,7 @@ impl GStreamerWebRtcController {
 
         let sdp = gst_sdp::SDPMessage::parse_buffer(desc.sdp.as_bytes()).unwrap();
         if description_type == DescriptionType::Remote {
-            self.store_remote_mline_info(&sdp)?;
+            self.store_remote_mline_info(&sdp);
         }
         let answer = gst_webrtc::WebRTCSessionDescription::new(ty, sdp);
         let thread = self.thread.clone();
@@ -205,7 +205,7 @@ impl GStreamerWebRtcController {
         Ok(())
     }
 
-    fn store_remote_mline_info(&mut self, sdp: &gst_sdp::SDPMessage) -> WebrtcResult {
+    fn store_remote_mline_info(&mut self, sdp: &gst_sdp::SDPMessage) {
         // remove after https://gitlab.freedesktop.org/gstreamer/gstreamer-rs/issues/189 is fixed
         fn get_media(msg: &gst_sdp::SDPMessage, idx: u32) -> Option<gst_sdp::SDPMedia> {
             extern crate gstreamer_sdp_sys as gst_sdp_sys;
@@ -217,11 +217,13 @@ impl GStreamerWebRtcController {
         self.remote_mline_info.clear();
         for i in 0..sdp.medias_len() {
             let mut caps = gst::Caps::new_empty();
-            let caps_mut = caps.get_mut().ok_or("somehow cannot access empty caps")?;
-            let media = get_media(&sdp, i).ok_or("media not found")?;
+            let caps_mut = caps.get_mut().expect("Fresh caps should be uniquely owned");
+            let media = get_media(&sdp, i).expect("Gstreamer reported incorrect medias_len()");
             for format in 0..media.formats_len() {
-                let pt = media.get_format(format).ok_or("format not found")?.parse()?;
-                caps_mut.append(media.get_caps_from_media(pt).ok_or("caps not found")?);
+                let pt = media.get_format(format).expect("Gstreamer reported incorrect formats_len()")
+                              .parse().expect("Gstreamer provided noninteger format");
+                caps_mut.append(media.get_caps_from_media(pt)
+                                     .expect("get_format() did not return a format from the SDP"));
                 self.pt_counter = cmp::max(self.pt_counter, pt + 1);
             }
             for cap in 0..caps_mut.get_size() {
@@ -229,7 +231,8 @@ impl GStreamerWebRtcController {
                 // to intersect
                 //
                 // see https://gitlab.freedesktop.org/gstreamer/gst-plugins-bad/blob/ba62917fbfd98ea76d4e066a6f18b4a14b847362/ext/webrtc/gstwebrtcbin.c#L2521
-                caps_mut.get_mut_structure(cap).ok_or("structure not found")?.set_name("application/x-rtp")
+                caps_mut.get_mut_structure(cap).expect("Gstreamer reported incorrect get_size()")
+                        .set_name("application/x-rtp")
             }
             self.remote_mline_info.push(MLineInfo {
                 caps: caps,
@@ -239,10 +242,10 @@ impl GStreamerWebRtcController {
                 // XXXManishearth ideally, we keep track of all payloads and have the capability of picking
                 // the appropriate decoder. For this, a bunch of the streams code will have to be moved into
                 // a webrtc-specific abstraction.
-                payload: media.get_format(0).ok_or("format not found")?.parse().unwrap(),
+                payload: media.get_format(0).expect("Gstreamer reported incorrect formats_len()").parse()
+                              .expect("Gstreamer provided noninteger format"),
             });
         }
-        Ok(())
     }
 
     /// Streams need to be linked to the correct pads, so we buffer them up until we know enough
