@@ -44,6 +44,10 @@ pub trait WebRtcSignaller: Send {
     fn on_negotiation_needed(&self, controller: &WebRtcController);
     fn close(&self);
     fn on_add_stream(&self, stream: Box<MediaStream>);
+
+    fn update_signaling_state(&self, _: SignalingState) {}
+    fn update_gathering_state(&self, _: GatheringState) {}
+    fn update_ice_connection_state(&self, _: IceConnectionState) {}
 }
 
 pub trait WebRtcBackend {
@@ -129,4 +133,35 @@ impl BundlePolicy {
             BundlePolicy::MaxBundle => "max-bundle",
         }
     }
+}
+
+/// https://www.w3.org/TR/webrtc/#rtcsignalingstate-enum
+#[derive(Clone, Copy, Hash, Debug, PartialEq, Eq)]
+pub enum SignalingState {
+    Stable,
+    HaveLocalOffer,
+    HaveRemoteOffer,
+    HaveLocalPranswer,
+    HaveRemotePranswer,
+    Closed
+}
+
+/// https://www.w3.org/TR/webrtc/#rtcicegatheringstate-enum
+#[derive(Clone, Copy, Hash, Debug, PartialEq, Eq)]
+pub enum GatheringState {
+    New,
+    Gathering,
+    Complete
+}
+
+/// https://www.w3.org/TR/webrtc/#rtciceconnectionstate-enum
+#[derive(Clone, Copy, Hash, Debug, PartialEq, Eq)]
+pub enum IceConnectionState {
+    New,
+    Checking,
+    Connected,
+    Completed,
+    Disconnected,
+    Failed,
+    Closed,
 }
