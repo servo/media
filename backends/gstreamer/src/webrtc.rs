@@ -28,7 +28,7 @@ pub struct MLineInfo {
 }
 
 pub struct GStreamerWebRtcController {
-    webrtc: Option<gst::Element>,
+    webrtc: gst::Element,
     pipeline: gst::Pipeline,
     /// We can't trigger a negotiation-needed event until we have streams, or otherwise
     /// a createOffer() call will lead to bad SDP. Instead, we delay negotiation.
@@ -71,8 +71,6 @@ pub struct GStreamerWebRtcController {
 impl WebRtcControllerBackend for GStreamerWebRtcController {
     fn add_ice_candidate(&mut self, candidate: IceCandidate) -> WebrtcResult {
         self.webrtc
-            .as_ref()
-            .unwrap()
             .emit(
                 "add-ice-candidate",
                 &[&candidate.sdp_mline_index, &candidate.candidate],
@@ -93,24 +91,22 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         self.pipeline
             .set_state(gst::State::Playing)
             .unwrap();
-        let webrtc = self.webrtc.as_ref().unwrap();
         let promise = gst::Promise::new_with_change_func(move |promise| {
             on_offer_or_answer_created(SdpType::Offer, promise, cb);
         });
 
-        webrtc
+        self.webrtc
             .emit("create-offer", &[&None::<gst::Structure>, &promise])
             .unwrap();
         Ok(())
     }
 
     fn create_answer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebrtcResult {
-        let webrtc = self.webrtc.as_ref().unwrap();
         let promise = gst::Promise::new_with_change_func(move |promise| {
             on_offer_or_answer_created(SdpType::Answer, promise, cb);
         });
 
-        webrtc
+        self.webrtc
             .emit("create-answer", &[&None::<gst::Structure>, &promise])
             .unwrap();
         Ok(())
@@ -131,9 +127,8 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
     }
 
     fn configure(&mut self, stun_server: &str, policy: BundlePolicy) -> WebrtcResult {
-        let webrtc = self.webrtc.as_ref().unwrap();
-        webrtc.set_property_from_str("stun-server", stun_server);
-        webrtc.set_property_from_str("bundle-policy", policy.as_str());
+        self.webrtc.set_property_from_str("stun-server", stun_server);
+        self.webrtc.set_property_from_str("bundle-policy", policy.as_str());
         Ok(())
     }
 
@@ -211,8 +206,6 @@ impl GStreamerWebRtcController {
             thread.internal_event(InternalEvent::DescriptionAdded(cb, description_type, desc.type_));
         });
         self.webrtc
-            .as_ref()
-            .unwrap()
             .emit(kind, &[&answer, &promise])
             .unwrap();
         Ok(())
@@ -275,7 +268,6 @@ impl GStreamerWebRtcController {
             .downcast_mut::<GStreamerMediaStream>()
             .unwrap();
         let caps = stream.caps();
-        let webrtc = self.webrtc.as_ref().unwrap();
         let idx = self.remote_mline_info.iter().enumerate()
             .filter(|(_, x)| !x.is_used)
             .find(|(_, x)| x.caps.can_intersect(&caps))
@@ -293,7 +285,7 @@ impl GStreamerWebRtcController {
                     //
                     // An alternate fix is to sort pending_streams according to the m-line index
                     // and just do it in order. This also seems brittle.
-                    webrtc.get_request_pad(&format!("sink_{}", i)).unwrap();
+                    self.webrtc.get_request_pad(&format!("sink_{}", i)).unwrap();
                 }
                 self.request_pad_counter = idx + 1;
             }
@@ -302,7 +294,7 @@ impl GStreamerWebRtcController {
             let caps = stream.caps_with_payload(self.remote_mline_info[idx].payload);
             element.set_property("caps", &caps).unwrap();
             let src = element.get_static_pad("src").unwrap();
-            let sink = webrtc.get_static_pad(&format!("sink_{}", idx)).unwrap();
+            let sink = self.webrtc.get_static_pad(&format!("sink_{}", idx)).unwrap();
             src.link(&sink).unwrap();
             self.streams.push(boxed_stream);
         } else if request_new_pads {
@@ -311,7 +303,7 @@ impl GStreamerWebRtcController {
             self.pt_counter += 1;
             element.set_property("caps", &caps).unwrap();
             let src = element.get_static_pad("src").unwrap();
-            let sink = webrtc.get_request_pad(&format!("sink_{}", self.request_pad_counter)).unwrap();
+            let sink = self.webrtc.get_request_pad(&format!("sink_{}", self.request_pad_counter)).unwrap();
             self.request_pad_counter += 1;
             src.link(&sink).unwrap();
             self.streams.push(boxed_stream);
@@ -331,13 +323,12 @@ impl GStreamerWebRtcController {
 
 impl GStreamerWebRtcController {
     fn start_pipeline(&mut self) {
-        let webrtc = gst::ElementFactory::make("webrtcbin", "sendrecv").unwrap();
-        self.pipeline.add(&webrtc).unwrap();
+        self.pipeline.add(&self.webrtc).unwrap();
 
         // gstreamer needs Sync on these callbacks for some reason
         // https://github.com/sdroege/gstreamer-rs/issues/154
         let thread = Mutex::new(self.thread.clone());
-        webrtc
+        self.webrtc
             .connect("on-ice-candidate", false, move |values| {
                 thread
                     .lock()
@@ -349,7 +340,7 @@ impl GStreamerWebRtcController {
 
         let pipe_clone = self.pipeline.clone();
         let thread = Arc::new(Mutex::new(self.thread.clone()));
-        webrtc
+        self.webrtc
             .connect("pad-added", false, move |values| {
                 process_new_stream(values, &pipe_clone, thread.clone());
                 None
@@ -359,7 +350,7 @@ impl GStreamerWebRtcController {
         // gstreamer needs Sync on these callbacks for some reason
         // https://github.com/sdroege/gstreamer-rs/issues/154
         let thread = Mutex::new(self.thread.clone());
-        webrtc
+        self.webrtc
             .connect("on-negotiation-needed", false, move |_values| {
                 thread
                     .lock()
@@ -368,9 +359,6 @@ impl GStreamerWebRtcController {
                 None
             })
             .unwrap();
-
-
-        self.webrtc = Some(webrtc);
 
         self.pipeline
             .set_state(gst::State::Ready)
@@ -387,8 +375,9 @@ pub fn construct(
     pipeline.set_start_time(gst::ClockTime::none());
     pipeline.set_base_time(gst::ClockTime::from_nseconds(0));
     pipeline.use_clock(Some(&gst::SystemClock::obtain()));
+    let webrtc = gst::ElementFactory::make("webrtcbin", "sendrecv").unwrap();
     let mut controller = GStreamerWebRtcController {
-        webrtc: None,
+        webrtc,
         pipeline,
         signaller,
         thread,
