@@ -93,6 +93,9 @@ pub enum InternalEvent {
     OnIceCandidate(IceCandidate),
     OnAddStream(Box<MediaStream>),
     DescriptionAdded(SendBoxFnOnce<'static, ()>, DescriptionType, SdpType),
+    UpdateSignalingState,
+    UpdateGatheringState,
+    UpdateIceConnectionState
 }
 
 pub fn handle_rtc_event(controller: &mut WebRtcControllerBackend, event: RtcThreadEvent) -> bool {

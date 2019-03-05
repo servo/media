@@ -158,6 +158,53 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                     .set_state(gst::State::Playing)?;
                 cb.call();
             }
+            InternalEvent::UpdateSignalingState => {
+                use gst_webrtc::WebRTCSignalingState::*;
+                let prop = self.webrtc.get_property("signaling-state")?;
+                let val = prop.downcast::<gst_webrtc::WebRTCSignalingState>()
+                            .map_err(|_| "unable to downcast signaling state")?.get_some();
+                let state = match val {
+                    Stable => SignalingState::Stable,
+                    HaveLocalOffer => SignalingState::HaveLocalOffer,
+                    HaveRemoteOffer => SignalingState::HaveRemoteOffer,
+                    HaveLocalPranswer => SignalingState::HaveLocalPranswer,
+                    HaveRemotePranswer => SignalingState::HaveRemotePranswer,
+                    Closed => SignalingState::Closed,
+                    i => return Err(WebrtcError::Backend(format!("unknown signaling state: {:?}", i))),
+                };
+                self.signaller.update_signaling_state(state);
+
+            }
+            InternalEvent::UpdateGatheringState => {
+                use gst_webrtc::WebRTCICEGatheringState::*;
+                let prop = self.webrtc.get_property("ice-gathering-state")?;
+                let val = prop.downcast::<gst_webrtc::WebRTCICEGatheringState>()
+                            .map_err(|_| "unable to downcast gathering state")?.get_some();
+                let state = match val {
+                    New => GatheringState::New,
+                    Gathering => GatheringState::Gathering,
+                    Complete => GatheringState::Complete,
+                    i => return Err(WebrtcError::Backend(format!("unknown gathering state: {:?}", i))),
+                };
+                self.signaller.update_gathering_state(state);
+            }
+            InternalEvent::UpdateIceConnectionState => {
+                use gst_webrtc::WebRTCICEConnectionState::*;
+                let prop = self.webrtc.get_property("ice-connection-state")?;
+                let val = prop.downcast::<gst_webrtc::WebRTCICEConnectionState>()
+                            .map_err(|_| "unable to downcast ICE connection state")?.get_some();
+                let state = match val {
+                    New => IceConnectionState::New,
+                    Checking => IceConnectionState::Checking,
+                    Connected => IceConnectionState::Connected,
+                    Completed => IceConnectionState::Completed,
+                    Disconnected => IceConnectionState::Disconnected,
+                    Failed => IceConnectionState::Failed,
+                    Closed => IceConnectionState::Closed,
+                    i => return Err(WebrtcError::Backend(format!("unknown ICE connection state: {:?}", i))),
+                };
+                self.signaller.update_ice_connection_state(state);
+            }
         }
         Ok(())
     }
@@ -356,6 +403,33 @@ impl GStreamerWebRtcController {
                 None
             })?;
 
+        let thread = Mutex::new(self.thread.clone());
+        self.webrtc
+            .connect("notify::signaling-state", false, move |_values| {
+                thread
+                    .lock()
+                    .unwrap()
+                    .internal_event(InternalEvent::UpdateSignalingState);
+                None
+            })?;
+        let thread = Mutex::new(self.thread.clone());
+        self.webrtc
+            .connect("notify::ice-connection-state", false, move |_values| {
+                thread
+                    .lock()
+                    .unwrap()
+                    .internal_event(InternalEvent::UpdateIceConnectionState);
+                None
+            })?;
+        let thread = Mutex::new(self.thread.clone());
+        self.webrtc
+            .connect("notify::ice-gathering-state", false, move |_values| {
+                thread
+                    .lock()
+                    .unwrap()
+                    .internal_event(InternalEvent::UpdateGatheringState);
+                None
+            })?;
         self.pipeline
             .set_state(gst::State::Ready)?;
         Ok(())
