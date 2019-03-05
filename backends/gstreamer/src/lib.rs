@@ -99,7 +99,7 @@ impl WebRtcBackend for GStreamerBackend {
         signaller: Box<WebRtcSignaller>,
         thread: WebRtcController,
     ) -> Self::Controller {
-        webrtc::construct(signaller, thread)
+        webrtc::construct(signaller, thread).unwrap()
     }
 }
 

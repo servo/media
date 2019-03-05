@@ -3,8 +3,8 @@ extern crate log;
 extern crate servo_media_streams;
 use servo_media_streams::MediaStream;
 
+use std::fmt::Display;
 use std::str::FromStr;
-use std::error::Error;
 
 use boxfnonce::SendBoxFnOnce;
 
@@ -18,7 +18,8 @@ pub enum WebrtcError {
 }
 
 pub type WebrtcResult = Result<(), WebrtcError>;
-impl<T: Error> From<T> for WebrtcError {
+
+impl<T: Display> From<T> for WebrtcError {
     fn from(x: T) -> Self {
         WebrtcError::Backend(x.to_string())
     }
