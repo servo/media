@@ -21,7 +21,7 @@ use servo_media_streams::{MediaStream, MediaOutput};
 use servo_media_streams::capture::MediaTrackConstraintSet;
 use servo_media_webrtc::{
     BundlePolicy, SessionDescription, WebRtcBackend, WebRtcController, WebRtcControllerBackend,
-    WebRtcSignaller, IceCandidate, thread
+    WebRtcSignaller, IceCandidate, thread, WebrtcResult
 };
 use std::ops::Range;
 use std::sync::mpsc::Sender;
@@ -189,13 +189,13 @@ impl MediaOutput for DummyMediaOutput {
 pub struct DummyWebRtcController;
 
 impl WebRtcControllerBackend for DummyWebRtcController {
-    fn configure(&mut self, _: &str, _: BundlePolicy) {}
-    fn set_remote_description(&mut self, _: SessionDescription, _: SendBoxFnOnce<'static, ()>) {}
-    fn set_local_description(&mut self, _: SessionDescription, _: SendBoxFnOnce<'static, ()>) {}
-    fn add_ice_candidate(&mut self, _: IceCandidate) {}
-    fn create_offer(&mut self, _: SendBoxFnOnce<'static, (SessionDescription,)>) {}
-    fn create_answer(&mut self, _: SendBoxFnOnce<'static, (SessionDescription,)>) {}
-    fn add_stream(&mut self, _: Box<MediaStream>) {}
-    fn internal_event(&mut self, _: thread::InternalEvent) {}
+    fn configure(&mut self, _: &str, _: BundlePolicy) -> WebrtcResult {Ok(())}
+    fn set_remote_description(&mut self, _: SessionDescription, _: SendBoxFnOnce<'static, ()>) -> WebrtcResult {Ok(())}
+    fn set_local_description(&mut self, _: SessionDescription, _: SendBoxFnOnce<'static, ()>) -> WebrtcResult {Ok(())}
+    fn add_ice_candidate(&mut self, _: IceCandidate) -> WebrtcResult {Ok(())}
+    fn create_offer(&mut self, _: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebrtcResult {Ok(())}
+    fn create_answer(&mut self, _: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebrtcResult {Ok(())}
+    fn add_stream(&mut self, _: Box<MediaStream>) -> WebrtcResult {Ok(())}
+    fn internal_event(&mut self, _: thread::InternalEvent) -> WebrtcResult {Ok(())}
     fn quit(&mut self) {}
 }

@@ -14,8 +14,8 @@ use std::sync::{Arc, Mutex};
 use std::{cmp, mem};
 
 // TODO:
-// - add a proper error enum
 // - figure out purpose of glib loop
+
 
 #[derive(Debug, Clone)]
 pub struct MLineInfo {
@@ -69,26 +69,26 @@ pub struct GStreamerWebRtcController {
 }
 
 impl WebRtcControllerBackend for GStreamerWebRtcController {
-    fn add_ice_candidate(&mut self, candidate: IceCandidate) {
+    fn add_ice_candidate(&mut self, candidate: IceCandidate) -> WebrtcResult {
         self.webrtc
             .as_ref()
             .unwrap()
             .emit(
                 "add-ice-candidate",
                 &[&candidate.sdp_mline_index, &candidate.candidate],
-            )
-            .unwrap();
+            )?;
+        Ok(())
     }
 
-    fn set_remote_description(&mut self, desc: SessionDescription, cb: SendBoxFnOnce<'static, ()>) {
-        self.set_description(desc, DescriptionType::Remote, cb);
+    fn set_remote_description(&mut self, desc: SessionDescription, cb: SendBoxFnOnce<'static, ()>) -> WebrtcResult {
+        self.set_description(desc, DescriptionType::Remote, cb)
     }
 
-    fn set_local_description(&mut self, desc: SessionDescription, cb: SendBoxFnOnce<'static, ()>) {
-        self.set_description(desc, DescriptionType::Local, cb);
+    fn set_local_description(&mut self, desc: SessionDescription, cb: SendBoxFnOnce<'static, ()>) -> WebrtcResult {
+        self.set_description(desc, DescriptionType::Local, cb)
     }
 
-    fn create_offer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) {
+    fn create_offer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebrtcResult {
         self.flush_pending_streams(true);
         self.pipeline
             .set_state(gst::State::Playing)
@@ -101,9 +101,10 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         webrtc
             .emit("create-offer", &[&None::<gst::Structure>, &promise])
             .unwrap();
+        Ok(())
     }
 
-    fn create_answer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) {
+    fn create_answer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebrtcResult {
         let webrtc = self.webrtc.as_ref().unwrap();
         let promise = gst::Promise::new_with_change_func(move |promise| {
             on_offer_or_answer_created(SdpType::Answer, promise, cb);
@@ -112,9 +113,10 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         webrtc
             .emit("create-answer", &[&None::<gst::Structure>, &promise])
             .unwrap();
+        Ok(())
     }
 
-    fn add_stream(&mut self, mut boxed_stream: Box<MediaStream>) {
+    fn add_stream(&mut self, mut boxed_stream: Box<MediaStream>) -> WebrtcResult {
         let stream = boxed_stream
             .as_mut_any()
             .downcast_mut::<GStreamerMediaStream>()
@@ -125,15 +127,17 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
             self.delayed_negotiation = false;
             self.signaller.on_negotiation_needed(&self.thread);
         }
+        Ok(())
     }
 
-    fn configure(&mut self, stun_server: &str, policy: BundlePolicy) {
+    fn configure(&mut self, stun_server: &str, policy: BundlePolicy) -> WebrtcResult {
         let webrtc = self.webrtc.as_ref().unwrap();
         webrtc.set_property_from_str("stun-server", stun_server);
         webrtc.set_property_from_str("bundle-policy", policy.as_str());
+        Ok(())
     }
 
-    fn internal_event(&mut self, e: thread::InternalEvent) {
+    fn internal_event(&mut self, e: thread::InternalEvent) -> WebrtcResult {
         match e {
             InternalEvent::OnNegotiationNeeded => {
                 if self.streams.is_empty() && self.pending_streams.is_empty() {
@@ -165,6 +169,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                 cb.call();
             }
         }
+        Ok(())
     }
 
     fn quit(&mut self) {
@@ -182,7 +187,7 @@ impl GStreamerWebRtcController {
         desc: SessionDescription,
         description_type: DescriptionType,
         cb: SendBoxFnOnce<'static, ()>,
-    ) {
+    ) -> WebrtcResult {
 
         let ty = match desc.type_ {
             SdpType::Answer => gst_webrtc::WebRTCSDPType::Answer,
@@ -210,7 +215,7 @@ impl GStreamerWebRtcController {
             .unwrap()
             .emit(kind, &[&answer, &promise])
             .unwrap();
-
+        Ok(())
     }
 
     fn store_remote_mline_info(&mut self, sdp: &gst_sdp::SDPMessage) {

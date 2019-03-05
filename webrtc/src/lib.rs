@@ -1,8 +1,10 @@
 extern crate boxfnonce;
+extern crate log;
 extern crate servo_media_streams;
 use servo_media_streams::MediaStream;
 
 use std::str::FromStr;
+use std::error::Error;
 
 use boxfnonce::SendBoxFnOnce;
 
@@ -10,17 +12,29 @@ pub mod thread;
 
 pub use thread::WebRtcController;
 
+#[derive(Debug)]
+pub enum WebrtcError {
+    Backend(String),
+}
+
+pub type WebrtcResult = Result<(), WebrtcError>;
+impl<T: Error> From<T> for WebrtcError {
+    fn from(x: T) -> Self {
+        WebrtcError::Backend(x.to_string())
+    }
+}
+
 /// This trait is implemented by backends and should never be used directly by
 /// the client. Use WebRtcController instead
 pub trait WebRtcControllerBackend: Send {
-    fn configure(&mut self, stun_server: &str, policy: BundlePolicy);
-    fn set_remote_description(&mut self, SessionDescription, cb: SendBoxFnOnce<'static, ()>);
-    fn set_local_description(&mut self, SessionDescription, cb: SendBoxFnOnce<'static, ()>);
-    fn add_ice_candidate(&mut self, candidate: IceCandidate);
-    fn create_offer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>);
-    fn create_answer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>);
-    fn add_stream(&mut self, stream: Box<MediaStream>);
-    fn internal_event(&mut self, event: thread::InternalEvent);
+    fn configure(&mut self, stun_server: &str, policy: BundlePolicy) -> WebrtcResult;
+    fn set_remote_description(&mut self, SessionDescription, cb: SendBoxFnOnce<'static, ()>) -> WebrtcResult;
+    fn set_local_description(&mut self, SessionDescription, cb: SendBoxFnOnce<'static, ()>) -> WebrtcResult;
+    fn add_ice_candidate(&mut self, candidate: IceCandidate) -> WebrtcResult;
+    fn create_offer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebrtcResult;
+    fn create_answer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebrtcResult;
+    fn add_stream(&mut self, stream: Box<MediaStream>) -> WebrtcResult;
+    fn internal_event(&mut self, event: thread::InternalEvent) -> WebrtcResult;
     fn quit(&mut self);
 }
 

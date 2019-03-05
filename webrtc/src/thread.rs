@@ -1,6 +1,8 @@
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
 
+use log::error;
+
 use boxfnonce::SendBoxFnOnce;
 
 use crate::{BundlePolicy, DescriptionType, IceCandidate, MediaStream, SessionDescription, SdpType};
@@ -94,7 +96,7 @@ pub enum InternalEvent {
 }
 
 pub fn handle_rtc_event(controller: &mut WebRtcControllerBackend, event: RtcThreadEvent) -> bool {
-    match event {
+    let result = match event {
         RtcThreadEvent::ConfigureStun(server, policy) => controller.configure(&server, policy),
         RtcThreadEvent::SetRemoteDescription(desc, cb) => {
             controller.set_remote_description(desc, cb)
@@ -109,6 +111,9 @@ pub fn handle_rtc_event(controller: &mut WebRtcControllerBackend, event: RtcThre
             controller.quit();
             return false;
         }
+    };
+    if let Err(e) = result {
+        error!("WebRTC backend encountered error: {:?}", e);
     }
     true
 }

@@ -5,6 +5,7 @@ authors = ["Josh Matthews <josh@joshmatthews.net>"]
 
 [dependencies]
 boxfnonce = "0.1.0"
+log = "0.4.6"
 
 [dependencies.servo-media-streams]
 path = "../streams"
