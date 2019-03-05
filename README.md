@@ -10,6 +10,13 @@ So in order to build  this crate you need to install all
 specific platform as listed
 [here](https://github.com/sdroege/gstreamer-rs#installation).
 
+### Ubuntu Trusty
+Ubuntu Trusty has very old GStreamer packages (1.2, while we need at least 1.14), so you need to [manually build GStreamer >1.14](https://github.com/servo/servo/wiki/How-to-generate-GStreamer-binaries-for-CI) or alternatively run the `etc/ubuntu_trusty_bootstrap.sh` shell script, which downloads a pre-built bundle and sets up the required environment variables:
+
+```ssh
+source etc/ubuntu_trusty_bootstrap.sh
+```
+
 ### Android
 For Android there are some extra requirements.
 
