@@ -772,6 +772,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "gstreamer-gl-egl"
+version = "0.1.0"
+dependencies = [
+ "gstreamer-gl 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "gstreamer-gl-sys"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1736,6 +1743,7 @@ dependencies = [
  "gstreamer-app 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer-audio 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer-gl 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gstreamer-gl-egl 0.1.0",
  "gstreamer-player 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer-sdp 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer-sdp-sys 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
