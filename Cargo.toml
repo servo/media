@@ -4,6 +4,7 @@ members = [
   "backends/auto",
   "backends/dummy",
   "backends/gstreamer",
+  "backends/gstreamer-gl-egl",
   "examples",
   "examples/android/lib",
   "player",

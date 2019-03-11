@@ -1,0 +1,9 @@
+[package]
+name = "gstreamer-gl-egl"
+version = "0.1.0"
+authors = ["The Servo Project Developers"]
+edition = "2018"
+description = "This crate is required to workaround a missing feature in cargo: Target-specific features (https://github.com/rust-lang/cargo/issues/1197)"
+
+[dependencies]
+gstreamer-gl = { version = "0.13", features = ["egl"] }
