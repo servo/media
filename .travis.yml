@@ -2,13 +2,13 @@ language: rust
 sudo: required
 rust:
   - nightly
-os:
-  - linux
-dist: trusty
 
 matrix:
   include:
-    - name: "Desktop build"
+    - name: "Linux desktop build"
+      os:
+        - linux
+      dist: trusty
       addons:
         apt:
           packages:
@@ -50,7 +50,32 @@ matrix:
         - cargo build
         - ls examples/*.rs | xargs -I{} basename  {} .rs  | grep -v params_connect | RUST_BACKTRACE=1 GST_DEBUG=3 xargs -I{} cargo ex {}
 
+    - name: "Windows desktop build"
+      os:
+        - windows
+
+      before_install:
+        - choco install pkgconfiglite
+        - curl -L https://gstreamer.freedesktop.org/data/pkg/windows/1.14.1/gstreamer-1.0-devel-x86_64-1.14.1.msi
+        - curl -L https://gstreamer.freedesktop.org/data/pkg/windows/1.14.1/gstreamer-1.0-x86_64-1.14.1.msi
+        - msiexec /i gstreamer-1.0-devel-x86_64-1.14.1.msi /quiet /qn /norestart /log install-devel.log
+        - msiexec /i gstreamer-1.0-x86_64-1.14.1.msi /quiet /qn /norestart /log install.log
+        - curl -L https://win.rustup.rs/ -FileName rustup-init.exe
+        - rustup-init.exe -y --default-host x86_64-pc-windows-msvc --default-toolchain none
+        - set PATH=%PATH%;C:\Users\travis\.cargo\bin;C:\gstreamer\1.0\x86_64\bin
+        - set PKG_CONFIG_PATH=%PKG_CONFIG_PATH%;C:\gstreamer\1.0\x86_64\lib\pkgconfig
+        - rustup -V
+        - rustc --version
+        - cargo --version
+        - gst-inspect-1.0 | grep Total
+
+      script:
+        - cargo build
+
     - name: "Android build"
+      os:
+        - linux
+      dist: trusty
       before_install:
         - curl -sSf https://build.travis-ci.org/files/rustup-init.sh | sh -s -- --default-toolchain=nightly -y
         - source $HOME/.cargo/env
