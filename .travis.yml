@@ -56,8 +56,8 @@ matrix:
 
       before_install:
         - choco install pkgconfiglite
-        - curl -L https://gstreamer.freedesktop.org/data/pkg/windows/1.14.1/gstreamer-1.0-devel-x86_64-1.14.1.msi
-        - curl -L https://gstreamer.freedesktop.org/data/pkg/windows/1.14.1/gstreamer-1.0-x86_64-1.14.1.msi
+        - wget https://gstreamer.freedesktop.org/data/pkg/windows/1.14.1/gstreamer-1.0-devel-x86_64-1.14.1.msi
+        - wget https://gstreamer.freedesktop.org/data/pkg/windows/1.14.1/gstreamer-1.0-x86_64-1.14.1.msi
         - msiexec /i gstreamer-1.0-devel-x86_64-1.14.1.msi /quiet /qn /norestart /log install-devel.log
         - msiexec /i gstreamer-1.0-x86_64-1.14.1.msi /quiet /qn /norestart /log install.log
         - curl -L https://win.rustup.rs/ -FileName rustup-init.exe
