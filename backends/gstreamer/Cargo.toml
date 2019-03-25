@@ -48,11 +48,8 @@ version = "0.13"
 [dependencies.gstreamer-video]
 version = "0.13"
 
-[target.'cfg(not(target_os = "linux"))'.dependencies]
-gstreamer-gl = { version = "0.13" }
-
-[target.'cfg(target_os = "linux")'.dependencies]
-gstreamer-gl = { version = "0.13", features = ["egl"] }
+[dependencies.gstreamer-gl]
+version = "0.13"
 
 [dependencies.ipc-channel]
 version = "0.11"
