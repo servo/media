@@ -99,3 +99,7 @@ path = "constant_source.rs"
 [[bin]]
 name = "simple_webrtc"
 path = "simple_webrtc.rs"
+
+[[bin]]
+name = "set_value_curve"
+path = "set_value_curve.rs"

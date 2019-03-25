@@ -256,25 +256,30 @@ pub enum RampKind {
     Exponential,
 }
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 /// https://webaudio.github.io/web-audio-api/#dfn-automation-event
 pub(crate) enum AutomationEvent {
     SetValue(f32),
     SetValueAtTime(f32, Tick),
     RampToValueAtTime(RampKind, f32, Tick),
     SetTargetAtTime(f32, Tick, /* time constant, units of Tick */ f64),
+    SetValueCurveAtTime(
+        Vec<f32>,
+        /* start time */ Tick,
+        /* duration */ Tick,
+    ),
     CancelAndHoldAtTime(Tick),
     CancelScheduledValues(Tick),
 }
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 /// An AutomationEvent that uses times in s instead of Ticks
 pub enum UserAutomationEvent {
     SetValue(f32),
     SetValueAtTime(f32, /* time */ f64),
     RampToValueAtTime(RampKind, f32, /* time */ f64),
     SetTargetAtTime(f32, f64, /* time constant, units of s */ f64),
-    // SetValueCurveAtTime(Vec<f32>, Tick, /* duration */ Tick)
+    SetValueCurveAtTime(Vec<f32>, /* start time */ f64, /* duration */ f64),
     CancelAndHoldAtTime(f64),
     CancelScheduledValues(f64),
 }
@@ -288,6 +293,13 @@ impl UserAutomationEvent {
             }
             UserAutomationEvent::RampToValueAtTime(kind, val, time) => {
                 AutomationEvent::RampToValueAtTime(kind, val, Tick::from_time(time, rate))
+            }
+            UserAutomationEvent::SetValueCurveAtTime(values, start, duration) => {
+                AutomationEvent::SetValueCurveAtTime(
+                    values,
+                    Tick::from_time(start, rate),
+                    Tick::from_time(duration, rate),
+                )
             }
             UserAutomationEvent::SetTargetAtTime(val, start, tau) => {
                 AutomationEvent::SetTargetAtTime(
@@ -311,6 +323,7 @@ impl AutomationEvent {
     pub fn time(&self) -> Tick {
         match *self {
             AutomationEvent::SetValueAtTime(_, tick) => tick,
+            AutomationEvent::SetValueCurveAtTime(_, start, _) => start,
             AutomationEvent::RampToValueAtTime(_, _, tick) => tick,
             AutomationEvent::SetTargetAtTime(_, start, _) => start,
             AutomationEvent::CancelAndHoldAtTime(t) => t,
@@ -324,6 +337,7 @@ impl AutomationEvent {
         match *self {
             AutomationEvent::SetValueAtTime(_, tick) => Some(tick),
             AutomationEvent::RampToValueAtTime(_, _, tick) => Some(tick),
+            AutomationEvent::SetValueCurveAtTime(_, start, duration) => Some(start + duration),
             AutomationEvent::SetTargetAtTime(..) => None,
             AutomationEvent::CancelAndHoldAtTime(t) => Some(t),
             AutomationEvent::CancelScheduledValues(..) | AutomationEvent::SetValue(..) => {
@@ -336,6 +350,7 @@ impl AutomationEvent {
         match *self {
             AutomationEvent::SetValueAtTime(_, tick) => Some(tick),
             AutomationEvent::RampToValueAtTime(..) => None,
+            AutomationEvent::SetValueCurveAtTime(_, start, _) => Some(start),
             AutomationEvent::SetTargetAtTime(_, start, _) => Some(start),
             AutomationEvent::CancelAndHoldAtTime(t) => Some(t),
             AutomationEvent::CancelScheduledValues(..) | AutomationEvent::SetValue(..) => {
@@ -406,6 +421,22 @@ impl AutomationEvent {
             AutomationEvent::SetTargetAtTime(val, start, tau) => {
                 let exp = -((current_tick - start) / tau);
                 *value = val + (event_start_value - val) * exp.exp() as f32;
+                true
+            }
+            AutomationEvent::SetValueCurveAtTime(ref values, start, duration) => {
+                let mut progress = ((((current_tick.0 as f32) - (start.0 as f32)) as f32)
+                    / (duration.0 as f32)) as f32;
+                debug_assert!(progress >= 0.);
+                let n = values.len() as f32;
+                let k_float = ((n - 1.) * progress) as f32;
+                let k = k_float.floor();
+                if (k + 1.) < n {
+                    let progress = k_float - k;
+                    *value =
+                        values[k as usize] * (1. - progress) + values[(k + 1.) as usize] * progress;
+                } else {
+                    *value = values[(n - 1.) as usize];
+                }
                 true
             }
             AutomationEvent::CancelAndHoldAtTime(..) => false,
