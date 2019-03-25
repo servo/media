@@ -5,8 +5,6 @@ use gst::prelude::*;
 use gst_app;
 use gst_gl;
 use gst_gl::prelude::*;
-#[cfg(target_os = "linux")]
-use gst_gl_egl::GLDisplayEGL;
 use gst_player;
 use gst_player::prelude::*;
 use gst_video;
@@ -849,41 +847,10 @@ impl Player for GStreamerPlayer {
         self.renderers.lock().unwrap().register(renderer);
     }
 
-    #[cfg(not(target_os = "linux"))]
     fn set_gl_params(&self, _: GlContext, _: usize) -> Result<(), ()> {
+        // XXX All GL functionality is temporarily disabled because of
+        // https://github.com/servo/servo/pull/22944#issuecomment-468827665
         Err(())
-    }
-
-    #[cfg(target_os = "linux")]
-    fn set_gl_params(&self, gl_context: GlContext, gl_display: usize) -> Result<(), ()> {
-        let (display, context) = match gl_context {
-            GlContext::Egl(ctxt) => {
-                let display = unsafe { GLDisplayEGL::new_with_egl_display(gl_display) };
-
-                if let Some(display) = display {
-                    let context = unsafe {
-                        gst_gl::GLContext::new_wrapped(
-                            &display,
-                            ctxt,
-                            gst_gl::GLPlatform::EGL,
-                            gst_gl::GLAPI::ANY,
-                        )
-                    };
-
-                    (Some(display.upcast::<gst_gl::GLDisplay>()), context)
-                } else {
-                    (None, None)
-                }
-            }
-            _ => (None, None),
-        };
-
-        let ret = if context.is_some() { Ok(()) } else { Err(()) };
-
-        *self.gl_context.borrow_mut() = context;
-        *self.gl_display.borrow_mut() = display;
-
-        ret
     }
 
     fn shutdown(&self) -> Result<(), PlayerError> {
