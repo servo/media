@@ -5,7 +5,9 @@ use log::error;
 
 use boxfnonce::SendBoxFnOnce;
 
-use crate::{BundlePolicy, DescriptionType, IceCandidate, MediaStream, SessionDescription, SdpType};
+use crate::{
+    BundlePolicy, DescriptionType, IceCandidate, MediaStream, SdpType, SessionDescription,
+};
 use crate::{WebRtcBackend, WebRtcControllerBackend, WebRtcSignaller};
 
 #[derive(Clone)]
@@ -92,10 +94,15 @@ pub enum InternalEvent {
     OnNegotiationNeeded,
     OnIceCandidate(IceCandidate),
     OnAddStream(Box<MediaStream>),
-    DescriptionAdded(SendBoxFnOnce<'static, ()>, DescriptionType, SdpType),
+    DescriptionAdded(
+        SendBoxFnOnce<'static, ()>,
+        DescriptionType,
+        SdpType,
+        /* remote offer generation */ u32,
+    ),
     UpdateSignalingState,
     UpdateGatheringState,
-    UpdateIceConnectionState
+    UpdateIceConnectionState,
 }
 
 pub fn handle_rtc_event(controller: &mut WebRtcControllerBackend, event: RtcThreadEvent) -> bool {
