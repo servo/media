@@ -4,7 +4,7 @@
 
 use ipc_channel::ipc;
 use servo_media::player::frame::{Frame, FrameRenderer};
-use servo_media::player::{GlContext, Player, PlayerEvent};
+use servo_media::player::{GlContext, Player, PlayerEvent, StreamType};
 use servo_media::ServoMedia;
 use std::fs::File;
 use std::io::{BufReader, Read};
@@ -51,7 +51,7 @@ impl PlayerWrapper {
 
     pub fn new(path: &Path, window: Option<&glutin::GlWindow>) -> Self {
         let servo_media = ServoMedia::get().unwrap();
-        let player = Arc::new(Mutex::new(servo_media.create_player()));
+        let player = Arc::new(Mutex::new(servo_media.create_player(StreamType::Seekable)));
         let use_gl = if let Some(win) = window {
             PlayerWrapper::set_gl_params(&player, win).is_ok()
         } else {

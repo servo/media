@@ -33,7 +33,7 @@ use servo_media_audio::context::{AudioContext, AudioContextOptions};
 use servo_media_audio::decoder::AudioDecoder;
 use servo_media_audio::sink::AudioSinkError;
 use servo_media_audio::AudioBackend;
-use servo_media_player::Player;
+use servo_media_player::{Player, StreamType};
 use servo_media_streams::{MediaStream, MediaOutput};
 use servo_media_streams::capture::MediaTrackConstraintSet;
 use servo_media_webrtc::{WebRtcBackend, WebRtcController, WebRtcSignaller};
@@ -42,6 +42,7 @@ pub mod audio_decoder;
 pub mod audio_sink;
 pub mod media_capture;
 pub mod media_stream;
+mod media_stream_source;
 pub mod player;
 mod source;
 pub mod webrtc;
@@ -49,8 +50,8 @@ pub mod webrtc;
 pub struct GStreamerBackend;
 
 impl Backend for GStreamerBackend {
-    fn create_player(&self) -> Box<Player> {
-        Box::new(player::GStreamerPlayer::new())
+    fn create_player(&self, stream_type: StreamType) -> Box<Player> {
+        Box::new(player::GStreamerPlayer::new(stream_type))
     }
 
     fn create_audio_context(&self, options: AudioContextOptions) -> AudioContext {

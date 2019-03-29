@@ -81,6 +81,10 @@ name = "player"
 path = "player/main.rs"
 
 [[bin]]
+name = "play_media_stream"
+path = "play_media_stream.rs"
+
+[[bin]]
 name = "simple_player"
 path = "simple_player.rs"
 

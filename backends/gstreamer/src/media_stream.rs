@@ -25,7 +25,7 @@ lazy_static! {
     };
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum StreamType {
     Audio,
     Video,
@@ -48,6 +48,10 @@ impl MediaStream for GStreamerMediaStream {
 }
 
 impl GStreamerMediaStream {
+    pub fn type_(&self) -> StreamType {
+        self.type_
+    }
+
     pub fn caps(&self) -> &gst::Caps {
         match self.type_ {
             StreamType::Audio => &*RTP_CAPS_OPUS,
@@ -107,9 +111,10 @@ impl GStreamerMediaStream {
             pipeline.clone()
         } else {
             let pipeline = gst::Pipeline::new("gstreamermediastream fresh pipeline");
+            let clock = gst::SystemClock::obtain();
             pipeline.set_start_time(gst::ClockTime::none());
-            pipeline.set_base_time(gst::ClockTime::from_nseconds(0));
-            pipeline.use_clock(Some(&gst::SystemClock::obtain()));
+            pipeline.set_base_time(clock.get_time());
+            pipeline.use_clock(Some(&clock));
             self.attach_to_pipeline(&pipeline);
             pipeline
         }
@@ -157,7 +162,7 @@ impl GStreamerMediaStream {
 
     pub fn create_audio() -> GStreamerMediaStream {
         let audiotestsrc = gst::ElementFactory::make("audiotestsrc", None).unwrap();
-        audiotestsrc.set_property_from_str("wave", "red-noise");
+        audiotestsrc.set_property_from_str("wave", "sine");
         audiotestsrc
             .set_property("is-live", &true)
             .expect("audiotestsrc doesn't have expected 'is-live' property");

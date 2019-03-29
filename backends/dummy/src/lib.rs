@@ -56,7 +56,7 @@ impl Backend for DummyBackend {
         Some(Box::new(DummyMediaStream))
     }
 
-    fn create_player(&self) -> Box<Player> {
+    fn create_player(&self, _: StreamType) -> Box<Player> {
         Box::new(DummyPlayer)
     }
 
@@ -113,9 +113,6 @@ impl Player for DummyPlayer {
     fn set_rate(&self, _: f64) -> Result<(), PlayerError> {
         Ok(())
     }
-    fn set_stream_type(&self, _: StreamType) -> Result<(), PlayerError> {
-        Ok(())
-    }
     fn push_data(&self, _: Vec<u8>) -> Result<(), PlayerError> {
         Ok(())
     }
@@ -130,6 +127,10 @@ impl Player for DummyPlayer {
     }
 
     fn shutdown(&self) -> Result<(), PlayerError> {
+        Ok(())
+    }
+
+    fn set_stream(&self, _: Box<MediaStream>) -> Result<(), PlayerError> {
         Ok(())
     }
 }
