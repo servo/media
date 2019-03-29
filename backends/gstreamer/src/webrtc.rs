@@ -62,6 +62,13 @@ pub struct GStreamerWebRtcController {
     /// Streams need to be connected to the relevant sink pad, and we figure this out
     /// by keeping track of the caps of each m-line in the SDP.
     remote_mline_info: Vec<MLineInfo>,
+    /// Temporary storage for remote_mline_info until the remote description is applied
+    ///
+    /// Without this, a unluckily timed call to link_stream() may happen before the webrtcbin
+    /// knows the remote description, but while we _think_ it does
+    pending_remote_mline_info: Vec<MLineInfo>,
+    /// In case we get multiple remote offers, this lets us keep track of which is the newest
+    remote_offer_generation: u32,
     //send_msg_tx: mpsc::Sender<OwnedMessage>,
     //peer_id: String,
     _main_loop: glib::MainLoop,
@@ -116,7 +123,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
             .ok_or("Does not currently support non-gstreamer streams")?;
         stream.insert_capsfilter();
         self.link_stream(boxed_stream, false)?;
-        if self.delayed_negotiation {
+        if self.delayed_negotiation && (self.streams.len() > 1 || self.pending_streams.len() > 1) {
             self.delayed_negotiation = false;
             self.signaller.on_negotiation_needed(&self.thread);
         }
@@ -150,8 +157,10 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                     .set_state(gst::State::Playing)?;
                 self.signaller.on_add_stream(stream);
             }
-            InternalEvent::DescriptionAdded(cb, description_type, ty) => {
-                if description_type == DescriptionType::Remote && ty == SdpType::Offer {
+            InternalEvent::DescriptionAdded(cb, description_type, ty, remote_offer_generation) => {
+                if description_type == DescriptionType::Remote && ty == SdpType::Offer && remote_offer_generation == self.remote_offer_generation {
+                    mem::swap(&mut self.pending_remote_mline_info, &mut self.remote_mline_info);
+                    self.pending_remote_mline_info.clear();
                     self.flush_pending_streams(false)?;
                 }
                 self.pipeline
@@ -240,12 +249,16 @@ impl GStreamerWebRtcController {
 
         let sdp = gst_sdp::SDPMessage::parse_buffer(desc.sdp.as_bytes()).unwrap();
         if description_type == DescriptionType::Remote {
+            self.remote_offer_generation += 1;
             self.store_remote_mline_info(&sdp);
         }
         let answer = gst_webrtc::WebRTCSessionDescription::new(ty, sdp);
         let thread = self.thread.clone();
+        let remote_offer_generation = self.remote_offer_generation;
         let promise = gst::Promise::new_with_change_func(move |_promise| {
-            thread.internal_event(InternalEvent::DescriptionAdded(cb, description_type, desc.type_));
+            // remote_offer_generation here ensures that DescriptionAdded doesn't
+            // flush pending_remote_mline_info for stale remote offer callbacks
+            thread.internal_event(InternalEvent::DescriptionAdded(cb, description_type, desc.type_, remote_offer_generation));
         });
         self.webrtc
             .emit(kind, &[&answer, &promise])?;
@@ -261,7 +274,7 @@ impl GStreamerWebRtcController {
                 from_glib_none(gst_sdp_sys::gst_sdp_message_get_media(msg.to_glib_none().0, idx))
             }
         }
-        self.remote_mline_info.clear();
+        self.pending_remote_mline_info.clear();
         for i in 0..sdp.medias_len() {
             let mut caps = gst::Caps::new_empty();
             let caps_mut = caps.get_mut().expect("Fresh caps should be uniquely owned");
@@ -281,7 +294,10 @@ impl GStreamerWebRtcController {
                 caps_mut.get_mut_structure(cap).expect("Gstreamer reported incorrect get_size()")
                         .set_name("application/x-rtp")
             }
-            self.remote_mline_info.push(MLineInfo {
+            // This info is not current until the promise from set-remote-description is resolved,
+            // to avoid any races where we attempt to link streams before the promise resolves we
+            // queue this up in a pending buffer
+            self.pending_remote_mline_info.push(MLineInfo {
                 caps: caps,
                 // XXXManishearth in the (yet unsupported) case of dynamic stream addition and renegotiation
                 // this will need to be checked against the current set of streams
@@ -452,10 +468,12 @@ pub fn construct(
         signaller,
         thread,
         remote_mline_info: vec![],
+        pending_remote_mline_info: vec![],
         streams: vec![],
         pending_streams: vec![],
         pt_counter: 96,
         request_pad_counter: 0,
+        remote_offer_generation: 0,
         delayed_negotiation: false,
         _main_loop: main_loop,
     };
