@@ -5,6 +5,7 @@ authors = ["Manish Goregaokar <manishsmail@gmail.com>"]
 
 [lib]
 name = "servo_media"
+path = "lib.rs"
 
 [dependencies.servo-media-audio]
 path = "../audio"
