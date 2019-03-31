@@ -4,4 +4,9 @@ version = "0.1.0"
 authors = ["Manish Goregaokar <manishsmail@gmail.com>"]
 edition = "2018"
 
+[lib]
+name = "servo_media_streams"
+path = "lib.rs"
+
+
 [dependencies]
