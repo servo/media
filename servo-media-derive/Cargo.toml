@@ -4,7 +4,9 @@ version = "0.1.0"
 authors = ["Fernando Jiménez Moreno <ferjmoreno@gmail.com>"]
 
 [lib]
+name = "servo_media_derive"
 proc-macro = true
+path = "lib.rs"
 
 [dependencies]
 syn = "0.15"
