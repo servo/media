@@ -6,6 +6,7 @@ version = "0.1.0"
 
 [lib]
 name = "servo_media_audio"
+path = "lib.rs"
 
 [dependencies]
 boxfnonce = "0.1"
