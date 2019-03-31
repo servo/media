@@ -3,6 +3,9 @@ name = "servo-media-webrtc"
 version = "0.1.0"
 authors = ["Josh Matthews <josh@joshmatthews.net>"]
 
+[lib]
+path = "lib.rs"
+
 [dependencies]
 boxfnonce = "0.1.0"
 log = "0.4.6"
