@@ -8,6 +8,10 @@ regex = "1.0"
 zip = "0.3.1"
 lazy_static = "1.0"
 
+[lib]
+name = "servo_media_gstreamer"
+path = "lib.rs"
+
 [dependencies]
 boxfnonce = "0.1.0"
 

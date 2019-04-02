@@ -3,6 +3,10 @@ name = "servo-media-dummy"
 version = "0.1.0"
 authors = ["The Servo Project Developers"]
 
+[lib]
+name = "servo_media_dummy"
+path = "lib.rs"
+
 [dependencies]
 boxfnonce = "0.1.0"
 ipc-channel = "0.11"
