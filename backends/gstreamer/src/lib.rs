@@ -28,6 +28,8 @@ extern crate servo_media_streams;
 extern crate servo_media_webrtc;
 extern crate url;
 
+use gst::ClockExt;
+
 use servo_media::{Backend, BackendInit};
 use servo_media_audio::context::{AudioContext, AudioContextOptions};
 use servo_media_audio::decoder::AudioDecoder;
@@ -46,6 +48,12 @@ mod media_stream_source;
 pub mod player;
 mod source;
 pub mod webrtc;
+
+lazy_static! {
+    pub static ref BACKEND_BASE_TIME: gst::ClockTime = {
+        gst::SystemClock::obtain().get_time()
+    };
+}
 
 pub struct GStreamerBackend;
 

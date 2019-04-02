@@ -1,3 +1,4 @@
+use BACKEND_BASE_TIME;
 use boxfnonce::SendBoxFnOnce;
 use glib;
 use glib::prelude::*;
@@ -459,7 +460,7 @@ pub fn construct(
     let main_loop = glib::MainLoop::new(None, false);
     let pipeline = gst::Pipeline::new("webrtc main");
     pipeline.set_start_time(gst::ClockTime::none());
-    pipeline.set_base_time(gst::ClockTime::from_nseconds(0));
+    pipeline.set_base_time(*BACKEND_BASE_TIME);
     pipeline.use_clock(Some(&gst::SystemClock::obtain()));
     let webrtc = gst::ElementFactory::make("webrtcbin", "sendrecv").ok_or("webrtcbin element not found")?;
     let mut controller = GStreamerWebRtcController {

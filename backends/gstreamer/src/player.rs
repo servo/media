@@ -1,3 +1,4 @@
+use BACKEND_BASE_TIME;
 use glib;
 use glib::prelude::*;
 use gst;
@@ -305,7 +306,7 @@ impl PlayerInner {
                         .dynamic_cast::<gst::Pipeline>()
                         .unwrap();
                     let clock = gst::SystemClock::obtain();
-                    playbin.set_base_time(clock.get_time());
+                    playbin.set_base_time(*BACKEND_BASE_TIME);
                     playbin.set_start_time(gst::ClockTime::none());
                     playbin.use_clock(Some(&clock));
 

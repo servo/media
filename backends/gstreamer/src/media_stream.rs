@@ -1,3 +1,4 @@
+use BACKEND_BASE_TIME;
 use glib::prelude::*;
 use gst;
 use gst::prelude::*;
@@ -113,7 +114,7 @@ impl GStreamerMediaStream {
             let pipeline = gst::Pipeline::new("gstreamermediastream fresh pipeline");
             let clock = gst::SystemClock::obtain();
             pipeline.set_start_time(gst::ClockTime::none());
-            pipeline.set_base_time(clock.get_time());
+            pipeline.set_base_time(*BACKEND_BASE_TIME);
             pipeline.use_clock(Some(&clock));
             self.attach_to_pipeline(&pipeline);
             pipeline
