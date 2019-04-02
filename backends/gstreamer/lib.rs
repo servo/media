@@ -3,6 +3,7 @@
 
 extern crate boxfnonce;
 extern crate byte_slice_cast;
+extern crate mime;
 
 extern crate glib_sys as glib_ffi;
 extern crate gstreamer_sys as gst_ffi;
@@ -35,13 +36,16 @@ pub mod media_capture;
 pub mod media_stream;
 mod media_stream_source;
 pub mod player;
+mod registry_scanner;
 mod render;
 mod source;
 pub mod webrtc;
 
 use gst::ClockExt;
 use media_stream::GStreamerMediaStream;
-use servo_media::{Backend, BackendInit};
+use mime::Mime;
+use registry_scanner::GSTREAMER_REGISTRY_SCANNER;
+use servo_media::{Backend, BackendInit, SupportsMediaType};
 use servo_media_audio::context::{AudioContext, AudioContextOptions};
 use servo_media_audio::decoder::AudioDecoder;
 use servo_media_audio::sink::AudioSinkError;
@@ -89,6 +93,29 @@ impl Backend for GStreamerBackend {
 
     fn create_videoinput_stream(&self, set: MediaTrackConstraintSet) -> Option<MediaStreamId> {
         media_capture::create_videoinput_stream(set)
+    }
+
+    fn can_play_type(&self, media_type: &str) -> SupportsMediaType {
+        if let Ok(mime) = media_type.parse::<Mime>() {
+            let mime_type = mime.type_().as_str().to_owned() + "/" + mime.subtype().as_str(); 
+            let codecs = match mime.get_param("codecs") {
+                Some(codecs) => {
+                    codecs.as_str().split(',').map(|codec| codec.trim()).collect() 
+                },
+                None => vec![],
+            };
+
+            if GSTREAMER_REGISTRY_SCANNER.is_container_type_supported(&mime_type) {
+                if codecs.is_empty() {
+                    return SupportsMediaType::Maybe;
+                } else if GSTREAMER_REGISTRY_SCANNER.are_all_codecs_supported(&codecs) {
+                    return SupportsMediaType::Probably;
+                } else {
+                    return SupportsMediaType::No;
+                }
+            }
+        }
+        SupportsMediaType::No
     }
 }
 

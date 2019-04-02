@@ -8,7 +8,7 @@ extern crate servo_media_webrtc;
 
 use boxfnonce::SendBoxFnOnce;
 use ipc_channel::ipc::IpcSender;
-use servo_media::{Backend, BackendInit};
+use servo_media::{Backend, BackendInit, SupportsMediaType};
 use servo_media_audio::block::Chunk;
 use servo_media_audio::context::{AudioContext, AudioContextOptions};
 use servo_media_audio::decoder::{AudioDecoder, AudioDecoderCallbacks, AudioDecoderOptions};
@@ -75,6 +75,10 @@ impl Backend for DummyBackend {
 
     fn create_webrtc(&self, signaller: Box<WebRtcSignaller>) -> WebRtcController {
         WebRtcController::new::<Self>(signaller)
+    }
+
+    fn can_play_type(&self, _media_type: &str) -> SupportsMediaType {
+        SupportsMediaType::No
     }
 }
 
