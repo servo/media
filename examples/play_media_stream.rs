@@ -40,7 +40,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
                     break;
                 }
                 println!("Position changed {:?}", p)
-            },
+            }
             PlayerEvent::SeekData(_) => {
                 println!("\nERROR: Should not receive SeekData for streams")
             }

@@ -36,8 +36,8 @@ use servo_media_audio::decoder::AudioDecoder;
 use servo_media_audio::sink::AudioSinkError;
 use servo_media_audio::AudioBackend;
 use servo_media_player::{Player, StreamType};
-use servo_media_streams::{MediaStream, MediaOutput};
 use servo_media_streams::capture::MediaTrackConstraintSet;
+use servo_media_streams::{MediaOutput, MediaStream};
 use servo_media_webrtc::{WebRtcBackend, WebRtcController, WebRtcSignaller};
 
 pub mod audio_decoder;
@@ -50,9 +50,7 @@ mod source;
 pub mod webrtc;
 
 lazy_static! {
-    pub static ref BACKEND_BASE_TIME: gst::ClockTime = {
-        gst::SystemClock::obtain().get_time()
-    };
+    pub static ref BACKEND_BASE_TIME: gst::ClockTime = { gst::SystemClock::obtain().get_time() };
 }
 
 pub struct GStreamerBackend;

@@ -249,68 +249,66 @@ fn receive_loop(
                     }
                 }
 
-                OwnedMessage::Text(msg) => {
-                    match &*msg {
-                        "HELLO" => state.handle_hello(),
+                OwnedMessage::Text(msg) => match &*msg {
+                    "HELLO" => state.handle_hello(),
 
-                        "SESSION_OK" => state.handle_session_ok(),
+                    "SESSION_OK" => state.handle_session_ok(),
 
-                        x if x.starts_with("ERROR") => {
-                            eprintln!("Got error message! {}", msg);
-                        }
+                    x if x.starts_with("ERROR") => {
+                        eprintln!("Got error message! {}", msg);
+                    }
 
-                        _ => {
-                            let json_msg: JsonMsg = serde_json::from_str(&msg).unwrap();
+                    _ => {
+                        let json_msg: JsonMsg = serde_json::from_str(&msg).unwrap();
 
-                            match json_msg {
-                                JsonMsg::Sdp { type_, sdp } => {
-                                    let desc = SessionDescription {
-                                        type_: type_.parse().unwrap(),
-                                        sdp: sdp.into(),
-                                    };
-                                    let controller = state.webrtc.as_ref().unwrap();
-                                    if state.peer_id.is_some() {
-                                        controller.set_remote_description(desc, (|| {}).into());
-                                    } else {
-                                        let c2 = controller.clone();
-                                        let c3 = controller.clone();
-                                        let s2 = state.signaller.clone().unwrap();
-                                        controller.set_remote_description(
-                                            desc,
-                                            (move || {
-                                                c3.create_answer(
-                                                    (move |answer: SessionDescription| {
-                                                        c2.set_local_description(
-                                                            answer.clone(),
-                                                            (move || s2.send_sdp(answer)).into(),
-                                                        )
-                                                    })
-                                                    .into(),
-                                                )
-                                            })
-                                            .into(),
-                                        );
-                                    }
+                        match json_msg {
+                            JsonMsg::Sdp { type_, sdp } => {
+                                let desc = SessionDescription {
+                                    type_: type_.parse().unwrap(),
+                                    sdp: sdp.into(),
+                                };
+                                let controller = state.webrtc.as_ref().unwrap();
+                                if state.peer_id.is_some() {
+                                    controller.set_remote_description(desc, (|| {}).into());
+                                } else {
+                                    let c2 = controller.clone();
+                                    let c3 = controller.clone();
+                                    let s2 = state.signaller.clone().unwrap();
+                                    controller.set_remote_description(
+                                        desc,
+                                        (move || {
+                                            c3.create_answer(
+                                                (move |answer: SessionDescription| {
+                                                    c2.set_local_description(
+                                                        answer.clone(),
+                                                        (move || s2.send_sdp(answer)).into(),
+                                                    )
+                                                })
+                                                .into(),
+                                            )
+                                        })
+                                        .into(),
+                                    );
                                 }
-                                JsonMsg::Ice {
+                            }
+                            JsonMsg::Ice {
+                                sdp_mline_index,
+                                candidate,
+                            } => {
+                                let candidate = IceCandidate {
                                     sdp_mline_index,
                                     candidate,
-                                } => {
-                                    let candidate = IceCandidate {
-                                        sdp_mline_index,
-                                        candidate,
-                                    };
-                                    state
-                                        .webrtc
-                                        .as_ref()
-                                        .unwrap()
-                                        .add_ice_candidate(candidate)
-                                        .into()
-                                }
-                            };
-                        }
+                                };
+                                state
+                                    .webrtc
+                                    .as_ref()
+                                    .unwrap()
+                                    .add_ice_candidate(candidate)
+                                    .into()
+                            }
+                        };
                     }
-                }
+                },
 
                 _ => {
                     println!("Unmatched message type: {:?}", message);

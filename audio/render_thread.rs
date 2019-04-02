@@ -112,9 +112,7 @@ impl AudioRenderThread {
         F: FnOnce() -> Result<Box<AudioSink + 'static>, AudioSinkError>,
     {
         let sink = match options {
-            AudioContextOptions::RealTimeAudioContext(_) => {
-                Sink::RealTime(make_sink()?)
-            }
+            AudioContextOptions::RealTimeAudioContext(_) => Sink::RealTime(make_sink()?),
             AudioContextOptions::OfflineAudioContext(options) => Sink::Offline(
                 OfflineAudioSink::new(options.channels as usize, options.length),
             ),
@@ -145,9 +143,9 @@ impl AudioRenderThread {
     ) where
         F: FnOnce() -> Result<Box<AudioSink + 'static>, AudioSinkError>,
     {
-        let mut thread = Self::prepare_thread(
-            make_sink, sender.clone(), sample_rate, graph, options
-        ).expect("Could not start audio render thread");
+        let mut thread =
+            Self::prepare_thread(make_sink, sender.clone(), sample_rate, graph, options)
+                .expect("Could not start audio render thread");
         thread.event_loop(event_queue)
     }
 

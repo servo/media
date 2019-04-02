@@ -5,8 +5,8 @@ use render_thread::AudioRenderThread;
 use render_thread::AudioRenderThreadMsg;
 use sink::AudioSink;
 use std::cell::Cell;
-use std::sync::Arc;
 use std::sync::mpsc::{self, Sender};
+use std::sync::Arc;
 use std::thread::Builder;
 use AudioBackend;
 
@@ -114,7 +114,7 @@ pub struct AudioContext {
     /// representing the final destination for all audio.
     dest_node: NodeId,
     listener: NodeId,
-    make_decoder: Arc<(Fn() -> Box<AudioDecoder>) + Sync + Send>,
+    make_decoder: Arc<(Fn() -> Box<AudioDecoder> + Sync + Send)>,
 }
 
 impl AudioContext {
@@ -151,7 +151,7 @@ impl AudioContext {
             sample_rate,
             dest_node,
             listener,
-            make_decoder: Arc::new(|| B::make_decoder())
+            make_decoder: Arc::new(|| B::make_decoder()),
         }
     }
 

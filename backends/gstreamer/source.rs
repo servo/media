@@ -190,7 +190,8 @@ mod imp {
             self.appsrc.set_max_bytes(MAX_SRC_QUEUE_SIZE);
             self.appsrc.set_property_block(false);
             self.appsrc.set_property_format(gst::Format::Bytes);
-            self.appsrc.set_stream_type(gst_app::AppStreamType::Seekable);
+            self.appsrc
+                .set_stream_type(gst_app::AppStreamType::Seekable);
 
             ::set_element_flags(element, gst::ElementFlags::SOURCE);
         }

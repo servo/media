@@ -1,4 +1,3 @@
-use BACKEND_BASE_TIME;
 use glib;
 use glib::prelude::*;
 use gst;
@@ -24,6 +23,7 @@ use std::sync::mpsc;
 use std::sync::{Arc, Mutex, Once};
 use std::time;
 use std::u64;
+use BACKEND_BASE_TIME;
 
 const MAX_BUFFER_SIZE: i32 = 500 * 1024 * 1024;
 
