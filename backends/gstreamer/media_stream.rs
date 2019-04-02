@@ -3,29 +3,24 @@ use gst;
 use gst::prelude::*;
 use servo_media_streams::{MediaOutput, MediaStream};
 use std::any::Any;
+use BACKEND_BASE_TIME;
 
 lazy_static! {
     static ref RTP_CAPS_OPUS: gst::Caps = {
         gst::Caps::new_simple(
             "application/x-rtp",
-            &[
-                ("media", &"audio"),
-                ("encoding-name", &"OPUS"),
-            ],
+            &[("media", &"audio"), ("encoding-name", &"OPUS")],
         )
     };
     static ref RTP_CAPS_VP8: gst::Caps = {
         gst::Caps::new_simple(
             "application/x-rtp",
-            &[
-                ("media", &"video"),
-                ("encoding-name", &"VP8"),
-            ],
+            &[("media", &"video"), ("encoding-name", &"VP8")],
         )
     };
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum StreamType {
     Audio,
     Video,
@@ -48,6 +43,10 @@ impl MediaStream for GStreamerMediaStream {
 }
 
 impl GStreamerMediaStream {
+    pub fn type_(&self) -> StreamType {
+        self.type_
+    }
+
     pub fn caps(&self) -> &gst::Caps {
         match self.type_ {
             StreamType::Audio => &*RTP_CAPS_OPUS,
@@ -57,26 +56,22 @@ impl GStreamerMediaStream {
 
     pub fn caps_with_payload(&self, payload: i32) -> gst::Caps {
         match self.type_ {
-            StreamType::Audio => {
-                gst::Caps::new_simple(
-                    "application/x-rtp",
-                    &[
-                        ("media", &"audio"),
-                        ("encoding-name", &"OPUS"),
-                        ("payload", &(payload)),
-                    ],
-                )
-            }
-            StreamType::Video => {
-                gst::Caps::new_simple(
-                    "application/x-rtp",
-                    &[
-                        ("media", &"video"),
-                        ("encoding-name", &"VP8"),
-                        ("payload", &(payload)),
-                    ],
-                )
-            }
+            StreamType::Audio => gst::Caps::new_simple(
+                "application/x-rtp",
+                &[
+                    ("media", &"audio"),
+                    ("encoding-name", &"OPUS"),
+                    ("payload", &(payload)),
+                ],
+            ),
+            StreamType::Video => gst::Caps::new_simple(
+                "application/x-rtp",
+                &[
+                    ("media", &"video"),
+                    ("encoding-name", &"VP8"),
+                    ("payload", &(payload)),
+                ],
+            ),
         }
     }
 
@@ -107,9 +102,10 @@ impl GStreamerMediaStream {
             pipeline.clone()
         } else {
             let pipeline = gst::Pipeline::new("gstreamermediastream fresh pipeline");
+            let clock = gst::SystemClock::obtain();
             pipeline.set_start_time(gst::ClockTime::none());
-            pipeline.set_base_time(gst::ClockTime::from_nseconds(0));
-            pipeline.use_clock(Some(&gst::SystemClock::obtain()));
+            pipeline.set_base_time(*BACKEND_BASE_TIME);
+            pipeline.use_clock(Some(&clock));
             self.attach_to_pipeline(&pipeline);
             pipeline
         }
@@ -157,7 +153,7 @@ impl GStreamerMediaStream {
 
     pub fn create_audio() -> GStreamerMediaStream {
         let audiotestsrc = gst::ElementFactory::make("audiotestsrc", None).unwrap();
-        audiotestsrc.set_property_from_str("wave", "red-noise");
+        audiotestsrc.set_property_from_str("wave", "sine");
         audiotestsrc
             .set_property("is-live", &true)
             .expect("audiotestsrc doesn't have expected 'is-live' property");
@@ -173,13 +169,7 @@ impl GStreamerMediaStream {
 
         GStreamerMediaStream {
             type_: StreamType::Audio,
-            elements: vec![
-                source,
-                queue,
-                audioconvert,
-                audioresample,
-                queue2,
-            ],
+            elements: vec![source, queue, audioconvert, audioresample, queue2],
             pipeline: None,
         }
     }

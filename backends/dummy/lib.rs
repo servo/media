@@ -8,21 +8,21 @@ extern crate servo_media_webrtc;
 
 use boxfnonce::SendBoxFnOnce;
 use ipc_channel::ipc::IpcSender;
-use std::any::Any;
 use servo_media::{Backend, BackendInit};
-use servo_media_audio::AudioBackend;
 use servo_media_audio::block::Chunk;
 use servo_media_audio::context::{AudioContext, AudioContextOptions};
 use servo_media_audio::decoder::{AudioDecoder, AudioDecoderCallbacks, AudioDecoderOptions};
 use servo_media_audio::render_thread::AudioRenderThreadMsg;
 use servo_media_audio::sink::{AudioSink, AudioSinkError};
-use servo_media_player::{GlContext, Player, PlayerError, PlayerEvent, StreamType, frame};
-use servo_media_streams::{MediaStream, MediaOutput};
+use servo_media_audio::AudioBackend;
+use servo_media_player::{frame, GlContext, Player, PlayerError, PlayerEvent, StreamType};
 use servo_media_streams::capture::MediaTrackConstraintSet;
+use servo_media_streams::{MediaOutput, MediaStream};
 use servo_media_webrtc::{
-    BundlePolicy, SessionDescription, WebRtcBackend, WebRtcController, WebRtcControllerBackend,
-    WebRtcSignaller, IceCandidate, thread, WebrtcResult
+    thread, BundlePolicy, IceCandidate, SessionDescription, WebRtcBackend, WebRtcController,
+    WebRtcControllerBackend, WebRtcSignaller, WebrtcResult,
 };
+use std::any::Any;
 use std::ops::Range;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
@@ -56,7 +56,7 @@ impl Backend for DummyBackend {
         Some(Box::new(DummyMediaStream))
     }
 
-    fn create_player(&self) -> Box<Player> {
+    fn create_player(&self, _: StreamType) -> Box<Player> {
         Box::new(DummyPlayer)
     }
 
@@ -113,9 +113,6 @@ impl Player for DummyPlayer {
     fn set_rate(&self, _: f64) -> Result<(), PlayerError> {
         Ok(())
     }
-    fn set_stream_type(&self, _: StreamType) -> Result<(), PlayerError> {
-        Ok(())
-    }
     fn push_data(&self, _: Vec<u8>) -> Result<(), PlayerError> {
         Ok(())
     }
@@ -125,11 +122,15 @@ impl Player for DummyPlayer {
     fn buffered(&self) -> Result<Vec<Range<f64>>, PlayerError> {
         Ok(vec![])
     }
-        fn set_gl_params(&self, _: GlContext, _: usize) -> Result<(), ()> {
+    fn set_gl_params(&self, _: GlContext, _: usize) -> Result<(), ()> {
         Err(())
     }
 
     fn shutdown(&self) -> Result<(), PlayerError> {
+        Ok(())
+    }
+
+    fn set_stream(&self, _: Box<MediaStream>) -> Result<(), PlayerError> {
         Ok(())
     }
 }
@@ -189,13 +190,37 @@ impl MediaOutput for DummyMediaOutput {
 pub struct DummyWebRtcController;
 
 impl WebRtcControllerBackend for DummyWebRtcController {
-    fn configure(&mut self, _: &str, _: BundlePolicy) -> WebrtcResult {Ok(())}
-    fn set_remote_description(&mut self, _: SessionDescription, _: SendBoxFnOnce<'static, ()>) -> WebrtcResult {Ok(())}
-    fn set_local_description(&mut self, _: SessionDescription, _: SendBoxFnOnce<'static, ()>) -> WebrtcResult {Ok(())}
-    fn add_ice_candidate(&mut self, _: IceCandidate) -> WebrtcResult {Ok(())}
-    fn create_offer(&mut self, _: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebrtcResult {Ok(())}
-    fn create_answer(&mut self, _: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebrtcResult {Ok(())}
-    fn add_stream(&mut self, _: Box<MediaStream>) -> WebrtcResult {Ok(())}
-    fn internal_event(&mut self, _: thread::InternalEvent) -> WebrtcResult {Ok(())}
+    fn configure(&mut self, _: &str, _: BundlePolicy) -> WebrtcResult {
+        Ok(())
+    }
+    fn set_remote_description(
+        &mut self,
+        _: SessionDescription,
+        _: SendBoxFnOnce<'static, ()>,
+    ) -> WebrtcResult {
+        Ok(())
+    }
+    fn set_local_description(
+        &mut self,
+        _: SessionDescription,
+        _: SendBoxFnOnce<'static, ()>,
+    ) -> WebrtcResult {
+        Ok(())
+    }
+    fn add_ice_candidate(&mut self, _: IceCandidate) -> WebrtcResult {
+        Ok(())
+    }
+    fn create_offer(&mut self, _: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebrtcResult {
+        Ok(())
+    }
+    fn create_answer(&mut self, _: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebrtcResult {
+        Ok(())
+    }
+    fn add_stream(&mut self, _: Box<MediaStream>) -> WebrtcResult {
+        Ok(())
+    }
+    fn internal_event(&mut self, _: thread::InternalEvent) -> WebrtcResult {
+        Ok(())
+    }
     fn quit(&mut self) {}
 }

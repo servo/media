@@ -3,6 +3,10 @@ name = "servo-media-auto"
 version = "0.1.0"
 authors = ["The Servo Project Developers"]
 
+[lib]
+name = "servo_media_auto"
+path = "lib.rs"
+
 [target.'cfg(any(all(target_os = "android", target_arch = "arm"), target_arch = "x86_64"))'.dependencies.servo-media-gstreamer]
 path = "../gstreamer"
 

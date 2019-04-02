@@ -48,7 +48,6 @@ mod imp {
         inner_appsrc_proxy!(get_max_bytes, u64);
         inner_appsrc_proxy!(push_buffer, buffer, gst::Buffer, Result<gst::FlowSuccess, gst::FlowError>);
         inner_appsrc_proxy!(set_callbacks, callbacks, gst_app::AppSrcCallbacks, ());
-        inner_appsrc_proxy!(set_stream_type, type_, gst_app::AppStreamType, ());
 
         fn query(
             &self,
@@ -191,6 +190,8 @@ mod imp {
             self.appsrc.set_max_bytes(MAX_SRC_QUEUE_SIZE);
             self.appsrc.set_property_block(false);
             self.appsrc.set_property_format(gst::Format::Bytes);
+            self.appsrc
+                .set_stream_type(gst_app::AppStreamType::Seekable);
 
             ::set_element_flags(element, gst::ElementFlags::SOURCE);
         }
@@ -274,7 +275,6 @@ impl ServoSrc {
     inner_servosrc_proxy!(get_max_bytes, u64);
     inner_servosrc_proxy!(push_buffer, buffer, gst::Buffer, Result<gst::FlowSuccess, gst::FlowError>);
     inner_servosrc_proxy!(set_callbacks, callbacks, gst_app::AppSrcCallbacks, ());
-    inner_servosrc_proxy!(set_stream_type, type_, gst_app::AppStreamType, ());
 }
 
 // Registers the type for our element, and then registers in GStreamer

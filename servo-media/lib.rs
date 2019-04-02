@@ -1,15 +1,15 @@
 pub extern crate servo_media_audio as audio;
 
 pub extern crate servo_media_player as player;
-pub extern crate servo_media_webrtc as webrtc;
 pub extern crate servo_media_streams as streams;
+pub extern crate servo_media_webrtc as webrtc;
 use std::ops::Deref;
 use std::sync::{self, Arc, Mutex, Once};
 
 use audio::context::{AudioContext, AudioContextOptions};
-use player::Player;
-use streams::{MediaStream, MediaOutput};
+use player::{Player, StreamType};
 use streams::capture::MediaTrackConstraintSet;
+use streams::{MediaOutput, MediaStream};
 use webrtc::{WebRtcController, WebRtcSignaller};
 
 pub struct ServoMedia(Box<Backend>);
@@ -22,7 +22,7 @@ pub trait BackendInit {
 }
 
 pub trait Backend: Send + Sync {
-    fn create_player(&self) -> Box<Player>;
+    fn create_player(&self, stream_type: StreamType) -> Box<Player>;
     fn create_audiostream(&self) -> Box<MediaStream>;
     fn create_videostream(&self) -> Box<MediaStream>;
     fn create_stream_output(&self) -> Box<MediaOutput>;

@@ -29,8 +29,16 @@ impl<T: Display> From<T> for WebrtcError {
 /// the client. Use WebRtcController instead
 pub trait WebRtcControllerBackend: Send {
     fn configure(&mut self, stun_server: &str, policy: BundlePolicy) -> WebrtcResult;
-    fn set_remote_description(&mut self, SessionDescription, cb: SendBoxFnOnce<'static, ()>) -> WebrtcResult;
-    fn set_local_description(&mut self, SessionDescription, cb: SendBoxFnOnce<'static, ()>) -> WebrtcResult;
+    fn set_remote_description(
+        &mut self,
+        SessionDescription,
+        cb: SendBoxFnOnce<'static, ()>,
+    ) -> WebrtcResult;
+    fn set_local_description(
+        &mut self,
+        SessionDescription,
+        cb: SendBoxFnOnce<'static, ()>,
+    ) -> WebrtcResult;
     fn add_ice_candidate(&mut self, candidate: IceCandidate) -> WebrtcResult;
     fn create_offer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebrtcResult;
     fn create_answer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebrtcResult;
@@ -71,7 +79,7 @@ pub enum SdpType {
 #[derive(Copy, Clone, Hash, Debug, PartialEq, Eq)]
 pub enum DescriptionType {
     Local,
-    Remote
+    Remote,
 }
 
 impl SdpType {
@@ -143,7 +151,7 @@ pub enum SignalingState {
     HaveRemoteOffer,
     HaveLocalPranswer,
     HaveRemotePranswer,
-    Closed
+    Closed,
 }
 
 /// https://www.w3.org/TR/webrtc/#rtcicegatheringstate-enum
@@ -151,7 +159,7 @@ pub enum SignalingState {
 pub enum GatheringState {
     New,
     Gathering,
-    Complete
+    Complete,
 }
 
 /// https://www.w3.org/TR/webrtc/#rtciceconnectionstate-enum
