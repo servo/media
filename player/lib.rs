@@ -9,7 +9,7 @@ pub mod metadata;
 use ipc_channel::ipc::IpcSender;
 use std::ops::Range;
 use std::sync::{Arc, Mutex};
-use streams::MediaStream;
+use streams::registry::MediaStreamId;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum PlaybackState {
@@ -96,5 +96,5 @@ pub trait Player: Send {
     fn shutdown(&self) -> Result<(), PlayerError>;
     /// Set the stream to be played by the player.
     /// This method requires the player to be constructed with StreamType::Stream.
-    fn set_stream(&self, stream: Box<MediaStream>) -> Result<(), PlayerError>;
+    fn set_stream(&self, stream: &MediaStreamId) -> Result<(), PlayerError>;
 }

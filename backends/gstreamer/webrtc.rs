@@ -1,3 +1,4 @@
+use super::BACKEND_BASE_TIME;
 use boxfnonce::SendBoxFnOnce;
 use glib;
 use glib::prelude::*;
@@ -6,13 +7,12 @@ use gst::prelude::*;
 use gst_sdp;
 use gst_webrtc;
 use media_stream::GStreamerMediaStream;
-use servo_media_streams::MediaStream;
+use servo_media_streams::registry::{get_stream, MediaStreamId};
 use servo_media_webrtc::thread::InternalEvent;
 use servo_media_webrtc::WebRtcController as WebRtcThread;
 use servo_media_webrtc::*;
 use std::sync::{Arc, Mutex};
 use std::{cmp, mem};
-use BACKEND_BASE_TIME;
 
 // TODO:
 // - figure out purpose of glib loop
@@ -39,7 +39,7 @@ pub struct GStreamerWebRtcController {
     signaller: Box<WebRtcSignaller>,
     /// All the streams that are actually connected to the webrtcbin (i.e., their presence has already
     /// been negotiated)
-    streams: Vec<Box<MediaStream>>,
+    streams: Vec<MediaStreamId>,
     /// Disconnected streams that are waiting to be linked. Streams are
     /// only linked when:
     ///
@@ -50,7 +50,7 @@ pub struct GStreamerWebRtcController {
     /// In other words, these are all yet to be negotiated
     ///
     /// See link_stream
-    pending_streams: Vec<Box<MediaStream>>,
+    pending_streams: Vec<MediaStreamId>,
     /// Each new webrtc stream should have a new payload/pt value, starting at 96
     ///
     /// This is maintained as a known yet-unused payload number, being incremented whenever
@@ -122,13 +122,16 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         Ok(())
     }
 
-    fn add_stream(&mut self, mut boxed_stream: Box<MediaStream>) -> WebrtcResult {
-        let stream = boxed_stream
+    fn add_stream(&mut self, stream_id: &MediaStreamId) -> WebrtcResult {
+        let stream =
+            get_stream(stream_id).expect("Media streams registry does not contain such ID");
+        let mut stream = stream.lock().unwrap();
+        let stream = stream
             .as_mut_any()
             .downcast_mut::<GStreamerMediaStream>()
             .ok_or("Does not currently support non-gstreamer streams")?;
         stream.insert_capsfilter();
-        self.link_stream(boxed_stream, false)?;
+        self.link_stream(stream_id, false)?;
         if self.delayed_negotiation && (self.streams.len() > 1 || self.pending_streams.len() > 1) {
             self.delayed_negotiation = false;
             self.signaller.on_negotiation_needed(&self.thread);
@@ -162,7 +165,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
             }
             InternalEvent::OnAddStream(stream) => {
                 self.pipeline.set_state(gst::State::Playing)?;
-                self.signaller.on_add_stream(stream);
+                self.signaller.on_add_stream(&stream);
             }
             InternalEvent::DescriptionAdded(cb, description_type, ty, remote_offer_generation) => {
                 if description_type == DescriptionType::Remote
@@ -372,12 +375,11 @@ impl GStreamerWebRtcController {
     ///
     /// When request_new_pads is false, we may still request new pads, however we only do this for
     /// streams that have already been negotiated by the remote.
-    fn link_stream(
-        &mut self,
-        mut boxed_stream: Box<MediaStream>,
-        request_new_pads: bool,
-    ) -> WebrtcResult {
-        let stream = boxed_stream
+    fn link_stream(&mut self, stream_id: &MediaStreamId, request_new_pads: bool) -> WebrtcResult {
+        let stream =
+            get_stream(stream_id).expect("Media streams registry does not contain such ID");
+        let mut stream = stream.lock().unwrap();
+        let stream = stream
             .as_mut_any()
             .downcast_mut::<GStreamerMediaStream>()
             .ok_or("Does not currently support non-gstreamer streams")?;
@@ -420,7 +422,7 @@ impl GStreamerWebRtcController {
                 .get_static_pad(&format!("sink_{}", idx))
                 .ok_or("Cannot request sink pad")?;
             src.link(&sink)?;
-            self.streams.push(boxed_stream);
+            self.streams.push(stream_id.clone());
         } else if request_new_pads {
             stream.attach_to_pipeline(&self.pipeline);
             let caps = stream.caps_with_payload(self.pt_counter);
@@ -435,9 +437,9 @@ impl GStreamerWebRtcController {
                 .ok_or("Cannot request sink pad")?;
             self.request_pad_counter += 1;
             src.link(&sink)?;
-            self.streams.push(boxed_stream);
+            self.streams.push(stream_id.clone());
         } else {
-            self.pending_streams.push(boxed_stream);
+            self.pending_streams.push(stream_id.clone());
         }
         Ok(())
     }
@@ -446,7 +448,7 @@ impl GStreamerWebRtcController {
     fn flush_pending_streams(&mut self, request_new_pads: bool) -> WebrtcResult {
         let pending_streams = mem::replace(&mut self.pending_streams, vec![]);
         for stream in pending_streams {
-            self.link_stream(stream, request_new_pads)?;
+            self.link_stream(&stream, request_new_pads)?;
         }
         Ok(())
     }
@@ -619,9 +621,9 @@ fn on_incoming_decodebin_stream(
     proxy_sink.sync_state_with_parent().unwrap();
 
     let stream = if name == "video" {
-        Box::new(GStreamerMediaStream::create_video_from(proxy_src))
+        GStreamerMediaStream::create_video_from(proxy_src)
     } else {
-        Box::new(GStreamerMediaStream::create_audio_from(proxy_src))
+        GStreamerMediaStream::create_audio_from(proxy_src)
     };
     thread
         .lock()

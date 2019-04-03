@@ -17,6 +17,7 @@ use servo_media_audio::sink::{AudioSink, AudioSinkError};
 use servo_media_audio::AudioBackend;
 use servo_media_player::{frame, GlContext, Player, PlayerError, PlayerEvent, StreamType};
 use servo_media_streams::capture::MediaTrackConstraintSet;
+use servo_media_streams::registry::{register_stream, unregister_stream, MediaStreamId};
 use servo_media_streams::{MediaOutput, MediaStream};
 use servo_media_webrtc::{
     thread, BundlePolicy, IceCandidate, SessionDescription, WebRtcBackend, WebRtcController,
@@ -36,24 +37,32 @@ impl BackendInit for DummyBackend {
 }
 
 impl Backend for DummyBackend {
-    fn create_audiostream(&self) -> Box<MediaStream> {
-        Box::new(DummyMediaStream)
+    fn create_audiostream(&self) -> MediaStreamId {
+        register_stream(Arc::new(Mutex::new(DummyMediaStream {
+            id: MediaStreamId::new(),
+        })))
     }
 
-    fn create_videostream(&self) -> Box<MediaStream> {
-        Box::new(DummyMediaStream)
+    fn create_videostream(&self) -> MediaStreamId {
+        register_stream(Arc::new(Mutex::new(DummyMediaStream {
+            id: MediaStreamId::new(),
+        })))
     }
 
     fn create_stream_output(&self) -> Box<MediaOutput> {
         Box::new(DummyMediaOutput)
     }
 
-    fn create_audioinput_stream(&self, _: MediaTrackConstraintSet) -> Option<Box<MediaStream>> {
-        Some(Box::new(DummyMediaStream))
+    fn create_audioinput_stream(&self, _: MediaTrackConstraintSet) -> Option<MediaStreamId> {
+        Some(register_stream(Arc::new(Mutex::new(DummyMediaStream {
+            id: MediaStreamId::new(),
+        }))))
     }
 
-    fn create_videoinput_stream(&self, _: MediaTrackConstraintSet) -> Option<Box<MediaStream>> {
-        Some(Box::new(DummyMediaStream))
+    fn create_videoinput_stream(&self, _: MediaTrackConstraintSet) -> Option<MediaStreamId> {
+        Some(register_stream(Arc::new(Mutex::new(DummyMediaStream {
+            id: MediaStreamId::new(),
+        }))))
     }
 
     fn create_player(&self, _: StreamType) -> Box<Player> {
@@ -130,7 +139,7 @@ impl Player for DummyPlayer {
         Ok(())
     }
 
-    fn set_stream(&self, _: Box<MediaStream>) -> Result<(), PlayerError> {
+    fn set_stream(&self, _: &MediaStreamId) -> Result<(), PlayerError> {
         Ok(())
     }
 }
@@ -151,13 +160,23 @@ impl AudioDecoder for DummyAudioDecoder {
     fn decode(&self, _: Vec<u8>, _: AudioDecoderCallbacks, _: Option<AudioDecoderOptions>) {}
 }
 
-pub struct DummyMediaStream;
+pub struct DummyMediaStream {
+    id: MediaStreamId,
+}
+
 impl MediaStream for DummyMediaStream {
     fn as_any(&self) -> &Any {
         self
     }
     fn as_mut_any(&mut self) -> &mut Any {
         self
+    }
+    fn set_id(&mut self, _: MediaStreamId) {}
+}
+
+impl Drop for DummyMediaStream {
+    fn drop(&mut self) {
+        unregister_stream(&self.id);
     }
 }
 
@@ -184,7 +203,7 @@ impl AudioSink for DummyAudioSink {
 
 pub struct DummyMediaOutput;
 impl MediaOutput for DummyMediaOutput {
-    fn add_stream(&mut self, _stream: Box<MediaStream>) {}
+    fn add_stream(&mut self, _stream: &MediaStreamId) {}
 }
 
 pub struct DummyWebRtcController;
@@ -216,7 +235,7 @@ impl WebRtcControllerBackend for DummyWebRtcController {
     fn create_answer(&mut self, _: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebrtcResult {
         Ok(())
     }
-    fn add_stream(&mut self, _: Box<MediaStream>) -> WebrtcResult {
+    fn add_stream(&mut self, _: &MediaStreamId) -> WebrtcResult {
         Ok(())
     }
     fn internal_event(&mut self, _: thread::InternalEvent) -> WebrtcResult {

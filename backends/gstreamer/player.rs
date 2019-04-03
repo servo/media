@@ -1,3 +1,4 @@
+use super::BACKEND_BASE_TIME;
 use glib;
 use glib::prelude::*;
 use gst;
@@ -14,7 +15,7 @@ use media_stream_source::{register_servo_media_stream_src, ServoMediaStreamSrc};
 use servo_media_player::frame::{Buffer, Frame, FrameData, FrameRenderer};
 use servo_media_player::metadata::Metadata;
 use servo_media_player::{GlContext, PlaybackState, Player, PlayerError, PlayerEvent, StreamType};
-use servo_media_streams::MediaStream;
+use servo_media_streams::registry::{get_stream, MediaStreamId};
 use source::{register_servo_src, ServoSrc};
 use std::cell::RefCell;
 use std::error::Error;
@@ -23,7 +24,6 @@ use std::sync::mpsc;
 use std::sync::{Arc, Mutex, Once};
 use std::time;
 use std::u64;
-use BACKEND_BASE_TIME;
 
 const MAX_BUFFER_SIZE: i32 = 500 * 1024 * 1024;
 
@@ -294,10 +294,13 @@ impl PlayerInner {
         Ok(result)
     }
 
-    fn set_stream(&mut self, mut stream: Box<MediaStream>) -> Result<(), PlayerError> {
+    fn set_stream(&mut self, stream: &MediaStreamId) -> Result<(), PlayerError> {
         debug_assert!(self.stream_type == StreamType::Stream);
         if let Some(ref source) = self.source {
             if let PlayerSource::Stream(source) = source {
+                let stream =
+                    get_stream(stream).expect("Media streams registry does not contain such ID");
+                let mut stream = stream.lock().unwrap();
                 if let Some(mut stream) = stream.as_mut_any().downcast_mut::<GStreamerMediaStream>()
                 {
                     let playbin = self
@@ -890,7 +893,7 @@ impl Player for GStreamerPlayer {
     inner_player_proxy!(seek, time, f64);
     inner_player_proxy!(set_volume, value, f64);
     inner_player_proxy!(buffered, Vec<Range<f64>>);
-    inner_player_proxy!(set_stream, stream, Box<MediaStream>);
+    inner_player_proxy!(set_stream, stream, &MediaStreamId);
 
     fn register_event_handler(&self, sender: IpcSender<PlayerEvent>) {
         self.observers.lock().unwrap().register(sender);

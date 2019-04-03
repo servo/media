@@ -145,8 +145,8 @@ impl State {
                 self.media.create_audiostream(),
             )
         };
-        webrtc.add_stream(video);
-        webrtc.add_stream(audio);
+        webrtc.add_stream(&video);
+        webrtc.add_stream(&audio);
 
         webrtc.configure(STUN_SERVER.into(), BundlePolicy::MaxBundle);
     }
@@ -192,9 +192,8 @@ impl WebRtcSignaller for Signaller {
         );
     }
 
-    fn on_add_stream(&self, stream: Box<MediaStream>) {
-        println!("notified of stream!");
-        self.output.lock().unwrap().add_stream(stream);
+    fn on_add_stream(&self, stream: &registry::MediaStreamId) {
+        self.output.lock().unwrap().add_stream(&stream);
     }
 }
 
