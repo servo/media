@@ -426,7 +426,7 @@ impl GStreamerPlayer {
             .set_config(config)
             .map_err(|e| PlayerError::Backend(e.to_string()))?;
 
-        let render = GStreamerRender::new();
+        let render = GStreamerRender::new(GlContext::Unknown, 0);
         let appsink = render.setup_video_sink(&pipeline)?;
 
         // There's a known bug in gstreamer that may cause a wrong transition

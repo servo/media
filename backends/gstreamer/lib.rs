@@ -23,6 +23,7 @@ extern crate lazy_static;
 
 extern crate servo_media;
 extern crate servo_media_audio;
+extern crate servo_media_gstreamer_render;
 extern crate servo_media_player;
 extern crate servo_media_streams;
 extern crate servo_media_webrtc;

@@ -75,3 +75,6 @@ path = "../../streams"
 
 [dependencies.servo-media-webrtc]
 path = "../../webrtc"
+
+[dependencies.servo-media-gstreamer-render]
+path = "render"
