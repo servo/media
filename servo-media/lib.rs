@@ -9,7 +9,8 @@ use std::sync::{self, Arc, Mutex, Once};
 use audio::context::{AudioContext, AudioContextOptions};
 use player::{Player, StreamType};
 use streams::capture::MediaTrackConstraintSet;
-use streams::{MediaOutput, MediaStream};
+use streams::registry::MediaStreamId;
+use streams::MediaOutput;
 use webrtc::{WebRtcController, WebRtcSignaller};
 
 pub struct ServoMedia(Box<Backend>);
@@ -23,11 +24,11 @@ pub trait BackendInit {
 
 pub trait Backend: Send + Sync {
     fn create_player(&self, stream_type: StreamType) -> Box<Player>;
-    fn create_audiostream(&self) -> Box<MediaStream>;
-    fn create_videostream(&self) -> Box<MediaStream>;
+    fn create_audiostream(&self) -> MediaStreamId;
+    fn create_videostream(&self) -> MediaStreamId;
     fn create_stream_output(&self) -> Box<MediaOutput>;
-    fn create_audioinput_stream(&self, set: MediaTrackConstraintSet) -> Option<Box<MediaStream>>;
-    fn create_videoinput_stream(&self, set: MediaTrackConstraintSet) -> Option<Box<MediaStream>>;
+    fn create_audioinput_stream(&self, set: MediaTrackConstraintSet) -> Option<MediaStreamId>;
+    fn create_videoinput_stream(&self, set: MediaTrackConstraintSet) -> Option<MediaStreamId>;
     fn create_audio_context(&self, options: AudioContextOptions) -> AudioContext;
     fn create_webrtc(&self, signaller: Box<WebRtcSignaller>) -> WebRtcController;
 }

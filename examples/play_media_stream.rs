@@ -14,7 +14,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     player.lock().unwrap().register_event_handler(sender);
 
     let audio_stream = servo_media.create_audiostream();
-    player.lock().unwrap().set_stream(audio_stream).unwrap();
+    player.lock().unwrap().set_stream(&audio_stream).unwrap();
 
     player.lock().unwrap().play().unwrap();
 

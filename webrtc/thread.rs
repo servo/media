@@ -6,7 +6,7 @@ use log::error;
 use boxfnonce::SendBoxFnOnce;
 
 use crate::{
-    BundlePolicy, DescriptionType, IceCandidate, MediaStream, SdpType, SessionDescription,
+    BundlePolicy, DescriptionType, IceCandidate, MediaStreamId, SdpType, SessionDescription,
 };
 use crate::{WebRtcBackend, WebRtcControllerBackend, WebRtcSignaller};
 
@@ -59,8 +59,8 @@ impl WebRtcController {
     pub fn create_answer(&self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) {
         let _ = self.sender.send(RtcThreadEvent::CreateAnswer(cb));
     }
-    pub fn add_stream(&self, stream: Box<MediaStream>) {
-        let _ = self.sender.send(RtcThreadEvent::AddStream(stream));
+    pub fn add_stream(&self, stream: &MediaStreamId) {
+        let _ = self.sender.send(RtcThreadEvent::AddStream(stream.clone()));
     }
 
     /// This should not be invoked by clients
@@ -80,7 +80,7 @@ pub enum RtcThreadEvent {
     AddIceCandidate(IceCandidate),
     CreateOffer(SendBoxFnOnce<'static, (SessionDescription,)>),
     CreateAnswer(SendBoxFnOnce<'static, (SessionDescription,)>),
-    AddStream(Box<MediaStream>),
+    AddStream(MediaStreamId),
     InternalEvent(InternalEvent),
     Quit,
 }
@@ -93,7 +93,7 @@ pub enum RtcThreadEvent {
 pub enum InternalEvent {
     OnNegotiationNeeded,
     OnIceCandidate(IceCandidate),
-    OnAddStream(Box<MediaStream>),
+    OnAddStream(MediaStreamId),
     DescriptionAdded(
         SendBoxFnOnce<'static, ()>,
         DescriptionType,
@@ -115,7 +115,7 @@ pub fn handle_rtc_event(controller: &mut WebRtcControllerBackend, event: RtcThre
         RtcThreadEvent::AddIceCandidate(candidate) => controller.add_ice_candidate(candidate),
         RtcThreadEvent::CreateOffer(cb) => controller.create_offer(cb),
         RtcThreadEvent::CreateAnswer(cb) => controller.create_answer(cb),
-        RtcThreadEvent::AddStream(media) => controller.add_stream(media),
+        RtcThreadEvent::AddStream(media) => controller.add_stream(&media),
         RtcThreadEvent::InternalEvent(e) => controller.internal_event(e),
         RtcThreadEvent::Quit => {
             controller.quit();

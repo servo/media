@@ -8,5 +8,6 @@ edition = "2018"
 name = "servo_media_streams"
 path = "lib.rs"
 
-
 [dependencies]
+lazy_static = "1.0"
+uuid = { version = "0.7", features = ["v4"] }

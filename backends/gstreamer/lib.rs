@@ -28,18 +28,6 @@ extern crate servo_media_streams;
 extern crate servo_media_webrtc;
 extern crate url;
 
-use gst::ClockExt;
-
-use servo_media::{Backend, BackendInit};
-use servo_media_audio::context::{AudioContext, AudioContextOptions};
-use servo_media_audio::decoder::AudioDecoder;
-use servo_media_audio::sink::AudioSinkError;
-use servo_media_audio::AudioBackend;
-use servo_media_player::{Player, StreamType};
-use servo_media_streams::capture::MediaTrackConstraintSet;
-use servo_media_streams::{MediaOutput, MediaStream};
-use servo_media_webrtc::{WebRtcBackend, WebRtcController, WebRtcSignaller};
-
 pub mod audio_decoder;
 pub mod audio_sink;
 pub mod media_capture;
@@ -49,8 +37,21 @@ pub mod player;
 mod source;
 pub mod webrtc;
 
+use gst::ClockExt;
+use media_stream::GStreamerMediaStream;
+use servo_media::{Backend, BackendInit};
+use servo_media_audio::context::{AudioContext, AudioContextOptions};
+use servo_media_audio::decoder::AudioDecoder;
+use servo_media_audio::sink::AudioSinkError;
+use servo_media_audio::AudioBackend;
+use servo_media_player::{Player, StreamType};
+use servo_media_streams::capture::MediaTrackConstraintSet;
+use servo_media_streams::registry::MediaStreamId;
+use servo_media_streams::MediaOutput;
+use servo_media_webrtc::{WebRtcBackend, WebRtcController, WebRtcSignaller};
+
 lazy_static! {
-    pub static ref BACKEND_BASE_TIME: gst::ClockTime = { gst::SystemClock::obtain().get_time() };
+    static ref BACKEND_BASE_TIME: gst::ClockTime = { gst::SystemClock::obtain().get_time() };
 }
 
 pub struct GStreamerBackend;
@@ -68,24 +69,24 @@ impl Backend for GStreamerBackend {
         WebRtcController::new::<Self>(signaller)
     }
 
-    fn create_audiostream(&self) -> Box<MediaStream> {
-        Box::new(media_stream::GStreamerMediaStream::create_audio())
+    fn create_audiostream(&self) -> MediaStreamId {
+        GStreamerMediaStream::create_audio()
     }
 
-    fn create_videostream(&self) -> Box<MediaStream> {
-        Box::new(media_stream::GStreamerMediaStream::create_video())
+    fn create_videostream(&self) -> MediaStreamId {
+        GStreamerMediaStream::create_video()
     }
 
     fn create_stream_output(&self) -> Box<MediaOutput> {
         Box::new(media_stream::MediaSink::new())
     }
 
-    fn create_audioinput_stream(&self, set: MediaTrackConstraintSet) -> Option<Box<MediaStream>> {
-        media_capture::create_audioinput_stream(set).map(|s| Box::new(s) as Box<MediaStream>)
+    fn create_audioinput_stream(&self, set: MediaTrackConstraintSet) -> Option<MediaStreamId> {
+        media_capture::create_audioinput_stream(set)
     }
 
-    fn create_videoinput_stream(&self, set: MediaTrackConstraintSet) -> Option<Box<MediaStream>> {
-        media_capture::create_videoinput_stream(set).map(|s| Box::new(s) as Box<MediaStream>)
+    fn create_videoinput_stream(&self, set: MediaTrackConstraintSet) -> Option<MediaStreamId> {
+        media_capture::create_videoinput_stream(set)
     }
 }
 
