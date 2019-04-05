@@ -4,15 +4,13 @@ use glib::prelude::*;
 use gst;
 use gst::prelude::*;
 use gst_app;
-use gst_gl;
-use gst_gl::prelude::*;
 use gst_player;
 use gst_player::prelude::*;
-use gst_video;
 use ipc_channel::ipc::IpcSender;
 use media_stream::GStreamerMediaStream;
 use media_stream_source::{register_servo_media_stream_src, ServoMediaStreamSrc};
-use servo_media_player::frame::{Buffer, Frame, FrameData, FrameRenderer};
+use render::GStreamerRender;
+use servo_media_player::frame::{Frame, FrameRenderer};
 use servo_media_player::metadata::Metadata;
 use servo_media_player::{GlContext, PlaybackState, Player, PlayerError, PlayerEvent, StreamType};
 use servo_media_streams::registry::{get_stream, MediaStreamId};
@@ -26,44 +24,6 @@ use std::time;
 use std::u64;
 
 const MAX_BUFFER_SIZE: i32 = 500 * 1024 * 1024;
-
-struct GStreamerBuffer {
-    is_gl: bool,
-    frame: gst_video::VideoFrame<gst_video::video_frame::Readable>,
-}
-
-impl Buffer for GStreamerBuffer {
-    fn to_vec(&self) -> Result<FrameData, ()> {
-        // packed formats are guaranteed to be in a single plane
-        if self.is_gl && self.frame.format() == gst_video::VideoFormat::Rgba {
-            let texid = self.frame.get_texture_id(0).ok_or_else(|| ())?;
-            Ok(FrameData::Texture(texid))
-        } else if !self.is_gl && self.frame.format() == gst_video::VideoFormat::Bgra {
-            let data = self.frame.plane_data(0).ok_or_else(|| ())?;
-            Ok(FrameData::Raw(Arc::new(data.to_vec())))
-        } else {
-            Err(())
-        }
-    }
-}
-
-fn frame_from_sample(sample: &gst::Sample) -> Result<Frame, ()> {
-    let buffer = sample.get_buffer().ok_or_else(|| ())?;
-    let caps = sample.get_caps().ok_or_else(|| ())?;
-    let info = gst_video::VideoInfo::from_caps(caps.as_ref()).ok_or_else(|| ())?;
-    let is_gl = caps
-        .get_features(0)
-        .and_then(|features| Some(features.contains(&gst_gl::CAPS_FEATURE_MEMORY_GL_MEMORY)))
-        .ok_or_else(|| ())?;
-    let frame = if !is_gl {
-        gst_video::VideoFrame::from_buffer_readable(buffer, &info).or_else(|_| Err(()))?
-    } else {
-        gst_video::VideoFrame::from_buffer_readable_gl(buffer, &info).or_else(|_| Err(()))?
-    };
-    let buffer = GStreamerBuffer { is_gl, frame };
-
-    Frame::new(info.width() as i32, info.height() as i32, Arc::new(buffer))
-}
 
 fn metadata_from_media_info(media_info: &gst_player::PlayerMediaInfo) -> Result<Metadata, ()> {
     let dur = media_info.get_duration();
@@ -364,9 +324,7 @@ impl FrameRendererList {
         self.renderers.push(renderer);
     }
 
-    fn render(&self, sample: &gst::Sample) -> Result<(), ()> {
-        let frame = frame_from_sample(&sample)?;
-
+    fn render(&self, frame: &Frame) -> Result<(), ()> {
         for renderer in &self.renderers {
             renderer.lock().unwrap().render(frame.clone());
         }
@@ -385,8 +343,6 @@ pub struct GStreamerPlayer {
     /// Indicates whether the setup was succesfully performed and
     /// we are ready to consume a/v data.
     is_ready: Arc<Once>,
-    gl_context: RefCell<Option<gst_gl::GLContext>>,
-    gl_display: RefCell<Option<gst_gl::GLDisplay>>,
     /// Indicates whether the type of media stream to be played is a live stream.
     stream_type: StreamType,
 }
@@ -398,88 +354,8 @@ impl GStreamerPlayer {
             observers: Arc::new(Mutex::new(PlayerEventObserverList::new())),
             renderers: Arc::new(Mutex::new(FrameRendererList::new())),
             is_ready: Arc::new(Once::new()),
-            gl_context: RefCell::new(None),
-            gl_display: RefCell::new(None),
             stream_type,
         }
-    }
-
-    fn set_bus_sync_handler(&self, pipeline: &gst::Element) -> Result<(), PlayerError> {
-        let bus = pipeline.get_bus().expect("pipeline without bus");
-
-        let gl_context = self.gl_context.replace(None).unwrap();
-        let gl_display = self.gl_display.replace(None).unwrap();
-
-        bus.set_sync_handler(move |_, msg| {
-            match msg.view() {
-                gst::MessageView::NeedContext(ctxt) => {
-                    if let Some(el) = msg.get_src().map(|s| s.downcast::<gst::Element>().unwrap()) {
-                        let context_type = ctxt.get_context_type();
-                        if context_type == *gst_gl::GL_DISPLAY_CONTEXT_TYPE {
-                            let context = gst::Context::new(context_type, true);
-                            context.set_gl_display(&gl_display);
-                            el.set_context(&context);
-                        } else if context_type == "gst.gl.app_context" {
-                            let mut context = gst::Context::new(context_type, true);
-                            let s = context.get_mut().unwrap().get_mut_structure();
-                            s.set_value("context", gl_context.to_send_value());
-                            el.set_context(&context);
-                        }
-                    }
-                }
-                _ => (),
-            }
-
-            gst::BusSyncReply::Pass
-        });
-
-        Ok(())
-    }
-
-    fn setup_video_sink(
-        &self,
-        player: &gst_player::Player,
-    ) -> Result<gst_app::AppSink, PlayerError> {
-        let pipeline = player.get_pipeline();
-
-        let appsink = gst::ElementFactory::make("appsink", None)
-            .ok_or(PlayerError::Backend("appsink creation failed".to_owned()))?
-            .dynamic_cast::<gst_app::AppSink>()
-            .unwrap();
-
-        if self.gl_context.borrow().is_some() {
-            let glsink = gst::ElementFactory::make("glsinkbin", None)
-                .ok_or(PlayerError::Backend("glsinkbin creation failed".to_owned()))?;
-
-            let caps = gst::Caps::builder("video/x-raw")
-                .features(&[&gst_gl::CAPS_FEATURE_MEMORY_GL_MEMORY])
-                .field("format", &gst_video::VideoFormat::Rgba.to_string())
-                .field("texture-target", &"2D")
-                .build();
-            appsink.set_caps(&caps);
-
-            glsink
-                .set_property("sink", &appsink)
-                .expect("glsinkbin doesn't have expected 'sink' property");
-
-            pipeline
-                .set_property("video-sink", &glsink)
-                .expect("playbin doesn't have expected 'video-sink' property");
-
-            self.set_bus_sync_handler(&pipeline)?;
-        } else {
-            let caps = gst::Caps::builder("video/x-raw")
-                .field("format", &gst_video::VideoFormat::Bgra.to_string())
-                .field("pixel-aspect-ratio", &gst::Fraction::from((1, 1)))
-                .build();
-            appsink.set_caps(&caps);
-
-            pipeline
-                .set_property("video-sink", &appsink)
-                .expect("playbin doesn't have expected 'video-sink' property");
-        };
-
-        Ok(appsink)
     }
 
     fn setup(&self) -> Result<(), PlayerError> {
@@ -550,7 +426,8 @@ impl GStreamerPlayer {
             .set_config(config)
             .map_err(|e| PlayerError::Backend(e.to_string()))?;
 
-        let video_sink = self.setup_video_sink(&player)?;
+        let render = GStreamerRender::new();
+        let appsink = render.setup_video_sink(&pipeline)?;
 
         // There's a known bug in gstreamer that may cause a wrong transition
         // to the ready state while setting the uri property:
@@ -579,7 +456,7 @@ impl GStreamerPlayer {
         *self.inner.borrow_mut() = Some(Arc::new(Mutex::new(PlayerInner {
             player,
             source: None,
-            appsink: video_sink,
+            appsink,
             input_size: 0,
             rate: 1.0,
             stream_type: self.stream_type,
@@ -735,10 +612,13 @@ impl GStreamerPlayer {
                 .new_preroll(|_| Ok(gst::FlowSuccess::Ok))
                 .new_sample(move |appsink| {
                     let sample = appsink.pull_sample().ok_or(gst::FlowError::Eos)?;
+                    let frame = render
+                        .get_frame_from_sample(&sample)
+                        .or_else(|_| Err(gst::FlowError::Error))?;
                     renderers
                         .lock()
                         .unwrap()
-                        .render(&sample)
+                        .render(&frame)
                         .map(|_| {
                             observers.lock().unwrap().notify(PlayerEvent::FrameUpdated);
                         })
