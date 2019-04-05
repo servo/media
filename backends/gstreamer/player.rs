@@ -345,6 +345,7 @@ pub struct GStreamerPlayer {
     is_ready: Arc<Once>,
     /// Indicates whether the type of media stream to be played is a live stream.
     stream_type: StreamType,
+    render: RefCell<Option<GStreamerRender>>,
 }
 
 impl GStreamerPlayer {
@@ -355,6 +356,7 @@ impl GStreamerPlayer {
             renderers: Arc::new(Mutex::new(FrameRendererList::new())),
             is_ready: Arc::new(Once::new()),
             stream_type,
+            render: RefCell::new(None),
         }
     }
 
@@ -426,7 +428,10 @@ impl GStreamerPlayer {
             .set_config(config)
             .map_err(|e| PlayerError::Backend(e.to_string()))?;
 
-        let render = GStreamerRender::new(GlContext::Unknown, 0);
+        let render = self
+            .render
+            .replace(None)
+            .unwrap_or(GStreamerRender::new(GlContext::Unknown, 0));
         let appsink = render.setup_video_sink(&pipeline)?;
 
         // There's a known bug in gstreamer that may cause a wrong transition
@@ -788,10 +793,15 @@ impl Player for GStreamerPlayer {
         self.renderers.lock().unwrap().register(renderer);
     }
 
-    fn set_gl_params(&self, _: GlContext, _: usize) -> Result<(), ()> {
-        // XXX All GL functionality is temporarily disabled because of
-        // https://github.com/servo/servo/pull/22944#issuecomment-468827665
-        Err(())
+    fn set_gl_params(&self, context: GlContext, display: usize) -> Result<(), ()> {
+        let render = GStreamerRender::new(context, display);
+        let ret = render.is_gl();
+        *self.render.borrow_mut() = Some(render);
+        if ret {
+            Ok(())
+        } else {
+            Err(())
+        }
     }
 
     fn shutdown(&self) -> Result<(), PlayerError> {

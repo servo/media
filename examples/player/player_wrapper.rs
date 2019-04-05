@@ -20,33 +20,51 @@ pub struct PlayerWrapper {
 }
 
 impl PlayerWrapper {
-    #[cfg(target_os = "linux")]
     fn set_gl_params(
         player: &Arc<Mutex<Box<dyn Player>>>,
         window: &glutin::GlWindow,
     ) -> Result<(), ()> {
-        use glutin::os::unix::RawHandle;
         use glutin::os::GlContextExt;
 
         let context = window.context();
-        match unsafe { context.raw_handle() } {
-            RawHandle::Egl(egl_context) => {
-                let gl_context = GlContext::Egl(egl_context as usize);
-                if let Some(gl_display) = unsafe { context.get_egl_display() } {
-                    return player
-                        .lock()
-                        .unwrap()
-                        .set_gl_params(gl_context, gl_display as usize);
-                }
-                Err(())
-            }
-            RawHandle::Glx(_) => Err(()),
-        }
-    }
+        let raw_handle = unsafe { context.raw_handle() };
 
-    #[cfg(not(target_os = "linux"))]
-    fn set_gl_params(_: &Arc<Mutex<Box<dyn Player>>>, _: &glutin::GlWindow) -> Result<(), ()> {
-        Err(())
+        #[cfg(any(
+            target_os = "linux",
+            target_os = "dragonfly",
+            target_os = "freebsd",
+            target_os = "netbsd",
+            target_os = "openbsd"
+        ))]
+        {
+            use glutin::os::unix::RawHandle;
+
+            match raw_handle {
+                RawHandle::Egl(egl_context) => {
+                    let gl_context = GlContext::Egl(egl_context as usize);
+                    if let Some(gl_display) = unsafe { context.get_egl_display() } {
+                        return player
+                            .lock()
+                            .unwrap()
+                            .set_gl_params(gl_context, gl_display as usize);
+                    }
+                    Err(())
+                }
+                RawHandle::Glx(_) => Err(()),
+            }
+        }
+
+        #[cfg(not(any(
+            target_os = "linux",
+            target_os = "dragonfly",
+            target_os = "freebsd",
+            target_os = "netbsd",
+            target_os = "openbsd"
+        )))]
+        {
+            println!("GL rendering unavailable for this platform");
+            Err(())
+        }
     }
 
     pub fn new(path: &Path, window: Option<&glutin::GlWindow>) -> Self {
