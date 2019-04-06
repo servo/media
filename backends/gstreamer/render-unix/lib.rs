@@ -7,6 +7,7 @@
 ))]
 
 extern crate glib;
+#[macro_use]
 extern crate gstreamer as gst;
 extern crate gstreamer_gl as gst_gl;
 extern crate gstreamer_video as gst_video;
@@ -28,7 +29,7 @@ struct GStreamerBuffer {
 impl Buffer for GStreamerBuffer {
     fn to_vec(&self) -> Result<FrameData, ()> {
         // packed formats are guaranteed to be in a single plane
-        if self.frame.format() == gst_video::VideoFormat::Bgrx {
+        if self.frame.format() == gst_video::VideoFormat::Rgba {
             let tex_id = self.frame.get_texture_id(0).ok_or_else(|| ())?;
             Ok(FrameData::Texture(tex_id))
         } else {
@@ -46,6 +47,12 @@ pub struct RenderUnix {
 
 impl RenderUnix {
     pub fn new(gl_context: GlContext, display_native: usize) -> Option<RenderUnix> {
+        // Check that we actually have the elements that we
+        // need to make this work.
+        if gst::ElementFactory::find("glsinkbin").is_none() {
+            return None;
+        }
+
         match gl_context {
             GlContext::Egl(context) => {
                 let display = unsafe { gst_gl::GLDisplayEGL::new_with_egl_display(display_native) };
@@ -61,7 +68,8 @@ impl RenderUnix {
 
                     if let Some(context) = context {
                         if !(context.activate(true).is_ok() && context.fill_info().is_ok()) {
-                            println!("Couldn't fill the wrapped app GL context")
+                            let cat = gst::DebugCategory::get("default").unwrap();
+                            gst_warning!(cat, "Couldn't fill the wrapped app GL context")
                         }
                         return Some(RenderUnix {
                             display: display.upcast(),
@@ -118,37 +126,21 @@ impl Render for RenderUnix {
             ));
         }
 
-        let vsinkbin = gst::Bin::new("servo-media-video-sink");
-
-        let glupload = gst::ElementFactory::make("glupload", "servo-media-upload")
+        let vsinkbin = gst::ElementFactory::make("glsinkbin", "servo-media-vsink")
             .ok_or(PlayerError::Backend("glupload creation failed".to_owned()))?;
-        let glconvert = gst::ElementFactory::make("glcolorconvert", None).ok_or(
-            PlayerError::Backend("glcolorconvert creation failed".to_owned()),
-        )?;
 
         let caps = gst::Caps::builder("video/x-raw")
             .features(&[&gst_gl::CAPS_FEATURE_MEMORY_GL_MEMORY])
-            .field("format", &gst_video::VideoFormat::Bgrx.to_string())
+            .field("format", &gst_video::VideoFormat::Rgba.to_string())
             .field("texture-target", &"2D")
             .build();
         appsink
             .set_property("caps", &caps)
-            .or_else(|err| Err(PlayerError::Backend(err.to_string())))?;
+            .expect("appsink doesn't have expected 'caps' property");
 
         vsinkbin
-            .add_many(&[&glupload, &glconvert, appsink])
-            .expect("Could not add elements into video sink bin");
-
-        gst::Element::link_many(&[&glupload, &glconvert, appsink])
-            .expect("Could not link elements in video sink bin");
-
-        let pad = glupload
-            .get_static_pad("sink")
-            .expect("glupload doesn't have sink pad");
-        let ghost_pad = gst::GhostPad::new("sink", &pad).expect("Could not create ghost pad");
-        vsinkbin
-            .add_pad(&ghost_pad)
-            .expect("Could not add gohst pad to video sink bin");
+            .set_property("sink", &appsink)
+            .expect("glsinkbin doesn't have expected 'sink' property");
 
         pipeline
             .set_property("video-sink", &vsinkbin)
@@ -182,7 +174,21 @@ impl Render for RenderUnix {
             gst::BusSyncReply::Pass
         });
 
-        *self.gl_upload.lock().unwrap() = Some(glupload);
+        let mut iter = vsinkbin
+            .dynamic_cast::<gst::Bin>()
+            .unwrap()
+            .iterate_elements();
+        *self.gl_upload.lock().unwrap() = loop {
+            match iter.next() {
+                Ok(Some(element)) => {
+                    if "glupload" == element.get_factory().unwrap().get_name() {
+                        break Some(element);
+                    }
+                }
+                Err(gst::IteratorError::Resync) => iter.resync(),
+                _ => break None,
+            }
+        };
 
         Ok(())
     }
