@@ -22,11 +22,11 @@ pub struct PlayerWrapper {
 impl PlayerWrapper {
     fn set_gl_params(
         player: &Arc<Mutex<Box<dyn Player>>>,
-        window: &glutin::GlWindow,
+        windowed_context: &glutin::WindowedContext,
     ) -> Result<(), ()> {
-        use glutin::os::GlContextExt;
+        use glutin::os::ContextTraitExt;
 
-        let context = window.context();
+        let context = windowed_context.context();
         let raw_handle = unsafe { context.raw_handle() };
 
         #[cfg(any(
@@ -67,11 +67,11 @@ impl PlayerWrapper {
         }
     }
 
-    pub fn new(path: &Path, window: Option<&glutin::GlWindow>) -> Self {
+    pub fn new(path: &Path, windowed_context: Option<&glutin::WindowedContext>) -> Self {
         let servo_media = ServoMedia::get().unwrap();
         let player = Arc::new(Mutex::new(servo_media.create_player(StreamType::Seekable)));
-        let use_gl = if let Some(win) = window {
-            PlayerWrapper::set_gl_params(&player, win).is_ok()
+        let use_gl = if let Some(windowed_context) = windowed_context {
+            PlayerWrapper::set_gl_params(&player, windowed_context).is_ok()
         } else {
             false
         };
