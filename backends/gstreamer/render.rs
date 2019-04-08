@@ -9,6 +9,31 @@ use servo_media_gstreamer_render::Render;
 use servo_media_player::frame::{Buffer, Frame, FrameData};
 use servo_media_player::{GlContext, PlayerError};
 
+#[cfg(any(
+    target_os = "linux",
+    target_os = "dragonfly",
+    target_os = "freebsd",
+    target_os = "netbsd",
+    target_os = "openbsd"
+))]
+mod platform {
+    extern crate servo_media_gstreamer_render_unix;
+    pub use self::servo_media_gstreamer_render_unix::RenderUnix as Render;
+
+    use super::*;
+
+    pub fn create_render(context: GlContext, display: usize) -> Option<Render> {
+        Render::new(context, display)
+    }
+}
+
+#[cfg(not(any(
+    target_os = "linux",
+    target_os = "dragonfly",
+    target_os = "freebsd",
+    target_os = "netbsd",
+    target_os = "openbsd"
+)))]
 mod platform {
     use servo_media_gstreamer_render::Render as RenderTrait;
     use servo_media_player::frame::Frame;
