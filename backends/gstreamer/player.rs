@@ -785,6 +785,7 @@ impl GStreamerPlayer {
                         }
 
                         let sender_clone = sender.clone();
+                        let is_ready = is_ready_clone.clone();
                         let is_ready_ = is_ready_clone.clone();
                         let observers_ = observers.clone();
                         let observers__ = observers.clone();
@@ -797,7 +798,7 @@ impl GStreamerPlayer {
                                     // don't miss any data between the moment the client
                                     // calls setup and the player is actually ready to
                                     // get any data.
-                                    is_ready_.call_once(|| {
+                                    is_ready.call_once(|| {
                                         let _ = sender_clone.lock().unwrap().send(Ok(()));
                                     });
                                     observers_.lock().unwrap().notify(PlayerEvent::NeedData);
@@ -806,10 +807,14 @@ impl GStreamerPlayer {
                                     observers__.lock().unwrap().notify(PlayerEvent::EnoughData);
                                 })
                                 .seek_data(move |_, offset| {
-                                    observers___
-                                        .lock()
-                                        .unwrap()
-                                        .notify(PlayerEvent::SeekData(offset));
+                                    // We only progress seek data requests if we are ready
+                                    // to receive data.
+                                    if is_ready_.is_completed() {
+                                        observers___
+                                            .lock()
+                                            .unwrap()
+                                            .notify(PlayerEvent::SeekData(offset));
+                                    }
                                     true
                                 })
                                 .build(),
