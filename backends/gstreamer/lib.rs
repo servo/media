@@ -13,7 +13,6 @@ extern crate glib;
 extern crate gstreamer as gst;
 extern crate gstreamer_app as gst_app;
 extern crate gstreamer_audio as gst_audio;
-extern crate gstreamer_gl as gst_gl;
 extern crate gstreamer_player as gst_player;
 extern crate gstreamer_sdp as gst_sdp;
 extern crate gstreamer_video as gst_video;
@@ -24,6 +23,7 @@ extern crate lazy_static;
 
 extern crate servo_media;
 extern crate servo_media_audio;
+extern crate servo_media_gstreamer_render;
 extern crate servo_media_player;
 extern crate servo_media_streams;
 extern crate servo_media_webrtc;
@@ -35,6 +35,7 @@ pub mod media_capture;
 pub mod media_stream;
 mod media_stream_source;
 pub mod player;
+mod render;
 mod source;
 pub mod webrtc;
 
@@ -125,7 +126,6 @@ pub fn set_element_flags<T: glib::IsA<gst::Object> + glib::IsA<gst::Element>>(
 ) {
     unsafe {
         use glib::translate::ToGlib;
-        use gst_ffi;
 
         let ptr: *mut gst_ffi::GstObject = element.as_ptr() as *mut _;
         let _guard = MutexGuard::lock(&(*ptr).lock);

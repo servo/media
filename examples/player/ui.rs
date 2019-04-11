@@ -8,7 +8,7 @@ extern crate env_logger;
 extern crate euclid;
 
 use gleam::gl;
-use glutin::{self, GlContext};
+use glutin::ContextTrait;
 use servo_media::player::frame::FrameRenderer;
 use std::env;
 use std::path::Path;
@@ -116,35 +116,34 @@ pub fn main_wrapper<E: Example + FrameRenderer>(
     env_logger::init();
 
     let mut events_loop = winit::EventsLoop::new();
-    let context_builder = glutin::ContextBuilder::new().with_gl(glutin::GlRequest::GlThenGles {
-        opengl_version: (3, 2),
-        opengles_version: (3, 0),
-    });
-    let window_builder = winit::WindowBuilder::new()
+    let window = winit::WindowBuilder::new()
         .with_title(E::TITLE)
         .with_multitouch()
         .with_dimensions(winit::dpi::LogicalSize::new(
             E::WIDTH as f64,
             E::HEIGHT as f64,
         ));
-    let window = glutin::GlWindow::new(window_builder, context_builder, &events_loop).unwrap();
+    let windowed_context = glutin::ContextBuilder::new()
+        .with_vsync(true)
+        .build_windowed(window, &events_loop)
+        .unwrap();
 
     unsafe {
-        window.make_current().ok();
+        windowed_context.make_current().ok();
     }
 
-    let gl = match window.get_api() {
+    let gl = match windowed_context.get_api() {
         glutin::Api::OpenGl => unsafe {
-            gl::GlFns::load_with(|symbol| window.get_proc_address(symbol) as *const _)
+            gl::GlFns::load_with(|symbol| windowed_context.get_proc_address(symbol) as *const _)
         },
         glutin::Api::OpenGlEs => unsafe {
-            gl::GlesFns::load_with(|symbol| window.get_proc_address(symbol) as *const _)
+            gl::GlesFns::load_with(|symbol| windowed_context.get_proc_address(symbol) as *const _)
         },
         glutin::Api::WebGl => unimplemented!(),
     };
 
     println!("OpenGL version {}", gl.get_string(gl::VERSION));
-    let device_pixel_ratio = window.get_hidpi_factor() as f32;
+    let device_pixel_ratio = windowed_context.get_hidpi_factor() as f32;
     println!("Device pixel ratio: {}", device_pixel_ratio);
     let mut debug_flags = webrender::DebugFlags::ECHO_DRIVER_MESSAGES;
 
@@ -160,7 +159,7 @@ pub fn main_wrapper<E: Example + FrameRenderer>(
     };
 
     let framebuffer_size = {
-        let size = window
+        let size = windowed_context
             .get_inner_size()
             .unwrap()
             .to_physical(device_pixel_ratio as f64);
@@ -172,8 +171,15 @@ pub fn main_wrapper<E: Example + FrameRenderer>(
     let api = sender.create_api();
     let document_id = api.add_document(framebuffer_size, 0);
 
-    let gl_win = if use_gl { Some(&window) } else { None };
-    let player_wrapper = PlayerWrapper::new(path, gl_win);
+    let windowed_context_ = if use_gl {
+        Some(&windowed_context)
+    } else {
+        None
+    };
+    unsafe {
+        windowed_context.make_current().ok();
+    }
+    let player_wrapper = PlayerWrapper::new(path, windowed_context_);
     example.lock().unwrap().use_gl(player_wrapper.use_gl());
     player_wrapper.register_frame_renderer(example.clone());
 
@@ -292,7 +298,7 @@ pub fn main_wrapper<E: Example + FrameRenderer>(
         renderer.render(framebuffer_size).unwrap();
         let _ = renderer.flush_pipeline_info();
         example.lock().unwrap().draw_custom(&*gl);
-        window.swap_buffers().ok();
+        windowed_context.swap_buffers().ok();
 
         winit::ControlFlow::Continue
     });

@@ -20,40 +20,58 @@ pub struct PlayerWrapper {
 }
 
 impl PlayerWrapper {
-    #[cfg(target_os = "linux")]
     fn set_gl_params(
         player: &Arc<Mutex<Box<dyn Player>>>,
-        window: &glutin::GlWindow,
+        windowed_context: &glutin::WindowedContext,
     ) -> Result<(), ()> {
-        use glutin::os::unix::RawHandle;
-        use glutin::os::GlContextExt;
+        use glutin::os::ContextTraitExt;
 
-        let context = window.context();
-        match unsafe { context.raw_handle() } {
-            RawHandle::Egl(egl_context) => {
-                let gl_context = GlContext::Egl(egl_context as usize);
-                if let Some(gl_display) = unsafe { context.get_egl_display() } {
-                    return player
-                        .lock()
-                        .unwrap()
-                        .set_gl_params(gl_context, gl_display as usize);
+        let context = windowed_context.context();
+        let raw_handle = unsafe { context.raw_handle() };
+
+        #[cfg(any(
+            target_os = "linux",
+            target_os = "dragonfly",
+            target_os = "freebsd",
+            target_os = "netbsd",
+            target_os = "openbsd"
+        ))]
+        {
+            use glutin::os::unix::RawHandle;
+
+            match raw_handle {
+                RawHandle::Egl(egl_context) => {
+                    let gl_context = GlContext::Egl(egl_context as usize);
+                    if let Some(gl_display) = unsafe { context.get_egl_display() } {
+                        return player
+                            .lock()
+                            .unwrap()
+                            .set_gl_params(gl_context, gl_display as usize);
+                    }
+                    Err(())
                 }
-                Err(())
+                RawHandle::Glx(_) => Err(()),
             }
-            RawHandle::Glx(_) => Err(()),
+        }
+
+        #[cfg(not(any(
+            target_os = "linux",
+            target_os = "dragonfly",
+            target_os = "freebsd",
+            target_os = "netbsd",
+            target_os = "openbsd"
+        )))]
+        {
+            println!("GL rendering unavailable for this platform");
+            Err(())
         }
     }
 
-    #[cfg(not(target_os = "linux"))]
-    fn set_gl_params(_: &Arc<Mutex<Box<dyn Player>>>, _: &glutin::GlWindow) -> Result<(), ()> {
-        Err(())
-    }
-
-    pub fn new(path: &Path, window: Option<&glutin::GlWindow>) -> Self {
+    pub fn new(path: &Path, windowed_context: Option<&glutin::WindowedContext>) -> Self {
         let servo_media = ServoMedia::get().unwrap();
         let player = Arc::new(Mutex::new(servo_media.create_player(StreamType::Seekable)));
-        let use_gl = if let Some(win) = window {
-            PlayerWrapper::set_gl_params(&player, win).is_ok()
+        let use_gl = if let Some(windowed_context) = windowed_context {
+            PlayerWrapper::set_gl_params(&player, windowed_context).is_ok()
         } else {
             false
         };

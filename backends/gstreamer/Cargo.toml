@@ -52,9 +52,6 @@ version = "0.13"
 [dependencies.gstreamer-video]
 version = "0.13"
 
-[dependencies.gstreamer-gl]
-version = "0.13"
-
 [dependencies.ipc-channel]
 version = "0.11"
 
@@ -78,3 +75,9 @@ path = "../../streams"
 
 [dependencies.servo-media-webrtc]
 path = "../../webrtc"
+
+[dependencies.servo-media-gstreamer-render]
+path = "render"
+
+[target.'cfg(any(target_os = "linux", target_os = "dragonfly", target_os = "freebsd", target_os = "netbsd", target_os = "openbsd"))'.dependencies]
+servo-media-gstreamer-render-unix = { path = "render-unix" }
