@@ -156,8 +156,8 @@ impl PlayerWrapper {
                             println!("EOF");
                             break;
                         }
-                        PlayerEvent::Error => {
-                            println!("Player's Error");
+                        PlayerEvent::Error(ref s) => {
+                            println!("Player's Error {:?}", s);
                             break;
                         }
                         PlayerEvent::MetadataUpdated(ref m) => {

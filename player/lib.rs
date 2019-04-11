@@ -43,7 +43,7 @@ pub enum PlayerEvent {
     EndOfStream,
     /// The player has enough data. The client should stop pushing data into.
     EnoughData,
-    Error,
+    Error(String),
     FrameUpdated,
     MetadataUpdated(metadata::Metadata),
     /// The internal player queue is running out of data. The client should start

@@ -489,8 +489,11 @@ impl GStreamerPlayer {
 
         let observers = self.observers.clone();
         // Handle `error` signal
-        inner.lock().unwrap().player.connect_error(move |_, _| {
-            observers.lock().unwrap().notify(PlayerEvent::Error);
+        inner.lock().unwrap().player.connect_error(move |_, error| {
+            observers
+                .lock()
+                .unwrap()
+                .notify(PlayerEvent::Error(error.to_string()));
         });
 
         let observers = self.observers.clone();
