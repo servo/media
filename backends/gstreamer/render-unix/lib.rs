@@ -1,3 +1,11 @@
+//! `RenderUnix` is a `Render` implementation for Unix-based
+//! platforms. It implements an OpenGL mechanism shared by Linux and
+//! many of the BSD flavors.
+//!
+//! Internally it uses GStreamer's *glsinkbin* element as *videosink*
+//! wrapping the *appsink* from the Player. And the shared frames are
+//! mapped as texuture IDs.
+
 #![cfg(any(
     target_os = "linux",
     target_os = "dragonfly",
@@ -46,6 +54,17 @@ pub struct RenderUnix {
 }
 
 impl RenderUnix {
+    /// Tries to create a new intance of the `RenderUnix`
+    ///
+    /// # Arguments
+    ///
+    /// * `gl_context` - is the living pointer to the GL context,
+    /// which might be Egl or Glx (right now only the first one is
+    /// supported).
+    ///
+    /// * `display_native` - is the living pointer to the native
+    /// display structure. It migth be the EGLDisplay, the XDisplay or
+    /// the wl_display (right now only the first one is supported)
     pub fn new(gl_context: GlContext, display_native: usize) -> Option<RenderUnix> {
         // Check that we actually have the elements that we
         // need to make this work.
