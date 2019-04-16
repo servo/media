@@ -31,6 +31,14 @@ pub trait Backend: Send + Sync {
     fn create_videoinput_stream(&self, set: MediaTrackConstraintSet) -> Option<MediaStreamId>;
     fn create_audio_context(&self, options: AudioContextOptions) -> AudioContext;
     fn create_webrtc(&self, signaller: Box<WebRtcSignaller>) -> WebRtcController;
+    fn can_play_type(&self, media_type: &str) -> SupportsMediaType;
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum SupportsMediaType {
+    Maybe,
+    No,
+    Probably,
 }
 
 impl ServoMedia {
