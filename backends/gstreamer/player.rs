@@ -209,9 +209,8 @@ impl PlayerInner {
                 if source.get_current_level_bytes() + data.len() as u64 > source.get_max_bytes() {
                     return Err(PlayerError::EnoughData);
                 }
-                let buffer = gst::Buffer::from_slice(data);
                 return source
-                    .push_buffer(buffer)
+                    .push_buffer(data)
                     .map(|_| ())
                     .map_err(|_| PlayerError::BufferPushFailed);
             }
@@ -671,10 +670,10 @@ impl GStreamerPlayer {
 
                         let sender_clone = sender.clone();
                         let is_ready = is_ready_clone.clone();
-                        let is_ready_ = is_ready_clone.clone();
                         let observers_ = observers.clone();
                         let observers__ = observers.clone();
                         let observers___ = observers.clone();
+                        let servosrc_ = servosrc.clone();
                         servosrc.set_callbacks(
                             gst_app::AppSrcCallbacks::new()
                                 .need_data(move |_, _| {
@@ -692,9 +691,9 @@ impl GStreamerPlayer {
                                     observers__.lock().unwrap().notify(PlayerEvent::EnoughData);
                                 })
                                 .seek_data(move |_, offset| {
-                                    // We only progress seek data requests if we are ready
-                                    // to receive data.
-                                    if is_ready_.is_completed() {
+                                    // We only emit seek data requests if the offset is
+                                    // different from current position
+                                    if servosrc_.set_seek_offset(offset) {
                                         observers___
                                             .lock()
                                             .unwrap()

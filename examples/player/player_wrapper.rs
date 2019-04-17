@@ -7,9 +7,10 @@ use servo_media::player::frame::{Frame, FrameRenderer};
 use servo_media::player::{GlContext, Player, PlayerEvent, StreamType};
 use servo_media::ServoMedia;
 use std::fs::File;
-use std::io::{BufReader, Read};
+use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread::Builder;
 
@@ -70,11 +71,13 @@ impl PlayerWrapper {
     pub fn new(path: &Path, windowed_context: Option<&glutin::WindowedContext>) -> Self {
         let servo_media = ServoMedia::get().unwrap();
         let player = Arc::new(Mutex::new(servo_media.create_player(StreamType::Seekable)));
+
         let use_gl = if let Some(windowed_context) = windowed_context {
             PlayerWrapper::set_gl_params(&player, windowed_context).is_ok()
         } else {
             false
         };
+
         let file = File::open(&path).unwrap();
         let metadata = file.metadata().unwrap();
         player
@@ -82,41 +85,62 @@ impl PlayerWrapper {
             .unwrap()
             .set_input_size(metadata.len())
             .unwrap();
+
         let (sender, receiver) = ipc::channel().unwrap();
         player.lock().unwrap().register_event_handler(sender);
+
         let player_ = player.clone();
         let player__ = player.clone();
         let shutdown = Arc::new(AtomicBool::new(false));
         let shutdown_ = shutdown.clone();
         let shutdown__ = shutdown.clone();
+
+        let (seek_sender, seek_receiver) = mpsc::channel();
+
         Builder::new()
             .name("File reader".to_owned())
             .spawn(move || {
                 let player = &player_;
                 let shutdown = &shutdown_;
+
                 let mut buf_reader = BufReader::new(file);
                 let mut buffer = [0; 8192];
+                let end_file = AtomicBool::new(false);
+
                 while !shutdown.load(Ordering::Relaxed) {
-                    match buf_reader.read(&mut buffer[..]) {
-                        Ok(0) => {
-                            println!("finished pushing data");
+                    if let Ok(offset) = seek_receiver.try_recv() {
+                        if buf_reader.seek(SeekFrom::Start(offset)).is_err() {
+                            eprintln!("BufReader - Could not seek to {:?}", offset);
                             break;
                         }
-                        Ok(size) => {
-                            if let Err(_) = player
-                                .lock()
-                                .unwrap()
-                                .push_data(Vec::from(&buffer[0..size]))
-                            {
+                        end_file.store(false, Ordering::Relaxed);
+                    }
+
+                    if !end_file.load(Ordering::Relaxed) {
+                        match buf_reader.read(&mut buffer[..]) {
+                            Ok(0) => {
+                                println!("finished pushing data");
+                                end_file.store(true, Ordering::Relaxed);
+                            }
+                            Ok(size) => {
+                                if let Err(e) = player
+                                    .lock()
+                                    .unwrap()
+                                    .push_data(Vec::from(&buffer[0..size]))
+                                {
+                                    println!("Can't push data: {:?}", e);
+                                    //break;
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!("Error: {}", e);
                                 break;
                             }
                         }
-                        Err(e) => {
-                            eprintln!("Error: {}", e);
-                            break;
-                        }
                     }
                 }
+
+                println!("out loop");
             })
             .unwrap();
 
@@ -125,6 +149,7 @@ impl PlayerWrapper {
             .spawn(move || {
                 let player = &player__;
                 let shutdown = &shutdown__;
+
                 while let Ok(event) = receiver.recv() {
                     match event {
                         PlayerEvent::EndOfStream => {
@@ -132,7 +157,7 @@ impl PlayerWrapper {
                             break;
                         }
                         PlayerEvent::Error => {
-                            println!("Error");
+                            println!("Player's Error");
                             break;
                         }
                         PlayerEvent::MetadataUpdated(ref m) => {
@@ -143,12 +168,26 @@ impl PlayerWrapper {
                         }
                         PlayerEvent::FrameUpdated => eprint!("."),
                         PlayerEvent::PositionChanged(_) => (),
-                        PlayerEvent::SeekData(_) => (),
-                        PlayerEvent::SeekDone(_) => (),
-                        PlayerEvent::NeedData => (),
-                        PlayerEvent::EnoughData => (),
+                        PlayerEvent::SeekData(offset) => {
+                            println!("Seek requested to position {:?}", offset);
+                            seek_sender.send(offset).unwrap();
+                        }
+                        PlayerEvent::SeekDone(offset) => {
+                            println!("Seek done to position {:?}", offset);
+                        }
+                        PlayerEvent::NeedData => {
+                            println!("Player needs data");
+                        }
+                        PlayerEvent::EnoughData => {
+                            println!("Player has enough data");
+                        }
+                    }
+
+                    if shutdown.load(Ordering::Relaxed) {
+                        break;
                     }
                 }
+
                 player.lock().unwrap().shutdown().unwrap();
                 shutdown.store(true, Ordering::Relaxed);
             })

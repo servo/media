@@ -41,6 +41,9 @@ version = "0.13"
 [dependencies.gstreamer-audio]
 version = "0.13"
 
+[dependencies.gstreamer-base]
+version = "0.13"
+
 [dependencies.gstreamer-player]
 version = "0.13"
 

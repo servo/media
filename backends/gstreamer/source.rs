@@ -6,6 +6,9 @@ use gst;
 use gst::prelude::*;
 use gst::subclass::prelude::*;
 use gst_app;
+use gst_base::prelude::*;
+use std::convert::TryFrom;
+use std::sync::Mutex;
 use url::Url;
 
 const MAX_SRC_QUEUE_SIZE: u64 = 50 * 1024 * 1024; // 50 MB.
@@ -28,12 +31,24 @@ mod imp {
         )
     }
 
+    #[derive(Debug)]
+    struct Position {
+        offset: u64,
+    }
+
+    impl Default for Position {
+        fn default() -> Self {
+            Position { offset: 0 }
+        }
+    }
+
     // The actual data structure that stores our values. This is not accessible
     // directly from the outside.
     pub struct ServoSrc {
         cat: gst::DebugCategory,
         appsrc: gst_app::AppSrc,
         srcpad: gst::GhostPad,
+        position: Mutex<Position>,
     }
 
     impl ServoSrc {
@@ -43,10 +58,102 @@ mod imp {
             }
         }
 
+        pub fn set_seek_offset<O: IsA<gst::Object>>(&self, parent: &O, offset: u64) -> bool {
+            let mut pos = self.position.lock().unwrap();
+
+            if pos.offset == offset {
+                false
+            } else {
+                pos.offset = offset;
+                gst_debug!(self.cat, obj: parent, "seeking to offset: {}", pos.offset);
+                true
+            }
+        }
+
+        pub fn push_buffer<O: IsA<gst::Object>>(
+            &self,
+            parent: &O,
+            data: Vec<u8>,
+        ) -> Result<gst::FlowSuccess, gst::FlowError> {
+            let mut pos = self.position.lock().unwrap(); // will block seeking
+
+            let length = u64::try_from(data.len()).unwrap();
+            let mut data_offset = 0;
+
+            let buffer_starting_offset = pos.offset;
+
+            // @TODO: optimization: update the element's blocksize by
+            // X factor given current length
+
+            pos.offset += length;
+
+            // set the stream size (in bytes) to current offset if
+            // size is lesser than it
+            let _ = u64::try_from(self.appsrc.get_size()).and_then(|size| {
+                if pos.offset > size {
+                    gst_debug!(
+                        self.cat,
+                        obj: parent,
+                        "Updating internal size from {} to {}",
+                        size,
+                        pos.offset
+                    );
+                    let new_size = i64::try_from(pos.offset).unwrap();
+                    self.appsrc.set_size(new_size);
+                }
+                Ok(())
+            });
+
+            // Split the received vec<> into buffers that are of a
+            // size basesrc suggest. It is important not to push
+            // buffers that are too large, otherwise incorrect
+            // buffering messages can be sent from the pipeline
+            let block_size: u64 = self.appsrc.get_blocksize().into();
+            let num_blocks = ((length - data_offset) as f64 / block_size as f64).ceil() as u64;
+
+            gst_log!(
+                self.cat,
+                obj: parent,
+                "Splitting the received vec into {} blocks",
+                num_blocks
+            );
+
+            let mut ret: Result<gst::FlowSuccess, gst::FlowError> = Ok(gst::FlowSuccess::Ok);
+            for i in 0..num_blocks {
+                let start = usize::try_from(i * block_size + data_offset).unwrap();
+                data_offset = 0;
+                let size = usize::try_from(block_size.min((length - start as u64).into())).unwrap();
+                let end = start + size;
+
+                let buffer_offset = buffer_starting_offset + start as u64;
+                let buffer_offset_end = buffer_offset + size as u64;
+
+                let subdata = Vec::from(&data[start..end]);
+                let mut buffer = gst::Buffer::from_slice(subdata);
+                {
+                    let buffer = buffer.get_mut().unwrap();
+                    buffer.set_offset(buffer_offset);
+                    buffer.set_offset_end(buffer_offset_end);
+                }
+
+                gst_trace!(self.cat, obj: parent, "Pushing buffer {:?}", buffer);
+
+                ret = self.appsrc.push_buffer(buffer);
+                match ret {
+                    Ok(_) => (),
+                    Err(gst::FlowError::Eos) | Err(gst::FlowError::Flushing) => {
+                        ret = Ok(gst::FlowSuccess::Ok)
+                    }
+                    Err(_) => break,
+                }
+            }
+
+            ret
+        }
+
         inner_appsrc_proxy!(end_of_stream, Result<gst::FlowSuccess, gst::FlowError>);
         inner_appsrc_proxy!(get_current_level_bytes, u64);
         inner_appsrc_proxy!(get_max_bytes, u64);
-        inner_appsrc_proxy!(push_buffer, buffer, gst::Buffer, Result<gst::FlowSuccess, gst::FlowError>);
         inner_appsrc_proxy!(set_callbacks, callbacks, gst_app::AppSrcCallbacks, ());
 
         fn query(
@@ -125,6 +232,7 @@ mod imp {
                 ),
                 appsrc: app_src,
                 srcpad: ghost_pad,
+                position: Mutex::new(Default::default()),
             }
         }
 
@@ -270,10 +378,17 @@ impl ServoSrc {
         imp::ServoSrc::from_instance(self).set_size(size)
     }
 
+    pub fn set_seek_offset(&self, offset: u64) -> bool {
+        imp::ServoSrc::from_instance(self).set_seek_offset(self, offset)
+    }
+
+    pub fn push_buffer(&self, data: Vec<u8>) -> Result<gst::FlowSuccess, gst::FlowError> {
+        imp::ServoSrc::from_instance(self).push_buffer(self, data)
+    }
+
     inner_servosrc_proxy!(end_of_stream, Result<gst::FlowSuccess, gst::FlowError>);
     inner_servosrc_proxy!(get_current_level_bytes, u64);
     inner_servosrc_proxy!(get_max_bytes, u64);
-    inner_servosrc_proxy!(push_buffer, buffer, gst::Buffer, Result<gst::FlowSuccess, gst::FlowError>);
     inner_servosrc_proxy!(set_callbacks, callbacks, gst_app::AppSrcCallbacks, ());
 }
 
