@@ -4,7 +4,7 @@
 
 use ipc_channel::ipc;
 use servo_media::player::frame::{Frame, FrameRenderer};
-use servo_media::player::{GlContext, Player, PlayerEvent, StreamType};
+use servo_media::player::{GlContext, Player, PlayerError, PlayerEvent, StreamType};
 use servo_media::ServoMedia;
 use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom};
@@ -123,13 +123,19 @@ impl PlayerWrapper {
                                 end_file.store(true, Ordering::Relaxed);
                             }
                             Ok(size) => {
-                                if let Err(e) = player
+                                match player
                                     .lock()
                                     .unwrap()
                                     .push_data(Vec::from(&buffer[0..size]))
                                 {
-                                    println!("Can't push data: {:?}", e);
-                                    //break;
+                                    Ok(_) => (),
+                                    Err(PlayerError::EnoughData) => {
+                                        print!("!");
+                                    }
+                                    Err(e) => {
+                                        println!("Can't push data: {:?}", e);
+                                        break;
+                                    }
                                 }
                             }
                             Err(e) => {
