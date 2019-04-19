@@ -99,8 +99,8 @@ fn run_example(servo_media: Arc<ServoMedia>) {
                 println!("\nEOF");
                 break;
             }
-            PlayerEvent::Error => {
-                println!("\nError");
+            PlayerEvent::Error(ref s) => {
+                println!("\nError {:?}", s);
                 break;
             }
             PlayerEvent::MetadataUpdated(ref m) => {

@@ -14,6 +14,7 @@ extern crate glib;
 extern crate gstreamer as gst;
 extern crate gstreamer_app as gst_app;
 extern crate gstreamer_audio as gst_audio;
+extern crate gstreamer_base as gst_base;
 extern crate gstreamer_player as gst_player;
 extern crate gstreamer_sdp as gst_sdp;
 extern crate gstreamer_video as gst_video;

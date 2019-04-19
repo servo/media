@@ -18,6 +18,7 @@ use source::{register_servo_src, ServoSrc};
 use std::cell::RefCell;
 use std::error::Error;
 use std::ops::Range;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex, Once};
 use std::time;
@@ -104,6 +105,7 @@ struct PlayerInner {
     stream_type: StreamType,
     last_metadata: Option<Metadata>,
     cat: gst::DebugCategory,
+    enough_data: Arc<AtomicBool>,
 }
 
 impl PlayerInner {
@@ -206,12 +208,11 @@ impl PlayerInner {
     pub fn push_data(&mut self, data: Vec<u8>) -> Result<(), PlayerError> {
         if let Some(ref mut source) = self.source {
             if let PlayerSource::Seekable(source) = source {
-                if source.get_current_level_bytes() + data.len() as u64 > source.get_max_bytes() {
+                if self.enough_data.load(Ordering::Relaxed) {
                     return Err(PlayerError::EnoughData);
                 }
-                let buffer = gst::Buffer::from_slice(data);
                 return source
-                    .push_buffer(buffer)
+                    .push_buffer(data)
                     .map(|_| ())
                     .map_err(|_| PlayerError::BufferPushFailed);
             }
@@ -471,6 +472,7 @@ impl GStreamerPlayer {
                 gst::DebugColorFlags::empty(),
                 "Servo player",
             ),
+            enough_data: Arc::new(AtomicBool::new(false)),
         })));
 
         let inner = self.inner.borrow();
@@ -487,8 +489,11 @@ impl GStreamerPlayer {
 
         let observers = self.observers.clone();
         // Handle `error` signal
-        inner.lock().unwrap().player.connect_error(move |_, _| {
-            observers.lock().unwrap().notify(PlayerEvent::Error);
+        inner.lock().unwrap().player.connect_error(move |_, error| {
+            observers
+                .lock()
+                .unwrap()
+                .notify(PlayerEvent::Error(error.to_string()));
         });
 
         let observers = self.observers.clone();
@@ -671,10 +676,12 @@ impl GStreamerPlayer {
 
                         let sender_clone = sender.clone();
                         let is_ready = is_ready_clone.clone();
-                        let is_ready_ = is_ready_clone.clone();
                         let observers_ = observers.clone();
                         let observers__ = observers.clone();
                         let observers___ = observers.clone();
+                        let servosrc_ = servosrc.clone();
+                        let enough_data_ = inner.enough_data.clone();
+                        let enough_data__ = inner.enough_data.clone();
                         servosrc.set_callbacks(
                             gst_app::AppSrcCallbacks::new()
                                 .need_data(move |_, _| {
@@ -686,15 +693,18 @@ impl GStreamerPlayer {
                                     is_ready.call_once(|| {
                                         let _ = sender_clone.lock().unwrap().send(Ok(()));
                                     });
+
+                                    enough_data_.store(false, Ordering::Relaxed);
                                     observers_.lock().unwrap().notify(PlayerEvent::NeedData);
                                 })
                                 .enough_data(move |_| {
+                                    enough_data__.store(true, Ordering::Relaxed);
                                     observers__.lock().unwrap().notify(PlayerEvent::EnoughData);
                                 })
                                 .seek_data(move |_, offset| {
-                                    // We only progress seek data requests if we are ready
-                                    // to receive data.
-                                    if is_ready_.is_completed() {
+                                    // We only emit seek data requests if the offset is
+                                    // different from current position
+                                    if servosrc_.set_seek_offset(offset) {
                                         observers___
                                             .lock()
                                             .unwrap()
