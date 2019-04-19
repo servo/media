@@ -152,8 +152,6 @@ mod imp {
         }
 
         inner_appsrc_proxy!(end_of_stream, Result<gst::FlowSuccess, gst::FlowError>);
-        inner_appsrc_proxy!(get_current_level_bytes, u64);
-        inner_appsrc_proxy!(get_max_bytes, u64);
         inner_appsrc_proxy!(set_callbacks, callbacks, gst_app::AppSrcCallbacks, ());
 
         fn query(
@@ -387,8 +385,6 @@ impl ServoSrc {
     }
 
     inner_servosrc_proxy!(end_of_stream, Result<gst::FlowSuccess, gst::FlowError>);
-    inner_servosrc_proxy!(get_current_level_bytes, u64);
-    inner_servosrc_proxy!(get_max_bytes, u64);
     inner_servosrc_proxy!(set_callbacks, callbacks, gst_app::AppSrcCallbacks, ());
 }
 
