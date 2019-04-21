@@ -6,8 +6,9 @@ use gst_video;
 use std::sync::Arc;
 
 use servo_media_gstreamer_render::Render;
+use servo_media_player::context::PlayerGLContext;
 use servo_media_player::frame::{Buffer, Frame, FrameData};
-use servo_media_player::{GlContext, PlayerError};
+use servo_media_player::PlayerError;
 
 #[cfg(any(
     target_os = "linux",
@@ -22,8 +23,8 @@ mod platform {
 
     use super::*;
 
-    pub fn create_render(context: GlContext, display: usize) -> Option<Render> {
-        Render::new(context, display)
+    pub fn create_render(gl_context: Box<PlayerGLContext>) -> Option<Render> {
+        Render::new(gl_context)
     }
 }
 
@@ -36,13 +37,14 @@ mod platform {
 )))]
 mod platform {
     use servo_media_gstreamer_render::Render as RenderTrait;
+    use servo_media_player::context::PlayerGLContext;
     use servo_media_player::frame::Frame;
-    use servo_media_player::{GlContext, PlayerError};
+    use servo_media_player::PlayerError;
 
     pub struct RenderDummy();
     pub type Render = RenderDummy;
 
-    pub fn create_render(_: GlContext, _: usize) -> Option<RenderDummy> {
+    pub fn create_render(_: Box<PlayerGLContext>) -> Option<RenderDummy> {
         None
     }
 
@@ -79,9 +81,9 @@ pub struct GStreamerRender {
 }
 
 impl GStreamerRender {
-    pub fn new(gl_context: GlContext, display_native: usize) -> Self {
+    pub fn new(gl_context: Box<PlayerGLContext>) -> Self {
         GStreamerRender {
-            render: platform::create_render(gl_context, display_native),
+            render: platform::create_render(gl_context),
         }
     }
 

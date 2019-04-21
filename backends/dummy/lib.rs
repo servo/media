@@ -15,7 +15,8 @@ use servo_media_audio::decoder::{AudioDecoder, AudioDecoderCallbacks, AudioDecod
 use servo_media_audio::render_thread::AudioRenderThreadMsg;
 use servo_media_audio::sink::{AudioSink, AudioSinkError};
 use servo_media_audio::AudioBackend;
-use servo_media_player::{frame, GlContext, Player, PlayerError, PlayerEvent, StreamType};
+use servo_media_player::context::PlayerGLContext;
+use servo_media_player::{frame, Player, PlayerError, PlayerEvent, StreamType};
 use servo_media_streams::capture::MediaTrackConstraintSet;
 use servo_media_streams::registry::{register_stream, unregister_stream, MediaStreamId};
 use servo_media_streams::{MediaOutput, MediaStream};
@@ -65,7 +66,7 @@ impl Backend for DummyBackend {
         }))))
     }
 
-    fn create_player(&self, _: StreamType) -> Box<Player> {
+    fn create_player(&self, _: StreamType, _: Box<PlayerGLContext>) -> Box<Player> {
         Box::new(DummyPlayer)
     }
 
@@ -135,9 +136,6 @@ impl Player for DummyPlayer {
     fn buffered(&self) -> Result<Vec<Range<f64>>, PlayerError> {
         Ok(vec![])
     }
-    fn set_gl_params(&self, _: GlContext, _: usize) -> Result<(), ()> {
-        Err(())
-    }
 
     fn shutdown(&self) -> Result<(), PlayerError> {
         Ok(())
@@ -145,6 +143,10 @@ impl Player for DummyPlayer {
 
     fn set_stream(&self, _: &MediaStreamId) -> Result<(), PlayerError> {
         Ok(())
+    }
+
+    fn render_use_gl(&self) -> bool {
+        false
     }
 }
 

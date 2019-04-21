@@ -3,8 +3,9 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 use ipc_channel::ipc;
+use servo_media::player::context::PlayerGLContext;
 use servo_media::player::frame::{Frame, FrameRenderer};
-use servo_media::player::{GlContext, Player, PlayerError, PlayerEvent, StreamType};
+use servo_media::player::{Player, PlayerError, PlayerEvent, StreamType};
 use servo_media::ServoMedia;
 use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom};
@@ -17,66 +18,14 @@ use std::thread::Builder;
 pub struct PlayerWrapper {
     player: Arc<Mutex<Box<dyn Player>>>,
     shutdown: Arc<AtomicBool>,
-    use_gl: bool,
 }
 
 impl PlayerWrapper {
-    fn set_gl_params(
-        player: &Arc<Mutex<Box<dyn Player>>>,
-        windowed_context: &glutin::WindowedContext,
-    ) -> Result<(), ()> {
-        use glutin::os::ContextTraitExt;
-
-        let context = windowed_context.context();
-        let raw_handle = unsafe { context.raw_handle() };
-
-        #[cfg(any(
-            target_os = "linux",
-            target_os = "dragonfly",
-            target_os = "freebsd",
-            target_os = "netbsd",
-            target_os = "openbsd"
-        ))]
-        {
-            use glutin::os::unix::RawHandle;
-
-            match raw_handle {
-                RawHandle::Egl(egl_context) => {
-                    let gl_context = GlContext::Egl(egl_context as usize);
-                    if let Some(gl_display) = unsafe { context.get_egl_display() } {
-                        return player
-                            .lock()
-                            .unwrap()
-                            .set_gl_params(gl_context, gl_display as usize);
-                    }
-                    Err(())
-                }
-                RawHandle::Glx(_) => Err(()),
-            }
-        }
-
-        #[cfg(not(any(
-            target_os = "linux",
-            target_os = "dragonfly",
-            target_os = "freebsd",
-            target_os = "netbsd",
-            target_os = "openbsd"
-        )))]
-        {
-            println!("GL rendering unavailable for this platform");
-            Err(())
-        }
-    }
-
-    pub fn new(path: &Path, windowed_context: Option<&glutin::WindowedContext>) -> Self {
+    pub fn new(path: &Path, gl_context: Box<PlayerGLContext>) -> Self {
         let servo_media = ServoMedia::get().unwrap();
-        let player = Arc::new(Mutex::new(servo_media.create_player(StreamType::Seekable)));
-
-        let use_gl = if let Some(windowed_context) = windowed_context {
-            PlayerWrapper::set_gl_params(&player, windowed_context).is_ok()
-        } else {
-            false
-        };
+        let player = Arc::new(Mutex::new(
+            servo_media.create_player(StreamType::Seekable, gl_context),
+        ));
 
         let file = File::open(&path).unwrap();
         let metadata = file.metadata().unwrap();
@@ -201,11 +150,7 @@ impl PlayerWrapper {
 
         player.lock().unwrap().play().unwrap();
 
-        PlayerWrapper {
-            player,
-            shutdown,
-            use_gl,
-        }
+        PlayerWrapper { player, shutdown }
     }
 
     pub fn shutdown(&self) {
@@ -214,7 +159,7 @@ impl PlayerWrapper {
     }
 
     pub fn use_gl(&self) -> bool {
-        self.use_gl
+        self.player.lock().unwrap().render_use_gl()
     }
 
     pub fn register_frame_renderer(&self, renderer: Arc<Mutex<FrameRenderer>>) {

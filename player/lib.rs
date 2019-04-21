@@ -3,6 +3,7 @@ extern crate ipc_channel;
 extern crate serde_derive;
 extern crate servo_media_streams as streams;
 
+pub mod context;
 pub mod frame;
 pub mod metadata;
 
@@ -67,15 +68,6 @@ pub enum StreamType {
     Seekable,
 }
 
-pub enum GlContext {
-    // The EGL platform used primarily with the X11, Wayland and
-    // Android window systems as well as on embedded Linux.
-    Egl(usize),
-    // The GLX platform used primarily with the X11 window system.
-    Glx(usize),
-    Unknown,
-}
-
 pub trait Player: Send {
     fn register_event_handler(&self, sender: IpcSender<PlayerEvent>);
     fn register_frame_renderer(&self, renderer: Arc<Mutex<frame::FrameRenderer>>);
@@ -91,10 +83,11 @@ pub trait Player: Send {
     fn end_of_stream(&self) -> Result<(), PlayerError>;
     /// Get the list of time ranges in seconds that have been buffered.
     fn buffered(&self) -> Result<Vec<Range<f64>>, PlayerError>;
-    fn set_gl_params(&self, gl_context: GlContext, gl_display: usize) -> Result<(), ()>;
     /// Shut the player down. Stops playback and free up resources.
     fn shutdown(&self) -> Result<(), PlayerError>;
     /// Set the stream to be played by the player.
     /// This method requires the player to be constructed with StreamType::Stream.
     fn set_stream(&self, stream: &MediaStreamId) -> Result<(), PlayerError>;
+    /// If player's rendering draws using GL textures
+    fn render_use_gl(&self) -> bool;
 }
