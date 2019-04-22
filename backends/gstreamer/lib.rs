@@ -98,6 +98,15 @@ impl Backend for GStreamerBackend {
 
     fn can_play_type(&self, media_type: &str) -> SupportsMediaType {
         if let Ok(mime) = media_type.parse::<Mime>() {
+            // XXX GStreamer is currently not very reliable playing OGG and most of
+            //     the media related WPTs uses OGG if we report that we are able to
+            //     play this type. So we report that we are unable to play it to force
+            //     the usage of other types.
+            //     https://gitlab.freedesktop.org/gstreamer/gst-plugins-base/issues/520
+            if mime.subtype() == mime::OGG {
+                return SupportsMediaType::No;
+            }
+
             let mime_type = mime.type_().as_str().to_owned() + "/" + mime.subtype().as_str(); 
             let codecs = match mime.get_param("codecs") {
                 Some(codecs) => {
