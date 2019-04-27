@@ -5,7 +5,7 @@ use buffer_source_node::{AudioBufferSourceNodeMessage, AudioBufferSourceNodeOpti
 use channel_node::ChannelNodeOptions;
 use constant_source_node::ConstantSourceNodeOptions;
 use gain_node::GainNodeOptions;
-use oscillator_node::OscillatorNodeOptions;
+use oscillator_node::{OscillatorNodeMessage, OscillatorNodeOptions};
 use panner_node::{PannerNodeMessage, PannerNodeOptions};
 use param::{Param, ParamRate, ParamType, UserAutomationEvent};
 use std::sync::mpsc::Sender;
@@ -181,6 +181,7 @@ pub enum AudioNodeMessage {
     AudioBufferSourceNode(AudioBufferSourceNodeMessage),
     AudioScheduledSourceNode(AudioScheduledSourceNodeMessage),
     BiquadFilterNode(BiquadFilterNodeMessage),
+    OscillatorNode(OscillatorNodeMessage),
     PannerNode(PannerNodeMessage),
     GetParamValue(ParamType, Sender<f32>),
     SetChannelCount(u8),
