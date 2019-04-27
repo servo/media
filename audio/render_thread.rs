@@ -14,6 +14,7 @@ use oscillator_node::OscillatorNode;
 use panner_node::PannerNode;
 use sink::{AudioSink, AudioSinkError};
 use std::sync::mpsc::{Receiver, Sender};
+use stereo_panner::StereoPannerNode;
 
 pub enum AudioRenderThreadMsg {
     CreateNode(AudioNodeInit, Sender<NodeId>, ChannelInfo),
@@ -164,6 +165,7 @@ impl AudioRenderThread {
                 Box::new(BiquadFilterNode::new(options, ch, self.sample_rate))
             }
             AudioNodeInit::GainNode(options) => Box::new(GainNode::new(options, ch)),
+            AudioNodeInit::StereoPannerNode(options) => Box::new(StereoPannerNode::new(options, ch)),
             AudioNodeInit::PannerNode(options) => {
                 needs_listener = true;
                 Box::new(PannerNode::new(options, ch))
