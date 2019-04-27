@@ -16,7 +16,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 
 fn run_example(servo_media: Arc<ServoMedia>) {
-    let player = Arc::new(Mutex::new(servo_media.create_player()));
+    let player = Arc::new(Mutex::new(servo_media.create_player(StreamType::Seekable)));
     let args: Vec<_> = env::args().collect();
     let default = "./examples/resources/viper_cut.ogg";
     let filename: &str = if args.len() == 2 {
@@ -45,12 +45,6 @@ fn run_example(servo_media: Arc<ServoMedia>) {
             .set_input_size(metadata.len())
             .unwrap();
     }
-
-    player
-        .lock()
-        .unwrap()
-        .set_stream_type(StreamType::Seekable)
-        .unwrap();
 
     let player_clone = Arc::clone(&player);
     let shutdown = Arc::new(AtomicBool::new(false));
@@ -105,8 +99,8 @@ fn run_example(servo_media: Arc<ServoMedia>) {
                 println!("\nEOF");
                 break;
             }
-            PlayerEvent::Error => {
-                println!("\nError");
+            PlayerEvent::Error(ref s) => {
+                println!("\nError {:?}", s);
                 break;
             }
             PlayerEvent::MetadataUpdated(ref m) => {

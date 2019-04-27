@@ -1,37 +1,37 @@
+use super::BACKEND_BASE_TIME;
 use glib::prelude::*;
 use gst;
 use gst::prelude::*;
+use servo_media_streams::registry::{
+    get_stream, register_stream, unregister_stream, MediaStreamId,
+};
 use servo_media_streams::{MediaOutput, MediaStream};
 use std::any::Any;
+use std::sync::{Arc, Mutex};
 
 lazy_static! {
     static ref RTP_CAPS_OPUS: gst::Caps = {
         gst::Caps::new_simple(
             "application/x-rtp",
-            &[
-                ("media", &"audio"),
-                ("encoding-name", &"OPUS"),
-            ],
+            &[("media", &"audio"), ("encoding-name", &"OPUS")],
         )
     };
     static ref RTP_CAPS_VP8: gst::Caps = {
         gst::Caps::new_simple(
             "application/x-rtp",
-            &[
-                ("media", &"video"),
-                ("encoding-name", &"VP8"),
-            ],
+            &[("media", &"video"), ("encoding-name", &"VP8")],
         )
     };
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum StreamType {
     Audio,
     Video,
 }
 
 pub struct GStreamerMediaStream {
+    id: Option<MediaStreamId>,
     type_: StreamType,
     elements: Vec<gst::Element>,
     pipeline: Option<gst::Pipeline>,
@@ -45,9 +45,26 @@ impl MediaStream for GStreamerMediaStream {
     fn as_mut_any(&mut self) -> &mut Any {
         self
     }
+
+    fn set_id(&mut self, id: MediaStreamId) {
+        self.id = Some(id);
+    }
 }
 
 impl GStreamerMediaStream {
+    pub fn new(type_: StreamType, elements: Vec<gst::Element>) -> Self {
+        Self {
+            id: None,
+            type_,
+            elements,
+            pipeline: None,
+        }
+    }
+
+    pub fn type_(&self) -> StreamType {
+        self.type_
+    }
+
     pub fn caps(&self) -> &gst::Caps {
         match self.type_ {
             StreamType::Audio => &*RTP_CAPS_OPUS,
@@ -57,26 +74,22 @@ impl GStreamerMediaStream {
 
     pub fn caps_with_payload(&self, payload: i32) -> gst::Caps {
         match self.type_ {
-            StreamType::Audio => {
-                gst::Caps::new_simple(
-                    "application/x-rtp",
-                    &[
-                        ("media", &"audio"),
-                        ("encoding-name", &"OPUS"),
-                        ("payload", &(payload)),
-                    ],
-                )
-            }
-            StreamType::Video => {
-                gst::Caps::new_simple(
-                    "application/x-rtp",
-                    &[
-                        ("media", &"video"),
-                        ("encoding-name", &"VP8"),
-                        ("payload", &(payload)),
-                    ],
-                )
-            }
+            StreamType::Audio => gst::Caps::new_simple(
+                "application/x-rtp",
+                &[
+                    ("media", &"audio"),
+                    ("encoding-name", &"OPUS"),
+                    ("payload", &(payload)),
+                ],
+            ),
+            StreamType::Video => gst::Caps::new_simple(
+                "application/x-rtp",
+                &[
+                    ("media", &"video"),
+                    ("encoding-name", &"VP8"),
+                    ("payload", &(payload)),
+                ],
+            ),
         }
     }
 
@@ -107,33 +120,35 @@ impl GStreamerMediaStream {
             pipeline.clone()
         } else {
             let pipeline = gst::Pipeline::new("gstreamermediastream fresh pipeline");
+            let clock = gst::SystemClock::obtain();
             pipeline.set_start_time(gst::ClockTime::none());
-            pipeline.set_base_time(gst::ClockTime::from_nseconds(0));
-            pipeline.use_clock(Some(&gst::SystemClock::obtain()));
+            pipeline.set_base_time(*BACKEND_BASE_TIME);
+            pipeline.use_clock(Some(&clock));
             self.attach_to_pipeline(&pipeline);
             pipeline
         }
     }
 
-    pub fn create_video() -> GStreamerMediaStream {
+    pub fn create_video() -> MediaStreamId {
         let videotestsrc = gst::ElementFactory::make("videotestsrc", None).unwrap();
         videotestsrc.set_property_from_str("pattern", "ball");
         videotestsrc
             .set_property("is-live", &true)
             .expect("videotestsrc doesn't have expected 'is-live' property");
 
-        Self::create_video_from_encoded(videotestsrc)
+        register_stream(Arc::new(Mutex::new(Self::create_video_from_encoded(
+            videotestsrc,
+        ))))
     }
 
-    pub fn create_video_from(source: gst::Element) -> GStreamerMediaStream {
+    pub fn create_video_from(source: gst::Element) -> MediaStreamId {
         let videoconvert = gst::ElementFactory::make("videoconvert", None).unwrap();
         let queue = gst::ElementFactory::make("queue", None).unwrap();
 
-        GStreamerMediaStream {
-            type_: StreamType::Video,
-            elements: vec![source, videoconvert, queue],
-            pipeline: None,
-        }
+        register_stream(Arc::new(Mutex::new(GStreamerMediaStream::new(
+            StreamType::Video,
+            vec![source, videoconvert, queue],
+        ))))
     }
 
     pub fn create_video_from_encoded(source: gst::Element) -> GStreamerMediaStream {
@@ -148,40 +163,34 @@ impl GStreamerMediaStream {
         let rtpvp8pay = gst::ElementFactory::make("rtpvp8pay", None).unwrap();
         let queue2 = gst::ElementFactory::make("queue", None).unwrap();
 
-        GStreamerMediaStream {
-            type_: StreamType::Video,
-            elements: vec![source, videoconvert, queue, vp8enc, rtpvp8pay, queue2],
-            pipeline: None,
-        }
+        GStreamerMediaStream::new(
+            StreamType::Video,
+            vec![source, videoconvert, queue, vp8enc, rtpvp8pay, queue2],
+        )
     }
 
-    pub fn create_audio() -> GStreamerMediaStream {
+    pub fn create_audio() -> MediaStreamId {
         let audiotestsrc = gst::ElementFactory::make("audiotestsrc", None).unwrap();
-        audiotestsrc.set_property_from_str("wave", "red-noise");
+        audiotestsrc.set_property_from_str("wave", "sine");
         audiotestsrc
             .set_property("is-live", &true)
             .expect("audiotestsrc doesn't have expected 'is-live' property");
 
-        Self::create_audio_from_encoded(audiotestsrc)
+        register_stream(Arc::new(Mutex::new(Self::create_audio_from_encoded(
+            audiotestsrc,
+        ))))
     }
 
-    pub fn create_audio_from(source: gst::Element) -> GStreamerMediaStream {
+    pub fn create_audio_from(source: gst::Element) -> MediaStreamId {
         let queue = gst::ElementFactory::make("queue", None).unwrap();
         let audioconvert = gst::ElementFactory::make("audioconvert", None).unwrap();
         let audioresample = gst::ElementFactory::make("audioresample", None).unwrap();
         let queue2 = gst::ElementFactory::make("queue", None).unwrap();
 
-        GStreamerMediaStream {
-            type_: StreamType::Audio,
-            elements: vec![
-                source,
-                queue,
-                audioconvert,
-                audioresample,
-                queue2,
-            ],
-            pipeline: None,
-        }
+        register_stream(Arc::new(Mutex::new(GStreamerMediaStream::new(
+            StreamType::Audio,
+            vec![source, queue, audioconvert, audioresample, queue2],
+        ))))
     }
 
     pub fn create_audio_from_encoded(source: gst::Element) -> GStreamerMediaStream {
@@ -193,9 +202,9 @@ impl GStreamerMediaStream {
         let rtpopuspay = gst::ElementFactory::make("rtpopuspay", None).unwrap();
         let queue3 = gst::ElementFactory::make("queue", None).unwrap();
 
-        GStreamerMediaStream {
-            type_: StreamType::Audio,
-            elements: vec![
+        GStreamerMediaStream::new(
+            StreamType::Audio,
+            vec![
                 source,
                 queue,
                 audioconvert,
@@ -205,13 +214,20 @@ impl GStreamerMediaStream {
                 rtpopuspay,
                 queue3,
             ],
-            pipeline: None,
+        )
+    }
+}
+
+impl Drop for GStreamerMediaStream {
+    fn drop(&mut self) {
+        if let Some(ref id) = self.id {
+            unregister_stream(id);
         }
     }
 }
 
 pub struct MediaSink {
-    streams: Vec<Box<MediaStream>>,
+    streams: Vec<Arc<Mutex<MediaStream>>>,
 }
 
 impl MediaSink {
@@ -221,8 +237,10 @@ impl MediaSink {
 }
 
 impl MediaOutput for MediaSink {
-    fn add_stream(&mut self, mut stream: Box<MediaStream>) {
+    fn add_stream(&mut self, stream: &MediaStreamId) {
+        let stream = get_stream(&stream).expect("Media streams registry does not contain such ID");
         {
+            let mut stream = stream.lock().unwrap();
             let stream = stream
                 .as_mut_any()
                 .downcast_mut::<GStreamerMediaStream>()
@@ -240,9 +258,7 @@ impl MediaOutput for MediaSink {
 
             pipeline.set_state(gst::State::Playing).unwrap();
             sink.sync_state_with_parent().unwrap();
-            // gst::debug_bin_to_dot_file(&pipeline,  gstreamer::DebugGraphDetails::ALL, ::std::path::Path::new("dot.dot"));
         }
-
-        self.streams.push(stream);
+        self.streams.push(stream.clone());
     }
 }

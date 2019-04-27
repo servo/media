@@ -1,7 +1,7 @@
 extern crate boxfnonce;
 extern crate log;
 extern crate servo_media_streams;
-use servo_media_streams::MediaStream;
+use servo_media_streams::registry::MediaStreamId;
 
 use std::fmt::Display;
 use std::str::FromStr;
@@ -29,12 +29,20 @@ impl<T: Display> From<T> for WebrtcError {
 /// the client. Use WebRtcController instead
 pub trait WebRtcControllerBackend: Send {
     fn configure(&mut self, stun_server: &str, policy: BundlePolicy) -> WebrtcResult;
-    fn set_remote_description(&mut self, SessionDescription, cb: SendBoxFnOnce<'static, ()>) -> WebrtcResult;
-    fn set_local_description(&mut self, SessionDescription, cb: SendBoxFnOnce<'static, ()>) -> WebrtcResult;
+    fn set_remote_description(
+        &mut self,
+        SessionDescription,
+        cb: SendBoxFnOnce<'static, ()>,
+    ) -> WebrtcResult;
+    fn set_local_description(
+        &mut self,
+        SessionDescription,
+        cb: SendBoxFnOnce<'static, ()>,
+    ) -> WebrtcResult;
     fn add_ice_candidate(&mut self, candidate: IceCandidate) -> WebrtcResult;
     fn create_offer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebrtcResult;
     fn create_answer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebrtcResult;
-    fn add_stream(&mut self, stream: Box<MediaStream>) -> WebrtcResult;
+    fn add_stream(&mut self, stream: &MediaStreamId) -> WebrtcResult;
     fn internal_event(&mut self, event: thread::InternalEvent) -> WebrtcResult;
     fn quit(&mut self);
 }
@@ -43,7 +51,7 @@ pub trait WebRtcSignaller: Send {
     fn on_ice_candidate(&self, controller: &WebRtcController, candidate: IceCandidate);
     fn on_negotiation_needed(&self, controller: &WebRtcController);
     fn close(&self);
-    fn on_add_stream(&self, stream: Box<MediaStream>);
+    fn on_add_stream(&self, stream: &MediaStreamId);
 
     fn update_signaling_state(&self, _: SignalingState) {}
     fn update_gathering_state(&self, _: GatheringState) {}
@@ -71,7 +79,7 @@ pub enum SdpType {
 #[derive(Copy, Clone, Hash, Debug, PartialEq, Eq)]
 pub enum DescriptionType {
     Local,
-    Remote
+    Remote,
 }
 
 impl SdpType {
@@ -143,7 +151,7 @@ pub enum SignalingState {
     HaveRemoteOffer,
     HaveLocalPranswer,
     HaveRemotePranswer,
-    Closed
+    Closed,
 }
 
 /// https://www.w3.org/TR/webrtc/#rtcicegatheringstate-enum
@@ -151,7 +159,7 @@ pub enum SignalingState {
 pub enum GatheringState {
     New,
     Gathering,
-    Complete
+    Complete,
 }
 
 /// https://www.w3.org/TR/webrtc/#rtciceconnectionstate-enum

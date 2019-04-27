@@ -21,8 +21,8 @@ websocket = "0.20"
 ipc-channel = "0.11"
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
-winit = "0.18"
-glutin = { git = "https://github.com/tomaka/glutin" }
+winit = "0.19"
+glutin = "0.20"
 
 [[bin]]
 name = "dummy"
@@ -81,6 +81,10 @@ name = "player"
 path = "player/main.rs"
 
 [[bin]]
+name = "play_media_stream"
+path = "play_media_stream.rs"
+
+[[bin]]
 name = "simple_player"
 path = "simple_player.rs"
 
@@ -95,3 +99,7 @@ path = "constant_source.rs"
 [[bin]]
 name = "simple_webrtc"
 path = "simple_webrtc.rs"
+
+[[bin]]
+name = "set_value_curve"
+path = "set_value_curve.rs"

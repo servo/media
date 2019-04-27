@@ -1,15 +1,16 @@
 pub extern crate servo_media_audio as audio;
 
 pub extern crate servo_media_player as player;
-pub extern crate servo_media_webrtc as webrtc;
 pub extern crate servo_media_streams as streams;
+pub extern crate servo_media_webrtc as webrtc;
 use std::ops::Deref;
 use std::sync::{self, Arc, Mutex, Once};
 
 use audio::context::{AudioContext, AudioContextOptions};
-use player::Player;
-use streams::{MediaStream, MediaOutput};
+use player::{Player, StreamType};
 use streams::capture::MediaTrackConstraintSet;
+use streams::registry::MediaStreamId;
+use streams::MediaOutput;
 use webrtc::{WebRtcController, WebRtcSignaller};
 
 pub struct ServoMedia(Box<Backend>);
@@ -22,14 +23,22 @@ pub trait BackendInit {
 }
 
 pub trait Backend: Send + Sync {
-    fn create_player(&self) -> Box<Player>;
-    fn create_audiostream(&self) -> Box<MediaStream>;
-    fn create_videostream(&self) -> Box<MediaStream>;
+    fn create_player(&self, stream_type: StreamType) -> Box<Player>;
+    fn create_audiostream(&self) -> MediaStreamId;
+    fn create_videostream(&self) -> MediaStreamId;
     fn create_stream_output(&self) -> Box<MediaOutput>;
-    fn create_audioinput_stream(&self, set: MediaTrackConstraintSet) -> Option<Box<MediaStream>>;
-    fn create_videoinput_stream(&self, set: MediaTrackConstraintSet) -> Option<Box<MediaStream>>;
+    fn create_audioinput_stream(&self, set: MediaTrackConstraintSet) -> Option<MediaStreamId>;
+    fn create_videoinput_stream(&self, set: MediaTrackConstraintSet) -> Option<MediaStreamId>;
     fn create_audio_context(&self, options: AudioContextOptions) -> AudioContext;
     fn create_webrtc(&self, signaller: Box<WebRtcSignaller>) -> WebRtcController;
+    fn can_play_type(&self, media_type: &str) -> SupportsMediaType;
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum SupportsMediaType {
+    Maybe,
+    No,
+    Probably,
 }
 
 impl ServoMedia {

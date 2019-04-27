@@ -1,9 +1,10 @@
 use crate::media_stream::{GStreamerMediaStream, StreamType};
-use servo_media_streams::capture::*;
-
 use gst;
 use gst::prelude::*;
+use servo_media_streams::capture::*;
+use servo_media_streams::registry::{register_stream, MediaStreamId};
 use std::i32;
+use std::sync::{Arc, Mutex};
 
 trait AddToCaps {
     type Bound;
@@ -162,14 +163,12 @@ fn create_input_stream(
         })
 }
 
-pub fn create_audioinput_stream(
-    constraint_set: MediaTrackConstraintSet,
-) -> Option<GStreamerMediaStream> {
+pub fn create_audioinput_stream(constraint_set: MediaTrackConstraintSet) -> Option<MediaStreamId> {
     create_input_stream(StreamType::Audio, constraint_set)
+        .map(|s| register_stream(Arc::new(Mutex::new(s))))
 }
 
-pub fn create_videoinput_stream(
-    constraint_set: MediaTrackConstraintSet,
-) -> Option<GStreamerMediaStream> {
+pub fn create_videoinput_stream(constraint_set: MediaTrackConstraintSet) -> Option<MediaStreamId> {
     create_input_stream(StreamType::Video, constraint_set)
+        .map(|s| register_stream(Arc::new(Mutex::new(s))))
 }

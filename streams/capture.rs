@@ -1,4 +1,3 @@
-
 pub struct ConstrainRange<T> {
     pub min: Option<T>,
     pub max: Option<T>,

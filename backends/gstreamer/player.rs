@@ -1,67 +1,30 @@
+use super::BACKEND_BASE_TIME;
 use glib;
 use glib::prelude::*;
 use gst;
 use gst::prelude::*;
 use gst_app;
-use gst_gl;
-use gst_gl::prelude::*;
-#[cfg(target_os = "linux")]
-use gst_gl_egl::GLDisplayEGL;
 use gst_player;
 use gst_player::prelude::*;
-use gst_video;
 use ipc_channel::ipc::IpcSender;
-use servo_media_player::frame::{Buffer, Frame, FrameData, FrameRenderer};
+use media_stream::GStreamerMediaStream;
+use media_stream_source::{register_servo_media_stream_src, ServoMediaStreamSrc};
+use render::GStreamerRender;
+use servo_media_player::frame::{Frame, FrameRenderer};
 use servo_media_player::metadata::Metadata;
 use servo_media_player::{GlContext, PlaybackState, Player, PlayerError, PlayerEvent, StreamType};
+use servo_media_streams::registry::{get_stream, MediaStreamId};
 use source::{register_servo_src, ServoSrc};
 use std::cell::RefCell;
 use std::error::Error;
 use std::ops::Range;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex, Once};
 use std::time;
 use std::u64;
 
 const MAX_BUFFER_SIZE: i32 = 500 * 1024 * 1024;
-
-struct GStreamerBuffer {
-    is_gl: bool,
-    frame: gst_video::VideoFrame<gst_video::video_frame::Readable>,
-}
-
-impl Buffer for GStreamerBuffer {
-    fn to_vec(&self) -> Result<FrameData, ()> {
-        // packed formats are guaranteed to be in a single plane
-        if self.is_gl && self.frame.format() == gst_video::VideoFormat::Rgba {
-            let texid = self.frame.get_texture_id(0).ok_or_else(|| ())?;
-            Ok(FrameData::Texture(texid))
-        } else if !self.is_gl && self.frame.format() == gst_video::VideoFormat::Bgra {
-            let data = self.frame.plane_data(0).ok_or_else(|| ())?;
-            Ok(FrameData::Raw(Arc::new(data.to_vec())))
-        } else {
-            Err(())
-        }
-    }
-}
-
-fn frame_from_sample(sample: &gst::Sample) -> Result<Frame, ()> {
-    let buffer = sample.get_buffer().ok_or_else(|| ())?;
-    let caps = sample.get_caps().ok_or_else(|| ())?;
-    let info = gst_video::VideoInfo::from_caps(caps.as_ref()).ok_or_else(|| ())?;
-    let is_gl = caps
-        .get_features(0)
-        .and_then(|features| Some(features.contains(&gst_gl::CAPS_FEATURE_MEMORY_GL_MEMORY)))
-        .ok_or_else(|| ())?;
-    let frame = if !is_gl {
-        gst_video::VideoFrame::from_buffer_readable(buffer, &info).or_else(|_| Err(()))?
-    } else {
-        gst_video::VideoFrame::from_buffer_readable_gl(buffer, &info).or_else(|_| Err(()))?
-    };
-    let buffer = GStreamerBuffer { is_gl, frame };
-
-    Frame::new(info.width() as i32, info.height() as i32, Arc::new(buffer))
-}
 
 fn metadata_from_media_info(media_info: &gst_player::PlayerMediaInfo) -> Result<Metadata, ()> {
     let dur = media_info.get_duration();
@@ -127,15 +90,22 @@ fn metadata_from_media_info(media_info: &gst_player::PlayerMediaInfo) -> Result<
     })
 }
 
+#[derive(PartialEq)]
+enum PlayerSource {
+    Seekable(ServoSrc),
+    Stream(ServoMediaStreamSrc),
+}
+
 struct PlayerInner {
     player: gst_player::Player,
-    servosrc: Option<ServoSrc>,
+    source: Option<PlayerSource>,
     appsink: gst_app::AppSink,
     input_size: u64,
     rate: f64,
-    stream_type: Option<gst_app::AppStreamType>,
+    stream_type: StreamType,
     last_metadata: Option<Metadata>,
     cat: gst::DebugCategory,
+    enough_data: Arc<AtomicBool>,
 }
 
 impl PlayerInner {
@@ -143,12 +113,18 @@ impl PlayerInner {
         // Set input_size to proxy its value, since it
         // could be set by the user before calling .setup().
         self.input_size = size;
-        if let Some(ref mut servosrc) = self.servosrc {
-            if size > 0 {
-                servosrc.set_size(size as i64);
-            } else {
-                servosrc.set_size(-1); // live source
+        match self.source {
+            // The input size is only useful for seekable streams.
+            Some(ref mut source) => {
+                if let PlayerSource::Seekable(source) = source {
+                    source.set_size(if size > 0 {
+                        size as i64
+                    } else {
+                        -1 // live source
+                    });
+                }
             }
+            _ => (),
         }
         Ok(())
     }
@@ -173,21 +149,6 @@ impl PlayerInner {
         Ok(())
     }
 
-    pub fn set_stream_type(&mut self, type_: StreamType) -> Result<(), PlayerError> {
-        let type_ = match type_ {
-            StreamType::Stream => gst_app::AppStreamType::Stream,
-            StreamType::Seekable => gst_app::AppStreamType::Seekable,
-            StreamType::RandomAccess => gst_app::AppStreamType::RandomAccess,
-        };
-        // Set stream_type to proxy its value, since it
-        // could be set by the user before calling .setup().
-        self.stream_type = Some(type_);
-        if let Some(ref servosrc) = self.servosrc {
-            servosrc.set_stream_type(type_);
-        }
-        Ok(())
-    }
-
     pub fn play(&mut self) -> Result<(), PlayerError> {
         self.player.play();
         Ok(())
@@ -196,7 +157,7 @@ impl PlayerInner {
     pub fn stop(&mut self) -> Result<(), PlayerError> {
         self.player.stop();
         self.last_metadata = None;
-        self.servosrc = None;
+        self.source = None;
         Ok(())
     }
 
@@ -206,23 +167,23 @@ impl PlayerInner {
     }
 
     pub fn end_of_stream(&mut self) -> Result<(), PlayerError> {
-        if let Some(ref mut servosrc) = self.servosrc {
-            servosrc
-                .end_of_stream()
-                .map(|_| ())
-                .map_err(|_| PlayerError::EOSFailed)?
+        match self.source {
+            Some(ref mut source) => {
+                if let PlayerSource::Seekable(source) = source {
+                    source
+                        .end_of_stream()
+                        .map(|_| ())
+                        .map_err(|_| PlayerError::EOSFailed)
+                } else {
+                    Ok(())
+                }
+            }
+            _ => Ok(()),
         }
-        Err(PlayerError::EOSFailed)
     }
 
     pub fn seek(&mut self, time: f64) -> Result<(), PlayerError> {
-        // XXX Support AppStreamType::RandomAccess. The callback model changes
-        // if the stream type is set to RandomAccess (i.e. the seek-data
-        // callback is received right after pushing the first chunk of data,
-        // even if player.seek() is not called).
-        if self.stream_type.is_none()
-            || self.stream_type.unwrap() != gst_app::AppStreamType::Seekable
-        {
+        if self.stream_type != StreamType::Seekable {
             return Err(PlayerError::NonSeekableStream);
         }
         if let Some(ref metadata) = self.last_metadata {
@@ -245,21 +206,22 @@ impl PlayerInner {
     }
 
     pub fn push_data(&mut self, data: Vec<u8>) -> Result<(), PlayerError> {
-        if let Some(ref mut servosrc) = self.servosrc {
-            if servosrc.get_current_level_bytes() + data.len() as u64 > servosrc.get_max_bytes() {
-                return Err(PlayerError::EnoughData);
+        if let Some(ref mut source) = self.source {
+            if let PlayerSource::Seekable(source) = source {
+                if self.enough_data.load(Ordering::Relaxed) {
+                    return Err(PlayerError::EnoughData);
+                }
+                return source
+                    .push_buffer(data)
+                    .map(|_| ())
+                    .map_err(|_| PlayerError::BufferPushFailed);
             }
-            let buffer = gst::Buffer::from_slice(data);
-            return servosrc
-                .push_buffer(buffer)
-                .map(|_| ())
-                .map_err(|_| PlayerError::BufferPushFailed);
         }
         Err(PlayerError::BufferPushFailed)
     }
 
-    pub fn set_src(&mut self, servosrc: ServoSrc) {
-        self.servosrc = Some(servosrc);
+    pub fn set_src(&mut self, source: PlayerSource) {
+        self.source = Some(source);
     }
 
     pub fn buffered(&mut self) -> Result<Vec<Range<f64>>, PlayerError> {
@@ -291,6 +253,33 @@ impl PlayerInner {
             }
         }
         Ok(result)
+    }
+
+    fn set_stream(&mut self, stream: &MediaStreamId) -> Result<(), PlayerError> {
+        debug_assert!(self.stream_type == StreamType::Stream);
+        if let Some(ref source) = self.source {
+            if let PlayerSource::Stream(source) = source {
+                let stream =
+                    get_stream(stream).expect("Media streams registry does not contain such ID");
+                let mut stream = stream.lock().unwrap();
+                if let Some(mut stream) = stream.as_mut_any().downcast_mut::<GStreamerMediaStream>()
+                {
+                    let playbin = self
+                        .player
+                        .get_pipeline()
+                        .dynamic_cast::<gst::Pipeline>()
+                        .unwrap();
+                    let clock = gst::SystemClock::obtain();
+                    playbin.set_base_time(*BACKEND_BASE_TIME);
+                    playbin.set_start_time(gst::ClockTime::none());
+                    playbin.use_clock(Some(&clock));
+
+                    source.set_stream(&mut stream);
+                    return Ok(());
+                }
+            }
+        }
+        Err(PlayerError::SetStreamFailed)
     }
 }
 
@@ -336,9 +325,7 @@ impl FrameRendererList {
         self.renderers.push(renderer);
     }
 
-    fn render(&self, sample: &gst::Sample) -> Result<(), ()> {
-        let frame = frame_from_sample(&sample)?;
-
+    fn render(&self, frame: &Frame) -> Result<(), ()> {
         for renderer in &self.renderers {
             renderer.lock().unwrap().render(frame.clone());
         }
@@ -357,98 +344,21 @@ pub struct GStreamerPlayer {
     /// Indicates whether the setup was succesfully performed and
     /// we are ready to consume a/v data.
     is_ready: Arc<Once>,
-    gl_context: RefCell<Option<gst_gl::GLContext>>,
-    gl_display: RefCell<Option<gst_gl::GLDisplay>>,
+    /// Indicates whether the type of media stream to be played is a live stream.
+    stream_type: StreamType,
+    render: RefCell<Option<GStreamerRender>>,
 }
 
 impl GStreamerPlayer {
-    pub fn new() -> GStreamerPlayer {
+    pub fn new(stream_type: StreamType) -> GStreamerPlayer {
         Self {
             inner: RefCell::new(None),
             observers: Arc::new(Mutex::new(PlayerEventObserverList::new())),
             renderers: Arc::new(Mutex::new(FrameRendererList::new())),
             is_ready: Arc::new(Once::new()),
-            gl_context: RefCell::new(None),
-            gl_display: RefCell::new(None),
+            stream_type,
+            render: RefCell::new(None),
         }
-    }
-
-    fn set_bus_sync_handler(&self, pipeline: &gst::Element) -> Result<(), PlayerError> {
-        let bus = pipeline.get_bus().expect("pipeline without bus");
-
-        let gl_context = self.gl_context.replace(None).unwrap();
-        let gl_display = self.gl_display.replace(None).unwrap();
-
-        bus.set_sync_handler(move |_, msg| {
-            match msg.view() {
-                gst::MessageView::NeedContext(ctxt) => {
-                    if let Some(el) = msg.get_src().map(|s| s.downcast::<gst::Element>().unwrap()) {
-                        let context_type = ctxt.get_context_type();
-                        if context_type == *gst_gl::GL_DISPLAY_CONTEXT_TYPE {
-                            let context = gst::Context::new(context_type, true);
-                            context.set_gl_display(&gl_display);
-                            el.set_context(&context);
-                        } else if context_type == "gst.gl.app_context" {
-                            let mut context = gst::Context::new(context_type, true);
-                            let s = context.get_mut().unwrap().get_mut_structure();
-                            s.set_value("context", gl_context.to_send_value());
-                            el.set_context(&context);
-                        }
-                    }
-                }
-                _ => (),
-            }
-
-            gst::BusSyncReply::Pass
-        });
-
-        Ok(())
-    }
-
-    fn setup_video_sink(
-        &self,
-        player: &gst_player::Player,
-    ) -> Result<gst_app::AppSink, PlayerError> {
-        let pipeline = player.get_pipeline();
-
-        let appsink = gst::ElementFactory::make("appsink", None)
-            .ok_or(PlayerError::Backend("appsink creation failed".to_owned()))?
-            .dynamic_cast::<gst_app::AppSink>()
-            .unwrap();
-
-        if self.gl_context.borrow().is_some() {
-            let glsink = gst::ElementFactory::make("glsinkbin", None)
-                .ok_or(PlayerError::Backend("glsinkbin creation failed".to_owned()))?;
-
-            let caps = gst::Caps::builder("video/x-raw")
-                .features(&[&gst_gl::CAPS_FEATURE_MEMORY_GL_MEMORY])
-                .field("format", &gst_video::VideoFormat::Rgba.to_string())
-                .field("texture-target", &"2D")
-                .build();
-            appsink.set_caps(&caps);
-
-            glsink
-                .set_property("sink", &appsink)
-                .expect("glsinkbin doesn't have expected 'sink' property");
-
-            pipeline
-                .set_property("video-sink", &glsink)
-                .expect("playbin doesn't have expected 'video-sink' property");
-
-            self.set_bus_sync_handler(&pipeline)?;
-        } else {
-            let caps = gst::Caps::builder("video/x-raw")
-                .field("format", &gst_video::VideoFormat::Bgra.to_string())
-                .field("pixel-aspect-ratio", &gst::Fraction::from((1, 1)))
-                .build();
-            appsink.set_caps(&caps);
-
-            pipeline
-                .set_property("video-sink", &appsink)
-                .expect("playbin doesn't have expected 'video-sink' property");
-        };
-
-        Ok(appsink)
     }
 
     fn setup(&self) -> Result<(), PlayerError> {
@@ -466,9 +376,6 @@ impl GStreamerPlayer {
                 )));
             }
         }
-
-        register_servo_src()
-            .map_err(|_| PlayerError::Backend("servosrc registration error".to_owned()))?;
 
         let player = gst_player::Player::new(
             /* video renderer */ None, /* signal dispatcher */ None,
@@ -522,7 +429,11 @@ impl GStreamerPlayer {
             .set_config(config)
             .map_err(|e| PlayerError::Backend(e.to_string()))?;
 
-        let video_sink = self.setup_video_sink(&player)?;
+        let render = self
+            .render
+            .replace(None)
+            .unwrap_or(GStreamerRender::new(GlContext::Unknown, 0));
+        let appsink = render.setup_video_sink(&pipeline)?;
 
         // There's a known bug in gstreamer that may cause a wrong transition
         // to the ready state while setting the uri property:
@@ -531,23 +442,37 @@ impl GStreamerPlayer {
         // fixed, make sure that state dependent code happens before this line.
         // The estimated version for the fix is 1.14.5 / 1.15.1.
         // https://github.com/servo/servo/issues/22010#issuecomment-432599657
+        let uri = match self.stream_type {
+            StreamType::Stream => {
+                register_servo_media_stream_src().map_err(|_| {
+                    PlayerError::Backend("servomediastreamsrc registration error".to_owned())
+                })?;
+                "mediastream://".to_value()
+            }
+            StreamType::Seekable => {
+                register_servo_src()
+                    .map_err(|_| PlayerError::Backend("servosrc registration error".to_owned()))?;
+                "servosrc://".to_value()
+            }
+        };
         player
-            .set_property("uri", &"servosrc://".to_value())
+            .set_property("uri", &uri)
             .expect("playbin doesn't have expected 'uri' property");
 
         *self.inner.borrow_mut() = Some(Arc::new(Mutex::new(PlayerInner {
             player,
-            servosrc: None,
-            appsink: video_sink,
+            source: None,
+            appsink,
             input_size: 0,
             rate: 1.0,
-            stream_type: None,
+            stream_type: self.stream_type,
             last_metadata: None,
             cat: gst::DebugCategory::new(
                 "servoplayer",
                 gst::DebugColorFlags::empty(),
                 "Servo player",
             ),
+            enough_data: Arc::new(AtomicBool::new(false)),
         })));
 
         let inner = self.inner.borrow();
@@ -564,8 +489,11 @@ impl GStreamerPlayer {
 
         let observers = self.observers.clone();
         // Handle `error` signal
-        inner.lock().unwrap().player.connect_error(move |_, _| {
-            observers.lock().unwrap().notify(PlayerEvent::Error);
+        inner.lock().unwrap().player.connect_error(move |_, error| {
+            observers
+                .lock()
+                .unwrap()
+                .notify(PlayerEvent::Error(error.to_string()));
         });
 
         let observers = self.observers.clone();
@@ -694,10 +622,13 @@ impl GStreamerPlayer {
                 .new_preroll(|_| Ok(gst::FlowSuccess::Ok))
                 .new_sample(move |appsink| {
                     let sample = appsink.pull_sample().ok_or(gst::FlowError::Eos)?;
+                    let frame = render
+                        .get_frame_from_sample(&sample)
+                        .or_else(|_| Err(gst::FlowError::Error))?;
                     renderers
                         .lock()
                         .unwrap()
-                        .render(&sample)
+                        .render(&frame)
                         .map(|_| {
                             observers.lock().unwrap().notify(PlayerEvent::FrameUpdated);
                         })
@@ -732,51 +663,74 @@ impl GStreamerPlayer {
                 };
 
                 let mut inner = inner_clone.lock().unwrap();
-                let servosrc = source
-                    .clone()
-                    .dynamic_cast::<ServoSrc>()
-                    .expect("Source element is expected to be a servosrc!");
+                let source = match inner.stream_type {
+                    StreamType::Seekable => {
+                        let servosrc = source
+                            .clone()
+                            .dynamic_cast::<ServoSrc>()
+                            .expect("Source element is expected to be a ServoSrc!");
 
-                if inner.input_size > 0 {
-                    servosrc.set_size(inner.input_size as i64);
-                }
+                        if inner.input_size > 0 {
+                            servosrc.set_size(inner.input_size as i64);
+                        }
 
-                if let Some(ref stream_type) = inner.stream_type {
-                    servosrc.set_stream_type(*stream_type);
-                }
+                        let sender_clone = sender.clone();
+                        let is_ready = is_ready_clone.clone();
+                        let observers_ = observers.clone();
+                        let observers__ = observers.clone();
+                        let observers___ = observers.clone();
+                        let servosrc_ = servosrc.clone();
+                        let enough_data_ = inner.enough_data.clone();
+                        let enough_data__ = inner.enough_data.clone();
+                        servosrc.set_callbacks(
+                            gst_app::AppSrcCallbacks::new()
+                                .need_data(move |_, _| {
+                                    // We block the caller of the setup method until we get
+                                    // the first need-data signal, so we ensure that we
+                                    // don't miss any data between the moment the client
+                                    // calls setup and the player is actually ready to
+                                    // get any data.
+                                    is_ready.call_once(|| {
+                                        let _ = sender_clone.lock().unwrap().send(Ok(()));
+                                    });
 
-                let sender_clone = sender.clone();
-                let is_ready_ = is_ready_clone.clone();
-                let observers_ = observers.clone();
-                let observers__ = observers.clone();
-                let observers___ = observers.clone();
-                servosrc.set_callbacks(
-                    gst_app::AppSrcCallbacks::new()
-                        .need_data(move |_, _| {
-                            // We block the caller of the setup method until we get
-                            // the first need-data signal, so we ensure that we
-                            // don't miss any data between the moment the client
-                            // calls setup and the player is actually ready to
-                            // get any data.
-                            is_ready_.call_once(|| {
-                                let _ = sender_clone.lock().unwrap().send(Ok(()));
-                            });
-                            observers_.lock().unwrap().notify(PlayerEvent::NeedData);
-                        })
-                        .enough_data(move |_| {
-                            observers__.lock().unwrap().notify(PlayerEvent::EnoughData);
-                        })
-                        .seek_data(move |_, offset| {
-                            observers___
-                                .lock()
-                                .unwrap()
-                                .notify(PlayerEvent::SeekData(offset));
-                            true
-                        })
-                        .build(),
-                );
+                                    enough_data_.store(false, Ordering::Relaxed);
+                                    observers_.lock().unwrap().notify(PlayerEvent::NeedData);
+                                })
+                                .enough_data(move |_| {
+                                    enough_data__.store(true, Ordering::Relaxed);
+                                    observers__.lock().unwrap().notify(PlayerEvent::EnoughData);
+                                })
+                                .seek_data(move |_, offset| {
+                                    // We only emit seek data requests if the offset is
+                                    // different from current position
+                                    if servosrc_.set_seek_offset(offset) {
+                                        observers___
+                                            .lock()
+                                            .unwrap()
+                                            .notify(PlayerEvent::SeekData(offset));
+                                    }
+                                    true
+                                })
+                                .build(),
+                        );
 
-                inner.set_src(servosrc);
+                        PlayerSource::Seekable(servosrc)
+                    }
+                    StreamType::Stream => {
+                        let media_stream_src = source
+                            .clone()
+                            .dynamic_cast::<ServoMediaStreamSrc>()
+                            .expect("Source element is expected to be a ServoMediaStreamSrc!");
+                        let sender_clone = sender.clone();
+                        is_ready_clone.call_once(|| {
+                            let _ = sender_clone.lock().unwrap().send(Ok(()));
+                        });
+                        PlayerSource::Stream(media_stream_src)
+                    }
+                };
+
+                inner.set_src(source);
 
                 None
             });
@@ -835,11 +789,11 @@ impl Player for GStreamerPlayer {
     inner_player_proxy!(set_input_size, size, u64);
     inner_player_proxy!(set_mute, val, bool);
     inner_player_proxy!(set_rate, rate, f64);
-    inner_player_proxy!(set_stream_type, type_, StreamType);
     inner_player_proxy!(push_data, data, Vec<u8>);
     inner_player_proxy!(seek, time, f64);
     inner_player_proxy!(set_volume, value, f64);
     inner_player_proxy!(buffered, Vec<Range<f64>>);
+    inner_player_proxy!(set_stream, stream, &MediaStreamId);
 
     fn register_event_handler(&self, sender: IpcSender<PlayerEvent>) {
         self.observers.lock().unwrap().register(sender);
@@ -849,41 +803,15 @@ impl Player for GStreamerPlayer {
         self.renderers.lock().unwrap().register(renderer);
     }
 
-    #[cfg(not(target_os = "linux"))]
-    fn set_gl_params(&self, _: GlContext, _: usize) -> Result<(), ()> {
-        Err(())
-    }
-
-    #[cfg(target_os = "linux")]
-    fn set_gl_params(&self, gl_context: GlContext, gl_display: usize) -> Result<(), ()> {
-        let (display, context) = match gl_context {
-            GlContext::Egl(ctxt) => {
-                let display = unsafe { GLDisplayEGL::new_with_egl_display(gl_display) };
-
-                if let Some(display) = display {
-                    let context = unsafe {
-                        gst_gl::GLContext::new_wrapped(
-                            &display,
-                            ctxt,
-                            gst_gl::GLPlatform::EGL,
-                            gst_gl::GLAPI::ANY,
-                        )
-                    };
-
-                    (Some(display.upcast::<gst_gl::GLDisplay>()), context)
-                } else {
-                    (None, None)
-                }
-            }
-            _ => (None, None),
-        };
-
-        let ret = if context.is_some() { Ok(()) } else { Err(()) };
-
-        *self.gl_context.borrow_mut() = context;
-        *self.gl_display.borrow_mut() = display;
-
-        ret
+    fn set_gl_params(&self, context: GlContext, display: usize) -> Result<(), ()> {
+        let render = GStreamerRender::new(context, display);
+        let ret = render.is_gl();
+        *self.render.borrow_mut() = Some(render);
+        if ret {
+            Ok(())
+        } else {
+            Err(())
+        }
     }
 
     fn shutdown(&self) -> Result<(), PlayerError> {

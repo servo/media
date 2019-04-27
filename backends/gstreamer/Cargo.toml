@@ -8,8 +8,13 @@ regex = "1.0"
 zip = "0.3.1"
 lazy_static = "1.0"
 
+[lib]
+name = "servo_media_gstreamer"
+path = "lib.rs"
+
 [dependencies]
 boxfnonce = "0.1.0"
+mime = "0.3.13"
 
 [dependencies.byte-slice-cast]
 version = "0.2"
@@ -36,6 +41,9 @@ version = "0.13"
 [dependencies.gstreamer-audio]
 version = "0.13"
 
+[dependencies.gstreamer-base]
+version = "0.13"
+
 [dependencies.gstreamer-player]
 version = "0.13"
 
@@ -47,13 +55,6 @@ version = "0.13"
 
 [dependencies.gstreamer-video]
 version = "0.13"
-
-[dependencies.gstreamer-gl]
-version = "0.13"
-features = []
-
-[target.'cfg(target_os = "linux")'.dependencies]
-gstreamer-gl-egl = { path = "../gstreamer-gl-egl"}
 
 [dependencies.ipc-channel]
 version = "0.11"
@@ -78,3 +79,9 @@ path = "../../streams"
 
 [dependencies.servo-media-webrtc]
 path = "../../webrtc"
+
+[dependencies.servo-media-gstreamer-render]
+path = "render"
+
+[target.'cfg(any(target_os = "linux", target_os = "dragonfly", target_os = "freebsd", target_os = "netbsd", target_os = "openbsd"))'.dependencies]
+servo-media-gstreamer-render-unix = { path = "render-unix" }

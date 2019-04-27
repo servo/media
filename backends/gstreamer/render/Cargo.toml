@@ -1,0 +1,17 @@
+[package]
+name = "servo-media-gstreamer-render"
+version = "0.1.0"
+authors = ["The Servo Project Developers"]
+
+[lib]
+name = "servo_media_gstreamer_render"
+path = "lib.rs"
+
+[dependencies.gstreamer]
+version = "0.13"
+
+[dependencies.gstreamer-video]
+version = "0.13"
+
+[dependencies.servo-media-player]
+path = "../../../player"
