@@ -158,6 +158,7 @@ impl Block {
 
     #[inline]
     pub fn data_chan(&self, chan: u8) -> &[f32] {
+        debug_assert!(!self.is_silence(), "data_chan doesn't work with silent buffers");
         let offset = if self.repeat {
             0
         } else {
