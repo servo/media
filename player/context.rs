@@ -9,7 +9,7 @@
 //! for the GStreamer backend.
 //!
 //! The client application should implement this trait and pass the
-//! trait object to its `player` intsance.
+//! trait object to its `player` instance.
 
 pub enum GlContext {
     /// The EGL platform used primarily with the X11, Wayland and
