@@ -1,6 +1,6 @@
 use block::{Chunk, Tick};
 use node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, BlockInfo, OnEndedCallback};
-use node::{AudioNodeType, ChannelInfo, ShouldPlay};
+use node::{AudioNodeMessage, AudioNodeType, ChannelInfo, ShouldPlay};
 use num_traits::cast::NumCast;
 use param::{Param, ParamType};
 
@@ -34,6 +34,11 @@ impl Default for OscillatorNodeOptions {
             periodic_wave_options: None,
         }
     }
+}
+
+#[derive(Clone, Debug)]
+pub enum OscillatorNodeMessage {
+    SetOscillatorType(OscillatorType),
 }
 
 #[derive(AudioScheduledSourceNode, AudioNodeCommon)]
@@ -173,5 +178,14 @@ impl AudioNodeEngine for OscillatorNode {
         }
     }
 
-    make_message_handler!(AudioScheduledSourceNode: handle_source_node_message);
+    fn message_specific(&mut self, message: AudioNodeMessage, _sample_rate: f32) {
+        match message {
+            AudioNodeMessage::OscillatorNode(m) => match m {
+                OscillatorNodeMessage::SetOscillatorType(o) => {
+                    self.oscillator_type = o;
+                }
+            },
+            _ => (),
+        }
+    }
 }
