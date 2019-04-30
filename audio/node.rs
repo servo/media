@@ -8,6 +8,7 @@ use gain_node::GainNodeOptions;
 use oscillator_node::OscillatorNodeOptions;
 use panner_node::{PannerNodeMessage, PannerNodeOptions};
 use param::{Param, ParamRate, ParamType, UserAutomationEvent};
+use stereo_panner::StereoPannerOptions;
 use std::sync::mpsc::Sender;
 
 /// Information required to construct an audio node
@@ -28,7 +29,7 @@ pub enum AudioNodeInit {
     PannerNode(PannerNodeOptions),
     PeriodicWave,
     ScriptProcessorNode,
-    StereoPannerNode,
+    StereoPannerNode(StereoPannerOptions),
     WaveShaperNode,
 }
 

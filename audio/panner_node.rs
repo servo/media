@@ -6,7 +6,7 @@ use param::{Param, ParamDir, ParamType};
 use std::f32::consts::PI;
 
 // .normalize(), but it takes into account zero vectors
-fn normalize_zero(v: Vector3D<f32>) -> Vector3D<f32> {
+pub fn normalize_zero(v: Vector3D<f32>) -> Vector3D<f32> {
     let len = v.length();
     if len == 0. {
         v
