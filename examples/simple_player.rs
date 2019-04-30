@@ -3,6 +3,7 @@ extern crate servo_media;
 extern crate servo_media_auto;
 
 use ipc_channel::ipc;
+use servo_media::player::context::{GlContext, NativeDisplay, PlayerGLContext};
 use servo_media::player::{PlayerEvent, StreamType};
 use servo_media::ServoMedia;
 use std::env;
@@ -15,8 +16,21 @@ use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
+struct PlayerContextDummy();
+impl PlayerGLContext for PlayerContextDummy {
+    fn get_gl_context(&self) -> GlContext {
+        return GlContext::Unknown;
+    }
+
+    fn get_native_display(&self) -> NativeDisplay {
+        return NativeDisplay::Unknown;
+    }
+}
+
 fn run_example(servo_media: Arc<ServoMedia>) {
-    let player = Arc::new(Mutex::new(servo_media.create_player(StreamType::Seekable)));
+    let player = Arc::new(Mutex::new(
+        servo_media.create_player(StreamType::Seekable, Box::new(PlayerContextDummy())),
+    ));
     let args: Vec<_> = env::args().collect();
     let default = "./examples/resources/viper_cut.ogg";
     let filename: &str = if args.len() == 2 {

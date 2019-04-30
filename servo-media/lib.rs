@@ -7,6 +7,7 @@ use std::ops::Deref;
 use std::sync::{self, Arc, Mutex, Once};
 
 use audio::context::{AudioContext, AudioContextOptions};
+use player::context::PlayerGLContext;
 use player::{Player, StreamType};
 use streams::capture::MediaTrackConstraintSet;
 use streams::registry::MediaStreamId;
@@ -23,7 +24,11 @@ pub trait BackendInit {
 }
 
 pub trait Backend: Send + Sync {
-    fn create_player(&self, stream_type: StreamType) -> Box<Player>;
+    fn create_player(
+        &self,
+        stream_type: StreamType,
+        gl_context: Box<PlayerGLContext>,
+    ) -> Box<Player>;
     fn create_audiostream(&self) -> MediaStreamId;
     fn create_videostream(&self) -> MediaStreamId;
     fn create_stream_output(&self) -> Box<MediaOutput>;

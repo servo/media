@@ -51,6 +51,7 @@ use servo_media_audio::context::{AudioContext, AudioContextOptions};
 use servo_media_audio::decoder::AudioDecoder;
 use servo_media_audio::sink::AudioSinkError;
 use servo_media_audio::AudioBackend;
+use servo_media_player::context::PlayerGLContext;
 use servo_media_player::{Player, StreamType};
 use servo_media_streams::capture::MediaTrackConstraintSet;
 use servo_media_streams::registry::MediaStreamId;
@@ -64,8 +65,12 @@ lazy_static! {
 pub struct GStreamerBackend;
 
 impl Backend for GStreamerBackend {
-    fn create_player(&self, stream_type: StreamType) -> Box<Player> {
-        Box::new(player::GStreamerPlayer::new(stream_type))
+    fn create_player(
+        &self,
+        stream_type: StreamType,
+        gl_context: Box<PlayerGLContext>,
+    ) -> Box<Player> {
+        Box::new(player::GStreamerPlayer::new(stream_type, gl_context))
     }
 
     fn create_audio_context(&self, options: AudioContextOptions) -> AudioContext {

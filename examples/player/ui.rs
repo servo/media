@@ -9,6 +9,7 @@ extern crate euclid;
 
 use gleam::gl;
 use glutin::ContextTrait;
+use servo_media::player::context::*;
 use servo_media::player::frame::FrameRenderer;
 use std::env;
 use std::path::Path;
@@ -19,6 +20,92 @@ use webrender::ShaderPrecacheFlags;
 use winit;
 
 use player_wrapper::PlayerWrapper;
+
+struct PlayerContextDummy();
+impl PlayerGLContext for PlayerContextDummy {
+    fn get_gl_context(&self) -> GlContext {
+        return GlContext::Unknown;
+    }
+
+    fn get_native_display(&self) -> NativeDisplay {
+        return NativeDisplay::Unknown;
+    }
+}
+
+struct PlayerContextGlutin {
+    windowed_context: Arc<glutin::WindowedContext>,
+}
+
+impl PlayerGLContext for PlayerContextGlutin {
+    fn get_gl_context(&self) -> GlContext {
+        use glutin::os::ContextTraitExt;
+
+        unsafe {
+            self.windowed_context
+                .make_current()
+                .expect("Couldn't make window current");
+        }
+
+        let context = self.windowed_context.context();
+        let raw_handle = unsafe { context.raw_handle() };
+
+        #[cfg(any(
+            target_os = "linux",
+            target_os = "dragonfly",
+            target_os = "freebsd",
+            target_os = "netbsd",
+            target_os = "openbsd"
+        ))]
+        {
+            use glutin::os::unix::RawHandle;
+
+            match raw_handle {
+                RawHandle::Egl(egl_context) => return GlContext::Egl(egl_context as usize),
+                RawHandle::Glx(glx_context) => return GlContext::Glx(glx_context as usize),
+            }
+        }
+
+        #[cfg(not(any(
+            target_os = "linux",
+            target_os = "dragonfly",
+            target_os = "freebsd",
+            target_os = "netbsd",
+            target_os = "openbsd"
+        )))]
+        {
+            println!("GL rendering unavailable for this platform");
+            return GlContext::Unknown;
+        }
+    }
+
+    fn get_native_display(&self) -> NativeDisplay {
+        use glutin::os::ContextTraitExt;
+
+        if let Some(display) = unsafe { self.windowed_context.context().get_egl_display() } {
+            return NativeDisplay::Egl(display as usize);
+        }
+
+        #[cfg(any(
+            target_os = "linux",
+            target_os = "dragonfly",
+            target_os = "freebsd",
+            target_os = "netbsd",
+            target_os = "openbsd"
+        ))]
+        {
+            use glutin::os::unix::WindowExt;
+
+            if let Some(display) = self.windowed_context.window().get_wayland_display() {
+                return NativeDisplay::Wayland(display as usize);
+            }
+            if let Some(display) = self.windowed_context.window().get_xlib_display() {
+                return NativeDisplay::X11(display as usize);
+            }
+        }
+
+        return NativeDisplay::Unknown;
+    }
+}
 
 struct Notifier {
     events_proxy: winit::EventsLoopProxy,
@@ -123,10 +210,12 @@ pub fn main_wrapper<E: Example + FrameRenderer>(
             E::WIDTH as f64,
             E::HEIGHT as f64,
         ));
-    let windowed_context = glutin::ContextBuilder::new()
-        .with_vsync(true)
-        .build_windowed(window, &events_loop)
-        .unwrap();
+    let windowed_context = Arc::new(
+        glutin::ContextBuilder::new()
+            .with_vsync(true)
+            .build_windowed(window, &events_loop)
+            .unwrap(),
+    );
 
     unsafe {
         windowed_context.make_current().ok();
@@ -171,15 +260,15 @@ pub fn main_wrapper<E: Example + FrameRenderer>(
     let api = sender.create_api();
     let document_id = api.add_document(framebuffer_size, 0);
 
-    let windowed_context_ = if use_gl {
-        Some(&windowed_context)
+    let gl_context: Box<PlayerGLContext> = if use_gl {
+        Box::new(PlayerContextGlutin {
+            windowed_context: windowed_context.clone(),
+        })
     } else {
-        None
+        Box::new(PlayerContextDummy())
     };
-    unsafe {
-        windowed_context.make_current().ok();
-    }
-    let player_wrapper = PlayerWrapper::new(path, windowed_context_);
+
+    let player_wrapper = PlayerWrapper::new(path, gl_context);
     example.lock().unwrap().use_gl(player_wrapper.use_gl());
     player_wrapper.register_frame_renderer(example.clone());
 

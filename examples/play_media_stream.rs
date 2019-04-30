@@ -3,12 +3,26 @@ extern crate servo_media;
 extern crate servo_media_auto;
 
 use ipc_channel::ipc;
+use servo_media::player::context::{GlContext, NativeDisplay, PlayerGLContext};
 use servo_media::player::{PlayerEvent, StreamType};
 use servo_media::ServoMedia;
 use std::sync::{Arc, Mutex};
 
+struct PlayerContextDummy();
+impl PlayerGLContext for PlayerContextDummy {
+    fn get_gl_context(&self) -> GlContext {
+        return GlContext::Unknown;
+    }
+
+    fn get_native_display(&self) -> NativeDisplay {
+        return NativeDisplay::Unknown;
+    }
+}
+
 fn run_example(servo_media: Arc<ServoMedia>) {
-    let player = Arc::new(Mutex::new(servo_media.create_player(StreamType::Stream)));
+    let player = Arc::new(Mutex::new(
+        servo_media.create_player(StreamType::Stream, Box::new(PlayerContextDummy())),
+    ));
 
     let (sender, receiver) = ipc::channel().unwrap();
     player.lock().unwrap().register_event_handler(sender);

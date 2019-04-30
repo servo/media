@@ -10,9 +10,10 @@ use ipc_channel::ipc::IpcSender;
 use media_stream::GStreamerMediaStream;
 use media_stream_source::{register_servo_media_stream_src, ServoMediaStreamSrc};
 use render::GStreamerRender;
+use servo_media_player::context::PlayerGLContext;
 use servo_media_player::frame::{Frame, FrameRenderer};
 use servo_media_player::metadata::Metadata;
-use servo_media_player::{GlContext, PlaybackState, Player, PlayerError, PlayerEvent, StreamType};
+use servo_media_player::{PlaybackState, Player, PlayerError, PlayerEvent, StreamType};
 use servo_media_streams::registry::{get_stream, MediaStreamId};
 use source::{register_servo_src, ServoSrc};
 use std::cell::RefCell;
@@ -346,18 +347,19 @@ pub struct GStreamerPlayer {
     is_ready: Arc<Once>,
     /// Indicates whether the type of media stream to be played is a live stream.
     stream_type: StreamType,
-    render: RefCell<Option<GStreamerRender>>,
+    /// Decorator used to setup the video sink and process the produced frames
+    render: Arc<Mutex<GStreamerRender>>,
 }
 
 impl GStreamerPlayer {
-    pub fn new(stream_type: StreamType) -> GStreamerPlayer {
+    pub fn new(stream_type: StreamType, gl_context: Box<PlayerGLContext>) -> GStreamerPlayer {
         Self {
             inner: RefCell::new(None),
             observers: Arc::new(Mutex::new(PlayerEventObserverList::new())),
             renderers: Arc::new(Mutex::new(FrameRendererList::new())),
             is_ready: Arc::new(Once::new()),
             stream_type,
-            render: RefCell::new(None),
+            render: Arc::new(Mutex::new(GStreamerRender::new(gl_context))),
         }
     }
 
@@ -429,11 +431,7 @@ impl GStreamerPlayer {
             .set_config(config)
             .map_err(|e| PlayerError::Backend(e.to_string()))?;
 
-        let render = self
-            .render
-            .replace(None)
-            .unwrap_or(GStreamerRender::new(GlContext::Unknown, 0));
-        let appsink = render.setup_video_sink(&pipeline)?;
+        let appsink = self.render.lock().unwrap().setup_video_sink(&pipeline)?;
 
         // There's a known bug in gstreamer that may cause a wrong transition
         // to the ready state while setting the uri property:
@@ -614,6 +612,7 @@ impl GStreamerPlayer {
                 }
             });
 
+        let render = self.render.clone();
         let observers = self.observers.clone();
         let renderers = self.renderers.clone();
         // Set appsink callbacks.
@@ -623,6 +622,8 @@ impl GStreamerPlayer {
                 .new_sample(move |appsink| {
                     let sample = appsink.pull_sample().ok_or(gst::FlowError::Eos)?;
                     let frame = render
+                        .lock()
+                        .unwrap()
                         .get_frame_from_sample(&sample)
                         .or_else(|_| Err(gst::FlowError::Error))?;
                     renderers
@@ -803,20 +804,13 @@ impl Player for GStreamerPlayer {
         self.renderers.lock().unwrap().register(renderer);
     }
 
-    fn set_gl_params(&self, context: GlContext, display: usize) -> Result<(), ()> {
-        let render = GStreamerRender::new(context, display);
-        let ret = render.is_gl();
-        *self.render.borrow_mut() = Some(render);
-        if ret {
-            Ok(())
-        } else {
-            Err(())
-        }
-    }
-
     fn shutdown(&self) -> Result<(), PlayerError> {
         self.observers.lock().unwrap().clear();
         self.renderers.lock().unwrap().clear();
         self.stop()
+    }
+
+    fn render_use_gl(&self) -> bool {
+        self.render.lock().unwrap().is_gl()
     }
 }

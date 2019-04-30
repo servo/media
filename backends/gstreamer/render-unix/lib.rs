@@ -26,8 +26,9 @@ extern crate servo_media_player as sm_player;
 use gst::prelude::*;
 use gst_gl::prelude::*;
 use sm_gst_render::Render;
+use sm_player::context::{GlContext, NativeDisplay, PlayerGLContext};
 use sm_player::frame::{Buffer, Frame, FrameData};
-use sm_player::{GlContext, PlayerError};
+use sm_player::PlayerError;
 use std::sync::{Arc, Mutex};
 
 struct GStreamerBuffer {
@@ -58,24 +59,29 @@ impl RenderUnix {
     ///
     /// # Arguments
     ///
-    /// * `gl_context` - is the living pointer to the GL context,
-    /// which might be Egl or Glx (right now only the first one is
-    /// supported).
-    ///
-    /// * `display_native` - is the living pointer to the native
-    /// display structure. It migth be the EGLDisplay, the XDisplay or
-    /// the wl_display (right now only the first one is supported)
-    pub fn new(gl_context: GlContext, display_native: usize) -> Option<RenderUnix> {
+    /// * `context` - is the PlayerContext trait object from
+    /// application.
+    pub fn new(context: Box<PlayerGLContext>) -> Option<RenderUnix> {
         // Check that we actually have the elements that we
         // need to make this work.
         if gst::ElementFactory::find("glsinkbin").is_none() {
             return None;
         }
 
+        let display_native = context.get_native_display();
+        let gl_context = context.get_gl_context();
+
         match gl_context {
             GlContext::Egl(context) => {
-                let display = unsafe { gst_gl::GLDisplayEGL::new_with_egl_display(display_native) };
-                if let Some(display) = display {
+                let display = match display_native {
+                    NativeDisplay::Egl(display_native) => unsafe {
+                        gst_gl::GLDisplayEGL::new_with_egl_display(display_native)
+                    },
+                    _ => None, // XXX(victor): Add wayland
+                }
+                .and_then(|display| Some(display.upcast()));
+
+                let render = if let Some(display) = display {
                     let context = unsafe {
                         gst_gl::GLContext::new_wrapped(
                             &display,
@@ -85,23 +91,29 @@ impl RenderUnix {
                         )
                     };
 
-                    if let Some(context) = context {
+                    let render = if let Some(context) = context {
                         if !(context.activate(true).is_ok() && context.fill_info().is_ok()) {
                             let cat = gst::DebugCategory::get("default").unwrap();
                             gst_warning!(cat, "Couldn't fill the wrapped app GL context")
                         }
-                        return Some(RenderUnix {
-                            display: display.upcast(),
+                        Some(RenderUnix {
+                            display: display,
                             app_context: context,
                             gst_context: Arc::new(Mutex::new(None)),
                             gl_upload: Arc::new(Mutex::new(None)),
-                        });
-                    }
-                }
+                        })
+                    } else {
+                        None
+                    };
 
-                None
+                    render
+                } else {
+                    None
+                };
+
+                render
             }
-            _ => None,
+            _ => None, // XXX(victor): add GLX with X11 display
         }
     }
 }
