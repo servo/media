@@ -21,24 +21,18 @@ use winit;
 
 use player_wrapper::PlayerWrapper;
 
-struct PlayerContextDummy();
-impl PlayerGLContext for PlayerContextDummy {
-    fn get_gl_context(&self) -> GlContext {
-        return GlContext::Unknown;
-    }
-
-    fn get_native_display(&self) -> NativeDisplay {
-        return NativeDisplay::Unknown;
-    }
-}
-
 struct PlayerContextGlutin {
+    use_gl: bool,
     windowed_context: Arc<glutin::WindowedContext>,
 }
 
 impl PlayerGLContext for PlayerContextGlutin {
     fn get_gl_context(&self) -> GlContext {
         use glutin::os::ContextTraitExt;
+
+        if !self.use_gl {
+            return GlContext::Unknown;
+        }
 
         unsafe {
             self.windowed_context
@@ -80,6 +74,10 @@ impl PlayerGLContext for PlayerContextGlutin {
 
     fn get_native_display(&self) -> NativeDisplay {
         use glutin::os::ContextTraitExt;
+
+        if !self.use_gl {
+            return NativeDisplay::Unknown;
+        }
 
         if let Some(display) = unsafe { self.windowed_context.context().get_egl_display() } {
             return NativeDisplay::Egl(display as usize);
@@ -260,13 +258,10 @@ pub fn main_wrapper<E: Example + FrameRenderer>(
     let api = sender.create_api();
     let document_id = api.add_document(framebuffer_size, 0);
 
-    let gl_context: Box<PlayerGLContext> = if use_gl {
-        Box::new(PlayerContextGlutin {
-            windowed_context: windowed_context.clone(),
-        })
-    } else {
-        Box::new(PlayerContextDummy())
-    };
+    let gl_context = Box::new(PlayerContextGlutin {
+        use_gl,
+        windowed_context: windowed_context.clone(),
+    });
 
     let player_wrapper = PlayerWrapper::new(path, gl_context);
     example.lock().unwrap().use_gl(player_wrapper.use_gl());
