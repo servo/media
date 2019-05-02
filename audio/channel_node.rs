@@ -83,10 +83,14 @@ impl AudioNodeEngine for ChannelSplitterNode {
 
         let original = inputs.blocks.pop().unwrap();
 
-        for chan in 0..original.chan_count() {
-            let mut block = Block::empty();
-            block.push_chan(original.data_chan(chan));
-            inputs.blocks.push(block);
+        if original.is_silence() {
+            inputs.blocks.resize(original.chan_count() as usize, Block::default())
+        } else {
+            for chan in 0..original.chan_count() {
+                let mut block = Block::empty();
+                block.push_chan(original.data_chan(chan));
+                inputs.blocks.push(block);
+            }
         }
 
         inputs
