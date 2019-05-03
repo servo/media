@@ -74,7 +74,7 @@ impl AudioSink for OfflineAudioSink {
         if let Some(ref mut buffer) = *buffer {
             for channel_number in 0..self.channel_count {
                 let channel_offset = offset + (channel_number * self.length);
-                let mut channel_data = &mut buffer[channel_offset..channel_offset + copy_len];
+                let channel_data = &mut buffer[channel_offset..channel_offset + copy_len];
                 channel_data
                     .copy_from_slice(&chunk.blocks[0].data_chan(channel_number as u8)[0..copy_len]);
             }

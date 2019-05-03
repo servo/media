@@ -425,7 +425,7 @@ impl AutomationEvent {
                 true
             }
             AutomationEvent::SetValueCurveAtTime(ref values, start, duration) => {
-                let mut progress = ((((current_tick.0 as f32) - (start.0 as f32)) as f32)
+                let progress = ((((current_tick.0 as f32) - (start.0 as f32)) as f32)
                     / (duration.0 as f32)) as f32;
                 debug_assert!(progress >= 0.);
                 let n = values.len() as f32;
