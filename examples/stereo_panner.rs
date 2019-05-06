@@ -27,7 +27,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     );
     // 2s: Set pan to -1
     context.message_node(
-        osc,
+        pan,
         AudioNodeMessage::SetParam(ParamType::Pan, UserAutomationEvent::SetValueAtTime(-1., 2.)),
     );
     // 4s: Linearly ramp pan to 0
