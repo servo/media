@@ -192,7 +192,7 @@ impl Render for RenderUnix {
                         } else if context_type == "gst.gl.app_context" {
                             let mut ctxt = gst::Context::new(context_type, true);
                             {
-                                let mut s = ctxt.get_mut().unwrap().get_mut_structure();
+                                let s = ctxt.get_mut().unwrap().get_mut_structure();
                                 s.set_value("context", context_.to_send_value());
                             }
                             el.set_context(&ctxt);
