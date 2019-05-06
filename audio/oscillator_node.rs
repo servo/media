@@ -1,6 +1,6 @@
 use block::{Chunk, Tick};
 use node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, BlockInfo, OnEndedCallback};
-use node::{AudioNodeMessage, AudioNodeType, ChannelInfo, ShouldPlay};
+use node::{AudioNodeType, ChannelInfo, ShouldPlay};
 use num_traits::cast::NumCast;
 use param::{Param, ParamType};
 
@@ -72,6 +72,14 @@ impl OscillatorNode {
 
     pub fn update_parameters(&mut self, info: &BlockInfo, tick: Tick) -> bool {
         self.frequency.update(info, tick)
+    }
+
+    fn handle_oscillator_message(&mut self, message: OscillatorNodeMessage, _sample_rate: f32) {
+        match message {
+            OscillatorNodeMessage::SetOscillatorType(o) => {
+                self.oscillator_type = o;
+            }
+        }
     }
 }
 
@@ -177,15 +185,6 @@ impl AudioNodeEngine for OscillatorNode {
             _ => panic!("Unknown param {:?} for OscillatorNode", id),
         }
     }
-
-    fn message_specific(&mut self, message: AudioNodeMessage, _sample_rate: f32) {
-        match message {
-            AudioNodeMessage::OscillatorNode(m) => match m {
-                OscillatorNodeMessage::SetOscillatorType(o) => {
-                    self.oscillator_type = o;
-                }
-            },
-            _ => (),
-        }
-    }
+    make_message_handler!(AudioScheduledSourceNode: handle_source_node_message,
+                          OscillatorNode: handle_oscillator_message);
 }
