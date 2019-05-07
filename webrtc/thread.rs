@@ -10,6 +10,8 @@ use crate::{
 };
 use crate::{WebRtcBackend, WebRtcControllerBackend, WebRtcSignaller};
 
+use servo_media_streams::MediaStreamType;
+
 #[derive(Clone)]
 /// Entry point for all client webrtc interactions.
 pub struct WebRtcController {
@@ -93,7 +95,7 @@ pub enum RtcThreadEvent {
 pub enum InternalEvent {
     OnNegotiationNeeded,
     OnIceCandidate(IceCandidate),
-    OnAddStream(MediaStreamId),
+    OnAddStream(MediaStreamId, MediaStreamType),
     DescriptionAdded(
         SendBoxFnOnce<'static, ()>,
         DescriptionType,

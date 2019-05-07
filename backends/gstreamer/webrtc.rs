@@ -7,6 +7,7 @@ use gst::prelude::*;
 use gst_sdp;
 use gst_webrtc;
 use media_stream::GStreamerMediaStream;
+use servo_media_streams::MediaStreamType;
 use servo_media_streams::registry::{get_stream, MediaStreamId};
 use servo_media_webrtc::thread::InternalEvent;
 use servo_media_webrtc::WebRtcController as WebRtcThread;
@@ -163,9 +164,9 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
             InternalEvent::OnIceCandidate(candidate) => {
                 self.signaller.on_ice_candidate(&self.thread, candidate);
             }
-            InternalEvent::OnAddStream(stream) => {
+            InternalEvent::OnAddStream(stream, ty) => {
                 self.pipeline.set_state(gst::State::Playing)?;
-                self.signaller.on_add_stream(&stream);
+                self.signaller.on_add_stream(&stream, ty);
             }
             InternalEvent::DescriptionAdded(cb, description_type, ty, remote_offer_generation) => {
                 if description_type == DescriptionType::Remote
@@ -625,15 +626,15 @@ fn on_incoming_decodebin_stream(
     pad.link(&sinkpad).unwrap();
     proxy_sink.sync_state_with_parent().unwrap();
 
-    let stream = if name == "video" {
-        GStreamerMediaStream::create_video_from(proxy_src)
+    let (stream, ty) = if name == "video" {
+        (GStreamerMediaStream::create_video_from(proxy_src), MediaStreamType::Video)
     } else {
-        GStreamerMediaStream::create_audio_from(proxy_src)
+        (GStreamerMediaStream::create_audio_from(proxy_src), MediaStreamType::Audio)
     };
     thread
         .lock()
         .unwrap()
-        .internal_event(InternalEvent::OnAddStream(stream));
+        .internal_event(InternalEvent::OnAddStream(stream, ty));
 }
 
 fn process_new_stream(
