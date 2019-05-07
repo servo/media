@@ -123,14 +123,16 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
     }
 
     fn add_stream(&mut self, stream_id: &MediaStreamId) -> WebrtcResult {
-        let stream =
-            get_stream(stream_id).expect("Media streams registry does not contain such ID");
-        let mut stream = stream.lock().unwrap();
-        let stream = stream
-            .as_mut_any()
-            .downcast_mut::<GStreamerMediaStream>()
-            .ok_or("Does not currently support non-gstreamer streams")?;
-        stream.insert_capsfilter();
+        {
+            let stream =
+                get_stream(stream_id).expect("Media streams registry does not contain such ID");
+            let mut stream = stream.lock().unwrap();
+            let stream = stream
+                .as_mut_any()
+                .downcast_mut::<GStreamerMediaStream>()
+                .ok_or("Does not currently support non-gstreamer streams")?;
+            stream.insert_capsfilter();
+        }
         self.link_stream(stream_id, false)?;
         if self.delayed_negotiation && (self.streams.len() > 1 || self.pending_streams.len() > 1) {
             self.delayed_negotiation = false;
