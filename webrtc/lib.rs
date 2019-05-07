@@ -1,6 +1,7 @@
 extern crate boxfnonce;
 extern crate log;
 extern crate servo_media_streams;
+use servo_media_streams::MediaStreamType;
 use servo_media_streams::registry::MediaStreamId;
 
 use std::fmt::Display;
@@ -51,7 +52,7 @@ pub trait WebRtcSignaller: Send {
     fn on_ice_candidate(&self, controller: &WebRtcController, candidate: IceCandidate);
     fn on_negotiation_needed(&self, controller: &WebRtcController);
     fn close(&self);
-    fn on_add_stream(&self, stream: &MediaStreamId);
+    fn on_add_stream(&self, stream: &MediaStreamId, ty: MediaStreamType);
 
     fn update_signaling_state(&self, _: SignalingState) {}
     fn update_gathering_state(&self, _: GatheringState) {}

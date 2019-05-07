@@ -192,7 +192,7 @@ impl WebRtcSignaller for Signaller {
         );
     }
 
-    fn on_add_stream(&self, stream: &registry::MediaStreamId) {
+    fn on_add_stream(&self, stream: &registry::MediaStreamId, _: MediaStreamType) {
         self.output.lock().unwrap().add_stream(&stream);
     }
 }
