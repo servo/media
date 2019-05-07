@@ -19,7 +19,7 @@ use servo_media_player::context::PlayerGLContext;
 use servo_media_player::{frame, Player, PlayerError, PlayerEvent, StreamType};
 use servo_media_streams::capture::MediaTrackConstraintSet;
 use servo_media_streams::registry::{register_stream, unregister_stream, MediaStreamId};
-use servo_media_streams::{MediaOutput, MediaStream};
+use servo_media_streams::{MediaOutput, MediaStream, MediaStreamType};
 use servo_media_webrtc::{
     thread, BundlePolicy, IceCandidate, SessionDescription, WebRtcBackend, WebRtcController,
     WebRtcControllerBackend, WebRtcSignaller, WebrtcResult,
@@ -178,6 +178,10 @@ impl MediaStream for DummyMediaStream {
         self
     }
     fn set_id(&mut self, _: MediaStreamId) {}
+
+    fn ty(&self) -> MediaStreamType {
+        MediaStreamType::Audio
+    }
 }
 
 impl Drop for DummyMediaStream {

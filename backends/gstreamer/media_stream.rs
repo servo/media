@@ -5,7 +5,7 @@ use gst::prelude::*;
 use servo_media_streams::registry::{
     get_stream, register_stream, unregister_stream, MediaStreamId,
 };
-use servo_media_streams::{MediaOutput, MediaStream};
+use servo_media_streams::{MediaOutput, MediaStream, MediaStreamType};
 use std::any::Any;
 use std::sync::{Arc, Mutex};
 
@@ -24,15 +24,9 @@ lazy_static! {
     };
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum StreamType {
-    Audio,
-    Video,
-}
-
 pub struct GStreamerMediaStream {
     id: Option<MediaStreamId>,
-    type_: StreamType,
+    type_: MediaStreamType,
     elements: Vec<gst::Element>,
     pipeline: Option<gst::Pipeline>,
 }
@@ -49,10 +43,14 @@ impl MediaStream for GStreamerMediaStream {
     fn set_id(&mut self, id: MediaStreamId) {
         self.id = Some(id);
     }
+
+    fn ty(&self) -> MediaStreamType {
+        self.type_
+    }
 }
 
 impl GStreamerMediaStream {
-    pub fn new(type_: StreamType, elements: Vec<gst::Element>) -> Self {
+    pub fn new(type_: MediaStreamType, elements: Vec<gst::Element>) -> Self {
         Self {
             id: None,
             type_,
@@ -61,20 +59,16 @@ impl GStreamerMediaStream {
         }
     }
 
-    pub fn type_(&self) -> StreamType {
-        self.type_
-    }
-
     pub fn caps(&self) -> &gst::Caps {
         match self.type_ {
-            StreamType::Audio => &*RTP_CAPS_OPUS,
-            StreamType::Video => &*RTP_CAPS_VP8,
+            MediaStreamType::Audio => &*RTP_CAPS_OPUS,
+            MediaStreamType::Video => &*RTP_CAPS_VP8,
         }
     }
 
     pub fn caps_with_payload(&self, payload: i32) -> gst::Caps {
         match self.type_ {
-            StreamType::Audio => gst::Caps::new_simple(
+            MediaStreamType::Audio => gst::Caps::new_simple(
                 "application/x-rtp",
                 &[
                     ("media", &"audio"),
@@ -82,7 +76,7 @@ impl GStreamerMediaStream {
                     ("payload", &(payload)),
                 ],
             ),
-            StreamType::Video => gst::Caps::new_simple(
+            MediaStreamType::Video => gst::Caps::new_simple(
                 "application/x-rtp",
                 &[
                     ("media", &"video"),
@@ -146,7 +140,7 @@ impl GStreamerMediaStream {
         let queue = gst::ElementFactory::make("queue", None).unwrap();
 
         register_stream(Arc::new(Mutex::new(GStreamerMediaStream::new(
-            StreamType::Video,
+            MediaStreamType::Video,
             vec![source, videoconvert, queue],
         ))))
     }
@@ -164,7 +158,7 @@ impl GStreamerMediaStream {
         let queue2 = gst::ElementFactory::make("queue", None).unwrap();
 
         GStreamerMediaStream::new(
-            StreamType::Video,
+            MediaStreamType::Video,
             vec![source, videoconvert, queue, vp8enc, rtpvp8pay, queue2],
         )
     }
@@ -188,7 +182,7 @@ impl GStreamerMediaStream {
         let queue2 = gst::ElementFactory::make("queue", None).unwrap();
 
         register_stream(Arc::new(Mutex::new(GStreamerMediaStream::new(
-            StreamType::Audio,
+            MediaStreamType::Audio,
             vec![source, queue, audioconvert, audioresample, queue2],
         ))))
     }
@@ -203,7 +197,7 @@ impl GStreamerMediaStream {
         let queue3 = gst::ElementFactory::make("queue", None).unwrap();
 
         GStreamerMediaStream::new(
-            StreamType::Audio,
+            MediaStreamType::Audio,
             vec![
                 source,
                 queue,
@@ -249,8 +243,8 @@ impl MediaOutput for MediaSink {
             let last_element = stream.elements.last();
             let last_element = last_element.as_ref().unwrap();
             let sink = match stream.type_ {
-                StreamType::Audio => "autoaudiosink",
-                StreamType::Video => "autovideosink",
+                MediaStreamType::Audio => "autoaudiosink",
+                MediaStreamType::Video => "autovideosink",
             };
             let sink = gst::ElementFactory::make(sink, None).unwrap();
             pipeline.add(&sink).unwrap();

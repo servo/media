@@ -1,6 +1,7 @@
-use crate::media_stream::{GStreamerMediaStream, StreamType};
+use crate::media_stream::{GStreamerMediaStream};
 use gst;
 use gst::prelude::*;
+use servo_media_streams::MediaStreamType;
 use servo_media_streams::capture::*;
 use servo_media_streams::registry::{register_stream, MediaStreamId};
 use std::i32;
@@ -148,27 +149,27 @@ pub struct GstMediaTrack {
 }
 
 fn create_input_stream(
-    stream_type: StreamType,
+    stream_type: MediaStreamType,
     constraint_set: MediaTrackConstraintSet,
 ) -> Option<GStreamerMediaStream> {
     let devices = GstMediaDevices::new();
     devices
-        .get_track(stream_type == StreamType::Video, constraint_set)
+        .get_track(stream_type == MediaStreamType::Video, constraint_set)
         .map(|track| {
             let f = match stream_type {
-                StreamType::Audio => GStreamerMediaStream::create_audio_from_encoded,
-                StreamType::Video => GStreamerMediaStream::create_video_from_encoded,
+                MediaStreamType::Audio => GStreamerMediaStream::create_audio_from_encoded,
+                MediaStreamType::Video => GStreamerMediaStream::create_video_from_encoded,
             };
             f(track.element)
         })
 }
 
 pub fn create_audioinput_stream(constraint_set: MediaTrackConstraintSet) -> Option<MediaStreamId> {
-    create_input_stream(StreamType::Audio, constraint_set)
+    create_input_stream(MediaStreamType::Audio, constraint_set)
         .map(|s| register_stream(Arc::new(Mutex::new(s))))
 }
 
 pub fn create_videoinput_stream(constraint_set: MediaTrackConstraintSet) -> Option<MediaStreamId> {
-    create_input_stream(StreamType::Video, constraint_set)
+    create_input_stream(MediaStreamType::Video, constraint_set)
         .map(|s| register_stream(Arc::new(Mutex::new(s))))
 }
