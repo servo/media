@@ -12,6 +12,7 @@ use glutin::ContextTrait;
 use servo_media::player::context::*;
 use servo_media::player::frame::FrameRenderer;
 use std::env;
+use std::ops::Deref;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use webrender;
@@ -21,9 +22,20 @@ use winit;
 
 use player_wrapper::PlayerWrapper;
 
+struct SendableSharableContext(glutin::WindowedContext);
+unsafe impl Send for SendableSharableContext {}
+unsafe impl Sync for SendableSharableContext {}
+
+impl Deref for SendableSharableContext {
+    type Target = glutin::WindowedContext;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 struct PlayerContextGlutin {
     use_gl: bool,
-    windowed_context: Arc<glutin::WindowedContext>,
+    windowed_context: Arc<SendableSharableContext>,
 }
 
 impl PlayerGLContext for PlayerContextGlutin {
@@ -40,9 +52,6 @@ impl PlayerGLContext for PlayerContextGlutin {
                 .expect("Couldn't make window current");
         }
 
-        let context = self.windowed_context.context();
-        let raw_handle = unsafe { context.raw_handle() };
-
         #[cfg(any(
             target_os = "linux",
             target_os = "dragonfly",
@@ -53,6 +62,8 @@ impl PlayerGLContext for PlayerContextGlutin {
         {
             use glutin::os::unix::RawHandle;
 
+            let context = self.windowed_context.context();
+            let raw_handle = unsafe { context.raw_handle() };
             match raw_handle {
                 RawHandle::Egl(egl_context) => return GlContext::Egl(egl_context as usize),
                 RawHandle::Glx(glx_context) => return GlContext::Glx(glx_context as usize),
@@ -208,12 +219,12 @@ pub fn main_wrapper<E: Example + FrameRenderer>(
             E::WIDTH as f64,
             E::HEIGHT as f64,
         ));
-    let windowed_context = Arc::new(
+    let windowed_context = Arc::new(SendableSharableContext(
         glutin::ContextBuilder::new()
             .with_vsync(true)
             .build_windowed(window, &events_loop)
             .unwrap(),
-    );
+    ));
 
     unsafe {
         windowed_context.make_current().ok();
