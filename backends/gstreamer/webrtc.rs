@@ -126,12 +126,12 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         let stream =
             get_stream(stream_id).expect("Media streams registry does not contain such ID");
         let mut stream = stream.lock().unwrap();
-        let stream = stream
+        let mut stream = stream
             .as_mut_any()
             .downcast_mut::<GStreamerMediaStream>()
             .ok_or("Does not currently support non-gstreamer streams")?;
         stream.insert_capsfilter();
-        self.link_stream(stream_id, false)?;
+        self.link_stream(stream_id, &mut stream, false)?;
         if self.delayed_negotiation && (self.streams.len() > 1 || self.pending_streams.len() > 1) {
             self.delayed_negotiation = false;
             self.signaller.on_negotiation_needed(&self.thread);
@@ -375,14 +375,12 @@ impl GStreamerWebRtcController {
     ///
     /// When request_new_pads is false, we may still request new pads, however we only do this for
     /// streams that have already been negotiated by the remote.
-    fn link_stream(&mut self, stream_id: &MediaStreamId, request_new_pads: bool) -> WebrtcResult {
-        let stream =
-            get_stream(stream_id).expect("Media streams registry does not contain such ID");
-        let mut stream = stream.lock().unwrap();
-        let stream = stream
-            .as_mut_any()
-            .downcast_mut::<GStreamerMediaStream>()
-            .ok_or("Does not currently support non-gstreamer streams")?;
+    fn link_stream(
+        &mut self,
+        stream_id: &MediaStreamId,
+        stream: &mut GStreamerMediaStream,
+        request_new_pads: bool,
+    ) -> WebrtcResult {
         let caps = stream.caps();
         let idx = self
             .remote_mline_info
@@ -447,8 +445,15 @@ impl GStreamerWebRtcController {
     /// link_stream, but for all pending streams
     fn flush_pending_streams(&mut self, request_new_pads: bool) -> WebrtcResult {
         let pending_streams = mem::replace(&mut self.pending_streams, vec![]);
-        for stream in pending_streams {
-            self.link_stream(&stream, request_new_pads)?;
+        for stream_id in pending_streams {
+            let stream =
+                get_stream(&stream_id).expect("Media streams registry does not contain such ID");
+            let mut stream = stream.lock().unwrap();
+            let mut stream = stream
+                .as_mut_any()
+                .downcast_mut::<GStreamerMediaStream>()
+                .ok_or("Does not currently support non-gstreamer streams")?;
+            self.link_stream(&stream_id, &mut stream, request_new_pads)?;
         }
         Ok(())
     }
