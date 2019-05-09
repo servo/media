@@ -17,8 +17,8 @@ extern crate webrender;
 extern crate winit;
 
 use gleam::gl;
-use servo_media::ServoMedia;
 use servo_media::player::frame::{Frame, FrameRenderer};
+use servo_media::ServoMedia;
 use std::env;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -284,15 +284,18 @@ fn main() {
 #[cfg(not(target_os = "android"))]
 fn main() {
     let args: Vec<_> = env::args().collect();
-    let (use_gl, filename) = if args.len() == 2 {
+    let (no_video, use_gl, filename) = if args.len() == 2 {
         let fname: &str = args[1].as_ref();
-        (false, fname)
+        (false, false, fname)
     } else if args.len() == 3 {
         if args[1] == "--gl" {
             let fname: &str = args[2].as_ref();
-            (true, fname)
+            (false, true, fname)
+        } else if args[1] == "--no-video" {
+            let fname: &str = args[2].as_ref();
+            (true, false, fname)
         } else {
-            panic!("Usage: cargo run --bin player [--gl] <file_path>")
+            panic!("Usage: cargo run --bin player [[--gl]|[--no-video]] <file_path>")
         }
     } else {
         panic!("Usage: cargo run --bin player [--gl] <file_path>")
@@ -301,5 +304,5 @@ fn main() {
     let path = Path::new(filename);
     let app = Arc::new(Mutex::new(App::new()));
     ServoMedia::init::<servo_media_auto::Backend>();
-    ui::main_wrapper(app, &path, use_gl, None);
+    ui::main_wrapper(app, &path, no_video, use_gl, None);
 }

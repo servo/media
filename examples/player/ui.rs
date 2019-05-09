@@ -195,6 +195,7 @@ pub trait Example {
 pub fn main_wrapper<E: Example + FrameRenderer>(
     example: Arc<Mutex<E>>,
     path: &Path,
+    no_video: bool,
     use_gl: bool,
     options: Option<webrender::RendererOptions>,
 ) {
@@ -265,6 +266,9 @@ pub fn main_wrapper<E: Example + FrameRenderer>(
 
     let player_wrapper = PlayerWrapper::new(path, gl_context);
     example.lock().unwrap().use_gl(player_wrapper.use_gl());
+    if no_video {
+        player_wrapper.disable_video();
+    }
     player_wrapper.register_frame_renderer(example.clone());
 
     let (external, output) = example.lock().unwrap().get_image_handlers(&*gl);
