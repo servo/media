@@ -148,6 +148,10 @@ impl Player for DummyPlayer {
     fn render_use_gl(&self) -> bool {
         false
     }
+
+    fn disable_video(&self) -> Result<(), PlayerError> {
+        Ok(())
+    }
 }
 
 impl WebRtcBackend for DummyBackend {

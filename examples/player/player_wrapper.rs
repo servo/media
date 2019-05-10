@@ -162,6 +162,10 @@ impl PlayerWrapper {
         self.player.lock().unwrap().render_use_gl()
     }
 
+    pub fn disable_video(&self) {
+        self.player.lock().unwrap().disable_video().unwrap();
+    }
+
     pub fn register_frame_renderer(&self, renderer: Arc<Mutex<FrameRenderer>>) {
         self.player
             .lock()

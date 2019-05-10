@@ -282,6 +282,10 @@ impl PlayerInner {
         }
         Err(PlayerError::SetStreamFailed)
     }
+
+    fn disable_video(&self) {
+        self.player.set_video_track_enabled(false);
+    }
 }
 
 type PlayerEventObserver = IpcSender<PlayerEvent>;
@@ -812,5 +816,13 @@ impl Player for GStreamerPlayer {
 
     fn render_use_gl(&self) -> bool {
         self.render.lock().unwrap().is_gl()
+    }
+
+    fn disable_video(&self) -> Result<(), PlayerError> {
+        self.setup()?;
+        let inner = self.inner.borrow();
+        let inner = inner.as_ref().unwrap().lock().unwrap();
+        inner.disable_video();
+        Ok(())
     }
 }

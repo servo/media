@@ -90,4 +90,6 @@ pub trait Player: Send {
     fn set_stream(&self, stream: &MediaStreamId) -> Result<(), PlayerError>;
     /// If player's rendering draws using GL textures
     fn render_use_gl(&self) -> bool;
+    /// if no video frames shall be pushed to renderers
+    fn disable_video(&self) -> Result<(), PlayerError>;
 }
