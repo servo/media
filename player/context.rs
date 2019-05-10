@@ -31,7 +31,7 @@ pub enum NativeDisplay {
     Unknown,
 }
 
-pub trait PlayerGLContext: Send {
+pub trait PlayerGLContext {
     /// Returns the GL context living pointer wrapped by `GlContext`
     fn get_gl_context(&self) -> GlContext;
     /// Returns the living pointer to the native display structure
