@@ -97,7 +97,7 @@ impl Backend for GStreamerBackend {
     }
 
     fn create_audioinput_stream(&self, set: MediaTrackConstraintSet) -> Option<MediaStreamId> {
-        if self.capture_mocking.load(Ordering::AcqRel) {
+        if self.capture_mocking.load(Ordering::Acquire) {
             // XXXManishearth we should caps filter this
             return Some(self.create_audiostream());
         }
@@ -105,7 +105,7 @@ impl Backend for GStreamerBackend {
     }
 
     fn create_videoinput_stream(&self, set: MediaTrackConstraintSet) -> Option<MediaStreamId> {
-        if self.capture_mocking.load(Ordering::AcqRel) {
+        if self.capture_mocking.load(Ordering::Acquire) {
             // XXXManishearth we should caps filter this
             return Some(self.create_videostream());
         }
@@ -145,7 +145,7 @@ impl Backend for GStreamerBackend {
     }
 
     fn set_capture_mocking(&self, mock: bool) {
-        self.capture_mocking.store(mock, Ordering::AcqRel)
+        self.capture_mocking.store(mock, Ordering::Release)
     }
 
 }
