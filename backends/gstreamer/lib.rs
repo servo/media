@@ -57,12 +57,15 @@ use servo_media_streams::capture::MediaTrackConstraintSet;
 use servo_media_streams::registry::MediaStreamId;
 use servo_media_streams::MediaOutput;
 use servo_media_webrtc::{WebRtcBackend, WebRtcController, WebRtcSignaller};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 lazy_static! {
     static ref BACKEND_BASE_TIME: gst::ClockTime = { gst::SystemClock::obtain().get_time() };
 }
 
-pub struct GStreamerBackend;
+pub struct GStreamerBackend {
+    capture_mocking: AtomicBool,
+}
 
 impl Backend for GStreamerBackend {
     fn create_player(
@@ -94,10 +97,18 @@ impl Backend for GStreamerBackend {
     }
 
     fn create_audioinput_stream(&self, set: MediaTrackConstraintSet) -> Option<MediaStreamId> {
+        if self.capture_mocking.load(Ordering::AcqRel) {
+            // XXXManishearth we should caps filter this
+            return Some(self.create_audiostream());
+        }
         media_capture::create_audioinput_stream(set)
     }
 
     fn create_videoinput_stream(&self, set: MediaTrackConstraintSet) -> Option<MediaStreamId> {
+        if self.capture_mocking.load(Ordering::AcqRel) {
+            // XXXManishearth we should caps filter this
+            return Some(self.create_videostream());
+        }
         media_capture::create_videoinput_stream(set)
     }
 
@@ -132,6 +143,11 @@ impl Backend for GStreamerBackend {
         }
         SupportsMediaType::No
     }
+
+    fn set_capture_mocking(&self, mock: bool) {
+        self.capture_mocking.store(mock, Ordering::AcqRel)
+    }
+
 }
 
 impl AudioBackend for GStreamerBackend {
@@ -158,7 +174,9 @@ impl WebRtcBackend for GStreamerBackend {
 impl BackendInit for GStreamerBackend {
     fn init() -> Box<Backend> {
         gst::init().unwrap();
-        Box::new(GStreamerBackend)
+        Box::new(GStreamerBackend {
+            capture_mocking: AtomicBool::new(false),
+        })
     }
 }
 
