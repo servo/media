@@ -4,7 +4,7 @@ rust:
   - nightly
 os:
   - linux
-dist: trusty
+dist: xenial
 
 matrix:
   include:
