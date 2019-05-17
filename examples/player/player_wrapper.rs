@@ -21,11 +21,19 @@ pub struct PlayerWrapper {
 }
 
 impl PlayerWrapper {
-    pub fn new(path: &Path, gl_context: Box<PlayerGLContext>) -> Self {
+    pub fn new(
+        path: &Path,
+        renderer: Option<Arc<Mutex<FrameRenderer>>>,
+        gl_context: Box<PlayerGLContext>,
+    ) -> Self {
+        let (sender, receiver) = ipc::channel().unwrap();
         let servo_media = ServoMedia::get().unwrap();
-        let player = Arc::new(Mutex::new(
-            servo_media.create_player(StreamType::Seekable, gl_context),
-        ));
+        let player = Arc::new(Mutex::new(servo_media.create_player(
+            StreamType::Seekable,
+            sender,
+            renderer,
+            gl_context,
+        )));
 
         let file = File::open(&path).unwrap();
         let metadata = file.metadata().unwrap();
@@ -34,9 +42,6 @@ impl PlayerWrapper {
             .unwrap()
             .set_input_size(metadata.len())
             .unwrap();
-
-        let (sender, receiver) = ipc::channel().unwrap();
-        player.lock().unwrap().register_event_handler(sender);
 
         let player_ = player.clone();
         let player__ = player.clone();
@@ -160,16 +165,5 @@ impl PlayerWrapper {
 
     pub fn use_gl(&self) -> bool {
         self.player.lock().unwrap().render_use_gl()
-    }
-
-    pub fn disable_video(&self) {
-        self.player.lock().unwrap().disable_video().unwrap();
-    }
-
-    pub fn register_frame_renderer(&self, renderer: Arc<Mutex<FrameRenderer>>) {
-        self.player
-            .lock()
-            .unwrap()
-            .register_frame_renderer(renderer);
     }
 }

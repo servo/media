@@ -66,7 +66,13 @@ impl Backend for DummyBackend {
         }))))
     }
 
-    fn create_player(&self, _: StreamType, _: Box<PlayerGLContext>) -> Box<Player> {
+    fn create_player(
+        &self,
+        _: StreamType,
+        _: IpcSender<PlayerEvent>,
+        _: Option<Arc<Mutex<frame::FrameRenderer>>>,
+        _: Box<PlayerGLContext>,
+    ) -> Box<Player> {
         Box::new(DummyPlayer)
     }
 
@@ -147,10 +153,6 @@ impl Player for DummyPlayer {
 
     fn render_use_gl(&self) -> bool {
         false
-    }
-
-    fn disable_video(&self) -> Result<(), PlayerError> {
-        Ok(())
     }
 }
 

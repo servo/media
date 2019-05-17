@@ -268,12 +268,13 @@ pub fn main_wrapper<E: Example + FrameRenderer>(
 
     let gl_context = Box::new(PlayerContextGlutin::new(use_gl, &windowed_context));
 
-    let player_wrapper = PlayerWrapper::new(path, gl_context);
+    let example_: Option<Arc<Mutex<FrameRenderer>>> = if no_video {
+        None
+    } else {
+        Some(example.clone())
+    };
+    let player_wrapper = PlayerWrapper::new(path, example_, gl_context);
     example.lock().unwrap().use_gl(player_wrapper.use_gl());
-    if no_video {
-        player_wrapper.disable_video();
-    }
-    player_wrapper.register_frame_renderer(example.clone());
 
     let (external, output) = example.lock().unwrap().get_image_handlers(&*gl);
 

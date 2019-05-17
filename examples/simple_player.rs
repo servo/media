@@ -28,9 +28,6 @@ impl PlayerGLContext for PlayerContextDummy {
 }
 
 fn run_example(servo_media: Arc<ServoMedia>) {
-    let player = Arc::new(Mutex::new(
-        servo_media.create_player(StreamType::Seekable, Box::new(PlayerContextDummy())),
-    ));
     let args: Vec<_> = env::args().collect();
     let default = "./examples/resources/viper_cut.ogg";
     let filename: &str = if args.len() == 2 {
@@ -42,7 +39,12 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     };
 
     let (sender, receiver) = ipc::channel().unwrap();
-    player.lock().unwrap().register_event_handler(sender);
+    let player = Arc::new(Mutex::new(servo_media.create_player(
+        StreamType::Seekable,
+        sender,
+        None,
+        Box::new(PlayerContextDummy()),
+    )));
 
     let path = Path::new(filename);
     let display = path.display();

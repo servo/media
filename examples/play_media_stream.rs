@@ -20,16 +20,17 @@ impl PlayerGLContext for PlayerContextDummy {
 }
 
 fn run_example(servo_media: Arc<ServoMedia>) {
-    let player = Arc::new(Mutex::new(
-        servo_media.create_player(StreamType::Stream, Box::new(PlayerContextDummy())),
-    ));
-
     let (sender, receiver) = ipc::channel().unwrap();
-    player.lock().unwrap().register_event_handler(sender);
+
+    let player = Arc::new(Mutex::new(servo_media.create_player(
+        StreamType::Stream,
+        sender,
+        None,
+        Box::new(PlayerContextDummy()),
+    )));
 
     let audio_stream = servo_media.create_audiostream();
     player.lock().unwrap().set_stream(&audio_stream).unwrap();
-
     player.lock().unwrap().play().unwrap();
 
     while let Ok(event) = receiver.recv() {

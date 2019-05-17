@@ -282,10 +282,6 @@ impl PlayerInner {
         }
         Err(PlayerError::SetStreamFailed)
     }
-
-    fn disable_video(&self) {
-        self.player.set_video_track_enabled(false);
-    }
 }
 
 type PlayerEventObserver = IpcSender<PlayerEvent>;
@@ -340,6 +336,10 @@ impl FrameRendererList {
     fn clear(&mut self) {
         self.renderers.clear();
     }
+
+    fn is_empty(&self) -> bool {
+        self.renderers.is_empty()
+    }
 }
 
 pub struct GStreamerPlayer {
@@ -356,11 +356,22 @@ pub struct GStreamerPlayer {
 }
 
 impl GStreamerPlayer {
-    pub fn new(stream_type: StreamType, gl_context: Box<PlayerGLContext>) -> GStreamerPlayer {
+    pub fn new(
+        stream_type: StreamType,
+        sender: IpcSender<PlayerEvent>,
+        renderer: Option<Arc<Mutex<FrameRenderer>>>,
+        gl_context: Box<PlayerGLContext>,
+    ) -> GStreamerPlayer {
+        let mut observers = PlayerEventObserverList::new();
+        observers.register(sender);
+
+        let mut renderers = FrameRendererList::new();
+        renderer.map(|renderer| renderers.register(renderer));
+
         Self {
             inner: RefCell::new(None),
-            observers: Arc::new(Mutex::new(PlayerEventObserverList::new())),
-            renderers: Arc::new(Mutex::new(FrameRendererList::new())),
+            observers: Arc::new(Mutex::new(observers)),
+            renderers: Arc::new(Mutex::new(renderers)),
             is_ready: Arc::new(Once::new()),
             stream_type,
             render: Arc::new(Mutex::new(GStreamerRender::new(gl_context))),
@@ -460,6 +471,11 @@ impl GStreamerPlayer {
         player
             .set_property("uri", &uri)
             .expect("playbin doesn't have expected 'uri' property");
+
+        // No renderers no video
+        if self.renderers.lock().unwrap().is_empty() {
+            player.set_video_track_enabled(false);
+        }
 
         *self.inner.borrow_mut() = Some(Arc::new(Mutex::new(PlayerInner {
             player,
@@ -805,6 +821,8 @@ impl Player for GStreamerPlayer {
     }
 
     fn register_frame_renderer(&self, renderer: Arc<Mutex<FrameRenderer>>) {
+        // TODO(victor): If it is the first renderer registered, the
+        // video track should be enabled
         self.renderers.lock().unwrap().register(renderer);
     }
 
@@ -816,13 +834,5 @@ impl Player for GStreamerPlayer {
 
     fn render_use_gl(&self) -> bool {
         self.render.lock().unwrap().is_gl()
-    }
-
-    fn disable_video(&self) -> Result<(), PlayerError> {
-        self.setup()?;
-        let inner = self.inner.borrow();
-        let inner = inner.as_ref().unwrap().lock().unwrap();
-        inner.disable_video();
-        Ok(())
     }
 }
