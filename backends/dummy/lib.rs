@@ -103,9 +103,6 @@ impl AudioBackend for DummyBackend {
 pub struct DummyPlayer;
 
 impl Player for DummyPlayer {
-    fn register_event_handler(&self, _: IpcSender<PlayerEvent>) {}
-    fn register_frame_renderer(&self, _: Arc<Mutex<frame::FrameRenderer>>) {}
-
     fn play(&self) -> Result<(), PlayerError> {
         Ok(())
     }
