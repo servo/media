@@ -290,6 +290,12 @@ macro_rules! notify(
     };
 );
 
+macro_rules! player(
+    ($inner:expr) => {
+        $inner.lock().unwrap().player
+    }
+);
+
 pub struct GStreamerPlayer {
     inner: RefCell<Option<Arc<Mutex<PlayerInner>>>>,
     observer: Arc<Mutex<IpcSender<PlayerEvent>>>,
@@ -439,122 +445,101 @@ impl GStreamerPlayer {
         let inner = inner.as_ref().unwrap();
         let observer = self.observer.clone();
         // Handle `end-of-stream` signal.
-        inner
-            .lock()
-            .unwrap()
-            .player
-            .connect_end_of_stream(move |_| {
-                notify!(observer, PlayerEvent::EndOfStream);
-            });
+        player!(inner).connect_end_of_stream(move |_| {
+            notify!(observer, PlayerEvent::EndOfStream);
+        });
 
         let observer = self.observer.clone();
         // Handle `error` signal
-        inner.lock().unwrap().player.connect_error(move |_, error| {
+        player!(inner).connect_error(move |_, error| {
             notify!(observer, PlayerEvent::Error(error.to_string()));
         });
 
         let observer = self.observer.clone();
         // Handle `state-changed` signal.
-        inner
-            .lock()
-            .unwrap()
-            .player
-            .connect_state_changed(move |_, player_state| {
-                let state = match player_state {
-                    gst_player::PlayerState::Buffering => Some(PlaybackState::Buffering),
-                    gst_player::PlayerState::Stopped => Some(PlaybackState::Stopped),
-                    gst_player::PlayerState::Paused => Some(PlaybackState::Paused),
-                    gst_player::PlayerState::Playing => Some(PlaybackState::Playing),
-                    _ => None,
-                };
-                if let Some(v) = state {
-                    notify!(observer, PlayerEvent::StateChanged(v));
-                }
-            });
+        player!(inner).connect_state_changed(move |_, player_state| {
+            let state = match player_state {
+                gst_player::PlayerState::Buffering => Some(PlaybackState::Buffering),
+                gst_player::PlayerState::Stopped => Some(PlaybackState::Stopped),
+                gst_player::PlayerState::Paused => Some(PlaybackState::Paused),
+                gst_player::PlayerState::Playing => Some(PlaybackState::Playing),
+                _ => None,
+            };
+            if let Some(v) = state {
+                notify!(observer, PlayerEvent::StateChanged(v));
+            }
+        });
 
         let observer = self.observer.clone();
         // Handle `position-update` signal.
-        inner
-            .lock()
-            .unwrap()
-            .player
-            .connect_position_updated(move |_, position| {
-                if let Some(seconds) = position.seconds() {
-                    notify!(observer, PlayerEvent::PositionChanged(seconds));
-                }
-            });
+        player!(inner).connect_position_updated(move |_, position| {
+            if let Some(seconds) = position.seconds() {
+                notify!(observer, PlayerEvent::PositionChanged(seconds));
+            }
+        });
 
         let observer = self.observer.clone();
         // Handle `seek-done` signal.
-        inner
-            .lock()
-            .unwrap()
-            .player
-            .connect_seek_done(move |_, position| {
-                if let Some(seconds) = position.seconds() {
-                    notify!(observer, PlayerEvent::SeekDone(seconds));
-                }
-            });
+        player!(inner).connect_seek_done(move |_, position| {
+            if let Some(seconds) = position.seconds() {
+                notify!(observer, PlayerEvent::SeekDone(seconds));
+            }
+        });
 
         // Handle `media-info-updated` signal.
         let inner_clone = inner.clone();
         let observer = self.observer.clone();
-        inner
-            .lock()
-            .unwrap()
-            .player
-            .connect_media_info_updated(move |_, info| {
-                let mut inner = inner_clone.lock().unwrap();
-                if let Ok(metadata) = metadata_from_media_info(info) {
-                    if inner.last_metadata.as_ref() != Some(&metadata) {
-                        inner.last_metadata = Some(metadata.clone());
-                        if metadata.is_seekable {
-                            inner.player.set_rate(inner.rate);
-                        }
-                        gst_info!(inner.cat, obj: &inner.player, "Metadata updated: {:?}", metadata);
-                        notify!(observer, PlayerEvent::MetadataUpdated(metadata));
+        player!(inner).connect_media_info_updated(move |_, info| {
+            let mut inner = inner_clone.lock().unwrap();
+            if let Ok(metadata) = metadata_from_media_info(info) {
+                if inner.last_metadata.as_ref() != Some(&metadata) {
+                    inner.last_metadata = Some(metadata.clone());
+                    if metadata.is_seekable {
+                        inner.player.set_rate(inner.rate);
                     }
+                    gst_info!(inner.cat, obj: &inner.player, "Metadata updated: {:?}", metadata);
+                    notify!(observer, PlayerEvent::MetadataUpdated(metadata));
                 }
-            });
+            }
+        });
 
         // Handle `duration-changed` signal.
         let inner_clone = inner.clone();
         let observer = self.observer.clone();
-        inner
-            .lock()
-            .unwrap()
-            .player
-            .connect_duration_changed(move |_, duration| {
-                let mut inner = inner_clone.lock().unwrap();
-                let duration = if duration != gst::ClockTime::none() {
-                    let nanos = duration.nanoseconds();
-                    if nanos.is_none() {
-                        gst_info!(inner.cat, obj: &inner.player, "Could not get duration nanoseconds");
-                        return;
-                    }
-                    let seconds = duration.seconds();
-                    if seconds.is_none() {
-                        gst_info!(inner.cat, obj: &inner.player, "Could not get duration seconds");
-                        return;
-                    }
-                    Some(time::Duration::new(
-                        seconds.unwrap(),
-                        (nanos.unwrap() % 1_000_000_000) as u32,
-                    ))
-                } else {
-                    None
-                };
-                let mut updated_metadata = None;
-                if let Some(ref mut metadata) = inner.last_metadata {
-                    metadata.duration = duration;
-                    updated_metadata = Some(metadata.clone());
+        player!(inner).connect_duration_changed(move |_, duration| {
+            let mut inner = inner_clone.lock().unwrap();
+            let duration = if duration != gst::ClockTime::none() {
+                let nanos = duration.nanoseconds();
+                if nanos.is_none() {
+                    gst_info!(inner.cat, obj: &inner.player, "Could not get duration nanoseconds");
+                    return;
                 }
-                if updated_metadata.is_some() {
-                    gst_info!(inner.cat, obj: &inner.player, "Duration updated: {:?}",
+                let seconds = duration.seconds();
+                if seconds.is_none() {
+                    gst_info!(inner.cat, obj: &inner.player, "Could not get duration seconds");
+                    return;
+                }
+                Some(time::Duration::new(
+                    seconds.unwrap(),
+                    (nanos.unwrap() % 1_000_000_000) as u32,
+                ))
+            } else {
+                None
+            };
+            let mut updated_metadata = None;
+            if let Some(ref mut metadata) = inner.last_metadata {
+                metadata.duration = duration;
+                updated_metadata = Some(metadata.clone());
+            }
+            if updated_metadata.is_some() {
+                gst_info!(inner.cat, obj: &inner.player, "Duration updated: {:?}",
                               updated_metadata);
-                    notify!(observer, PlayerEvent::MetadataUpdated(updated_metadata.unwrap()));
-                }
-            });
+                notify!(
+                    observer,
+                    PlayerEvent::MetadataUpdated(updated_metadata.unwrap())
+                );
+            }
+        });
 
         self.renderer.clone().map(|renderer| {
             let render = self.render.clone();
