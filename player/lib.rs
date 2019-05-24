@@ -82,8 +82,15 @@ pub trait Player: Send {
     /// Shut the player down. Stops playback and free up resources.
     fn shutdown(&self) -> Result<(), PlayerError>;
     /// Set the stream to be played by the player.
+    /// Only a single stream of the same type (audio or video) can be set.
+    /// Subsequent calls with a stream of the same type will override the previously
+    /// set stream.
     /// This method requires the player to be constructed with StreamType::Stream.
-    fn set_stream(&self, stream: &MediaStreamId) -> Result<(), PlayerError>;
+    /// It is important to give the correct value of `only_stream` indicating
+    /// that the audio or video stream being set is the only one expected.
+    /// Subsequent calls to `set_stream` after the `only_stream` flag has been
+    /// set to true will fail.
+    fn set_stream(&self, stream: &MediaStreamId, only_stream: bool) -> Result<(), PlayerError>;
     /// If player's rendering draws using GL textures
     fn render_use_gl(&self) -> bool;
 }

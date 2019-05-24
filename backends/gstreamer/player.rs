@@ -256,7 +256,7 @@ impl PlayerInner {
         Ok(result)
     }
 
-    fn set_stream(&mut self, stream: &MediaStreamId) -> Result<(), PlayerError> {
+    fn set_stream(&mut self, stream: &MediaStreamId, only_stream: bool) -> Result<(), PlayerError> {
         debug_assert!(self.stream_type == StreamType::Stream);
         if let Some(ref source) = self.source {
             if let PlayerSource::Stream(source) = source {
@@ -275,7 +275,7 @@ impl PlayerInner {
                     playbin.set_start_time(gst::ClockTime::none());
                     playbin.use_clock(Some(&clock));
 
-                    source.set_stream(&mut stream);
+                    source.set_stream(&mut stream, only_stream);
                     return Ok(());
                 }
             }
@@ -712,7 +712,6 @@ impl Player for GStreamerPlayer {
     inner_player_proxy!(seek, time, f64);
     inner_player_proxy!(set_volume, value, f64);
     inner_player_proxy!(buffered, Vec<Range<f64>>);
-    inner_player_proxy!(set_stream, stream, &MediaStreamId);
 
     fn shutdown(&self) -> Result<(), PlayerError> {
         self.stop()
@@ -720,5 +719,12 @@ impl Player for GStreamerPlayer {
 
     fn render_use_gl(&self) -> bool {
         self.render.lock().unwrap().is_gl()
+    }
+
+    fn set_stream(&self, stream: &MediaStreamId, only_stream: bool) -> Result<(), PlayerError> {
+        self.setup()?;
+        let inner = self.inner.borrow();
+        let mut inner = inner.as_ref().unwrap().lock().unwrap();
+        inner.set_stream(stream, only_stream)
     }
 }
