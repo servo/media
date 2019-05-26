@@ -206,9 +206,9 @@ impl Param {
                 if self.current_event >= self.events.len() {
                     self.val = self.event_start_value;
                 }
-                // don't actually insert the event
-                return;
             }
+            // don't actually insert the event
+            return;
         }
         self.events.insert(idx, event);
         // XXXManishearth handle inserting events with a time before that
@@ -328,8 +328,9 @@ impl AutomationEvent {
             AutomationEvent::RampToValueAtTime(_, _, tick) => tick,
             AutomationEvent::SetTargetAtTime(_, start, _) => start,
             AutomationEvent::CancelAndHoldAtTime(t) => t,
-            AutomationEvent::CancelScheduledValues(..) | AutomationEvent::SetValue(..) => {
-                unreachable!("CancelScheduledValues/SetValue should never appear in the timeline")
+            AutomationEvent::CancelScheduledValues(tick) => tick,
+            AutomationEvent::SetValue(..) => {
+                unreachable!("SetValue should never appear in the timeline")
             }
         }
     }
