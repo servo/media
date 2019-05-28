@@ -144,7 +144,7 @@ impl Player for DummyPlayer {
         Ok(())
     }
 
-    fn set_stream(&self, _: &MediaStreamId) -> Result<(), PlayerError> {
+    fn set_stream(&self, _: &MediaStreamId, _: bool) -> Result<(), PlayerError> {
         Ok(())
     }
 

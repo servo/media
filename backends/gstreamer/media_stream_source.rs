@@ -5,21 +5,60 @@ use glib::translate::*;
 use gst;
 use gst::prelude::*;
 use gst::subclass::prelude::*;
-use media_stream::GStreamerMediaStream;
+use gst_base::UniqueFlowCombiner;
+use media_stream::{GStreamerMediaStream, RTP_CAPS_OPUS, RTP_CAPS_VP8};
+use servo_media_streams::{MediaStream, MediaStreamType};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use url::Url;
 
 // Implementation sub-module of the GObject
 mod imp {
     use super::*;
 
+    lazy_static! {
+        static ref AUDIO_SRC_PAD_TEMPLATE: gst::PadTemplate = {
+            gst::PadTemplate::new(
+                "audio_src",
+                gst::PadDirection::Src,
+                gst::PadPresence::Sometimes,
+                &RTP_CAPS_OPUS,
+            ).expect("Could not create audio src pad template")
+        };
+        static ref VIDEO_SRC_PAD_TEMPLATE: gst::PadTemplate = {
+            gst::PadTemplate::new(
+                "video_src",
+                gst::PadDirection::Src,
+                gst::PadPresence::Sometimes,
+                &RTP_CAPS_VP8,
+            ).expect("Could not create video src pad template")
+        };
+    }
+
     pub struct ServoMediaStreamSrc {
         cat: gst::DebugCategory,
-        proxysrc: gst::Element,
-        srcpad: gst::GhostPad,
+        audio_proxysrc: gst::Element,
+        audio_srcpad: gst::GhostPad,
+        video_proxysrc: gst::Element,
+        video_srcpad: gst::GhostPad,
+        flow_combiner: Arc<Mutex<UniqueFlowCombiner>>,
+        has_audio_stream: Arc<AtomicBool>,
+        has_video_stream: Arc<AtomicBool>,
     }
 
     impl ServoMediaStreamSrc {
-        pub fn set_stream(&self, stream: &mut GStreamerMediaStream) {
+        pub fn set_stream(
+            &self,
+            stream: &mut GStreamerMediaStream,
+            src: &gst::Element,
+            only_stream: bool,
+        ) {
+            // XXXferjm the current design limits the number of streams to one
+            // per type. This fulfills the basic use case for WebRTC, but we should
+            // implement support for multiple streams per type at some point, which
+            // likely involves encoding and muxing all streams of the same type
+            // in a single stream.
+
             gst_log!(self.cat, "Setting stream");
 
             // Append a proxysink to the media stream pipeline.
@@ -29,12 +68,78 @@ mod imp {
             pipeline.add(&sink).unwrap();
             gst::Element::link_many(&[&last_element, &sink][..]).unwrap();
 
-            // Connect the media stream proxysink to the source's proxysrc.
-            self.proxysrc.set_property("proxysink", &sink).unwrap();
+            // Create the appropriate proxysrc depending on the stream type
+            // and connect the media stream proxysink to it.
+            self.setup_proxy_src(stream.ty(), &sink, src, only_stream);
 
             sink.sync_state_with_parent().unwrap();
 
             pipeline.set_state(gst::State::Playing).unwrap();
+        }
+
+        fn setup_proxy_src(
+            &self,
+            stream_type: MediaStreamType,
+            sink: &gst::Element,
+            src: &gst::Element,
+            only_stream: bool,
+        ) {
+            let (proxysrc, src_pad, no_more_pads) = match stream_type {
+                MediaStreamType::Audio => {
+                    self.has_audio_stream.store(true, Ordering::Relaxed);
+                    (
+                        &self.audio_proxysrc,
+                        &self.audio_srcpad,
+                        self.has_video_stream.load(Ordering::Relaxed),
+                    )
+                }
+                MediaStreamType::Video => {
+                    self.has_video_stream.store(true, Ordering::Relaxed);
+                    (
+                        &self.video_proxysrc,
+                        &self.video_srcpad,
+                        self.has_audio_stream.load(Ordering::Relaxed),
+                    )
+                }
+            };
+            proxysrc
+                .set_property("proxysink", &sink)
+                .expect("Could not set proxysink property on proxysrc");
+
+            // Add proxysrc to bin
+            let bin = src.downcast_ref::<gst::Bin>().unwrap();
+            bin.add(proxysrc)
+                .expect("Could not add proxysrc element to bin");
+
+            let target_pad = proxysrc
+                .get_static_pad("src")
+                .expect("Could not get proxysrc's static src pad");
+            src_pad
+                .set_target(&target_pad)
+                .expect("Could not set target pad");
+
+            src.add_pad(src_pad)
+                .expect("Could not add source pad to media stream src");
+            ::set_element_flags(src, gst::ElementFlags::SOURCE);
+
+            let proxy_pad = src_pad.get_internal().unwrap();
+            src_pad.set_active(true).expect("Could not active pad");
+            self.flow_combiner.lock().unwrap().add_pad(&proxy_pad);
+            let combiner = self.flow_combiner.clone();
+            proxy_pad.set_chain_function(move |pad, parent, buffer| {
+                let chain_result = gst::ProxyPad::chain_default(pad, parent.as_ref(), buffer);
+                let result = combiner.lock().unwrap().update_pad_flow(pad, chain_result);
+                if result == Err(gst::FlowError::Flushing) {
+                    return chain_result;
+                }
+                result
+            });
+
+            src.sync_state_with_parent().unwrap();
+
+            if no_more_pads || only_stream {
+                src.no_more_pads();
+            }
         }
     }
 
@@ -49,13 +154,18 @@ mod imp {
 
         // Called once at the very beginning of instantiation of each instance and
         // creates the data structure that contains all our state
-        fn new_with_class(klass: &subclass::simple::ClassStruct<Self>) -> Self {
-            let proxysrc = gst::ElementFactory::make("proxysrc", None)
+        fn new_with_class(_: &subclass::simple::ClassStruct<Self>) -> Self {
+            let audio_proxysrc = gst::ElementFactory::make("proxysrc", None)
                 .expect("Could not create proxysrc element");
+            let audio_srcpad =
+                gst::GhostPad::new_no_target_from_template("audio_src", &AUDIO_SRC_PAD_TEMPLATE)
+                    .unwrap();
 
-            let pad_templ = klass.get_pad_template("src").unwrap();
-            let srcpad =
-                gst::GhostPad::new_no_target_from_template("stream_src", &pad_templ).unwrap();
+            let video_proxysrc = gst::ElementFactory::make("proxysrc", None)
+                .expect("Could not create proxysrc element");
+            let video_srcpad =
+                gst::GhostPad::new_no_target_from_template("video_src", &VIDEO_SRC_PAD_TEMPLATE)
+                    .unwrap();
 
             Self {
                 cat: gst::DebugCategory::new(
@@ -63,8 +173,13 @@ mod imp {
                     gst::DebugColorFlags::empty(),
                     "Servo media stream source",
                 ),
-                proxysrc,
-                srcpad,
+                audio_proxysrc,
+                audio_srcpad,
+                video_proxysrc,
+                video_srcpad,
+                flow_combiner: Arc::new(Mutex::new(UniqueFlowCombiner::new())),
+                has_video_stream: Arc::new(AtomicBool::new(false)),
+                has_audio_stream: Arc::new(AtomicBool::new(false)),
             }
         }
 
@@ -85,15 +200,23 @@ mod imp {
                 "Servo developers",
             );
 
-            let caps = gst::Caps::new_any();
-            let src_pad_template = gst::PadTemplate::new(
-                "src",
-                gst::PadDirection::Src,
-                gst::PadPresence::Always,
-                &caps,
-            )
-            .unwrap();
-            klass.add_pad_template(src_pad_template);
+            // Let playbin3 know we are a live source.
+            klass.install_properties(&[subclass::Property("is-live", |name| {
+                glib::ParamSpec::boolean(
+                    name,
+                    "Is Live",
+                    "Let playbin3 know we are a live source",
+                    true,
+                    glib::ParamFlags::READWRITE,
+                )
+            })]);
+
+            // Add pad templates for our audio and video source pads.
+            // These are later used for actually creating the pads and beforehand
+            // already provide information to GStreamer about all possible
+            // pads that could exist for this type.
+            klass.add_pad_template(AUDIO_SRC_PAD_TEMPLATE.clone());
+            klass.add_pad_template(VIDEO_SRC_PAD_TEMPLATE.clone());
         }
     }
 
@@ -106,29 +229,12 @@ mod imp {
     impl ObjectImpl for ServoMediaStreamSrc {
         glib_object_impl!();
 
-        // Called right after construction of a new instance
-        fn constructed(&self, obj: &glib::Object) {
-            // Call the parent class' ::constructed() implementation first
-            self.parent_constructed(obj);
-
-            let bin = obj.downcast_ref::<gst::Bin>().unwrap();
-
-            // Add audio proxy sink and source pad to bin.
-            bin.add(&self.proxysrc)
-                .expect("Could not add proxysrc element to bin");
-
-            let target_pad = self
-                .proxysrc
-                .get_static_pad("src")
-                .expect("Could not get source pad");
-            self.srcpad.set_target(&target_pad).unwrap();
-
-            let element = obj.downcast_ref::<gst::Element>().unwrap();
-            element
-                .add_pad(&self.srcpad)
-                .expect("Could not add source pad to bin");
-
-            ::set_element_flags(element, gst::ElementFlags::SOURCE);
+        fn get_property(&self, _: &glib::Object, id: usize) -> Result<gst::Value, ()> {
+            // We have a single property: is-live
+            if id != 0 {
+                return Err(());
+            }
+            Ok(true.to_value())
         }
     }
 
@@ -186,16 +292,14 @@ glib_wrapper! {
 unsafe impl Send for ServoMediaStreamSrc {}
 unsafe impl Sync for ServoMediaStreamSrc {}
 
-macro_rules! inner_proxy {
-    ($fn_name:ident, $arg1:ident, $arg1_type:ty) => (
-        pub fn $fn_name(&self, $arg1: $arg1_type) {
-            imp::ServoMediaStreamSrc::from_instance(self).$fn_name($arg1)
-        }
-    )
-}
-
 impl ServoMediaStreamSrc {
-    inner_proxy!(set_stream, stream, &mut GStreamerMediaStream);
+    pub fn set_stream(&self, stream: &mut GStreamerMediaStream, only_stream: bool) {
+        imp::ServoMediaStreamSrc::from_instance(self).set_stream(
+            stream,
+            self.upcast_ref::<gst::Element>(),
+            only_stream,
+        )
+    }
 }
 
 // Registers the type for our element, and then registers in GStreamer
