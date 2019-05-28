@@ -6,7 +6,7 @@ use gst;
 use gst::prelude::*;
 use gst::subclass::prelude::*;
 use gst_base::UniqueFlowCombiner;
-use media_stream::GStreamerMediaStream;
+use media_stream::{GStreamerMediaStream, RTP_CAPS_OPUS, RTP_CAPS_VP8};
 use servo_media_streams::{MediaStream, MediaStreamType};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -22,7 +22,7 @@ mod imp {
                 "audio_src",
                 gst::PadDirection::Src,
                 gst::PadPresence::Sometimes,
-                &gst::Caps::new_any(),
+                &RTP_CAPS_OPUS,
             ).expect("Could not create audio src pad template")
         };
         static ref VIDEO_SRC_PAD_TEMPLATE: gst::PadTemplate = {
@@ -30,7 +30,7 @@ mod imp {
                 "video_src",
                 gst::PadDirection::Src,
                 gst::PadPresence::Sometimes,
-                &gst::Caps::new_any(),
+                &RTP_CAPS_VP8,
             ).expect("Could not create video src pad template")
         };
     }

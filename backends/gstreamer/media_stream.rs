@@ -10,13 +10,13 @@ use std::any::Any;
 use std::sync::{Arc, Mutex};
 
 lazy_static! {
-    static ref RTP_CAPS_OPUS: gst::Caps = {
+    pub static ref RTP_CAPS_OPUS: gst::Caps = {
         gst::Caps::new_simple(
             "application/x-rtp",
             &[("media", &"audio"), ("encoding-name", &"OPUS")],
         )
     };
-    static ref RTP_CAPS_VP8: gst::Caps = {
+    pub static ref RTP_CAPS_VP8: gst::Caps = {
         gst::Caps::new_simple(
             "application/x-rtp",
             &[("media", &"video"), ("encoding-name", &"VP8")],
