@@ -43,6 +43,7 @@ mod source;
 pub mod webrtc;
 
 use gst::ClockExt;
+use ipc_channel::ipc::IpcSender;
 use media_stream::GStreamerMediaStream;
 use mime::Mime;
 use registry_scanner::GSTREAMER_REGISTRY_SCANNER;
@@ -52,12 +53,14 @@ use servo_media_audio::decoder::AudioDecoder;
 use servo_media_audio::sink::AudioSinkError;
 use servo_media_audio::AudioBackend;
 use servo_media_player::context::PlayerGLContext;
-use servo_media_player::{Player, StreamType};
+use servo_media_player::frame::FrameRenderer;
+use servo_media_player::{Player, PlayerEvent, StreamType};
 use servo_media_streams::capture::MediaTrackConstraintSet;
 use servo_media_streams::registry::MediaStreamId;
 use servo_media_streams::MediaOutput;
 use servo_media_webrtc::{WebRtcBackend, WebRtcController, WebRtcSignaller};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 
 lazy_static! {
     static ref BACKEND_BASE_TIME: gst::ClockTime = { gst::SystemClock::obtain().get_time() };
@@ -71,9 +74,16 @@ impl Backend for GStreamerBackend {
     fn create_player(
         &self,
         stream_type: StreamType,
+        sender: IpcSender<PlayerEvent>,
+        renderer: Option<Arc<Mutex<FrameRenderer>>>,
         gl_context: Box<PlayerGLContext>,
     ) -> Box<Player> {
-        Box::new(player::GStreamerPlayer::new(stream_type, gl_context))
+        Box::new(player::GStreamerPlayer::new(
+            stream_type,
+            sender,
+            renderer,
+            gl_context,
+        ))
     }
 
     fn create_audio_context(&self, options: AudioContextOptions) -> AudioContext {
@@ -123,11 +133,13 @@ impl Backend for GStreamerBackend {
                 return SupportsMediaType::No;
             }
 
-            let mime_type = mime.type_().as_str().to_owned() + "/" + mime.subtype().as_str(); 
+            let mime_type = mime.type_().as_str().to_owned() + "/" + mime.subtype().as_str();
             let codecs = match mime.get_param("codecs") {
-                Some(codecs) => {
-                    codecs.as_str().split(',').map(|codec| codec.trim()).collect() 
-                },
+                Some(codecs) => codecs
+                    .as_str()
+                    .split(',')
+                    .map(|codec| codec.trim())
+                    .collect(),
                 None => vec![],
             };
 
@@ -147,7 +159,6 @@ impl Backend for GStreamerBackend {
     fn set_capture_mocking(&self, mock: bool) {
         self.capture_mocking.store(mock, Ordering::Release)
     }
-
 }
 
 impl AudioBackend for GStreamerBackend {

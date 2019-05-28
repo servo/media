@@ -1,4 +1,4 @@
-extern crate ipc_channel;
+pub extern crate ipc_channel;
 #[macro_use]
 extern crate serde_derive;
 extern crate servo_media_streams as streams;
@@ -7,9 +7,7 @@ pub mod context;
 pub mod frame;
 pub mod metadata;
 
-use ipc_channel::ipc::IpcSender;
 use std::ops::Range;
-use std::sync::{Arc, Mutex};
 use streams::registry::MediaStreamId;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -69,8 +67,6 @@ pub enum StreamType {
 }
 
 pub trait Player: Send {
-    fn register_event_handler(&self, sender: IpcSender<PlayerEvent>);
-    fn register_frame_renderer(&self, renderer: Arc<Mutex<frame::FrameRenderer>>);
     fn play(&self) -> Result<(), PlayerError>;
     fn pause(&self) -> Result<(), PlayerError>;
     fn stop(&self) -> Result<(), PlayerError>;
@@ -90,6 +86,4 @@ pub trait Player: Send {
     fn set_stream(&self, stream: &MediaStreamId) -> Result<(), PlayerError>;
     /// If player's rendering draws using GL textures
     fn render_use_gl(&self) -> bool;
-    /// if no video frames shall be pushed to renderers
-    fn disable_video(&self) -> Result<(), PlayerError>;
 }

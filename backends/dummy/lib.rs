@@ -66,7 +66,13 @@ impl Backend for DummyBackend {
         }))))
     }
 
-    fn create_player(&self, _: StreamType, _: Box<PlayerGLContext>) -> Box<Player> {
+    fn create_player(
+        &self,
+        _: StreamType,
+        _: IpcSender<PlayerEvent>,
+        _: Option<Arc<Mutex<frame::FrameRenderer>>>,
+        _: Box<PlayerGLContext>,
+    ) -> Box<Player> {
         Box::new(DummyPlayer)
     }
 
@@ -97,9 +103,6 @@ impl AudioBackend for DummyBackend {
 pub struct DummyPlayer;
 
 impl Player for DummyPlayer {
-    fn register_event_handler(&self, _: IpcSender<PlayerEvent>) {}
-    fn register_frame_renderer(&self, _: Arc<Mutex<frame::FrameRenderer>>) {}
-
     fn play(&self) -> Result<(), PlayerError> {
         Ok(())
     }
@@ -147,10 +150,6 @@ impl Player for DummyPlayer {
 
     fn render_use_gl(&self) -> bool {
         false
-    }
-
-    fn disable_video(&self) -> Result<(), PlayerError> {
-        Ok(())
     }
 }
 

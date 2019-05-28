@@ -11,7 +11,7 @@ use media_stream::GStreamerMediaStream;
 use media_stream_source::{register_servo_media_stream_src, ServoMediaStreamSrc};
 use render::GStreamerRender;
 use servo_media_player::context::PlayerGLContext;
-use servo_media_player::frame::{Frame, FrameRenderer};
+use servo_media_player::frame::FrameRenderer;
 use servo_media_player::metadata::Metadata;
 use servo_media_player::{PlaybackState, Player, PlayerError, PlayerEvent, StreamType};
 use servo_media_streams::registry::{get_stream, MediaStreamId};
@@ -282,70 +282,24 @@ impl PlayerInner {
         }
         Err(PlayerError::SetStreamFailed)
     }
-
-    fn disable_video(&self) {
-        self.player.set_video_track_enabled(false);
-    }
 }
 
-type PlayerEventObserver = IpcSender<PlayerEvent>;
-struct PlayerEventObserverList {
-    observers: Vec<PlayerEventObserver>,
-}
+macro_rules! notify(
+    ($observer:expr, $event:expr) => {
+        $observer.lock().unwrap().send($event).unwrap();
+    };
+);
 
-impl PlayerEventObserverList {
-    fn new() -> Self {
-        Self {
-            observers: Vec::new(),
-        }
+macro_rules! player(
+    ($inner:expr) => {
+        $inner.lock().unwrap().player
     }
-
-    fn register(&mut self, observer: PlayerEventObserver) {
-        self.observers.push(observer);
-    }
-
-    fn notify(&self, event: PlayerEvent) {
-        for observer in &self.observers {
-            observer.send(event.clone()).unwrap();
-        }
-    }
-
-    fn clear(&mut self) {
-        self.observers.clear();
-    }
-}
-
-struct FrameRendererList {
-    renderers: Vec<Arc<Mutex<FrameRenderer>>>,
-}
-
-impl FrameRendererList {
-    fn new() -> Self {
-        Self {
-            renderers: Vec::new(),
-        }
-    }
-
-    fn register(&mut self, renderer: Arc<Mutex<FrameRenderer>>) {
-        self.renderers.push(renderer);
-    }
-
-    fn render(&self, frame: &Frame) -> Result<(), ()> {
-        for renderer in &self.renderers {
-            renderer.lock().unwrap().render(frame.clone());
-        }
-        Ok(())
-    }
-
-    fn clear(&mut self) {
-        self.renderers.clear();
-    }
-}
+);
 
 pub struct GStreamerPlayer {
     inner: RefCell<Option<Arc<Mutex<PlayerInner>>>>,
-    observers: Arc<Mutex<PlayerEventObserverList>>,
-    renderers: Arc<Mutex<FrameRendererList>>,
+    observer: Arc<Mutex<IpcSender<PlayerEvent>>>,
+    renderer: Option<Arc<Mutex<FrameRenderer>>>,
     /// Indicates whether the setup was succesfully performed and
     /// we are ready to consume a/v data.
     is_ready: Arc<Once>,
@@ -356,11 +310,16 @@ pub struct GStreamerPlayer {
 }
 
 impl GStreamerPlayer {
-    pub fn new(stream_type: StreamType, gl_context: Box<PlayerGLContext>) -> GStreamerPlayer {
+    pub fn new(
+        stream_type: StreamType,
+        observer: IpcSender<PlayerEvent>,
+        renderer: Option<Arc<Mutex<FrameRenderer>>>,
+        gl_context: Box<PlayerGLContext>,
+    ) -> GStreamerPlayer {
         Self {
             inner: RefCell::new(None),
-            observers: Arc::new(Mutex::new(PlayerEventObserverList::new())),
-            renderers: Arc::new(Mutex::new(FrameRendererList::new())),
+            observer: Arc::new(Mutex::new(observer)),
+            renderer,
             is_ready: Arc::new(Once::new()),
             stream_type,
             render: Arc::new(Mutex::new(GStreamerRender::new(gl_context))),
@@ -461,6 +420,11 @@ impl GStreamerPlayer {
             .set_property("uri", &uri)
             .expect("playbin doesn't have expected 'uri' property");
 
+        // No renderers no video
+        if self.renderer.is_none() {
+            player.set_video_track_enabled(false);
+        }
+
         *self.inner.borrow_mut() = Some(Arc::new(Mutex::new(PlayerInner {
             player,
             source: None,
@@ -479,170 +443,125 @@ impl GStreamerPlayer {
 
         let inner = self.inner.borrow();
         let inner = inner.as_ref().unwrap();
-        let observers = self.observers.clone();
+        let observer = self.observer.clone();
         // Handle `end-of-stream` signal.
-        inner
-            .lock()
-            .unwrap()
-            .player
-            .connect_end_of_stream(move |_| {
-                observers.lock().unwrap().notify(PlayerEvent::EndOfStream);
-            });
-
-        let observers = self.observers.clone();
-        // Handle `error` signal
-        inner.lock().unwrap().player.connect_error(move |_, error| {
-            observers
-                .lock()
-                .unwrap()
-                .notify(PlayerEvent::Error(error.to_string()));
+        player!(inner).connect_end_of_stream(move |_| {
+            notify!(observer, PlayerEvent::EndOfStream);
         });
 
-        let observers = self.observers.clone();
+        let observer = self.observer.clone();
+        // Handle `error` signal
+        player!(inner).connect_error(move |_, error| {
+            notify!(observer, PlayerEvent::Error(error.to_string()));
+        });
+
+        let observer = self.observer.clone();
         // Handle `state-changed` signal.
-        inner
-            .lock()
-            .unwrap()
-            .player
-            .connect_state_changed(move |_, player_state| {
-                let state = match player_state {
-                    gst_player::PlayerState::Buffering => Some(PlaybackState::Buffering),
-                    gst_player::PlayerState::Stopped => Some(PlaybackState::Stopped),
-                    gst_player::PlayerState::Paused => Some(PlaybackState::Paused),
-                    gst_player::PlayerState::Playing => Some(PlaybackState::Playing),
-                    _ => None,
-                };
-                if let Some(v) = state {
-                    observers
-                        .lock()
-                        .unwrap()
-                        .notify(PlayerEvent::StateChanged(v));
-                }
-            });
+        player!(inner).connect_state_changed(move |_, player_state| {
+            let state = match player_state {
+                gst_player::PlayerState::Buffering => Some(PlaybackState::Buffering),
+                gst_player::PlayerState::Stopped => Some(PlaybackState::Stopped),
+                gst_player::PlayerState::Paused => Some(PlaybackState::Paused),
+                gst_player::PlayerState::Playing => Some(PlaybackState::Playing),
+                _ => None,
+            };
+            if let Some(v) = state {
+                notify!(observer, PlayerEvent::StateChanged(v));
+            }
+        });
 
-        let observers = self.observers.clone();
+        let observer = self.observer.clone();
         // Handle `position-update` signal.
-        inner
-            .lock()
-            .unwrap()
-            .player
-            .connect_position_updated(move |_, position| {
-                if let Some(seconds) = position.seconds() {
-                    observers
-                        .lock()
-                        .unwrap()
-                        .notify(PlayerEvent::PositionChanged(seconds));
-                }
-            });
+        player!(inner).connect_position_updated(move |_, position| {
+            if let Some(seconds) = position.seconds() {
+                notify!(observer, PlayerEvent::PositionChanged(seconds));
+            }
+        });
 
-        let observers = self.observers.clone();
+        let observer = self.observer.clone();
         // Handle `seek-done` signal.
-        inner
-            .lock()
-            .unwrap()
-            .player
-            .connect_seek_done(move |_, position| {
-                if let Some(seconds) = position.seconds() {
-                    observers
-                        .lock()
-                        .unwrap()
-                        .notify(PlayerEvent::SeekDone(seconds));
-                }
-            });
+        player!(inner).connect_seek_done(move |_, position| {
+            if let Some(seconds) = position.seconds() {
+                notify!(observer, PlayerEvent::SeekDone(seconds));
+            }
+        });
 
         // Handle `media-info-updated` signal.
         let inner_clone = inner.clone();
-        let observers = self.observers.clone();
-        inner
-            .lock()
-            .unwrap()
-            .player
-            .connect_media_info_updated(move |_, info| {
-                let mut inner = inner_clone.lock().unwrap();
-                if let Ok(metadata) = metadata_from_media_info(info) {
-                    if inner.last_metadata.as_ref() != Some(&metadata) {
-                        inner.last_metadata = Some(metadata.clone());
-                        if metadata.is_seekable {
-                            inner.player.set_rate(inner.rate);
-                        }
-                        gst_info!(inner.cat, obj: &inner.player, "Metadata updated: {:?}", metadata);
-                        observers
-                            .lock()
-                            .unwrap()
-                            .notify(PlayerEvent::MetadataUpdated(metadata));
+        let observer = self.observer.clone();
+        player!(inner).connect_media_info_updated(move |_, info| {
+            let mut inner = inner_clone.lock().unwrap();
+            if let Ok(metadata) = metadata_from_media_info(info) {
+                if inner.last_metadata.as_ref() != Some(&metadata) {
+                    inner.last_metadata = Some(metadata.clone());
+                    if metadata.is_seekable {
+                        inner.player.set_rate(inner.rate);
                     }
+                    gst_info!(inner.cat, obj: &inner.player, "Metadata updated: {:?}", metadata);
+                    notify!(observer, PlayerEvent::MetadataUpdated(metadata));
                 }
-            });
+            }
+        });
 
         // Handle `duration-changed` signal.
         let inner_clone = inner.clone();
-        let observers = self.observers.clone();
-        inner
-            .lock()
-            .unwrap()
-            .player
-            .connect_duration_changed(move |_, duration| {
-                let mut inner = inner_clone.lock().unwrap();
-                let duration = if duration != gst::ClockTime::none() {
-                    let nanos = duration.nanoseconds();
-                    if nanos.is_none() {
-                        gst_info!(inner.cat, obj: &inner.player, "Could not get duration nanoseconds");
-                        return;
-                    }
-                    let seconds = duration.seconds();
-                    if seconds.is_none() {
-                        gst_info!(inner.cat, obj: &inner.player, "Could not get duration seconds");
-                        return;
-                    }
-                    Some(time::Duration::new(
-                        seconds.unwrap(),
-                        (nanos.unwrap() % 1_000_000_000) as u32,
-                    ))
-                } else {
-                    None
-                };
-                let mut updated_metadata = None;
-                if let Some(ref mut metadata) = inner.last_metadata {
-                    metadata.duration = duration;
-                    updated_metadata = Some(metadata.clone());
+        let observer = self.observer.clone();
+        player!(inner).connect_duration_changed(move |_, duration| {
+            let mut inner = inner_clone.lock().unwrap();
+            let duration = if duration != gst::ClockTime::none() {
+                let nanos = duration.nanoseconds();
+                if nanos.is_none() {
+                    gst_info!(inner.cat, obj: &inner.player, "Could not get duration nanoseconds");
+                    return;
                 }
-                if updated_metadata.is_some() {
-                    gst_info!(inner.cat, obj: &inner.player, "Duration updated: {:?}",
+                let seconds = duration.seconds();
+                if seconds.is_none() {
+                    gst_info!(inner.cat, obj: &inner.player, "Could not get duration seconds");
+                    return;
+                }
+                Some(time::Duration::new(
+                    seconds.unwrap(),
+                    (nanos.unwrap() % 1_000_000_000) as u32,
+                ))
+            } else {
+                None
+            };
+            let mut updated_metadata = None;
+            if let Some(ref mut metadata) = inner.last_metadata {
+                metadata.duration = duration;
+                updated_metadata = Some(metadata.clone());
+            }
+            if updated_metadata.is_some() {
+                gst_info!(inner.cat, obj: &inner.player, "Duration updated: {:?}",
                               updated_metadata);
-                    observers
-                        .lock()
-                        .unwrap()
-                        .notify(PlayerEvent::MetadataUpdated(updated_metadata.unwrap()));
-                }
-            });
+                notify!(
+                    observer,
+                    PlayerEvent::MetadataUpdated(updated_metadata.unwrap())
+                );
+            }
+        });
 
-        let render = self.render.clone();
-        let observers = self.observers.clone();
-        let renderers = self.renderers.clone();
-        // Set appsink callbacks.
-        inner.lock().unwrap().appsink.set_callbacks(
-            gst_app::AppSinkCallbacks::new()
-                .new_preroll(|_| Ok(gst::FlowSuccess::Ok))
-                .new_sample(move |appsink| {
-                    let sample = appsink.pull_sample().ok_or(gst::FlowError::Eos)?;
-                    let frame = render
-                        .lock()
-                        .unwrap()
-                        .get_frame_from_sample(&sample)
-                        .or_else(|_| Err(gst::FlowError::Error))?;
-                    renderers
-                        .lock()
-                        .unwrap()
-                        .render(&frame)
-                        .map(|_| {
-                            observers.lock().unwrap().notify(PlayerEvent::FrameUpdated);
-                        })
-                        .map_err(|_| gst::FlowError::Error)?;
-
-                    Ok(gst::FlowSuccess::Ok)
-                })
-                .build(),
-        );
+        self.renderer.clone().map(|renderer| {
+            let render = self.render.clone();
+            let observer = self.observer.clone();
+            // Set appsink callbacks.
+            inner.lock().unwrap().appsink.set_callbacks(
+                gst_app::AppSinkCallbacks::new()
+                    .new_preroll(|_| Ok(gst::FlowSuccess::Ok))
+                    .new_sample(move |appsink| {
+                        let sample = appsink.pull_sample().ok_or(gst::FlowError::Eos)?;
+                        let frame = render
+                            .lock()
+                            .unwrap()
+                            .get_frame_from_sample(&sample)
+                            .or_else(|_| Err(gst::FlowError::Error))?;
+                        renderer.lock().unwrap().render(frame);
+                        notify!(observer, PlayerEvent::FrameUpdated);
+                        Ok(gst::FlowSuccess::Ok)
+                    })
+                    .build(),
+            );
+        });
 
         let (receiver, error_handler_id) = {
             let inner_clone = inner.clone();
@@ -654,15 +573,15 @@ impl GStreamerPlayer {
             let sender = Arc::new(Mutex::new(sender));
             let sender_clone = sender.clone();
             let is_ready_clone = self.is_ready.clone();
-            let observers = self.observers.clone();
+            let observer = self.observer.clone();
             let connect_result = pipeline.connect("source-setup", false, move |args| {
                 let source = match args[1].get::<gst::Element>() {
                     Some(source) => source,
                     None => {
-                        let _ = sender
-                            .lock()
-                            .unwrap()
-                            .send(Err(PlayerError::Backend("Source setup failed".to_owned())));
+                        let _ = notify!(
+                            sender,
+                            Err(PlayerError::Backend("Source setup failed".to_owned()))
+                        );
                         return None;
                     }
                 };
@@ -681,9 +600,9 @@ impl GStreamerPlayer {
 
                         let sender_clone = sender.clone();
                         let is_ready = is_ready_clone.clone();
-                        let observers_ = observers.clone();
-                        let observers__ = observers.clone();
-                        let observers___ = observers.clone();
+                        let observer_ = observer.clone();
+                        let observer__ = observer.clone();
+                        let observer___ = observer.clone();
                         let servosrc_ = servosrc.clone();
                         let enough_data_ = inner.enough_data.clone();
                         let enough_data__ = inner.enough_data.clone();
@@ -700,20 +619,15 @@ impl GStreamerPlayer {
                                     });
 
                                     enough_data_.store(false, Ordering::Relaxed);
-                                    observers_.lock().unwrap().notify(PlayerEvent::NeedData);
+                                    notify!(observer_, PlayerEvent::NeedData);
                                 })
                                 .enough_data(move |_| {
                                     enough_data__.store(true, Ordering::Relaxed);
-                                    observers__.lock().unwrap().notify(PlayerEvent::EnoughData);
+                                    notify!(observer__, PlayerEvent::EnoughData);
                                 })
                                 .seek_data(move |_, offset| {
-                                    // We only emit seek data requests if the offset is
-                                    // different from current position
                                     if servosrc_.set_seek_offset(offset) {
-                                        observers___
-                                            .lock()
-                                            .unwrap()
-                                            .notify(PlayerEvent::SeekData(offset));
+                                        notify!(observer___, PlayerEvent::SeekData(offset));
                                     }
                                     true
                                 })
@@ -729,7 +643,7 @@ impl GStreamerPlayer {
                             .expect("Source element is expected to be a ServoMediaStreamSrc!");
                         let sender_clone = sender.clone();
                         is_ready_clone.call_once(|| {
-                            let _ = sender_clone.lock().unwrap().send(Ok(()));
+                            let _ = notify!(sender_clone, Ok(()));
                         });
                         PlayerSource::Stream(media_stream_src)
                     }
@@ -741,17 +655,17 @@ impl GStreamerPlayer {
             });
 
             if connect_result.is_err() {
-                let _ = sender_clone
-                    .lock()
-                    .unwrap()
-                    .send(Err(PlayerError::Backend("Source setup failed".to_owned())));
+                let _ = notify!(
+                    sender_clone,
+                    Err(PlayerError::Backend("Source setup failed".to_owned()))
+                );
             }
 
             let error_handler_id = inner.player.connect_error(move |player, error| {
-                let _ = sender_clone
-                    .lock()
-                    .unwrap()
-                    .send(Err(PlayerError::Backend(error.description().to_string())));
+                let _ = notify!(
+                    sender_clone,
+                    Err(PlayerError::Backend(error.description().to_string()))
+                );
                 player.stop();
             });
 
@@ -800,29 +714,11 @@ impl Player for GStreamerPlayer {
     inner_player_proxy!(buffered, Vec<Range<f64>>);
     inner_player_proxy!(set_stream, stream, &MediaStreamId);
 
-    fn register_event_handler(&self, sender: IpcSender<PlayerEvent>) {
-        self.observers.lock().unwrap().register(sender);
-    }
-
-    fn register_frame_renderer(&self, renderer: Arc<Mutex<FrameRenderer>>) {
-        self.renderers.lock().unwrap().register(renderer);
-    }
-
     fn shutdown(&self) -> Result<(), PlayerError> {
-        self.observers.lock().unwrap().clear();
-        self.renderers.lock().unwrap().clear();
         self.stop()
     }
 
     fn render_use_gl(&self) -> bool {
         self.render.lock().unwrap().is_gl()
-    }
-
-    fn disable_video(&self) -> Result<(), PlayerError> {
-        self.setup()?;
-        let inner = self.inner.borrow();
-        let inner = inner.as_ref().unwrap().lock().unwrap();
-        inner.disable_video();
-        Ok(())
     }
 }
