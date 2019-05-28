@@ -53,7 +53,12 @@ mod imp {
             src: &gst::Element,
             only_stream: bool,
         ) {
-            // XXXferjm remove previous stream for the given type.
+            // XXXferjm the current design limits the number of streams to one
+            // per type. This fulfills the basic use case for WebRTC, but we should
+            // implement support for multiple streams per type at some point, which
+            // likely involves encoding and muxing all streams of the same type
+            // in a single stream.
+
             gst_log!(self.cat, "Setting stream");
 
             // Append a proxysink to the media stream pipeline.
