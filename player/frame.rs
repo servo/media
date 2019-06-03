@@ -51,6 +51,13 @@ impl Frame {
             _ => unreachable!("invalid texture id request for raw data frame"),
         }
     }
+
+    pub fn is_gl_texture(&self) -> bool {
+        match self.data {
+            FrameData::Texture(_) => true,
+            FrameData::Raw(_) => false,
+        }
+    }
 }
 
 pub trait FrameRenderer: Send + 'static {
