@@ -75,9 +75,9 @@ impl Backend for GStreamerBackend {
         &self,
         stream_type: StreamType,
         sender: IpcSender<PlayerEvent>,
-        renderer: Option<Arc<Mutex<FrameRenderer>>>,
-        gl_context: Box<PlayerGLContext>,
-    ) -> Box<Player> {
+        renderer: Option<Arc<Mutex<dyn FrameRenderer>>>,
+        gl_context: Box<dyn PlayerGLContext>,
+    ) -> Box<dyn Player> {
         Box::new(player::GStreamerPlayer::new(
             stream_type,
             sender,
@@ -90,7 +90,7 @@ impl Backend for GStreamerBackend {
         AudioContext::new::<Self>(options)
     }
 
-    fn create_webrtc(&self, signaller: Box<WebRtcSignaller>) -> WebRtcController {
+    fn create_webrtc(&self, signaller: Box<dyn WebRtcSignaller>) -> WebRtcController {
         WebRtcController::new::<Self>(signaller)
     }
 
@@ -102,7 +102,7 @@ impl Backend for GStreamerBackend {
         GStreamerMediaStream::create_video()
     }
 
-    fn create_stream_output(&self) -> Box<MediaOutput> {
+    fn create_stream_output(&self) -> Box<dyn MediaOutput> {
         Box::new(media_stream::MediaSink::new())
     }
 
@@ -163,7 +163,7 @@ impl Backend for GStreamerBackend {
 
 impl AudioBackend for GStreamerBackend {
     type Sink = audio_sink::GStreamerAudioSink;
-    fn make_decoder() -> Box<AudioDecoder> {
+    fn make_decoder() -> Box<dyn AudioDecoder> {
         Box::new(audio_decoder::GStreamerAudioDecoder::new())
     }
     fn make_sink() -> Result<Self::Sink, AudioSinkError> {
@@ -175,7 +175,7 @@ impl WebRtcBackend for GStreamerBackend {
     type Controller = webrtc::GStreamerWebRtcController;
 
     fn construct_webrtc_controller(
-        signaller: Box<WebRtcSignaller>,
+        signaller: Box<dyn WebRtcSignaller>,
         thread: WebRtcController,
     ) -> Self::Controller {
         webrtc::construct(signaller, thread).expect("WebRTC creation failed")
@@ -183,7 +183,7 @@ impl WebRtcBackend for GStreamerBackend {
 }
 
 impl BackendInit for GStreamerBackend {
-    fn init() -> Box<Backend> {
+    fn init() -> Box<dyn Backend> {
         gst::init().unwrap();
         Box::new(GStreamerBackend {
             capture_mocking: AtomicBool::new(false),

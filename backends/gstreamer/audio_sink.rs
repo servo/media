@@ -186,7 +186,7 @@ impl AudioSink for GStreamerAudioSink {
             .map_err(|_| AudioSinkError::BufferPushFailed)
     }
 
-    fn set_eos_callback(&self, _: Box<Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>) {}
+    fn set_eos_callback(&self, _: Box<dyn Fn(Box<dyn AsRef<[f32]>>) + Send + Sync + 'static>) {}
 }
 
 impl Drop for GStreamerAudioSink {

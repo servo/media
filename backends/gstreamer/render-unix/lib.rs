@@ -60,7 +60,7 @@ impl RenderUnix {
     ///
     /// * `context` - is the PlayerContext trait object from
     /// application.
-    pub fn new(context: Box<PlayerGLContext>) -> Option<RenderUnix> {
+    pub fn new(context: Box<dyn PlayerGLContext>) -> Option<RenderUnix> {
         // Check that we actually have the elements that we
         // need to make this work.
         if gst::ElementFactory::find("glsinkbin").is_none() {

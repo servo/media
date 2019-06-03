@@ -98,7 +98,7 @@ pub struct AudioGraph {
 }
 
 pub(crate) struct Node {
-    node: RefCell<Box<AudioNodeEngine>>,
+    node: RefCell<Box<dyn AudioNodeEngine>>,
 }
 
 /// An edge in the graph
@@ -170,7 +170,7 @@ impl AudioGraph {
     }
 
     /// Create a node, obtain its id
-    pub(crate) fn add_node(&mut self, node: Box<AudioNodeEngine>) -> NodeId {
+    pub(crate) fn add_node(&mut self, node: Box<dyn AudioNodeEngine>) -> NodeId {
         NodeId(self.graph.add_node(Node::new(node)))
     }
 
@@ -488,13 +488,13 @@ impl AudioGraph {
     }
 
     /// Obtain a mutable reference to a node
-    pub(crate) fn node_mut(&self, ix: NodeId) -> RefMut<Box<AudioNodeEngine>> {
+    pub(crate) fn node_mut(&self, ix: NodeId) -> RefMut<Box<dyn AudioNodeEngine>> {
         self.graph[ix.0].node.borrow_mut()
     }
 }
 
 impl Node {
-    pub fn new(node: Box<AudioNodeEngine>) -> Self {
+    pub fn new(node: Box<dyn AudioNodeEngine>) -> Self {
         Node {
             node: RefCell::new(node),
         }

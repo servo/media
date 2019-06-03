@@ -23,8 +23,8 @@ pub struct PlayerWrapper {
 impl PlayerWrapper {
     pub fn new(
         path: &Path,
-        renderer: Option<Arc<Mutex<FrameRenderer>>>,
-        gl_context: Box<PlayerGLContext>,
+        renderer: Option<Arc<Mutex<dyn FrameRenderer>>>,
+        gl_context: Box<dyn PlayerGLContext>,
     ) -> Self {
         let (sender, receiver) = ipc::channel().unwrap();
         let servo_media = ServoMedia::get().unwrap();

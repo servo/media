@@ -33,11 +33,11 @@ pub enum AudioRenderThreadMsg {
     DisconnectOutputBetween(PortId<OutputPort>, NodeId),
     DisconnectOutputBetweenTo(PortId<OutputPort>, PortId<InputPort>),
 
-    SetSinkEosCallback(Box<Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>),
+    SetSinkEosCallback(Box<dyn Fn(Box<dyn AsRef<[f32]>>) + Send + Sync + 'static>),
 }
 
 pub enum Sink {
-    RealTime(Box<AudioSink>),
+    RealTime(Box<dyn AudioSink>),
     Offline(OfflineAudioSink),
 }
 
@@ -81,7 +81,10 @@ impl AudioSink for Sink {
         }
     }
 
-    fn set_eos_callback(&self, callback: Box<Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>) {
+    fn set_eos_callback(
+        &self,
+        callback: Box<dyn Fn(Box<dyn AsRef<[f32]>>) + Send + Sync + 'static>,
+    ) {
         match *self {
             Sink::RealTime(ref sink) => sink.set_eos_callback(callback),
             Sink::Offline(ref sink) => sink.set_eos_callback(callback),
@@ -110,7 +113,7 @@ impl AudioRenderThread {
         options: AudioContextOptions,
     ) -> Result<Self, AudioSinkError>
     where
-        F: FnOnce() -> Result<Box<AudioSink + 'static>, AudioSinkError>,
+        F: FnOnce() -> Result<Box<dyn AudioSink + 'static>, AudioSinkError>,
     {
         let sink = match options {
             AudioContextOptions::RealTimeAudioContext(_) => Sink::RealTime(make_sink()?),
@@ -142,7 +145,7 @@ impl AudioRenderThread {
         graph: AudioGraph,
         options: AudioContextOptions,
     ) where
-        F: FnOnce() -> Result<Box<AudioSink + 'static>, AudioSinkError>,
+        F: FnOnce() -> Result<Box<dyn AudioSink + 'static>, AudioSinkError>,
     {
         let mut thread =
             Self::prepare_thread(make_sink, sender.clone(), sample_rate, graph, options)
@@ -156,7 +159,7 @@ impl AudioRenderThread {
 
     fn create_node(&mut self, node_type: AudioNodeInit, ch: ChannelInfo) -> NodeId {
         let mut needs_listener = false;
-        let node: Box<AudioNodeEngine> = match node_type {
+        let node: Box<dyn AudioNodeEngine> = match node_type {
             AudioNodeInit::AnalyserNode(sender) => Box::new(AnalyserNode::new(sender, ch)),
             AudioNodeInit::AudioBufferSourceNode(options) => {
                 Box::new(AudioBufferSourceNode::new(options, ch))
@@ -165,7 +168,9 @@ impl AudioRenderThread {
                 Box::new(BiquadFilterNode::new(options, ch, self.sample_rate))
             }
             AudioNodeInit::GainNode(options) => Box::new(GainNode::new(options, ch)),
-            AudioNodeInit::StereoPannerNode(options) => Box::new(StereoPannerNode::new(options, ch)),
+            AudioNodeInit::StereoPannerNode(options) => {
+                Box::new(StereoPannerNode::new(options, ch))
+            }
             AudioNodeInit::PannerNode(options) => {
                 needs_listener = true;
                 Box::new(PannerNode::new(options, ch))

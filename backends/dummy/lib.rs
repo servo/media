@@ -32,7 +32,7 @@ use std::sync::{Arc, Mutex};
 pub struct DummyBackend;
 
 impl BackendInit for DummyBackend {
-    fn init() -> Box<Backend> {
+    fn init() -> Box<dyn Backend> {
         Box::new(DummyBackend)
     }
 }
@@ -50,7 +50,7 @@ impl Backend for DummyBackend {
         })))
     }
 
-    fn create_stream_output(&self) -> Box<MediaOutput> {
+    fn create_stream_output(&self) -> Box<dyn MediaOutput> {
         Box::new(DummyMediaOutput)
     }
 
@@ -70,9 +70,9 @@ impl Backend for DummyBackend {
         &self,
         _: StreamType,
         _: IpcSender<PlayerEvent>,
-        _: Option<Arc<Mutex<frame::FrameRenderer>>>,
-        _: Box<PlayerGLContext>,
-    ) -> Box<Player> {
+        _: Option<Arc<Mutex<dyn frame::FrameRenderer>>>,
+        _: Box<dyn PlayerGLContext>,
+    ) -> Box<dyn Player> {
         Box::new(DummyPlayer)
     }
 
@@ -80,7 +80,7 @@ impl Backend for DummyBackend {
         AudioContext::new::<Self>(options)
     }
 
-    fn create_webrtc(&self, signaller: Box<WebRtcSignaller>) -> WebRtcController {
+    fn create_webrtc(&self, signaller: Box<dyn WebRtcSignaller>) -> WebRtcController {
         WebRtcController::new::<Self>(signaller)
     }
 
@@ -91,7 +91,7 @@ impl Backend for DummyBackend {
 
 impl AudioBackend for DummyBackend {
     type Sink = DummyAudioSink;
-    fn make_decoder() -> Box<AudioDecoder> {
+    fn make_decoder() -> Box<dyn AudioDecoder> {
         Box::new(DummyAudioDecoder)
     }
 
@@ -156,7 +156,7 @@ impl Player for DummyPlayer {
 impl WebRtcBackend for DummyBackend {
     type Controller = DummyWebRtcController;
     fn construct_webrtc_controller(
-        _: Box<WebRtcSignaller>,
+        _: Box<dyn WebRtcSignaller>,
         _: WebRtcController,
     ) -> Self::Controller {
         DummyWebRtcController
@@ -174,10 +174,10 @@ pub struct DummyMediaStream {
 }
 
 impl MediaStream for DummyMediaStream {
-    fn as_any(&self) -> &Any {
+    fn as_any(&self) -> &dyn Any {
         self
     }
-    fn as_mut_any(&mut self) -> &mut Any {
+    fn as_mut_any(&mut self) -> &mut dyn Any {
         self
     }
     fn set_id(&mut self, _: MediaStreamId) {}
@@ -211,7 +211,7 @@ impl AudioSink for DummyAudioSink {
     fn push_data(&self, _: Chunk) -> Result<(), AudioSinkError> {
         Ok(())
     }
-    fn set_eos_callback(&self, _: Box<Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>) {}
+    fn set_eos_callback(&self, _: Box<dyn Fn(Box<dyn AsRef<[f32]>>) + Send + Sync + 'static>) {}
 }
 
 pub struct DummyMediaOutput;

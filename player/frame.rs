@@ -15,11 +15,11 @@ pub struct Frame {
     width: i32,
     height: i32,
     data: FrameData,
-    buffer: Arc<Buffer>,
+    buffer: Arc<dyn Buffer>,
 }
 
 impl Frame {
-    pub fn new(width: i32, height: i32, buffer: Arc<Buffer>) -> Result<Self, ()> {
+    pub fn new(width: i32, height: i32, buffer: Arc<dyn Buffer>) -> Result<Self, ()> {
         let data = buffer.to_vec()?;
 
         Ok(Frame {

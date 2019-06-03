@@ -23,7 +23,7 @@ mod platform {
 
     use super::*;
 
-    pub fn create_render(gl_context: Box<PlayerGLContext>) -> Option<Render> {
+    pub fn create_render(gl_context: Box<dyn PlayerGLContext>) -> Option<Render> {
         Render::new(gl_context)
     }
 }
@@ -81,7 +81,7 @@ pub struct GStreamerRender {
 }
 
 impl GStreamerRender {
-    pub fn new(gl_context: Box<PlayerGLContext>) -> Self {
+    pub fn new(gl_context: Box<dyn PlayerGLContext>) -> Self {
         GStreamerRender {
             render: platform::create_render(gl_context),
         }

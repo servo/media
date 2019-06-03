@@ -32,11 +32,11 @@ pub struct GStreamerMediaStream {
 }
 
 impl MediaStream for GStreamerMediaStream {
-    fn as_any(&self) -> &Any {
+    fn as_any(&self) -> &dyn Any {
         self
     }
 
-    fn as_mut_any(&mut self) -> &mut Any {
+    fn as_mut_any(&mut self) -> &mut dyn Any {
         self
     }
 
@@ -221,7 +221,7 @@ impl Drop for GStreamerMediaStream {
 }
 
 pub struct MediaSink {
-    streams: Vec<Arc<Mutex<MediaStream>>>,
+    streams: Vec<Arc<Mutex<dyn MediaStream>>>,
 }
 
 impl MediaSink {

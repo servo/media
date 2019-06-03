@@ -22,5 +22,8 @@ pub trait AudioSink {
     fn stop(&self) -> Result<(), AudioSinkError>;
     fn has_enough_data(&self) -> bool;
     fn push_data(&self, chunk: Chunk) -> Result<(), AudioSinkError>;
-    fn set_eos_callback(&self, callback: Box<Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>);
+    fn set_eos_callback(
+        &self,
+        callback: Box<dyn Fn(Box<dyn AsRef<[f32]>>) + Send + Sync + 'static>,
+    );
 }

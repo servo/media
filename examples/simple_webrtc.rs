@@ -156,7 +156,7 @@ impl State {
 struct Signaller {
     sender: mpsc::Sender<OwnedMessage>,
     initiate_negotiation: bool,
-    output: Arc<Mutex<Box<MediaOutput>>>,
+    output: Arc<Mutex<Box<dyn MediaOutput>>>,
 }
 
 impl WebRtcSignaller for Signaller {
@@ -209,7 +209,7 @@ impl Signaller {
     fn new(
         sender: mpsc::Sender<OwnedMessage>,
         initiate_negotiation: bool,
-        output: Box<MediaOutput>,
+        output: Box<dyn MediaOutput>,
     ) -> Self {
         Signaller {
             sender,

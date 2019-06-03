@@ -19,7 +19,7 @@ pub struct WebRtcController {
 }
 
 impl WebRtcController {
-    pub fn new<T: WebRtcBackend>(signaller: Box<WebRtcSignaller>) -> Self {
+    pub fn new<T: WebRtcBackend>(signaller: Box<dyn WebRtcSignaller>) -> Self {
         let (sender, receiver) = channel();
 
         let t = WebRtcController { sender };
@@ -107,7 +107,7 @@ pub enum InternalEvent {
     UpdateIceConnectionState,
 }
 
-pub fn handle_rtc_event(controller: &mut WebRtcControllerBackend, event: RtcThreadEvent) -> bool {
+pub fn handle_rtc_event(controller: &mut dyn WebRtcControllerBackend, event: RtcThreadEvent) -> bool {
     let result = match event {
         RtcThreadEvent::ConfigureStun(server, policy) => controller.configure(&server, policy),
         RtcThreadEvent::SetRemoteDescription(desc, cb) => {

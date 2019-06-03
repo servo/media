@@ -299,7 +299,7 @@ macro_rules! player(
 pub struct GStreamerPlayer {
     inner: RefCell<Option<Arc<Mutex<PlayerInner>>>>,
     observer: Arc<Mutex<IpcSender<PlayerEvent>>>,
-    renderer: Option<Arc<Mutex<FrameRenderer>>>,
+    renderer: Option<Arc<Mutex<dyn FrameRenderer>>>,
     /// Indicates whether the setup was succesfully performed and
     /// we are ready to consume a/v data.
     is_ready: Arc<Once>,
@@ -313,8 +313,8 @@ impl GStreamerPlayer {
     pub fn new(
         stream_type: StreamType,
         observer: IpcSender<PlayerEvent>,
-        renderer: Option<Arc<Mutex<FrameRenderer>>>,
-        gl_context: Box<PlayerGLContext>,
+        renderer: Option<Arc<Mutex<dyn FrameRenderer>>>,
+        gl_context: Box<dyn PlayerGLContext>,
     ) -> GStreamerPlayer {
         Self {
             inner: RefCell::new(None),
