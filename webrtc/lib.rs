@@ -63,7 +63,7 @@ pub trait WebRtcBackend {
     type Controller: WebRtcControllerBackend + 'static;
 
     fn construct_webrtc_controller(
-        signaller: Box<WebRtcSignaller>,
+        signaller: Box<dyn WebRtcSignaller>,
         thread: WebRtcController,
     ) -> Self::Controller;
 }

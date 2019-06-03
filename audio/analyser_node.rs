@@ -8,11 +8,11 @@ use std::f32::consts::PI;
 #[derive(AudioNodeCommon)]
 pub(crate) struct AnalyserNode {
     channel_info: ChannelInfo,
-    callback: Box<FnMut(Block) + Send>,
+    callback: Box<dyn FnMut(Block) + Send>,
 }
 
 impl AnalyserNode {
-    pub fn new(callback: Box<FnMut(Block) + Send>, channel_info: ChannelInfo) -> Self {
+    pub fn new(callback: Box<dyn FnMut(Block) + Send>, channel_info: ChannelInfo) -> Self {
         Self {
             callback,
             channel_info,

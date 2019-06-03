@@ -7,8 +7,8 @@ pub mod registry;
 use std::any::Any;
 
 pub trait MediaStream: Any + Send {
-    fn as_any(&self) -> &Any;
-    fn as_mut_any(&mut self) -> &mut Any;
+    fn as_any(&self) -> &dyn Any;
+    fn as_mut_any(&mut self) -> &mut dyn Any;
     fn set_id(&mut self, id: registry::MediaStreamId);
     fn ty(&self) -> MediaStreamType;
 }

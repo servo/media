@@ -37,7 +37,7 @@ pub struct GStreamerWebRtcController {
     /// A handle to the event loop abstraction surrounding the webrtc implementations,
     /// which lets gstreamer callbacks send events back to the event loop to run on this object
     thread: WebRtcThread,
-    signaller: Box<WebRtcSignaller>,
+    signaller: Box<dyn WebRtcSignaller>,
     /// All the streams that are actually connected to the webrtcbin (i.e., their presence has already
     /// been negotiated)
     streams: Vec<MediaStreamId>,
@@ -528,7 +528,7 @@ impl GStreamerWebRtcController {
 }
 
 pub fn construct(
-    signaller: Box<WebRtcSignaller>,
+    signaller: Box<dyn WebRtcSignaller>,
     thread: WebRtcThread,
 ) -> Result<GStreamerWebRtcController, WebrtcError> {
     let main_loop = glib::MainLoop::new(None, false);

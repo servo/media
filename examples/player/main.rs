@@ -246,10 +246,10 @@ impl ui::Example for App {
 
     fn get_image_handlers(
         &self,
-        _gl: &gl::Gl,
+        _gl: &dyn gl::Gl,
     ) -> (
-        Option<Box<webrender::ExternalImageHandler>>,
-        Option<Box<webrender::OutputImageHandler>>,
+        Option<Box<dyn webrender::ExternalImageHandler>>,
+        Option<Box<dyn webrender::OutputImageHandler>>,
     ) {
         if !self.use_gl {
             (None, None)
@@ -263,7 +263,7 @@ impl ui::Example for App {
         }
     }
 
-    fn draw_custom(&self, _gl: &gl::Gl) {}
+    fn draw_custom(&self, _gl: &dyn gl::Gl) {}
 
     fn use_gl(&mut self, use_gl: bool) {
         self.use_gl = use_gl;

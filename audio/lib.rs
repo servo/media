@@ -36,6 +36,6 @@ pub mod stereo_panner;
 
 pub trait AudioBackend {
     type Sink: sink::AudioSink + 'static;
-    fn make_decoder() -> Box<decoder::AudioDecoder>;
+    fn make_decoder() -> Box<dyn decoder::AudioDecoder>;
     fn make_sink() -> Result<Self::Sink, sink::AudioSinkError>;
 }

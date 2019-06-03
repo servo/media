@@ -13,7 +13,7 @@ use std::sync::mpsc::Sender;
 
 /// Information required to construct an audio node
 pub enum AudioNodeInit {
-    AnalyserNode(Box<FnMut(Block) + Send>),
+    AnalyserNode(Box<dyn FnMut(Block) + Send>),
     BiquadFilterNode(BiquadFilterNodeOptions),
     AudioBuffer,
     AudioBufferSourceNode(AudioBufferSourceNodeOptions),

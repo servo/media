@@ -114,7 +114,7 @@ pub struct AudioContext {
     /// representing the final destination for all audio.
     dest_node: NodeId,
     listener: NodeId,
-    make_decoder: Arc<(Fn() -> Box<AudioDecoder> + Sync + Send)>,
+    make_decoder: Arc<(dyn Fn() -> Box<dyn AudioDecoder> + Sync + Send)>,
 }
 
 impl AudioContext {
@@ -136,7 +136,7 @@ impl AudioContext {
             .name("AudioRenderThread".to_owned())
             .spawn(move || {
                 AudioRenderThread::start(
-                    || B::make_sink().map(|s| Box::new(s) as Box<AudioSink>),
+                    || B::make_sink().map(|s| Box::new(s) as Box<dyn AudioSink>),
                     receiver,
                     sender_,
                     sample_rate,
@@ -267,7 +267,10 @@ impl AudioContext {
             .unwrap();
     }
 
-    pub fn set_eos_callback(&self, callback: Box<Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>) {
+    pub fn set_eos_callback(
+        &self,
+        callback: Box<dyn Fn(Box<dyn AsRef<[f32]>>) + Send + Sync + 'static>,
+    ) {
         let _ = self
             .sender
             .send(AudioRenderThreadMsg::SetSinkEosCallback(callback));

@@ -16,13 +16,13 @@ use streams::registry::MediaStreamId;
 use streams::MediaOutput;
 use webrtc::{WebRtcController, WebRtcSignaller};
 
-pub struct ServoMedia(Box<Backend>);
+pub struct ServoMedia(Box<dyn Backend>);
 
 static INITIALIZER: Once = sync::ONCE_INIT;
 static mut INSTANCE: *mut Mutex<Option<Arc<ServoMedia>>> = 0 as *mut _;
 
 pub trait BackendInit {
-    fn init() -> Box<Backend>;
+    fn init() -> Box<dyn Backend>;
 }
 
 pub trait Backend: Send + Sync {
@@ -30,16 +30,16 @@ pub trait Backend: Send + Sync {
         &self,
         stream_type: StreamType,
         sender: IpcSender<PlayerEvent>,
-        renderer: Option<Arc<Mutex<FrameRenderer>>>,
-        gl_context: Box<PlayerGLContext>,
-    ) -> Box<Player>;
+        renderer: Option<Arc<Mutex<dyn FrameRenderer>>>,
+        gl_context: Box<dyn PlayerGLContext>,
+    ) -> Box<dyn Player>;
     fn create_audiostream(&self) -> MediaStreamId;
     fn create_videostream(&self) -> MediaStreamId;
-    fn create_stream_output(&self) -> Box<MediaOutput>;
+    fn create_stream_output(&self) -> Box<dyn MediaOutput>;
     fn create_audioinput_stream(&self, set: MediaTrackConstraintSet) -> Option<MediaStreamId>;
     fn create_videoinput_stream(&self, set: MediaTrackConstraintSet) -> Option<MediaStreamId>;
     fn create_audio_context(&self, options: AudioContextOptions) -> AudioContext;
-    fn create_webrtc(&self, signaller: Box<WebRtcSignaller>) -> WebRtcController;
+    fn create_webrtc(&self, signaller: Box<dyn WebRtcSignaller>) -> WebRtcController;
     fn can_play_type(&self, media_type: &str) -> SupportsMediaType;
     fn set_capture_mocking(&self, _mock: bool) {}
 }
@@ -69,8 +69,8 @@ impl ServoMedia {
 }
 
 impl Deref for ServoMedia {
-    type Target = Backend + 'static;
-    fn deref(&self) -> &(Backend + 'static) {
+    type Target = dyn Backend + 'static;
+    fn deref(&self) -> &(dyn Backend + 'static) {
         &*self.0
     }
 }

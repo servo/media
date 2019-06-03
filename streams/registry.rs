@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
 lazy_static! {
-    static ref MEDIA_STREAMS_REGISTRY: Mutex<HashMap<MediaStreamId, Arc<Mutex<MediaStream>>>> =
+    static ref MEDIA_STREAMS_REGISTRY: Mutex<HashMap<MediaStreamId, Arc<Mutex<dyn MediaStream>>>> =
         { Mutex::new(HashMap::new()) };
 }
 
@@ -20,7 +20,7 @@ impl MediaStreamId {
     }
 }
 
-pub fn register_stream(stream: Arc<Mutex<MediaStream>>) -> MediaStreamId {
+pub fn register_stream(stream: Arc<Mutex<dyn MediaStream>>) -> MediaStreamId {
     let id = MediaStreamId::new();
     stream.lock().unwrap().set_id(id.clone());
     MEDIA_STREAMS_REGISTRY
@@ -34,6 +34,6 @@ pub fn unregister_stream(stream: &MediaStreamId) {
     MEDIA_STREAMS_REGISTRY.lock().unwrap().remove(stream);
 }
 
-pub fn get_stream(stream: &MediaStreamId) -> Option<Arc<Mutex<MediaStream>>> {
+pub fn get_stream(stream: &MediaStreamId) -> Option<Arc<Mutex<dyn MediaStream>>> {
     MEDIA_STREAMS_REGISTRY.lock().unwrap().get(stream).cloned()
 }

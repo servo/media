@@ -18,7 +18,7 @@ pub struct OfflineAudioSink {
     has_enough_data: Cell<bool>,
     length: usize,
     rendered_blocks: Cell<usize>,
-    eos_callback: RefCell<Option<Box<Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>>>,
+    eos_callback: RefCell<Option<Box<dyn Fn(Box<dyn AsRef<[f32]>>) + Send + Sync + 'static>>>,
 }
 
 impl OfflineAudioSink {
@@ -91,7 +91,10 @@ impl AudioSink for OfflineAudioSink {
         Ok(())
     }
 
-    fn set_eos_callback(&self, callback: Box<Fn(Box<AsRef<[f32]>>) + Send + Sync + 'static>) {
+    fn set_eos_callback(
+        &self,
+        callback: Box<dyn Fn(Box<dyn AsRef<[f32]>>) + Send + Sync + 'static>,
+    ) {
         *self.eos_callback.borrow_mut() = Some(callback);
     }
 }

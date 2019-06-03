@@ -123,7 +123,7 @@ impl Notifier {
 }
 
 impl RenderNotifier for Notifier {
-    fn clone(&self) -> Box<RenderNotifier> {
+    fn clone(&self) -> Box<dyn RenderNotifier> {
         Box::new(Notifier {
             events_proxy: self.events_proxy.clone(),
         })
@@ -187,14 +187,14 @@ pub trait Example {
     }
     fn get_image_handlers(
         &self,
-        _gl: &gl::Gl,
+        _gl: &dyn gl::Gl,
     ) -> (
-        Option<Box<webrender::ExternalImageHandler>>,
-        Option<Box<webrender::OutputImageHandler>>,
+        Option<Box<dyn webrender::ExternalImageHandler>>,
+        Option<Box<dyn webrender::OutputImageHandler>>,
     ) {
         (None, None)
     }
-    fn draw_custom(&self, _gl: &gl::Gl) {}
+    fn draw_custom(&self, _gl: &dyn gl::Gl) {}
 
     fn use_gl(&mut self, _use_gl: bool) {}
 }
@@ -268,7 +268,7 @@ pub fn main_wrapper<E: Example + FrameRenderer>(
 
     let gl_context = Box::new(PlayerContextGlutin::new(use_gl, &windowed_context));
 
-    let example_: Option<Arc<Mutex<FrameRenderer>>> = if no_video {
+    let example_: Option<Arc<Mutex<dyn FrameRenderer>>> = if no_video {
         None
     } else {
         Some(example.clone())
