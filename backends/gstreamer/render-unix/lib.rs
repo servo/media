@@ -92,7 +92,7 @@ impl RenderUnix {
 
                     let render = if let Some(context) = context {
                         if !(context.activate(true).is_ok() && context.fill_info().is_ok()) {
-                            let cat = gst::DebugCategory::get("default").unwrap();
+                            let cat = gst::DebugCategory::get("servoplayer").unwrap();
                             gst_warning!(cat, "Couldn't fill the wrapped app GL context")
                         }
                         Some(RenderUnix {
