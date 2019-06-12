@@ -91,10 +91,23 @@ impl RenderUnix {
                     };
 
                     let render = if let Some(context) = context {
-                        if !(context.activate(true).is_ok() && context.fill_info().is_ok()) {
-                            let cat = gst::DebugCategory::get("servoplayer").unwrap();
-                            gst_warning!(cat, "Couldn't fill the wrapped app GL context")
-                        }
+                        let cat = gst::DebugCategory::get("servoplayer").unwrap();
+                        let _: Result<(), ()> = context
+                            .activate(true)
+                            .and_then(|_| {
+                                context.fill_info().or_else(|err| {
+                                    gst_warning!(
+                                        cat,
+                                        "Couldn't fill the wrapped app GL context: {}",
+                                        err.to_string()
+                                    );
+                                    Ok(())
+                                })
+                            })
+                            .or_else(|_| {
+                                gst_warning!(cat, "Couldn't activate the wrapped app GL context");
+                                Ok(())
+                            });
                         Some(RenderUnix {
                             display: display,
                             app_context: context,
