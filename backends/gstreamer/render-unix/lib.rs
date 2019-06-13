@@ -25,7 +25,7 @@ extern crate servo_media_player as sm_player;
 use gst::prelude::*;
 use gst_gl::prelude::*;
 use sm_gst_render::Render;
-use sm_player::context::{GlContext, NativeDisplay, PlayerGLContext};
+use sm_player::context::{GlApi, GlContext, NativeDisplay, PlayerGLContext};
 use sm_player::frame::{Buffer, Frame, FrameData};
 use sm_player::PlayerError;
 use std::sync::{Arc, Mutex};
@@ -60,15 +60,22 @@ impl RenderUnix {
     ///
     /// * `context` - is the PlayerContext trait object from
     /// application.
-    pub fn new(context: Box<dyn PlayerGLContext>) -> Option<RenderUnix> {
+    pub fn new(app_gl_context: Box<dyn PlayerGLContext>) -> Option<RenderUnix> {
         // Check that we actually have the elements that we
         // need to make this work.
         if gst::ElementFactory::find("glsinkbin").is_none() {
             return None;
         }
 
-        let display_native = context.get_native_display();
-        let gl_context = context.get_gl_context();
+        let display_native = app_gl_context.get_native_display();
+        let gl_context = app_gl_context.get_gl_context();
+        let gl_api = match app_gl_context.get_gl_api() {
+            GlApi::OpenGL => gst_gl::GLAPI::OPENGL,
+            GlApi::OpenGL3 => gst_gl::GLAPI::OPENGL3,
+            GlApi::Gles1 => gst_gl::GLAPI::GLES1,
+            GlApi::Gles2 => gst_gl::GLAPI::GLES2,
+            GlApi::None => gst_gl::GLAPI::NONE,
+        };
 
         match gl_context {
             GlContext::Egl(context) => {
@@ -86,7 +93,7 @@ impl RenderUnix {
                             &display,
                             context,
                             gst_gl::GLPlatform::EGL,
-                            gst_gl::GLAPI::ANY,
+                            gl_api,
                         )
                     };
 

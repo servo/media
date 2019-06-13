@@ -33,10 +33,21 @@ pub enum NativeDisplay {
     Unknown,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub enum GlApi {
+    OpenGL,
+    OpenGL3,
+    Gles1,
+    Gles2,
+    None,
+}
+
 pub trait PlayerGLContext {
     /// Returns the GL context living pointer wrapped by `GlContext`
     fn get_gl_context(&self) -> GlContext;
     /// Returns the living pointer to the native display structure
     /// wrapped by `NativeDisplay`.
     fn get_native_display(&self) -> NativeDisplay;
+    /// Returns the GL API of the context
+    fn get_gl_api(&self) -> GlApi;
 }

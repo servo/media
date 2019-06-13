@@ -3,7 +3,7 @@ extern crate servo_media;
 extern crate servo_media_auto;
 
 use ipc_channel::ipc;
-use servo_media::player::context::{GlContext, NativeDisplay, PlayerGLContext};
+use servo_media::player::context::{GlApi, GlContext, NativeDisplay, PlayerGLContext};
 use servo_media::player::{PlayerEvent, StreamType};
 use servo_media::ServoMedia;
 use std::sync::{Arc, Mutex};
@@ -16,6 +16,10 @@ impl PlayerGLContext for PlayerContextDummy {
 
     fn get_native_display(&self) -> NativeDisplay {
         return NativeDisplay::Unknown;
+    }
+
+    fn get_gl_api(&self) -> GlApi {
+        return GlApi::None;
     }
 }
 
