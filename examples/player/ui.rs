@@ -24,6 +24,7 @@ use player_wrapper::PlayerWrapper;
 struct PlayerContextGlutin {
     gl_context: GlContext,
     native_display: NativeDisplay,
+    gl_api: GlApi,
 }
 
 impl PlayerContextGlutin {
@@ -32,10 +33,11 @@ impl PlayerContextGlutin {
             return Self {
                 gl_context: GlContext::Unknown,
                 native_display: NativeDisplay::Unknown,
+                gl_api: GlApi::None,
             };
         }
 
-        let (gl_context, native_display) = {
+        let (gl_context, native_display, gl_api) = {
             use glutin::os::ContextTraitExt;
 
             unsafe {
@@ -46,6 +48,7 @@ impl PlayerContextGlutin {
 
             let context = windowed_context.context();
             let raw_handle = unsafe { context.raw_handle() };
+            let api = windowed_context.get_api();
 
             #[cfg(any(
                 target_os = "linux",
@@ -79,7 +82,13 @@ impl PlayerContextGlutin {
                     }
                 };
 
-                (gl_context, native_display)
+                let gl_api = match api {
+                    glutin::Api::OpenGl => GlApi::OpenGL3,
+                    glutin::Api::OpenGlEs => GlApi::Gles2,
+                    _ => GlApi::None,
+                };
+
+                (gl_context, native_display, gl_api)
             }
 
             #[cfg(not(any(
@@ -91,13 +100,14 @@ impl PlayerContextGlutin {
             )))]
             {
                 println!("GL rendering unavailable for this platform");
-                (GlContext::Unknown, NativeDisplay::Unknown)
+                (GlContext::Unknown, NativeDisplay::Unknown, GlApi::None)
             }
         };
 
         Self {
             gl_context,
             native_display,
+            gl_api,
         }
     }
 }
@@ -109,6 +119,10 @@ impl PlayerGLContext for PlayerContextGlutin {
 
     fn get_native_display(&self) -> NativeDisplay {
         self.native_display.clone()
+    }
+
+    fn get_gl_api(&self) -> GlApi {
+        self.gl_api.clone()
     }
 }
 

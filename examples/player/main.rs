@@ -151,7 +151,7 @@ impl App {
             false,
         );
 
-        if self.use_gl {
+        if frame.is_gl_texture() {
             txn.add_image(
                 self.image_key.clone().unwrap(),
                 image_descriptor,
@@ -202,7 +202,7 @@ impl ui::Example for App {
 
         if self.image_key.is_none() {
             self.init_image_key(api, txn, &frame);
-        } else if !self.use_gl {
+        } else if !frame.is_gl_texture() {
             txn.update_image(
                 self.image_key.clone().unwrap(),
                 ImageDescriptor::new(width, height, ImageFormat::BGRA8, false, false),
