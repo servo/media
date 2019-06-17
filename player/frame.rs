@@ -55,7 +55,7 @@ impl Frame {
     pub fn is_gl_texture(&self) -> bool {
         match self.data {
             FrameData::Texture(_) => true,
-            FrameData::Raw(_) => false,
+            _ => false,
         }
     }
 }
