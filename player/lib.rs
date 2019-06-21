@@ -2,11 +2,13 @@ pub extern crate ipc_channel;
 #[macro_use]
 extern crate serde_derive;
 extern crate servo_media_streams as streams;
+extern crate servo_media_traits;
 
 pub mod context;
 pub mod frame;
 pub mod metadata;
 
+use servo_media_traits::Muteable;
 use std::ops::Range;
 use streams::registry::MediaStreamId;
 
@@ -66,7 +68,7 @@ pub enum StreamType {
     Seekable,
 }
 
-pub trait Player: Send {
+pub trait Player: Send + Muteable {
     fn play(&self) -> Result<(), PlayerError>;
     fn pause(&self) -> Result<(), PlayerError>;
     fn stop(&self) -> Result<(), PlayerError>;

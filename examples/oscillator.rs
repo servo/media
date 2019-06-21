@@ -10,12 +10,14 @@ use servo_media::audio::oscillator_node::OscillatorType::Custom;
 use servo_media::audio::oscillator_node::OscillatorType::Sawtooth;
 use servo_media::audio::oscillator_node::OscillatorType::Square;
 use servo_media::audio::oscillator_node::OscillatorType::Triangle;
-use servo_media::ServoMedia;
+use servo_media::{ClientContextId, ServoMedia};
 use std::sync::Arc;
 use std::{thread, time};
 
 fn run_example(servo_media: Arc<ServoMedia>) {
-    let context = servo_media.create_audio_context(Default::default());
+    let context =
+        servo_media.create_audio_context(&ClientContextId::build(1, 1), Default::default());
+    let context = context.lock().unwrap();
     let dest = context.dest_node();
     let mut options = OscillatorNodeOptions::default();
     let osc1 = context.create_node(
@@ -34,7 +36,9 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     thread::sleep(time::Duration::from_millis(3000));
 
     options.oscillator_type = Square;
-    let context = servo_media.create_audio_context(Default::default());
+    let context =
+        servo_media.create_audio_context(&ClientContextId::build(1, 2), Default::default());
+    let context = context.lock().unwrap();
     let dest = context.dest_node();
     let osc2 = context.create_node(
         AudioNodeInit::OscillatorNode(options.clone()),
@@ -52,7 +56,9 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     thread::sleep(time::Duration::from_millis(1000));
 
     options.oscillator_type = Sawtooth;
-    let context = servo_media.create_audio_context(Default::default());
+    let context =
+        servo_media.create_audio_context(&ClientContextId::build(1, 3), Default::default());
+    let context = context.lock().unwrap();
     let dest = context.dest_node();
     let osc3 = context.create_node(
         AudioNodeInit::OscillatorNode(options.clone()),
@@ -71,7 +77,9 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     thread::sleep(time::Duration::from_millis(1000));
 
     options.oscillator_type = Triangle;
-    let context = servo_media.create_audio_context(Default::default());
+    let context =
+        servo_media.create_audio_context(&ClientContextId::build(1, 4), Default::default());
+    let context = context.lock().unwrap();
     let dest = context.dest_node();
     let osc4 = context.create_node(
         AudioNodeInit::OscillatorNode(options.clone()),
@@ -92,7 +100,9 @@ fn run_example(servo_media: Arc<ServoMedia>) {
 
     options.oscillator_type = Custom;
 
-    let context = servo_media.create_audio_context(Default::default());
+    let context =
+        servo_media.create_audio_context(&ClientContextId::build(1, 5), Default::default());
+    let context = context.lock().unwrap();
     let dest = context.dest_node();
     let osc5 = context.create_node(
         AudioNodeInit::OscillatorNode(options.clone()),

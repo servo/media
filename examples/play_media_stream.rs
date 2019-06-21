@@ -5,8 +5,8 @@ extern crate servo_media_auto;
 use ipc_channel::ipc;
 use servo_media::player::context::{GlApi, GlContext, NativeDisplay, PlayerGLContext};
 use servo_media::player::{PlayerEvent, StreamType};
-use servo_media::ServoMedia;
-use std::sync::{Arc, Mutex};
+use servo_media::{ClientContextId, ServoMedia};
+use std::sync::Arc;
 
 struct PlayerContextDummy();
 impl PlayerGLContext for PlayerContextDummy {
@@ -26,12 +26,13 @@ impl PlayerGLContext for PlayerContextDummy {
 fn run_example(servo_media: Arc<ServoMedia>) {
     let (sender, receiver) = ipc::channel().unwrap();
 
-    let player = Arc::new(Mutex::new(servo_media.create_player(
+    let player = servo_media.create_player(
+        &ClientContextId::build(1, 1),
         StreamType::Stream,
         sender,
         None,
         Box::new(PlayerContextDummy()),
-    )));
+    );
 
     let audio_stream = servo_media.create_audiostream();
     player

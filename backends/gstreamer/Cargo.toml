@@ -15,6 +15,7 @@ path = "lib.rs"
 [dependencies]
 boxfnonce = "0.1.0"
 mime = "0.3.13"
+log = "0.4"
 
 [dependencies.byte-slice-cast]
 version = "0.2"
@@ -76,6 +77,9 @@ version = "1.7.2"
 
 [dependencies.servo-media-streams]
 path = "../../streams"
+
+[dependencies.servo-media-traits]
+path = "../../traits"
 
 [dependencies.servo-media-webrtc]
 path = "../../webrtc"

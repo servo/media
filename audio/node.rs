@@ -8,8 +8,8 @@ use gain_node::GainNodeOptions;
 use oscillator_node::{OscillatorNodeMessage, OscillatorNodeOptions};
 use panner_node::{PannerNodeMessage, PannerNodeOptions};
 use param::{Param, ParamRate, ParamType, UserAutomationEvent};
-use stereo_panner::StereoPannerOptions;
 use std::sync::mpsc::Sender;
+use stereo_panner::StereoPannerOptions;
 
 /// Information required to construct an audio node
 pub enum AudioNodeInit {

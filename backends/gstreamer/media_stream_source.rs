@@ -23,7 +23,8 @@ mod imp {
                 gst::PadDirection::Src,
                 gst::PadPresence::Sometimes,
                 &RTP_CAPS_OPUS,
-            ).expect("Could not create audio src pad template")
+            )
+            .expect("Could not create audio src pad template")
         };
         static ref VIDEO_SRC_PAD_TEMPLATE: gst::PadTemplate = {
             gst::PadTemplate::new(
@@ -31,7 +32,8 @@ mod imp {
                 gst::PadDirection::Src,
                 gst::PadPresence::Sometimes,
                 &RTP_CAPS_VP8,
-            ).expect("Could not create video src pad template")
+            )
+            .expect("Could not create video src pad template")
         };
     }
 

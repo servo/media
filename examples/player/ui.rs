@@ -11,6 +11,7 @@ use gleam::gl;
 use glutin::ContextTrait;
 use servo_media::player::context::*;
 use servo_media::player::frame::FrameRenderer;
+use servo_media::ClientContextId;
 use std::env;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -287,7 +288,8 @@ pub fn main_wrapper<E: Example + FrameRenderer>(
     } else {
         Some(example.clone())
     };
-    let player_wrapper = PlayerWrapper::new(path, example_, gl_context);
+    let player_wrapper =
+        PlayerWrapper::new(&ClientContextId::build(1, 1), path, example_, gl_context);
     example.lock().unwrap().use_gl(player_wrapper.use_gl());
 
     let (external, output) = example.lock().unwrap().get_image_handlers(&*gl);

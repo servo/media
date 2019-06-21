@@ -12,11 +12,14 @@ use servo_media::audio::node::AudioScheduledSourceNodeMessage;
 #[cfg(target_os = "android")]
 use servo_media::audio::node::{AudioNodeInit, AudioNodeMessage};
 #[cfg(target_os = "android")]
-use servo_media::{ServoMedia};
+#[cfg(target_os = "android")]
+use servo_media::{ClientContextId, ServoMedia};
+#[cfg(target_os = "android")]
+use std::sync::{Arc, Mutex};
 
 #[cfg(target_os = "android")]
 struct AudioStream {
-    context: AudioContext,
+    context: Arc<Mutex<AudioContext>>,
 }
 
 #[cfg(target_os = "android")]
@@ -25,30 +28,37 @@ impl AudioStream {
         ServoMedia::init::<servo_media_auto::Backend>();
         let context = ServoMedia::get()
             .unwrap()
-            .create_audio_context(Default::default());
-        let osc = context.create_node(
-            AudioNodeInit::OscillatorNode(Default::default()),
-            Default::default(),
-        );
-        let mut options = GainNodeOptions::default();
-        options.gain = 0.5;
-        let gain = context.create_node(AudioNodeInit::GainNode(options), Default::default());
-        let dest = context.dest_node();
-        context.connect_ports(osc.output(0), gain.input(0));
-        context.connect_ports(gain.output(0), dest.input(0));
-        context.message_node(
-            osc,
-            AudioNodeMessage::AudioScheduledSourceNode(AudioScheduledSourceNodeMessage::Start(0.)),
-        );
+            .create_audio_context(&ClientContextId::build(1, 1), Default::default());
+        {
+            let context = context.lock().unwrap();
+            let osc = context.create_node(
+                AudioNodeInit::OscillatorNode(Default::default()),
+                Default::default(),
+            );
+            let mut options = GainNodeOptions::default();
+            options.gain = 0.5;
+            let gain = context.create_node(AudioNodeInit::GainNode(options), Default::default());
+            let dest = context.dest_node();
+            context.connect_ports(osc.output(0), gain.input(0));
+            context.connect_ports(gain.output(0), dest.input(0));
+            context.message_node(
+                osc,
+                AudioNodeMessage::AudioScheduledSourceNode(AudioScheduledSourceNodeMessage::Start(
+                    0.,
+                )),
+            );
+        }
         Self { context }
     }
 
     pub fn play(&mut self) {
-        let _ = self.context.resume();
+        let audio_context = self.context.lock().unwrap();
+        let _ = audio_context.resume();
     }
 
     pub fn stop(&mut self) {
-        let _ = self.context.suspend();
+        let audio_context = self.context.lock().unwrap();
+        let _ = audio_context.suspend();
     }
 }
 

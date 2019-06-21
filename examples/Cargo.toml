@@ -89,8 +89,16 @@ name = "simple_player"
 path = "simple_player.rs"
 
 [[bin]]
+name = "muted_player"
+path = "muted_player.rs"
+
+[[bin]]
 name = "oscillator"
 path = "oscillator.rs"
+
+[[bin]]
+name = "muted_audiocontext"
+path = "muted_audiocontext.rs"
 
 [[bin]]
 name = "constant_source"

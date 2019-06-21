@@ -1,0 +1,8 @@
+[package]
+name = "servo-media-traits"
+version = "0.1.0"
+authors = ["The Servo Project Developers"]
+
+[lib]
+name = "servo_media_traits"
+path = "lib.rs"

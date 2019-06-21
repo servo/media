@@ -4,7 +4,7 @@ extern crate servo_media_auto;
 use servo_media::audio::buffer_source_node::AudioBufferSourceNodeMessage;
 use servo_media::audio::decoder::AudioDecoderCallbacks;
 use servo_media::audio::node::{AudioNodeInit, AudioNodeMessage, AudioScheduledSourceNodeMessage};
-use servo_media::ServoMedia;
+use servo_media::{ClientContextId, ServoMedia};
 use std::env;
 use std::fs::File;
 use std::io::Read;
@@ -14,7 +14,9 @@ use std::sync::{Arc, Mutex};
 use std::{thread, time};
 
 fn run_example(servo_media: Arc<ServoMedia>) {
-    let context = servo_media.create_audio_context(Default::default());
+    let context =
+        servo_media.create_audio_context(&ClientContextId::build(1, 1), Default::default());
+    let context = context.lock().unwrap();
     let args: Vec<_> = env::args().collect();
     let default = "./examples/resources/viper_cut.ogg";
     let filename: &str = if args.len() == 2 {
