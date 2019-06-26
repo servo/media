@@ -1999,7 +1999,6 @@ dependencies = [
  "gstreamer-base 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer-player 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer-sdp 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "gstreamer-sdp-sys 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer-sys 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer-video 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer-webrtc 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",

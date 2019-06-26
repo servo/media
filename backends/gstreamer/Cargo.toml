@@ -29,10 +29,6 @@ version = "0.9"
 version = "0.8"
 features = ["v1_8"]
 
-[dependencies.gstreamer-sdp-sys]
-version = "0.8"
-features = ["v1_8"]
-
 [dependencies.gstreamer]
 version = "0.14"
 features = ["subclassing"]
