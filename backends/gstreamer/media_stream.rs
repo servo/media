@@ -113,7 +113,7 @@ impl GStreamerMediaStream {
         if let Some(ref pipeline) = self.pipeline {
             pipeline.clone()
         } else {
-            let pipeline = gst::Pipeline::new("gstreamermediastream fresh pipeline");
+            let pipeline = gst::Pipeline::new(Some("gstreamermediastream fresh pipeline"));
             let clock = gst::SystemClock::obtain();
             pipeline.set_start_time(gst::ClockTime::none());
             pipeline.set_base_time(*BACKEND_BASE_TIME);

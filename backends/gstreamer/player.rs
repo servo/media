@@ -316,8 +316,11 @@ impl GStreamerPlayer {
         renderer: Option<Arc<Mutex<dyn FrameRenderer>>>,
         gl_context: Box<dyn PlayerGLContext>,
     ) -> GStreamerPlayer {
-        let _ =
-            gst::DebugCategory::new("servoplayer", gst::DebugColorFlags::empty(), "Servo player");
+        let _ = gst::DebugCategory::new(
+            "servoplayer",
+            gst::DebugColorFlags::empty(),
+            Some("Servo player"),
+        );
 
         Self {
             inner: RefCell::new(None),

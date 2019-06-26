@@ -23,7 +23,8 @@ mod imp {
                 gst::PadDirection::Src,
                 gst::PadPresence::Sometimes,
                 &RTP_CAPS_OPUS,
-            ).expect("Could not create audio src pad template")
+            )
+            .expect("Could not create audio src pad template")
         };
         static ref VIDEO_SRC_PAD_TEMPLATE: gst::PadTemplate = {
             gst::PadTemplate::new(
@@ -31,7 +32,8 @@ mod imp {
                 gst::PadDirection::Src,
                 gst::PadPresence::Sometimes,
                 &RTP_CAPS_VP8,
-            ).expect("Could not create video src pad template")
+            )
+            .expect("Could not create video src pad template")
         };
     }
 
@@ -115,7 +117,7 @@ mod imp {
                 .get_static_pad("src")
                 .expect("Could not get proxysrc's static src pad");
             src_pad
-                .set_target(&target_pad)
+                .set_target(Some(&target_pad))
                 .expect("Could not set target pad");
 
             src.add_pad(src_pad)
@@ -127,7 +129,7 @@ mod imp {
             self.flow_combiner.lock().unwrap().add_pad(&proxy_pad);
             let combiner = self.flow_combiner.clone();
             proxy_pad.set_chain_function(move |pad, parent, buffer| {
-                let chain_result = gst::ProxyPad::chain_default(pad, parent.as_ref(), buffer);
+                let chain_result = pad.proxy_pad_chain_default(parent, buffer);
                 let result = combiner.lock().unwrap().update_pad_flow(pad, chain_result);
                 if result == Err(gst::FlowError::Flushing) {
                     return chain_result;
@@ -157,21 +159,25 @@ mod imp {
         fn new_with_class(_: &subclass::simple::ClassStruct<Self>) -> Self {
             let audio_proxysrc = gst::ElementFactory::make("proxysrc", None)
                 .expect("Could not create proxysrc element");
-            let audio_srcpad =
-                gst::GhostPad::new_no_target_from_template("audio_src", &AUDIO_SRC_PAD_TEMPLATE)
-                    .unwrap();
+            let audio_srcpad = gst::GhostPad::new_no_target_from_template(
+                Some("audio_src"),
+                &AUDIO_SRC_PAD_TEMPLATE,
+            )
+            .unwrap();
 
             let video_proxysrc = gst::ElementFactory::make("proxysrc", None)
                 .expect("Could not create proxysrc element");
-            let video_srcpad =
-                gst::GhostPad::new_no_target_from_template("video_src", &VIDEO_SRC_PAD_TEMPLATE)
-                    .unwrap();
+            let video_srcpad = gst::GhostPad::new_no_target_from_template(
+                Some("video_src"),
+                &VIDEO_SRC_PAD_TEMPLATE,
+            )
+            .unwrap();
 
             Self {
                 cat: gst::DebugCategory::new(
                     "servomediastreamsrc",
                     gst::DebugColorFlags::empty(),
-                    "Servo media stream source",
+                    Some("Servo media stream source"),
                 ),
                 audio_proxysrc,
                 audio_srcpad,
@@ -249,16 +255,10 @@ mod imp {
             Some("mediastream://".to_string())
         }
 
-        fn set_uri(
-            &self,
-            _element: &gst::URIHandler,
-            uri: Option<String>,
-        ) -> Result<(), glib::Error> {
-            if let Some(ref uri) = uri {
-                if let Ok(uri) = Url::parse(uri) {
-                    if uri.scheme() == "mediastream" {
-                        return Ok(());
-                    }
+        fn set_uri(&self, _element: &gst::URIHandler, uri: &str) -> Result<(), glib::Error> {
+            if let Ok(uri) = Url::parse(uri) {
+                if uri.scheme() == "mediastream" {
+                    return Ok(());
                 }
             }
             Err(glib::Error::new(
@@ -309,7 +309,7 @@ pub fn register_servo_media_stream_src() -> Result<(), glib::BoolError> {
     gst::Element::register(
         None,
         "servomediastreamsrc",
-        0,
+        gst::Rank::None,
         ServoMediaStreamSrc::static_type(),
     )
 }

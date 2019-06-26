@@ -50,7 +50,7 @@ impl GStreamerAudioSink {
         )
         .build()
         .ok_or(AudioSinkError::Backend("AudioInfo failed".to_owned()))?;
-        self.appsrc.set_caps(&audio_info.to_caps().unwrap());
+        self.appsrc.set_caps(audio_info.to_caps().as_ref());
         *self.audio_info.borrow_mut() = Some(audio_info);
         Ok(())
     }

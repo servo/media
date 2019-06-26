@@ -176,7 +176,7 @@ impl Render for RenderUnix {
             ));
         }
 
-        let vsinkbin = gst::ElementFactory::make("glsinkbin", "servo-media-vsink")
+        let vsinkbin = gst::ElementFactory::make("glsinkbin", Some("servo-media-vsink"))
             .ok_or(PlayerError::Backend("glupload creation failed".to_owned()))?;
 
         let caps = gst::Caps::builder("video/x-raw")

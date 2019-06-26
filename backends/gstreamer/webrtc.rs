@@ -532,12 +532,12 @@ pub fn construct(
     thread: WebRtcThread,
 ) -> Result<GStreamerWebRtcController, WebrtcError> {
     let main_loop = glib::MainLoop::new(None, false);
-    let pipeline = gst::Pipeline::new("webrtc main");
+    let pipeline = gst::Pipeline::new(Some("webrtc main"));
     pipeline.set_start_time(gst::ClockTime::none());
     pipeline.set_base_time(*BACKEND_BASE_TIME);
     pipeline.use_clock(Some(&gst::SystemClock::obtain()));
-    let webrtc =
-        gst::ElementFactory::make("webrtcbin", "sendrecv").ok_or("webrtcbin element not found")?;
+    let webrtc = gst::ElementFactory::make("webrtcbin", Some("sendrecv"))
+        .ok_or("webrtcbin element not found")?;
     let mut controller = GStreamerWebRtcController {
         webrtc,
         pipeline,
