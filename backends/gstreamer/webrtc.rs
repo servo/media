@@ -305,27 +305,12 @@ impl GStreamerWebRtcController {
     }
 
     fn store_remote_mline_info(&mut self, sdp: &gst_sdp::SDPMessage) {
-        // remove after https://gitlab.freedesktop.org/gstreamer/gstreamer-rs/issues/189 is fixed
-        fn get_media(msg: &gst_sdp::SDPMessage, idx: u32) -> Option<gst_sdp::SDPMedia> {
-            extern crate gstreamer_sdp_sys as gst_sdp_sys;
-            use glib::translate::*;
-            unsafe {
-                from_glib_none(gst_sdp_sys::gst_sdp_message_get_media(
-                    msg.to_glib_none().0,
-                    idx,
-                ))
-            }
-        }
         self.pending_remote_mline_info.clear();
-        for i in 0..sdp.medias_len() {
+        for media in sdp.medias() {
             let mut caps = gst::Caps::new_empty();
             let caps_mut = caps.get_mut().expect("Fresh caps should be uniquely owned");
-            let media = get_media(&sdp, i).expect("Gstreamer reported incorrect medias_len()");
-            for format in 0..media.formats_len() {
-                let pt = media
-                    .get_format(format)
-                    .expect("Gstreamer reported incorrect formats_len()")
-                    .parse()
+            for format in media.formats() {
+                let pt = format.parse()
                     .expect("Gstreamer provided noninteger format");
                 caps_mut.append(
                     media
