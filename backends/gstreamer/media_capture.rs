@@ -130,7 +130,7 @@ impl GstMediaDevices {
             ("audio/x-raw", "Audio/Source")
         };
         let caps = into_caps(constraints, format)?;
-        let f = self.monitor.add_filter(filter, &caps);
+        let f = self.monitor.add_filter(Some(filter), Some(&caps));
         let devices = self.monitor.get_devices();
         if let Some(f) = f {
             let _ = self.monitor.remove_filter(f);

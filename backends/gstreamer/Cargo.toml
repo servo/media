@@ -20,41 +20,43 @@ mime = "0.3.13"
 version = "0.2"
 
 [dependencies.glib]
-version = "0.7"
-
-[dependencies.glib-sys]
 version = "0.8"
 
+[dependencies.glib-sys]
+version = "0.9"
+
 [dependencies.gstreamer-sys]
-version = "0.7"
+version = "0.8"
+features = ["v1_8"]
 
 [dependencies.gstreamer-sdp-sys]
-version = "0.7"
+version = "0.8"
+features = ["v1_8"]
 
 [dependencies.gstreamer]
-version = "0.13"
+version = "0.14"
 features = ["subclassing"]
 
 [dependencies.gstreamer-app]
-version = "0.13"
+version = "0.14"
 
 [dependencies.gstreamer-audio]
-version = "0.13"
+version = "0.14"
 
 [dependencies.gstreamer-base]
-version = "0.13"
+version = "0.14"
 
 [dependencies.gstreamer-player]
-version = "0.13"
+version = "0.14"
 
 [dependencies.gstreamer-sdp]
-version = "0.13"
+version = "0.14"
 
 [dependencies.gstreamer-webrtc]
-version = "0.13"
+version = "0.14"
 
 [dependencies.gstreamer-video]
-version = "0.13"
+version = "0.14"
 
 [dependencies.ipc-channel]
 version = "0.11"

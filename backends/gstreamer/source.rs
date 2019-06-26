@@ -212,7 +212,8 @@ mod imp {
                 .expect("Could not create appsrc element");
 
             let pad_templ = klass.get_pad_template("src").unwrap();
-            let ghost_pad = gst::GhostPad::new_no_target_from_template("src", &pad_templ).unwrap();
+            let ghost_pad =
+                gst::GhostPad::new_no_target_from_template(Some("src"), &pad_templ).unwrap();
 
             ghost_pad.set_query_function(|pad, parent, query| {
                 ServoSrc::catch_panic_pad_function(
@@ -226,7 +227,7 @@ mod imp {
                 cat: gst::DebugCategory::new(
                     "servosrc",
                     gst::DebugColorFlags::empty(),
-                    "Servo source",
+                    Some("Servo source"),
                 ),
                 appsrc: app_src,
                 srcpad: ghost_pad,
@@ -281,11 +282,8 @@ mod imp {
             bin.add(&self.appsrc)
                 .expect("Could not add appsrc element to bin");
 
-            let target_pad = self
-                .appsrc
-                .get_static_pad("src")
-                .expect("Could not get source pad");
-            self.srcpad.set_target(&target_pad).unwrap();
+            let target_pad = self.appsrc.get_static_pad("src");
+            self.srcpad.set_target(target_pad.as_ref()).unwrap();
 
             let element = obj.downcast_ref::<gst::Element>().unwrap();
             element
@@ -314,16 +312,10 @@ mod imp {
             Some("servosrc://".to_string())
         }
 
-        fn set_uri(
-            &self,
-            _element: &gst::URIHandler,
-            uri: Option<String>,
-        ) -> Result<(), glib::Error> {
-            if let Some(ref uri) = uri {
-                if let Ok(uri) = Url::parse(uri) {
-                    if uri.scheme() == "servosrc" {
-                        return Ok(());
-                    }
+        fn set_uri(&self, _element: &gst::URIHandler, uri: &str) -> Result<(), glib::Error> {
+            if let Ok(uri) = Url::parse(uri) {
+                if uri.scheme() == "servosrc" {
+                    return Ok(());
                 }
             }
             Err(glib::Error::new(
@@ -392,5 +384,5 @@ impl ServoSrc {
 // under the name "servosrc" for being able to instantiate it via e.g.
 // gst::ElementFactory::make().
 pub fn register_servo_src() -> Result<(), glib::BoolError> {
-    gst::Element::register(None, "servosrc", 0, ServoSrc::static_type())
+    gst::Element::register(None, "servosrc", gst::Rank::None, ServoSrc::static_type())
 }

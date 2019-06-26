@@ -196,16 +196,14 @@ impl AudioDecoder for GStreamerAudioDecoder {
                                 .new_sample(move |appsink| {
                                     let sample =
                                         appsink.pull_sample().ok_or(gst::FlowError::Eos)?;
-                                    let buffer = sample.get_buffer().ok_or_else(|| {
+                                    let buffer = sample.get_buffer_owned().ok_or_else(|| {
                                         callbacks_.error(AudioDecoderError::InvalidSample);
                                         gst::FlowError::Error
                                     })?;
 
                                     let audio_info = sample
                                         .get_caps()
-                                        .and_then(|caps| {
-                                            gst_audio::AudioInfo::from_caps(caps.as_ref())
-                                        })
+                                        .and_then(|caps| gst_audio::AudioInfo::from_caps(caps))
                                         .ok_or_else(|| {
                                             callbacks_.error(AudioDecoderError::Backend(
                                                 "Could not get caps from sample".to_owned(),
