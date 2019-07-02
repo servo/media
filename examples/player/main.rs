@@ -281,6 +281,8 @@ fn main() {
 
 #[cfg(not(target_os = "android"))]
 fn main() {
+    ServoMedia::init::<servo_media_auto::Backend>();
+
     let clap_matches = clap::App::new("Servo-media player example")
         .setting(clap::AppSettings::DisableVersion)
         .author("Servo developers")
@@ -311,6 +313,5 @@ fn main() {
     let path = clap_matches.value_of("file").map(|s| Path::new(s)).unwrap();
 
     let app = Arc::new(Mutex::new(App::new()));
-    ServoMedia::init::<servo_media_auto::Backend>();
     ui::main_wrapper(app, &path, no_video, use_gl, None);
 }
