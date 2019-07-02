@@ -6,7 +6,6 @@
 //! Then load http://localhost:8000 in a web browser, note the client id.
 //! Then run this example with arguments `8443 {id}`.
 
-extern crate env_logger;
 extern crate rand;
 extern crate serde;
 #[macro_use]
@@ -318,7 +317,6 @@ fn receive_loop(
 }
 
 fn run_example(servo_media: Arc<ServoMedia>) {
-    env_logger::init();
     let mut args = env::args();
     let _ = args.next();
     let server_port = if let Some(port) = args.next() {
