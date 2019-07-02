@@ -12,7 +12,6 @@ use glutin::ContextTrait;
 use servo_media::player::context::*;
 use servo_media::player::frame::FrameRenderer;
 use servo_media::ClientContextId;
-use std::env;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use webrender;
