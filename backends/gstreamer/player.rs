@@ -15,6 +15,7 @@ use servo_media_player::frame::FrameRenderer;
 use servo_media_player::metadata::Metadata;
 use servo_media_player::{PlaybackState, Player, PlayerError, PlayerEvent, StreamType};
 use servo_media_streams::registry::{get_stream, MediaStreamId};
+use servo_media_traits::Muteable;
 use source::{register_servo_src, ServoSrc};
 use std::cell::RefCell;
 use std::error::Error;
@@ -297,6 +298,7 @@ macro_rules! player(
 );
 
 pub struct GStreamerPlayer {
+    id: usize,
     inner: RefCell<Option<Arc<Mutex<PlayerInner>>>>,
     observer: Arc<Mutex<IpcSender<PlayerEvent>>>,
     renderer: Option<Arc<Mutex<dyn FrameRenderer>>>,
@@ -311,6 +313,7 @@ pub struct GStreamerPlayer {
 
 impl GStreamerPlayer {
     pub fn new(
+        id: usize,
         stream_type: StreamType,
         observer: IpcSender<PlayerEvent>,
         renderer: Option<Arc<Mutex<dyn FrameRenderer>>>,
@@ -323,6 +326,7 @@ impl GStreamerPlayer {
         );
 
         Self {
+            id: id,
             inner: RefCell::new(None),
             observer: Arc::new(Mutex::new(observer)),
             renderer,
@@ -728,5 +732,15 @@ impl Player for GStreamerPlayer {
         let inner = self.inner.borrow();
         let mut inner = inner.as_ref().unwrap().lock().unwrap();
         inner.set_stream(stream, only_stream)
+    }
+}
+
+impl Muteable for GStreamerPlayer {
+    fn get_id(&self) -> usize {
+        self.id
+    }
+
+    fn mute(&self, val: bool) -> Result<(), ()> {
+        self.set_mute(val).map_err(|_| ())
     }
 }

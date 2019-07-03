@@ -185,6 +185,8 @@ impl AudioNodeEngine for OscillatorNode {
             _ => panic!("Unknown param {:?} for OscillatorNode", id),
         }
     }
-    make_message_handler!(AudioScheduledSourceNode: handle_source_node_message,
-                          OscillatorNode: handle_oscillator_message);
+    make_message_handler!(
+        AudioScheduledSourceNode: handle_source_node_message,
+        OscillatorNode: handle_oscillator_message
+    );
 }

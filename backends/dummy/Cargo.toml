@@ -14,4 +14,5 @@ servo-media = { path = "../../servo-media" }
 servo-media-audio = { path = "../../audio" }
 servo-media-player = { path = "../../player" }
 servo-media-streams = { path = "../../streams" }
+servo-media-traits = { path = "../../traits" }
 servo-media-webrtc = { path = "../../webrtc" }

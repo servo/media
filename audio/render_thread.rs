@@ -34,6 +34,8 @@ pub enum AudioRenderThreadMsg {
     DisconnectOutputBetweenTo(PortId<OutputPort>, PortId<InputPort>),
 
     SetSinkEosCallback(Box<dyn Fn(Box<dyn AsRef<[f32]>>) + Send + Sync + 'static>),
+
+    SetMute(bool),
 }
 
 pub enum Sink {
@@ -99,6 +101,7 @@ pub struct AudioRenderThread {
     pub sample_rate: f32,
     pub current_time: f64,
     pub current_frame: Tick,
+    pub muted: bool,
 }
 
 impl AudioRenderThread {
@@ -131,6 +134,7 @@ impl AudioRenderThread {
             sample_rate,
             current_time: 0.,
             current_frame: Tick(0),
+            muted: false,
         })
     }
 
@@ -198,12 +202,20 @@ impl AudioRenderThread {
     }
 
     fn process(&mut self) -> Chunk {
+        if self.muted {
+            return Chunk::explicit_silence();
+        }
+
         let info = BlockInfo {
             sample_rate: self.sample_rate,
             frame: self.current_frame,
             time: self.current_time,
         };
         self.graph.process(&info)
+    }
+
+    fn set_mute(&mut self, val: bool) -> () {
+        self.muted = val;
     }
 
     fn event_loop(&mut self, event_queue: Receiver<AudioRenderThreadMsg>) {
@@ -255,6 +267,9 @@ impl AudioRenderThread {
                 }
                 AudioRenderThreadMsg::SetSinkEosCallback(callback) => {
                     context.sink.set_eos_callback(callback);
+                }
+                AudioRenderThreadMsg::SetMute(val) => {
+                    context.set_mute(val);
                 }
             };
 

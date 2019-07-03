@@ -22,12 +22,15 @@ extern crate gstreamer_webrtc as gst_webrtc;
 extern crate ipc_channel;
 #[macro_use]
 extern crate lazy_static;
+#[macro_use]
+extern crate log;
 
 extern crate servo_media;
 extern crate servo_media_audio;
 extern crate servo_media_gstreamer_render;
 extern crate servo_media_player;
 extern crate servo_media_streams;
+extern crate servo_media_traits;
 extern crate servo_media_webrtc;
 extern crate url;
 
@@ -58,9 +61,12 @@ use servo_media_player::{Player, PlayerEvent, StreamType};
 use servo_media_streams::capture::MediaTrackConstraintSet;
 use servo_media_streams::registry::MediaStreamId;
 use servo_media_streams::MediaOutput;
+use servo_media_traits::{ClientContextId, Muteable};
 use servo_media_webrtc::{WebRtcBackend, WebRtcController, WebRtcSignaller};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex, Weak};
+use std::vec::Vec;
 
 lazy_static! {
     static ref BACKEND_BASE_TIME: gst::ClockTime = { gst::SystemClock::obtain().get_time() };
@@ -68,26 +74,76 @@ lazy_static! {
 
 pub struct GStreamerBackend {
     capture_mocking: AtomicBool,
+    muteables: Mutex<HashMap<ClientContextId, Vec<(usize, Weak<Mutex<dyn Muteable>>)>>>,
+    next_muteable_id: AtomicUsize,
+}
+
+impl GStreamerBackend {
+    fn remove_muteable(&self, id: &ClientContextId, muteable_id: usize) {
+        let mut muteables = self.muteables.lock().unwrap();
+        if let Some(vec) = muteables.get_mut(&id) {
+            vec.retain(|m| m.0 != muteable_id);
+            if vec.len() == 0 {
+                muteables.remove(&id);
+            }
+        }
+    }
 }
 
 impl Backend for GStreamerBackend {
     fn create_player(
         &self,
+        id: &ClientContextId,
         stream_type: StreamType,
         sender: IpcSender<PlayerEvent>,
         renderer: Option<Arc<Mutex<dyn FrameRenderer>>>,
         gl_context: Box<dyn PlayerGLContext>,
-    ) -> Box<dyn Player> {
-        Box::new(player::GStreamerPlayer::new(
+    ) -> Arc<Mutex<dyn Player>> {
+        let muteable_id = self.next_muteable_id.fetch_add(1, Ordering::Relaxed);
+        let player = Arc::new(Mutex::new(player::GStreamerPlayer::new(
+            muteable_id,
             stream_type,
             sender,
             renderer,
             gl_context,
-        ))
+        )));
+        let mut muteables = self.muteables.lock().unwrap();
+        let entry = muteables.entry(*id).or_insert(Vec::new());
+        entry.push((muteable_id, Arc::downgrade(&player).clone()));
+        player
     }
 
-    fn create_audio_context(&self, options: AudioContextOptions) -> AudioContext {
-        AudioContext::new::<Self>(options)
+    fn shutdown_player(&self, id: &ClientContextId, player: Arc<Mutex<dyn Player>>) {
+        let player = player.lock().unwrap();
+        let p_id = player.get_id();
+        self.remove_muteable(id, p_id);
+
+        if let Err(e) = player.shutdown() {
+            warn!("Player was shut down with err: {:?}", e);
+        }
+    }
+
+    fn create_audio_context(
+        &self,
+        id: &ClientContextId,
+        options: AudioContextOptions,
+    ) -> Arc<Mutex<AudioContext>> {
+        let muteable_id = self.next_muteable_id.fetch_add(1, Ordering::Relaxed);
+        let context = Arc::new(Mutex::new(AudioContext::new::<Self>(muteable_id, options)));
+        let mut muteables = self.muteables.lock().unwrap();
+        let entry = muteables.entry(*id).or_insert(Vec::new());
+        entry.push((muteable_id, Arc::downgrade(&context).clone()));
+        context
+    }
+
+    fn shutdown_audio_context(
+        &self,
+        id: &ClientContextId,
+        audio_context: Arc<Mutex<AudioContext>>,
+    ) {
+        let audio_context = audio_context.lock().unwrap();
+        let ac_id = audio_context.get_id();
+        self.remove_muteable(id, ac_id);
     }
 
     fn create_webrtc(&self, signaller: Box<dyn WebRtcSignaller>) -> WebRtcController {
@@ -159,6 +215,26 @@ impl Backend for GStreamerBackend {
     fn set_capture_mocking(&self, mock: bool) {
         self.capture_mocking.store(mock, Ordering::Release)
     }
+
+    fn mute(&self, id: &ClientContextId, val: bool) {
+        let mut muteables = self.muteables.lock().unwrap();
+        match muteables.get_mut(id) {
+            Some(vec) => vec.retain(|(_muteable_id, weak)| {
+                if let Some(mutex) = weak.upgrade() {
+                    let muteable = mutex.lock().unwrap();
+                    if muteable.mute(val).is_err() {
+                        warn!("Could not mute muteable");
+                    }
+                    true
+                } else {
+                    false
+                }
+            }),
+            None => {
+                warn!("Trying to mute/unmute an unknown client context");
+            }
+        }
+    }
 }
 
 impl AudioBackend for GStreamerBackend {
@@ -187,6 +263,8 @@ impl BackendInit for GStreamerBackend {
         gst::init().unwrap();
         Box::new(GStreamerBackend {
             capture_mocking: AtomicBool::new(false),
+            muteables: Mutex::new(HashMap::new()),
+            next_muteable_id: AtomicUsize::new(0),
         })
     }
 }

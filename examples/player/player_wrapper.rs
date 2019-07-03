@@ -6,7 +6,7 @@ use ipc_channel::ipc;
 use servo_media::player::context::PlayerGLContext;
 use servo_media::player::frame::{Frame, FrameRenderer};
 use servo_media::player::{Player, PlayerError, PlayerEvent, StreamType};
-use servo_media::ServoMedia;
+use servo_media::{ClientContextId, ServoMedia};
 use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::path::Path;
@@ -16,24 +16,21 @@ use std::sync::{Arc, Mutex};
 use std::thread::Builder;
 
 pub struct PlayerWrapper {
-    player: Arc<Mutex<Box<dyn Player>>>,
+    player: Arc<Mutex<dyn Player>>,
     shutdown: Arc<AtomicBool>,
 }
 
 impl PlayerWrapper {
     pub fn new(
+        id: &ClientContextId,
         path: &Path,
         renderer: Option<Arc<Mutex<dyn FrameRenderer>>>,
         gl_context: Box<dyn PlayerGLContext>,
     ) -> Self {
         let (sender, receiver) = ipc::channel().unwrap();
         let servo_media = ServoMedia::get().unwrap();
-        let player = Arc::new(Mutex::new(servo_media.create_player(
-            StreamType::Seekable,
-            sender,
-            renderer,
-            gl_context,
-        )));
+        let player =
+            servo_media.create_player(id, StreamType::Seekable, sender, renderer, gl_context);
 
         let file = File::open(&path).unwrap();
         let metadata = file.metadata().unwrap();

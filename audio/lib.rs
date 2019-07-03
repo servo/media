@@ -12,6 +12,7 @@ extern crate petgraph;
 extern crate smallvec;
 #[macro_use]
 pub mod macros;
+extern crate servo_media_traits;
 
 pub mod analyser_node;
 pub mod biquad_filter_node;

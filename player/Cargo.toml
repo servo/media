@@ -16,3 +16,6 @@ ipc-channel = "0.11"
 
 [dependencies.servo-media-streams]
 path = "../streams"
+
+[dependencies.servo-media-traits]
+path = "../traits"

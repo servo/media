@@ -15,6 +15,7 @@ serde_derive = "1.0.66"
 serde = "1.0.66"
 servo_media_derive = { path = "../servo-media-derive" }
 smallvec = "0.6.1"
+servo-media-traits = { path = "../traits" }
 
 [dependencies.petgraph]
 version = "0.4.12"

@@ -40,6 +40,21 @@ impl Chunk {
     pub fn len(&self) -> usize {
         self.blocks.len()
     }
+
+    pub fn explicit_silence() -> Chunk {
+        let blocks: SmallVec<[Block; 1]> = SmallVec::new();
+        Chunk {
+            blocks: blocks
+                .as_slice()
+                .iter()
+                .map(|_| {
+                    let mut block = Block::default();
+                    block.explicit_silence();
+                    block
+                })
+                .collect(),
+        }
+    }
 }
 
 /// We render audio in blocks of size FRAMES_PER_BLOCK
@@ -158,7 +173,10 @@ impl Block {
 
     #[inline]
     pub fn data_chan(&self, chan: u8) -> &[f32] {
-        debug_assert!(!self.is_silence(), "data_chan doesn't work with silent buffers");
+        debug_assert!(
+            !self.is_silence(),
+            "data_chan doesn't work with silent buffers"
+        );
         let offset = if self.repeat {
             0
         } else {

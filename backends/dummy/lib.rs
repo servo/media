@@ -4,6 +4,7 @@ extern crate servo_media;
 extern crate servo_media_audio;
 extern crate servo_media_player;
 extern crate servo_media_streams;
+extern crate servo_media_traits;
 extern crate servo_media_webrtc;
 
 use boxfnonce::SendBoxFnOnce;
@@ -20,6 +21,7 @@ use servo_media_player::{frame, Player, PlayerError, PlayerEvent, StreamType};
 use servo_media_streams::capture::MediaTrackConstraintSet;
 use servo_media_streams::registry::{register_stream, unregister_stream, MediaStreamId};
 use servo_media_streams::{MediaOutput, MediaStream, MediaStreamType};
+use servo_media_traits::{ClientContextId, Muteable};
 use servo_media_webrtc::{
     thread, BundlePolicy, IceCandidate, SessionDescription, WebRtcBackend, WebRtcController,
     WebRtcControllerBackend, WebRtcSignaller, WebrtcResult,
@@ -68,16 +70,30 @@ impl Backend for DummyBackend {
 
     fn create_player(
         &self,
+        _id: &ClientContextId,
         _: StreamType,
         _: IpcSender<PlayerEvent>,
         _: Option<Arc<Mutex<dyn frame::FrameRenderer>>>,
         _: Box<dyn PlayerGLContext>,
-    ) -> Box<dyn Player> {
-        Box::new(DummyPlayer)
+    ) -> Arc<Mutex<dyn Player>> {
+        Arc::new(Mutex::new(DummyPlayer))
     }
 
-    fn create_audio_context(&self, options: AudioContextOptions) -> AudioContext {
-        AudioContext::new::<Self>(options)
+    fn shutdown_player(&self, _id: &ClientContextId, _player: Arc<Mutex<dyn Player>>) {}
+
+    fn create_audio_context(
+        &self,
+        _id: &ClientContextId,
+        options: AudioContextOptions,
+    ) -> Arc<Mutex<AudioContext>> {
+        Arc::new(Mutex::new(AudioContext::new::<Self>(0, options)))
+    }
+
+    fn shutdown_audio_context(
+        &self,
+        _id: &ClientContextId,
+        _audio_context: Arc<Mutex<AudioContext>>,
+    ) {
     }
 
     fn create_webrtc(&self, signaller: Box<dyn WebRtcSignaller>) -> WebRtcController {
@@ -255,4 +271,14 @@ impl WebRtcControllerBackend for DummyWebRtcController {
         Ok(())
     }
     fn quit(&mut self) {}
+}
+
+impl Muteable for DummyPlayer {
+    fn get_id(&self) -> usize {
+        0
+    }
+
+    fn mute(&self, _val: bool) -> Result<(), ()> {
+        Ok(())
+    }
 }

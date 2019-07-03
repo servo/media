@@ -5,7 +5,7 @@ use servo_media::audio::block::FRAMES_PER_BLOCK_USIZE;
 use servo_media::audio::buffer_source_node::AudioBufferSourceNodeMessage;
 use servo_media::audio::context::{AudioContextOptions, OfflineAudioContextOptions};
 use servo_media::audio::node::{AudioNodeInit, AudioNodeMessage, AudioScheduledSourceNodeMessage};
-use servo_media::ServoMedia;
+use servo_media::{ClientContextId, ServoMedia};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::{thread, time};
@@ -17,7 +17,8 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     options.channels = 2;
     options.length = 1024 * FRAMES_PER_BLOCK_USIZE;
     let options = AudioContextOptions::OfflineAudioContext(options);
-    let context = servo_media.create_audio_context(options);
+    let context = servo_media.create_audio_context(&ClientContextId::build(1, 1), options);
+    let context = context.lock().unwrap();
     let processed_audio = Arc::new(Mutex::new(Vec::new()));
     let processed_audio_ = processed_audio.clone();
     let (sender, receiver) = mpsc::channel();
@@ -45,7 +46,9 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     // Close offline context.
     let _ = context.close();
     // Create audio context to play the processed audio.
-    let context = servo_media.create_audio_context(Default::default());
+    let context =
+        servo_media.create_audio_context(&ClientContextId::build(1, 2), Default::default());
+    let context = context.lock().unwrap();
     let buffer_source = context.create_node(
         AudioNodeInit::AudioBufferSourceNode(Default::default()),
         Default::default(),

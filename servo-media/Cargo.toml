@@ -16,5 +16,8 @@ path = "../player"
 [dependencies.servo-media-streams]
 path = "../streams"
 
+[dependencies.servo-media-traits]
+path = "../traits"
+
 [dependencies.servo-media-webrtc]
 path = "../webrtc"
