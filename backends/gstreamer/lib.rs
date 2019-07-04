@@ -64,6 +64,7 @@ use servo_media_streams::MediaOutput;
 use servo_media_traits::{ClientContextId, Muteable};
 use servo_media_webrtc::{WebRtcBackend, WebRtcController, WebRtcSignaller};
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, Weak};
 use std::vec::Vec;
@@ -258,14 +259,41 @@ impl WebRtcBackend for GStreamerBackend {
     }
 }
 
+#[derive(Debug)]
+pub struct ErrorLoadingPlugins(Vec<&'static str>);
+
 impl BackendInit for GStreamerBackend {
     fn init() -> Box<dyn Backend> {
+        Self::init_with_plugins(PathBuf::new(), &[]).unwrap()
+    }
+}
+
+impl GStreamerBackend {
+    pub fn init_with_plugins(plugin_dir: PathBuf, plugins: &[&'static str]) -> Result<Box<dyn Backend>, ErrorLoadingPlugins> {
         gst::init().unwrap();
-        Box::new(GStreamerBackend {
+
+        let mut errors = vec![];
+        for plugin in plugins {
+            let mut path = plugin_dir.clone();
+            path.push(plugin);
+            let registry = gst::Registry::get();
+            if let Ok(p) = gst::Plugin::load_file(&path) {
+                if registry.add_plugin(&p).is_ok() {
+                    continue;
+                }
+            }
+            errors.push(*plugin);
+        }
+
+        if !errors.is_empty() {
+            return Err(ErrorLoadingPlugins(errors));
+        }
+
+        Ok(Box::new(GStreamerBackend {
             capture_mocking: AtomicBool::new(false),
             muteables: Mutex::new(HashMap::new()),
             next_muteable_id: AtomicUsize::new(0),
-        })
+        }))
     }
 }
 
