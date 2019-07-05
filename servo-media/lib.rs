@@ -75,7 +75,7 @@ impl ServoMedia {
         })
     }
 
-    pub fn init_with_backend(backend: Box<Backend>) {
+    pub fn init_with_backend(backend: Box<dyn Backend>) {
         INITIALIZER.call_once(|| unsafe {
             let instance = Arc::new(ServoMedia(backend));
             INSTANCE = Box::into_raw(Box::new(Mutex::new(Some(instance))));

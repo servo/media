@@ -47,10 +47,6 @@ impl PlayerContextGlutin {
                     .expect("Couldn't make window current");
             }
 
-            let context = windowed_context.context();
-            let raw_handle = unsafe { context.raw_handle() };
-            let api = windowed_context.get_api();
-
             #[cfg(any(
                 target_os = "linux",
                 target_os = "dragonfly",
@@ -59,10 +55,11 @@ impl PlayerContextGlutin {
                 target_os = "openbsd"
             ))]
             {
+                let context = windowed_context.context();
                 let gl_context = {
                     use glutin::os::unix::RawHandle;
 
-                    match raw_handle {
+                    match unsafe { context.raw_handle() } {
                         RawHandle::Egl(egl_context) => GlContext::Egl(egl_context as usize),
                         RawHandle::Glx(glx_context) => GlContext::Glx(glx_context as usize),
                     }
@@ -83,7 +80,7 @@ impl PlayerContextGlutin {
                     }
                 };
 
-                let gl_api = match api {
+                let gl_api = match windowed_context.get_api() {
                     glutin::Api::OpenGl => GlApi::OpenGL3,
                     glutin::Api::OpenGlEs => GlApi::Gles2,
                     _ => GlApi::None,
