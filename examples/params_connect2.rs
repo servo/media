@@ -10,44 +10,49 @@ use std::sync::Arc;
 use std::{thread, time};
 
 fn run_example(servo_media: Arc<ServoMedia>) {
-    let context =
-        servo_media.create_audio_context(&ClientContextId::build(1, 1), Default::default());
-    let context = context.lock().unwrap();
-    let mut options = OscillatorNodeOptions::default();
-    options.freq = 2.0;
-    let lfo = context.create_node(AudioNodeInit::OscillatorNode(options), Default::default());
-    let osc = context.create_node(
-        AudioNodeInit::OscillatorNode(Default::default()),
-        Default::default(),
-    );
-    let mut options = GainNodeOptions::default();
-    options.gain = 100.;
-    let gain = context.create_node(AudioNodeInit::GainNode(options), Default::default());
-    let dest = context.dest_node();
-    context.connect_ports(lfo.output(0), gain.input(0));
-    context.connect_ports(gain.output(0), osc.param(ParamType::Frequency));
-    context.connect_ports(osc.output(0), dest.input(0));
-    let _ = context.resume();
-    context.message_node(
-        osc,
-        AudioNodeMessage::AudioScheduledSourceNode(AudioScheduledSourceNodeMessage::Start(0.)),
-    );
-    context.message_node(
-        lfo,
-        AudioNodeMessage::AudioScheduledSourceNode(AudioScheduledSourceNodeMessage::Start(0.)),
-    );
-    thread::sleep(time::Duration::from_millis(3000));
-    // 0.75s - 1.75s: Linearly ramp frequency to 880Hz
-    context.message_node(
-        gain,
-        AudioNodeMessage::SetParam(
-            ParamType::Gain,
-            UserAutomationEvent::RampToValueAtTime(RampKind::Linear, 0., 6.),
-        ),
-    );
+    let client_context_id = ClientContextId::build(1, 1);
+    let context = servo_media.create_audio_context(&client_context_id, Default::default());
+    {
+        let context = context.lock().unwrap();
+        let mut options = OscillatorNodeOptions::default();
+        options.freq = 2.0;
+        let lfo = context.create_node(AudioNodeInit::OscillatorNode(options), Default::default());
+        let osc = context.create_node(
+            AudioNodeInit::OscillatorNode(Default::default()),
+            Default::default(),
+        );
+        let mut options = GainNodeOptions::default();
+        options.gain = 100.;
+        let gain = context.create_node(AudioNodeInit::GainNode(options), Default::default());
+        let dest = context.dest_node();
+        context.connect_ports(lfo.output(0), gain.input(0));
+        context.connect_ports(gain.output(0), osc.param(ParamType::Frequency));
+        context.connect_ports(osc.output(0), dest.input(0));
+        let _ = context.resume();
+        context.message_node(
+            osc,
+            AudioNodeMessage::AudioScheduledSourceNode(AudioScheduledSourceNodeMessage::Start(0.)),
+        );
+        context.message_node(
+            lfo,
+            AudioNodeMessage::AudioScheduledSourceNode(AudioScheduledSourceNodeMessage::Start(0.)),
+        );
+        thread::sleep(time::Duration::from_millis(3000));
+        // 0.75s - 1.75s: Linearly ramp frequency to 880Hz
+        context.message_node(
+            gain,
+            AudioNodeMessage::SetParam(
+                ParamType::Gain,
+                UserAutomationEvent::RampToValueAtTime(RampKind::Linear, 0., 6.),
+            ),
+        );
 
-    thread::sleep(time::Duration::from_millis(3000));
-    let _ = context.close();
+        thread::sleep(time::Duration::from_millis(3000));
+        let _ = context.close();
+    }
+    ServoMedia::get()
+        .unwrap()
+        .shutdown_audio_context(&client_context_id, context);
 }
 
 fn main() {

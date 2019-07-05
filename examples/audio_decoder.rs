@@ -14,9 +14,6 @@ use std::sync::{Arc, Mutex};
 use std::{thread, time};
 
 fn run_example(servo_media: Arc<ServoMedia>) {
-    let context =
-        servo_media.create_audio_context(&ClientContextId::build(1, 1), Default::default());
-    let context = context.lock().unwrap();
     let args: Vec<_> = env::args().collect();
     let default = "./examples/resources/viper_cut.ogg";
     let filename: &str = if args.len() == 2 {
@@ -52,29 +49,37 @@ fn run_example(servo_media: Arc<ServoMedia>) {
                 .resize(channels as usize, Vec::new());
         })
         .build();
-    context.decode_audio_data(bytes.to_vec(), callbacks);
-    println!("Decoding audio");
-    receiver.recv().unwrap();
-    println!("Audio decoded");
-    let buffer_source = context.create_node(
-        AudioNodeInit::AudioBufferSourceNode(Default::default()),
-        Default::default(),
-    );
-    let dest = context.dest_node();
-    context.connect_ports(buffer_source.output(0), dest.input(0));
-    context.message_node(
-        buffer_source,
-        AudioNodeMessage::AudioScheduledSourceNode(AudioScheduledSourceNodeMessage::Start(0.)),
-    );
-    context.message_node(
-        buffer_source,
-        AudioNodeMessage::AudioBufferSourceNode(AudioBufferSourceNodeMessage::SetBuffer(Some(
-            decoded_audio.lock().unwrap().to_vec().into(),
-        ))),
-    );
-    let _ = context.resume();
-    thread::sleep(time::Duration::from_millis(5000));
-    let _ = context.close();
+    let client_context_id = ClientContextId::build(1, 1);
+    let context = servo_media.create_audio_context(&client_context_id, Default::default());
+    {
+        let context = context.lock().unwrap();
+        context.decode_audio_data(bytes.to_vec(), callbacks);
+        println!("Decoding audio");
+        receiver.recv().unwrap();
+        println!("Audio decoded");
+        let buffer_source = context.create_node(
+            AudioNodeInit::AudioBufferSourceNode(Default::default()),
+            Default::default(),
+        );
+        let dest = context.dest_node();
+        context.connect_ports(buffer_source.output(0), dest.input(0));
+        context.message_node(
+            buffer_source,
+            AudioNodeMessage::AudioScheduledSourceNode(AudioScheduledSourceNodeMessage::Start(0.)),
+        );
+        context.message_node(
+            buffer_source,
+            AudioNodeMessage::AudioBufferSourceNode(AudioBufferSourceNodeMessage::SetBuffer(Some(
+                decoded_audio.lock().unwrap().to_vec().into(),
+            ))),
+        );
+        let _ = context.resume();
+        thread::sleep(time::Duration::from_millis(5000));
+        let _ = context.close();
+    }
+    ServoMedia::get()
+        .unwrap()
+        .shutdown_audio_context(&client_context_id, context);
 }
 
 fn main() {

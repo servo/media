@@ -10,42 +10,47 @@ use std::sync::Arc;
 use std::{thread, time};
 
 fn run_example(servo_media: Arc<ServoMedia>) {
-    let context =
-        servo_media.create_audio_context(&ClientContextId::build(1, 1), Default::default());
-    let context = context.lock().unwrap();
-    let buffer_source = context.create_node(
-        AudioNodeInit::AudioBufferSourceNode(Default::default()),
-        Default::default(),
-    );
-    let dest = context.dest_node();
-    context.connect_ports(buffer_source.output(0), dest.input(0));
-    let mut buffers = vec![Vec::with_capacity(4096), Vec::with_capacity(4096)];
-    for _ in 0..4096 {
-        buffers[0].push(rand::random::<f32>());
-        buffers[1].push(rand::random::<f32>());
+    let client_context_id = ClientContextId::build(1, 1);
+    let context = servo_media.create_audio_context(&client_context_id, Default::default());
+    {
+        let context = context.lock().unwrap();
+        let buffer_source = context.create_node(
+            AudioNodeInit::AudioBufferSourceNode(Default::default()),
+            Default::default(),
+        );
+        let dest = context.dest_node();
+        context.connect_ports(buffer_source.output(0), dest.input(0));
+        let mut buffers = vec![Vec::with_capacity(4096), Vec::with_capacity(4096)];
+        for _ in 0..4096 {
+            buffers[0].push(rand::random::<f32>());
+            buffers[1].push(rand::random::<f32>());
+        }
+        context.message_node(
+            buffer_source,
+            AudioNodeMessage::AudioScheduledSourceNode(AudioScheduledSourceNodeMessage::Start(0.)),
+        );
+        context.message_node(
+            buffer_source,
+            AudioNodeMessage::AudioBufferSourceNode(AudioBufferSourceNodeMessage::SetBuffer(Some(
+                buffers.into(),
+            ))),
+        );
+        let callback = OnEndedCallback::new(|| {
+            println!("Playback ended");
+        });
+        context.message_node(
+            buffer_source,
+            AudioNodeMessage::AudioScheduledSourceNode(
+                AudioScheduledSourceNodeMessage::RegisterOnEndedCallback(callback),
+            ),
+        );
+        let _ = context.resume();
+        thread::sleep(time::Duration::from_millis(5000));
+        let _ = context.close();
     }
-    context.message_node(
-        buffer_source,
-        AudioNodeMessage::AudioScheduledSourceNode(AudioScheduledSourceNodeMessage::Start(0.)),
-    );
-    context.message_node(
-        buffer_source,
-        AudioNodeMessage::AudioBufferSourceNode(AudioBufferSourceNodeMessage::SetBuffer(Some(
-            buffers.into(),
-        ))),
-    );
-    let callback = OnEndedCallback::new(|| {
-        println!("Playback ended");
-    });
-    context.message_node(
-        buffer_source,
-        AudioNodeMessage::AudioScheduledSourceNode(
-            AudioScheduledSourceNodeMessage::RegisterOnEndedCallback(callback),
-        ),
-    );
-    let _ = context.resume();
-    thread::sleep(time::Duration::from_millis(5000));
-    let _ = context.close();
+    ServoMedia::get()
+        .unwrap()
+        .shutdown_audio_context(&client_context_id, context);
 }
 
 fn main() {

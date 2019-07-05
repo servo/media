@@ -18,6 +18,7 @@ use std::thread::Builder;
 pub struct PlayerWrapper {
     player: Arc<Mutex<dyn Player>>,
     shutdown: Arc<AtomicBool>,
+    client_context_id: ClientContextId,
 }
 
 impl PlayerWrapper {
@@ -152,11 +153,17 @@ impl PlayerWrapper {
 
         player.lock().unwrap().play().unwrap();
 
-        PlayerWrapper { player, shutdown }
+        PlayerWrapper {
+            player,
+            shutdown,
+            client_context_id: *id,
+        }
     }
 
     pub fn shutdown(&self) {
-        self.player.lock().unwrap().stop().unwrap();
+        ServoMedia::get()
+            .unwrap()
+            .shutdown_player(&self.client_context_id, self.player.clone());
         self.shutdown.store(true, Ordering::Relaxed);
     }
 

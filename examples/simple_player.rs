@@ -43,8 +43,9 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     };
 
     let (sender, receiver) = ipc::channel().unwrap();
+    let client_context_id = ClientContextId::build(1, 1);
     let player = servo_media.create_player(
-        &ClientContextId::build(1, 1),
+        &client_context_id,
         StreamType::Seekable,
         sender,
         None,
@@ -155,7 +156,9 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     shutdown.store(true, Ordering::Relaxed);
     let _ = t.join();
 
-    player.lock().unwrap().shutdown().unwrap();
+    ServoMedia::get()
+        .unwrap()
+        .shutdown_player(&client_context_id, player.clone());
 }
 
 fn main() {

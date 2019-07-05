@@ -10,44 +10,50 @@ use std::sync::Arc;
 use std::{thread, time};
 
 fn run_example(servo_media: Arc<ServoMedia>) {
-    let context =
-        servo_media.create_audio_context(&ClientContextId::build(1, 1), Default::default());
-    let context = context.lock().unwrap();
-    let mut options = OscillatorNodeOptions::default();
-    let osc = context.create_node(
-        AudioNodeInit::OscillatorNode(options.clone()),
-        Default::default(),
-    );
-    options.freq = 213.;
-    let osc2 = context.create_node(AudioNodeInit::OscillatorNode(options), Default::default());
-    let mut options = GainNodeOptions::default();
-    options.gain = 0.7;
-    let gain = context.create_node(AudioNodeInit::GainNode(options.clone()), Default::default());
-    let options = ChannelNodeOptions { channels: 2 };
-    let merger = context.create_node(
-        AudioNodeInit::ChannelMergerNode(options),
-        Default::default(),
-    );
+    let client_context_id = ClientContextId::build(1, 1);
+    let context = servo_media.create_audio_context(&client_context_id, Default::default());
+    {
+        let context = context.lock().unwrap();
+        let mut options = OscillatorNodeOptions::default();
+        let osc = context.create_node(
+            AudioNodeInit::OscillatorNode(options.clone()),
+            Default::default(),
+        );
+        options.freq = 213.;
+        let osc2 = context.create_node(AudioNodeInit::OscillatorNode(options), Default::default());
+        let mut options = GainNodeOptions::default();
+        options.gain = 0.7;
+        let gain =
+            context.create_node(AudioNodeInit::GainNode(options.clone()), Default::default());
+        let options = ChannelNodeOptions { channels: 2 };
+        let merger = context.create_node(
+            AudioNodeInit::ChannelMergerNode(options),
+            Default::default(),
+        );
 
-    let dest = context.dest_node();
-    context.connect_ports(osc.output(0), gain.input(0));
-    context.connect_ports(gain.output(0), merger.input(0));
-    context.connect_ports(osc2.output(0), merger.input(1));
-    context.connect_ports(merger.output(0), dest.input(0));
-    context.message_node(
-        osc,
-        AudioNodeMessage::AudioScheduledSourceNode(AudioScheduledSourceNodeMessage::Start(0.)),
-    );
-    context.message_node(
-        osc2,
-        AudioNodeMessage::AudioScheduledSourceNode(AudioScheduledSourceNodeMessage::Start(0.)),
-    );
-    let _ = context.resume();
+        let dest = context.dest_node();
+        context.connect_ports(osc.output(0), gain.input(0));
+        context.connect_ports(gain.output(0), merger.input(0));
+        context.connect_ports(osc2.output(0), merger.input(1));
+        context.connect_ports(merger.output(0), dest.input(0));
+        context.message_node(
+            osc,
+            AudioNodeMessage::AudioScheduledSourceNode(AudioScheduledSourceNodeMessage::Start(0.)),
+        );
+        context.message_node(
+            osc2,
+            AudioNodeMessage::AudioScheduledSourceNode(AudioScheduledSourceNodeMessage::Start(0.)),
+        );
+        let _ = context.resume();
 
-    thread::sleep(time::Duration::from_millis(2000));
-    context.message_node(dest, AudioNodeMessage::SetChannelCount(1));
-    thread::sleep(time::Duration::from_millis(2000));
-    let _ = context.close();
+        thread::sleep(time::Duration::from_millis(2000));
+        context.message_node(dest, AudioNodeMessage::SetChannelCount(1));
+        thread::sleep(time::Duration::from_millis(2000));
+        let _ = context.close();
+    }
+    ServoMedia::get()
+        .unwrap()
+        .shutdown_audio_context(&client_context_id, context);
 }
 
 fn main() {

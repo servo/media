@@ -12,7 +12,6 @@ use servo_media::audio::node::AudioScheduledSourceNodeMessage;
 #[cfg(target_os = "android")]
 use servo_media::audio::node::{AudioNodeInit, AudioNodeMessage};
 #[cfg(target_os = "android")]
-#[cfg(target_os = "android")]
 use servo_media::{ClientContextId, ServoMedia};
 #[cfg(target_os = "android")]
 use std::sync::{Arc, Mutex};
@@ -59,6 +58,15 @@ impl AudioStream {
     pub fn stop(&mut self) {
         let audio_context = self.context.lock().unwrap();
         let _ = audio_context.suspend();
+    }
+}
+
+#[cfg(target_os = "android")]
+impl Drop for AudioStream {
+    fn drop(&mut self) {
+        ServoMedia::get()
+            .unwrap()
+            .shutdown_audio_context(&ClientContextId::build(1, 1), self.context.clone());
     }
 }
 
