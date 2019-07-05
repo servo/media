@@ -10,6 +10,7 @@ use panner_node::{PannerNodeMessage, PannerNodeOptions};
 use param::{Param, ParamRate, ParamType, UserAutomationEvent};
 use std::sync::mpsc::Sender;
 use stereo_panner::StereoPannerOptions;
+use wave_shaper_node::{WaveShaperNodeMessage, WaveShaperNodeOptions};
 
 /// Information required to construct an audio node
 pub enum AudioNodeInit {
@@ -30,7 +31,7 @@ pub enum AudioNodeInit {
     PeriodicWave,
     ScriptProcessorNode,
     StereoPannerNode(StereoPannerOptions),
-    WaveShaperNode,
+    WaveShaperNode(WaveShaperNodeOptions),
 }
 
 /// Type of AudioNodeEngine.
@@ -190,6 +191,7 @@ pub enum AudioNodeMessage {
     SetChannelInterpretation(ChannelInterpretation),
     SetParam(ParamType, UserAutomationEvent),
     SetParamRate(ParamType, ParamRate),
+    WaveShaperNode(WaveShaperNodeMessage),
 }
 
 pub struct OnEndedCallback(pub SendBoxFnOnce<'static, ()>);
