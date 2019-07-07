@@ -63,28 +63,50 @@ use servo_media_streams::registry::MediaStreamId;
 use servo_media_streams::MediaOutput;
 use servo_media_traits::{ClientContextId, Muteable};
 use servo_media_webrtc::{WebRtcBackend, WebRtcController, WebRtcSignaller};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, Weak};
-use std::vec::Vec;
 
 lazy_static! {
     static ref BACKEND_BASE_TIME: gst::ClockTime = { gst::SystemClock::obtain().get_time() };
 }
 
+struct IdMuteable {
+    id: usize,
+    muteable: Weak<Mutex<dyn Muteable>>,
+}
+impl IdMuteable {
+    fn new(id: usize, muteable: Weak<Mutex<dyn Muteable>>) -> Self {
+        Self { id, muteable }
+    }
+}
+impl PartialEq for IdMuteable {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+impl Eq for IdMuteable {}
+
+impl Hash for IdMuteable {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+    }
+}
+
 pub struct GStreamerBackend {
     capture_mocking: AtomicBool,
-    muteables: Mutex<HashMap<ClientContextId, Vec<(usize, Weak<Mutex<dyn Muteable>>)>>>,
+    muteables: Mutex<HashMap<ClientContextId, HashSet<IdMuteable>>>,
     next_muteable_id: AtomicUsize,
 }
 
 impl GStreamerBackend {
     fn remove_muteable(&self, id: &ClientContextId, muteable_id: usize) {
         let mut muteables = self.muteables.lock().unwrap();
-        if let Some(vec) = muteables.get_mut(&id) {
-            vec.retain(|m| m.0 != muteable_id);
-            if vec.len() == 0 {
+        if let Some(set) = muteables.get_mut(&id) {
+            set.retain(|m| m.id != muteable_id);
+            if set.len() == 0 {
                 muteables.remove(&id);
             }
         }
@@ -109,8 +131,11 @@ impl Backend for GStreamerBackend {
             gl_context,
         )));
         let mut muteables = self.muteables.lock().unwrap();
-        let entry = muteables.entry(*id).or_insert(Vec::new());
-        entry.push((muteable_id, Arc::downgrade(&player).clone()));
+        let entry = muteables.entry(*id).or_insert(HashSet::new());
+        entry.insert(IdMuteable::new(
+            muteable_id,
+            Arc::downgrade(&player).clone(),
+        ));
         player
     }
 
@@ -132,8 +157,11 @@ impl Backend for GStreamerBackend {
         let muteable_id = self.next_muteable_id.fetch_add(1, Ordering::Relaxed);
         let context = Arc::new(Mutex::new(AudioContext::new::<Self>(muteable_id, options)));
         let mut muteables = self.muteables.lock().unwrap();
-        let entry = muteables.entry(*id).or_insert(Vec::new());
-        entry.push((muteable_id, Arc::downgrade(&context).clone()));
+        let entry = muteables.entry(*id).or_insert(HashSet::new());
+        entry.insert(IdMuteable::new(
+            muteable_id,
+            Arc::downgrade(&context).clone(),
+        ));
         context
     }
 
@@ -220,8 +248,8 @@ impl Backend for GStreamerBackend {
     fn mute(&self, id: &ClientContextId, val: bool) {
         let mut muteables = self.muteables.lock().unwrap();
         match muteables.get_mut(id) {
-            Some(vec) => vec.retain(|(_muteable_id, weak)| {
-                if let Some(mutex) = weak.upgrade() {
+            Some(set) => set.retain(|m_id| {
+                if let Some(mutex) = m_id.muteable.upgrade() {
                     let muteable = mutex.lock().unwrap();
                     if muteable.mute(val).is_err() {
                         warn!("Could not mute muteable");
@@ -269,7 +297,10 @@ impl BackendInit for GStreamerBackend {
 }
 
 impl GStreamerBackend {
-    pub fn init_with_plugins(plugin_dir: PathBuf, plugins: &[&'static str]) -> Result<Box<dyn Backend>, ErrorLoadingPlugins> {
+    pub fn init_with_plugins(
+        plugin_dir: PathBuf,
+        plugins: &[&'static str],
+    ) -> Result<Box<dyn Backend>, ErrorLoadingPlugins> {
         gst::init().unwrap();
 
         let mut errors = vec![];
