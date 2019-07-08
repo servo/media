@@ -40,7 +40,6 @@ fn run_example(servo_media: Arc<ServoMedia>) {
             Default::default(),
         );
         context.connect_ports(osc3.output(0), dest.input(0));
-        // thread::sleep(time::Duration::from_millis(3000));
 
         let _ = context.resume();
         context.message_node(
@@ -77,9 +76,6 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     println!("servo_media unmuting s1");
     servo_media.mute(&context_id1, false);
     thread::sleep(time::Duration::from_millis(2000));
-
-    servo_media.shutdown_audio_context(&context_id1, context1);
-    servo_media.shutdown_audio_context(&context_id2, context2);
 }
 
 fn main() {

@@ -78,7 +78,6 @@ fn run_example(servo_media: Arc<ServoMedia>) {
             }
         }
     }
-    player.lock().unwrap().shutdown().unwrap();
 }
 
 fn main() {

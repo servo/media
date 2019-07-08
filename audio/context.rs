@@ -3,11 +3,11 @@ use graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
 use node::{AudioNodeInit, AudioNodeMessage, ChannelInfo};
 use render_thread::AudioRenderThread;
 use render_thread::AudioRenderThreadMsg;
-use servo_media_traits::Muteable;
+use servo_media_traits::{BackendMsg, ClientContextId, MediaInstance, Muteable};
 use sink::AudioSink;
 use std::cell::Cell;
 use std::sync::mpsc::{self, Sender};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::thread::Builder;
 use AudioBackend;
 
@@ -105,8 +105,12 @@ impl Default for AudioContextOptions {
 
 /// Representation of an audio context on the control thread.
 pub struct AudioContext {
-    /// ID for comparisons
+    /// Media instance ID.
     id: usize,
+    /// Client context ID.
+    client_context_id: ClientContextId,
+    /// Owner backend communication channel.
+    backend_chan: Arc<Mutex<Sender<BackendMsg>>>,
     /// Rendering thread communication channel.
     sender: Sender<AudioRenderThreadMsg>,
     /// State of the audio context on the control thread.
@@ -122,7 +126,12 @@ pub struct AudioContext {
 
 impl AudioContext {
     /// Constructs a new audio context.
-    pub fn new<B: AudioBackend>(id: usize, options: AudioContextOptions) -> Self {
+    pub fn new<B: AudioBackend>(
+        id: usize,
+        client_context_id: &ClientContextId,
+        backend_chan: Arc<Mutex<Sender<BackendMsg>>>,
+        options: AudioContextOptions,
+    ) -> Self {
         let (sample_rate, channels) = match options {
             AudioContextOptions::RealTimeAudioContext(ref options) => (options.sample_rate, 2),
             AudioContextOptions::OfflineAudioContext(ref options) => {
@@ -150,6 +159,8 @@ impl AudioContext {
             .unwrap();
         Self {
             id,
+            client_context_id: *client_context_id,
+            backend_chan,
             sender,
             state: Cell::new(ProcessingState::Suspended),
             sample_rate,
@@ -289,16 +300,23 @@ impl Drop for AudioContext {
     fn drop(&mut self) {
         let (tx, _) = mpsc::channel();
         let _ = self.sender.send(AudioRenderThreadMsg::Close(tx));
+        let _ = self
+            .backend_chan
+            .lock()
+            .unwrap()
+            .send(BackendMsg::Shutdown(self.client_context_id, self.id));
     }
 }
 
 impl Muteable for AudioContext {
-    fn get_id(&self) -> usize {
-        self.id
-    }
-
     fn mute(&self, val: bool) -> Result<(), ()> {
         self.set_mute(val);
         Ok(())
+    }
+}
+
+impl MediaInstance for AudioContext {
+    fn get_id(&self) -> usize {
+        self.id
     }
 }

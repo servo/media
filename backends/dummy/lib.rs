@@ -21,14 +21,14 @@ use servo_media_player::{frame, Player, PlayerError, PlayerEvent, StreamType};
 use servo_media_streams::capture::MediaTrackConstraintSet;
 use servo_media_streams::registry::{register_stream, unregister_stream, MediaStreamId};
 use servo_media_streams::{MediaOutput, MediaStream, MediaStreamType};
-use servo_media_traits::{ClientContextId, Muteable};
+use servo_media_traits::{ClientContextId, MediaInstance, Muteable};
 use servo_media_webrtc::{
     thread, BundlePolicy, IceCandidate, SessionDescription, WebRtcBackend, WebRtcController,
     WebRtcControllerBackend, WebRtcSignaller, WebrtcResult,
 };
 use std::any::Any;
 use std::ops::Range;
-use std::sync::mpsc::Sender;
+use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex};
 
 pub struct DummyBackend;
@@ -79,21 +79,19 @@ impl Backend for DummyBackend {
         Arc::new(Mutex::new(DummyPlayer))
     }
 
-    fn shutdown_player(&self, _id: &ClientContextId, _player: Arc<Mutex<dyn Player>>) {}
-
     fn create_audio_context(
         &self,
         _id: &ClientContextId,
         options: AudioContextOptions,
     ) -> Arc<Mutex<AudioContext>> {
-        Arc::new(Mutex::new(AudioContext::new::<Self>(0, options)))
-    }
-
-    fn shutdown_audio_context(
-        &self,
-        _id: &ClientContextId,
-        _audio_context: Arc<Mutex<AudioContext>>,
-    ) {
+        let (sender, _) = mpsc::channel();
+        let sender = Arc::new(Mutex::new(sender));
+        Arc::new(Mutex::new(AudioContext::new::<Self>(
+            0,
+            &ClientContextId::build(1, 1),
+            sender,
+            options,
+        )))
     }
 
     fn create_webrtc(&self, signaller: Box<dyn WebRtcSignaller>) -> WebRtcController {
@@ -154,10 +152,6 @@ impl Player for DummyPlayer {
     }
     fn buffered(&self) -> Result<Vec<Range<f64>>, PlayerError> {
         Ok(vec![])
-    }
-
-    fn shutdown(&self) -> Result<(), PlayerError> {
-        Ok(())
     }
 
     fn set_stream(&self, _: &MediaStreamId, _: bool) -> Result<(), PlayerError> {
@@ -274,11 +268,13 @@ impl WebRtcControllerBackend for DummyWebRtcController {
 }
 
 impl Muteable for DummyPlayer {
-    fn get_id(&self) -> usize {
-        0
-    }
-
     fn mute(&self, _val: bool) -> Result<(), ()> {
         Ok(())
+    }
+}
+
+impl MediaInstance for DummyPlayer {
+    fn get_id(&self) -> usize {
+        0
     }
 }

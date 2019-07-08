@@ -53,7 +53,6 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         );
         thread::sleep(time::Duration::from_millis(2000));
     }
-    servo_media.shutdown_audio_context(&id, context)
 }
 
 fn main() {
