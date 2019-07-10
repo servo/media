@@ -79,7 +79,40 @@ pub struct GStreamerBackend {
     next_muteable_id: AtomicUsize,
 }
 
+#[derive(Debug)]
+pub struct ErrorLoadingPlugins(Vec<&'static str>);
+
 impl GStreamerBackend {
+    pub fn init_with_plugins(
+        plugin_dir: PathBuf,
+        plugins: &[&'static str],
+    ) -> Result<Box<dyn Backend>, ErrorLoadingPlugins> {
+        gst::init().unwrap();
+
+        let mut errors = vec![];
+        for plugin in plugins {
+            let mut path = plugin_dir.clone();
+            path.push(plugin);
+            let registry = gst::Registry::get();
+            if let Ok(p) = gst::Plugin::load_file(&path) {
+                if registry.add_plugin(&p).is_ok() {
+                    continue;
+                }
+            }
+            errors.push(*plugin);
+        }
+
+        if !errors.is_empty() {
+            return Err(ErrorLoadingPlugins(errors));
+        }
+
+        Ok(Box::new(GStreamerBackend {
+            capture_mocking: AtomicBool::new(false),
+            muteables: Mutex::new(HashMap::new()),
+            next_muteable_id: AtomicUsize::new(0),
+        }))
+    }
+
     fn remove_muteable(&self, id: &ClientContextId, muteable_id: usize) {
         let mut muteables = self.muteables.lock().unwrap();
         if let Some(vec) = muteables.get_mut(&id) {
@@ -259,41 +292,9 @@ impl WebRtcBackend for GStreamerBackend {
     }
 }
 
-#[derive(Debug)]
-pub struct ErrorLoadingPlugins(Vec<&'static str>);
-
 impl BackendInit for GStreamerBackend {
     fn init() -> Box<dyn Backend> {
         Self::init_with_plugins(PathBuf::new(), &[]).unwrap()
-    }
-}
-
-impl GStreamerBackend {
-    pub fn init_with_plugins(plugin_dir: PathBuf, plugins: &[&'static str]) -> Result<Box<dyn Backend>, ErrorLoadingPlugins> {
-        gst::init().unwrap();
-
-        let mut errors = vec![];
-        for plugin in plugins {
-            let mut path = plugin_dir.clone();
-            path.push(plugin);
-            let registry = gst::Registry::get();
-            if let Ok(p) = gst::Plugin::load_file(&path) {
-                if registry.add_plugin(&p).is_ok() {
-                    continue;
-                }
-            }
-            errors.push(*plugin);
-        }
-
-        if !errors.is_empty() {
-            return Err(ErrorLoadingPlugins(errors));
-        }
-
-        Ok(Box::new(GStreamerBackend {
-            capture_mocking: AtomicBool::new(false),
-            muteables: Mutex::new(HashMap::new()),
-            next_muteable_id: AtomicUsize::new(0),
-        }))
     }
 }
 
