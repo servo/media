@@ -358,39 +358,42 @@ impl GStreamerPlayer {
 
         let pipeline = player.get_pipeline();
 
-        // Set player to perform progressive downloading. This will make the
-        // player store the downloaded media in a local temporary file for
-        // faster playback of already-downloaded chunks.
-        let flags = pipeline
-            .get_property("flags")
-            .expect("playbin doesn't have expected 'flags' property");
-        let flags_class = match glib::FlagsClass::new(flags.type_()) {
-            Some(flags) => flags,
-            None => {
-                return Err(PlayerError::Backend(
-                    "FlagsClass creation failed".to_owned(),
-                ));
-            }
-        };
-        let flags_class = match flags_class.builder_with_value(flags) {
-            Some(class) => class,
-            None => {
-                return Err(PlayerError::Backend(
-                    "FlagsClass creation failed".to_owned(),
-                ));
-            }
-        };
-        let flags = match flags_class.set_by_nick("download").build() {
-            Some(flags) => flags,
-            None => {
-                return Err(PlayerError::Backend(
-                    "FlagsClass creation failed".to_owned(),
-                ));
-            }
-        };
-        pipeline
-            .set_property("flags", &flags)
-            .expect("playbin doesn't have expected 'flags' property");
+        // FIXME(#282): The progressive downloading breaks playback on Windows.
+        if !cfg!(target_os = "windows") {
+            // Set player to perform progressive downloading. This will make the
+            // player store the downloaded media in a local temporary file for
+            // faster playback of already-downloaded chunks.
+            let flags = pipeline
+                .get_property("flags")
+                .expect("playbin doesn't have expected 'flags' property");
+            let flags_class = match glib::FlagsClass::new(flags.type_()) {
+                Some(flags) => flags,
+                None => {
+                    return Err(PlayerError::Backend(
+                        "FlagsClass creation failed".to_owned(),
+                    ));
+                }
+            };
+            let flags_class = match flags_class.builder_with_value(flags) {
+                Some(class) => class,
+                None => {
+                    return Err(PlayerError::Backend(
+                        "FlagsClass creation failed".to_owned(),
+                    ));
+                }
+            };
+            let flags = match flags_class.set_by_nick("download").build() {
+                Some(flags) => flags,
+                None => {
+                    return Err(PlayerError::Backend(
+                        "FlagsClass creation failed".to_owned(),
+                    ));
+                }
+            };
+            pipeline
+                .set_property("flags", &flags)
+                .expect("playbin doesn't have expected 'flags' property");
+        }
 
         // Set max size for the player buffer.
         pipeline
