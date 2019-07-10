@@ -487,6 +487,7 @@ dependencies = [
  "euclid 0.19.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "gleam 0.6.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "glutin 0.20.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gstreamer 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.12.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "ipc-channel 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.5.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -496,6 +497,7 @@ dependencies = [
  "servo-media 0.1.0",
  "servo-media-auto 0.1.0",
  "servo-media-dummy 0.1.0",
+ "servo-media-gstgl-macos-bindings 0.1.0",
  "time 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
  "webrender 0.58.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "websocket 0.22.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1956,6 +1958,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "servo-media-gstgl-macos-bindings"
+version = "0.1.0"
+dependencies = [
+ "glib 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "glib-sys 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gstreamer 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gstreamer-gl 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gstreamer-gl-sys 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gstreamer-sys 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pkg-config 0.3.12 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "servo-media-gstreamer"
 version = "0.1.0"
 dependencies = [
@@ -1980,6 +1995,7 @@ dependencies = [
  "servo-media 0.1.0",
  "servo-media-audio 0.1.0",
  "servo-media-gstreamer-render 0.1.0",
+ "servo-media-gstreamer-render-macos 0.1.0",
  "servo-media-gstreamer-render-unix 0.1.0",
  "servo-media-player 0.1.0",
  "servo-media-streams 0.1.0",
@@ -1996,6 +2012,13 @@ dependencies = [
  "gstreamer 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer-video 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "servo-media-player 0.1.0",
+]
+
+[[package]]
+name = "servo-media-gstreamer-render-macos"
+version = "0.1.0"
+dependencies = [
+ "servo-media-gstgl-macos-bindings 0.1.0",
 ]
 
 [[package]]

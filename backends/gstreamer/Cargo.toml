@@ -87,3 +87,6 @@ path = "render"
 
 [target.'cfg(any(target_os = "linux", target_os = "dragonfly", target_os = "freebsd", target_os = "netbsd", target_os = "openbsd"))'.dependencies]
 servo-media-gstreamer-render-unix = { path = "render-unix" }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+servo-media-gstreamer-render-macos = { path = "render-macos" }

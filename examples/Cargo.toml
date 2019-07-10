@@ -7,6 +7,7 @@ license = "MPL-2.0"
 clap = { version = "2.33", default-features = false }
 euclid = "0.19.0"
 gleam = "0.6.8"
+gstreamer = "0.14"
 hyper = "0.12"
 rand = "0.5.0"
 time = "0.1.40"
@@ -16,6 +17,7 @@ serde_json = "1.0"
 servo-media-dummy = { path = "../backends/dummy" }
 servo-media-auto = { path = "../backends/auto" }
 servo-media = { path = "../servo-media" }
+servo-media-gstgl-macos-bindings = { path = "../backends/gstreamer/render-macos/bindings" }
 webrender = "0.58.0"
 websocket = "0.22"
 ipc-channel = "0.11"
@@ -119,3 +121,7 @@ path = "stereo_panner.rs"
 [[bin]]
 name = "wave_shaper"
 path = "wave_shaper.rs"
+
+[[bin]]
+name = "gstglplayground"
+path = "gstglplayground.rs"
