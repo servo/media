@@ -15,6 +15,7 @@ use panner_node::PannerNode;
 use sink::{AudioSink, AudioSinkError};
 use std::sync::mpsc::{Receiver, Sender};
 use stereo_panner::StereoPannerNode;
+use wave_shaper_node::WaveShaperNode;
 
 pub enum AudioRenderThreadMsg {
     CreateNode(AudioNodeInit, Sender<NodeId>, ChannelInfo),
@@ -187,6 +188,7 @@ impl AudioRenderThread {
                 Box::new(ConstantSourceNode::new(options, ch))
             }
             AudioNodeInit::ChannelSplitterNode => Box::new(ChannelSplitterNode::new(ch)),
+            AudioNodeInit::WaveShaperNode(options) => Box::new(WaveShaperNode::new(options, ch)),
             _ => unimplemented!(),
         };
         let id = self.graph.add_node(node);

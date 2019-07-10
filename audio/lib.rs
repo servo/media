@@ -34,6 +34,7 @@ pub mod param;
 pub mod render_thread;
 pub mod sink;
 pub mod stereo_panner;
+pub mod wave_shaper_node;
 
 pub trait AudioBackend {
     type Sink: sink::AudioSink + 'static;

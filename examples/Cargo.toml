@@ -115,3 +115,7 @@ path = "set_value_curve.rs"
 [[bin]]
 name = "stereo_panner"
 path = "stereo_panner.rs"
+
+[[bin]]
+name = "wave_shaper"
+path = "wave_shaper.rs"
