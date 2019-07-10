@@ -4,7 +4,6 @@
 
 // Copied from WebRender's boilerplate.rs.
 
-extern crate env_logger;
 extern crate euclid;
 
 use gleam::gl;
@@ -12,7 +11,6 @@ use glutin::ContextTrait;
 use servo_media::player::context::*;
 use servo_media::player::frame::FrameRenderer;
 use servo_media::ClientContextId;
-use std::env;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use webrender;
@@ -221,8 +219,6 @@ pub fn main_wrapper<E: Example + FrameRenderer>(
     use_gl: bool,
     options: Option<webrender::RendererOptions>,
 ) {
-    env_logger::init();
-
     let mut events_loop = winit::EventsLoop::new();
     let window = winit::WindowBuilder::new()
         .with_title(E::TITLE)

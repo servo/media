@@ -4,7 +4,7 @@
 
 use ipc_channel::ipc;
 use servo_media::player::context::PlayerGLContext;
-use servo_media::player::frame::{Frame, FrameRenderer};
+use servo_media::player::frame::FrameRenderer;
 use servo_media::player::{Player, PlayerError, PlayerEvent, StreamType};
 use servo_media::{ClientContextId, ServoMedia};
 use std::fs::File;
