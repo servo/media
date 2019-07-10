@@ -7,7 +7,7 @@ pub extern crate servo_media_webrtc as webrtc;
 pub use traits::*;
 
 use std::ops::Deref;
-use std::sync::{self, Arc, Mutex, Once};
+use std::sync::{Arc, Mutex, Once};
 
 use audio::context::{AudioContext, AudioContextOptions};
 use player::context::PlayerGLContext;
@@ -21,7 +21,7 @@ use webrtc::{WebRtcController, WebRtcSignaller};
 
 pub struct ServoMedia(Box<dyn Backend>);
 
-static INITIALIZER: Once = sync::ONCE_INIT;
+static INITIALIZER: Once = Once::new();
 static mut INSTANCE: *mut Mutex<Option<Arc<ServoMedia>>> = 0 as *mut _;
 
 pub trait BackendInit {
@@ -75,7 +75,7 @@ impl ServoMedia {
         })
     }
 
-    pub fn init_with_backend(backend: Box<Backend>) {
+    pub fn init_with_backend(backend: Box<dyn Backend>) {
         INITIALIZER.call_once(|| unsafe {
             let instance = Arc::new(ServoMedia(backend));
             INSTANCE = Box::into_raw(Box::new(Mutex::new(Some(instance))));
