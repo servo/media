@@ -17,7 +17,7 @@ use servo_media_player::{
     PlaybackState, Player, PlayerError, PlayerEvent, SeekLock, SeekLockMsg, StreamType,
 };
 use servo_media_streams::registry::{get_stream, MediaStreamId};
-use servo_media_traits::{BackendMsg, ClientContextId, MediaInstance, Muteable};
+use servo_media_traits::{BackendMsg, ClientContextId, MediaInstance};
 use source::{register_servo_src, ServoSrc};
 use std::cell::RefCell;
 use std::error::Error;
@@ -787,15 +787,13 @@ impl Player for GStreamerPlayer {
     }
 }
 
-impl Muteable for GStreamerPlayer {
-    fn mute(&self, val: bool) -> Result<(), ()> {
-        self.set_mute(val).map_err(|_| ())
-    }
-}
-
 impl MediaInstance for GStreamerPlayer {
     fn get_id(&self) -> usize {
         self.id
+    }
+
+    fn mute(&self, val: bool) -> Result<(), ()> {
+        self.set_mute(val).map_err(|_| ())
     }
 }
 

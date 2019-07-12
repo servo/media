@@ -3,7 +3,7 @@ use graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
 use node::{AudioNodeInit, AudioNodeMessage, ChannelInfo};
 use render_thread::AudioRenderThread;
 use render_thread::AudioRenderThreadMsg;
-use servo_media_traits::{BackendMsg, ClientContextId, MediaInstance, Muteable};
+use servo_media_traits::{BackendMsg, ClientContextId, MediaInstance};
 use sink::AudioSink;
 use std::cell::Cell;
 use std::sync::mpsc::{self, Sender};
@@ -308,15 +308,13 @@ impl Drop for AudioContext {
     }
 }
 
-impl Muteable for AudioContext {
-    fn mute(&self, val: bool) -> Result<(), ()> {
-        self.set_mute(val);
-        Ok(())
-    }
-}
-
 impl MediaInstance for AudioContext {
     fn get_id(&self) -> usize {
         self.id
+    }
+
+    fn mute(&self, val: bool) -> Result<(), ()> {
+        self.set_mute(val);
+        Ok(())
     }
 }

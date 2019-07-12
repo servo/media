@@ -107,7 +107,6 @@ pub struct App {
     player: Arc<Mutex<dyn player::Player>>,
     file: File,
     player_event_receiver: IpcReceiver<player::PlayerEvent>,
-    client_context_id: servo_media::ClientContextId,
     frame_renderer: Option<Arc<Mutex<MediaFrameRenderer>>>,
 }
 
@@ -215,14 +214,6 @@ impl App {
     }
 
     fn into_context(self) -> glutin::WindowedContext<glutin::PossiblyCurrent> {
-        let client_context_id = self.client_context_id;
-        let player = self.player;
-
-        let _ = ServoMedia::get().and_then(|media| {
-            media.shutdown_player(&client_context_id, player);
-            Ok(())
-        });
-
         self.webrender.deinit();
         self.windowed_context
     }

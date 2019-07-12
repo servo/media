@@ -9,7 +9,7 @@ pub mod frame;
 pub mod metadata;
 
 use ipc_channel::ipc::{self, IpcSender};
-use servo_media_traits::Muteable;
+use servo_media_traits::MediaInstance;
 use std::ops::Range;
 use streams::registry::MediaStreamId;
 
@@ -86,7 +86,7 @@ pub enum StreamType {
     Seekable,
 }
 
-pub trait Player: Send + Muteable {
+pub trait Player: Send + MediaInstance {
     fn play(&self) -> Result<(), PlayerError>;
     fn pause(&self) -> Result<(), PlayerError>;
     fn stop(&self) -> Result<(), PlayerError>;

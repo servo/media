@@ -15,11 +15,8 @@ impl ClientContextId {
     }
 }
 
-pub trait MediaInstance {
+pub trait MediaInstance: Send {
     fn get_id(&self) -> usize;
-}
-
-pub trait Muteable: Send + MediaInstance {
     fn mute(&self, val: bool) -> Result<(), ()>;
 }
 

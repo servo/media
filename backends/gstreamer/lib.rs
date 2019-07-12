@@ -61,7 +61,7 @@ use servo_media_player::{Player, PlayerEvent, StreamType};
 use servo_media_streams::capture::MediaTrackConstraintSet;
 use servo_media_streams::registry::MediaStreamId;
 use servo_media_streams::MediaOutput;
-use servo_media_traits::{BackendMsg, ClientContextId, Muteable};
+use servo_media_traits::{BackendMsg, ClientContextId, MediaInstance};
 use servo_media_webrtc::{WebRtcBackend, WebRtcController, WebRtcSignaller};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -77,7 +77,7 @@ lazy_static! {
 
 pub struct GStreamerBackend {
     capture_mocking: AtomicBool,
-    muteables: Arc<Mutex<HashMap<ClientContextId, Vec<(usize, Weak<Mutex<dyn Muteable>>)>>>>,
+    instances: Arc<Mutex<HashMap<ClientContextId, Vec<(usize, Weak<Mutex<dyn MediaInstance>>)>>>>,
     next_muteable_id: AtomicUsize,
     /// Channel to communicate media instances with its owner Backend.
     backend_chan: Arc<Mutex<Sender<BackendMsg>>>,
@@ -110,21 +110,21 @@ impl GStreamerBackend {
             return Err(ErrorLoadingPlugins(errors));
         }
 
-        let muteables: Arc<
-            Mutex<HashMap<ClientContextId, Vec<(usize, Weak<Mutex<dyn Muteable>>)>>>,
+        let instances: Arc<
+            Mutex<HashMap<ClientContextId, Vec<(usize, Weak<Mutex<dyn MediaInstance>>)>>>,
         > = Arc::new(Mutex::new(HashMap::new()));
 
-        let muteables_ = muteables.clone();
+        let instances_ = instances.clone();
         let (backend_chan, recvr) = mpsc::channel();
         thread::Builder::new()
             .name("GStreamerBackend ShutdownThread".to_owned())
             .spawn(move || {
                 match recvr.recv().unwrap() {
                     BackendMsg::Shutdown(context_id, muteable_id) => {
-                        if let Some(vec) = muteables_.lock().unwrap().get_mut(&context_id) {
+                        if let Some(vec) = instances_.lock().unwrap().get_mut(&context_id) {
                             vec.retain(|m| m.0 != muteable_id);
                             if vec.is_empty() {
-                                muteables_.lock().unwrap().remove(&context_id);
+                                instances_.lock().unwrap().remove(&context_id);
                             }
                         }
                     }
@@ -134,7 +134,7 @@ impl GStreamerBackend {
 
         Ok(Box::new(GStreamerBackend {
             capture_mocking: AtomicBool::new(false),
-            muteables,
+            instances,
             next_muteable_id: AtomicUsize::new(0),
             backend_chan: Arc::new(Mutex::new(backend_chan)),
         }))
@@ -160,8 +160,8 @@ impl Backend for GStreamerBackend {
             renderer,
             gl_context,
         )));
-        let mut muteables = self.muteables.lock().unwrap();
-        let entry = muteables.entry(*context_id).or_insert(Vec::new());
+        let mut instances = self.instances.lock().unwrap();
+        let entry = instances.entry(*context_id).or_insert(Vec::new());
         entry.push((id, Arc::downgrade(&player).clone()));
         player
     }
@@ -178,8 +178,8 @@ impl Backend for GStreamerBackend {
             self.backend_chan.clone(),
             options,
         )));
-        let mut muteables = self.muteables.lock().unwrap();
-        let entry = muteables.entry(*client_context_id).or_insert(Vec::new());
+        let mut instances = self.instances.lock().unwrap();
+        let entry = instances.entry(*client_context_id).or_insert(Vec::new());
         entry.push((id, Arc::downgrade(&context).clone()));
         context
     }
@@ -255,8 +255,8 @@ impl Backend for GStreamerBackend {
     }
 
     fn mute(&self, id: &ClientContextId, val: bool) {
-        let mut muteables = self.muteables.lock().unwrap();
-        match muteables.get_mut(id) {
+        let mut instances = self.instances.lock().unwrap();
+        match instances.get_mut(id) {
             Some(vec) => vec.retain(|(_muteable_id, weak)| {
                 if let Some(mutex) = weak.upgrade() {
                     let muteable = mutex.lock().unwrap();

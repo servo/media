@@ -21,7 +21,7 @@ use servo_media_player::{frame, Player, PlayerError, PlayerEvent, StreamType};
 use servo_media_streams::capture::MediaTrackConstraintSet;
 use servo_media_streams::registry::{register_stream, unregister_stream, MediaStreamId};
 use servo_media_streams::{MediaOutput, MediaStream, MediaStreamType};
-use servo_media_traits::{ClientContextId, MediaInstance, Muteable};
+use servo_media_traits::{ClientContextId, MediaInstance};
 use servo_media_webrtc::{
     thread, BundlePolicy, IceCandidate, SessionDescription, WebRtcBackend, WebRtcController,
     WebRtcControllerBackend, WebRtcSignaller, WebrtcResult,
@@ -267,14 +267,12 @@ impl WebRtcControllerBackend for DummyWebRtcController {
     fn quit(&mut self) {}
 }
 
-impl Muteable for DummyPlayer {
-    fn mute(&self, _val: bool) -> Result<(), ()> {
-        Ok(())
-    }
-}
-
 impl MediaInstance for DummyPlayer {
     fn get_id(&self) -> usize {
         0
+    }
+
+    fn mute(&self, _val: bool) -> Result<(), ()> {
+        Ok(())
     }
 }
