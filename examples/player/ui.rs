@@ -90,12 +90,25 @@ impl PlayerContextGlutin {
                 (gl_context, native_display, gl_api)
             }
 
+            #[cfg(target_os = "macos")]
+            {
+                let gl_context = GlContext::Cgl(raw_handle as usize);
+                let native_display = NativeDisplay::Unknown;
+                let gl_api = match api {
+                    glutin::Api::OpenGl => GlApi::OpenGL3,
+                    _ => GlApi::None,
+                };
+
+                (gl_context, native_display, gl_api)
+            }
+
             #[cfg(not(any(
                 target_os = "linux",
                 target_os = "dragonfly",
                 target_os = "freebsd",
                 target_os = "netbsd",
-                target_os = "openbsd"
+                target_os = "openbsd",
+                target_os = "macos",
             )))]
             {
                 println!("GL rendering unavailable for this platform");

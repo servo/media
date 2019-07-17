@@ -17,7 +17,7 @@ serde_json = "1.0"
 servo-media-dummy = { path = "../backends/dummy" }
 servo-media-auto = { path = "../backends/auto" }
 servo-media = { path = "../servo-media" }
-servo-media-gstgl-macos-bindings = { path = "../backends/gstreamer/render-macos/bindings" }
+servo-media-gst-gl-macos-bindings = { path = "../backends/gstreamer/render-macos/bindings" }
 webrender = "0.58.0"
 websocket = "0.22"
 ipc-channel = "0.11"

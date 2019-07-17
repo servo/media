@@ -28,12 +28,25 @@ mod platform {
     }
 }
 
+#[cfg(target_os = "macos")]
+mod platform {
+    extern crate servo_media_gstreamer_render_macos;
+    pub use self::servo_media_gstreamer_render_macos::RenderMacOS as Render;
+
+    use super::*;
+
+    pub fn create_render(gl_context: Box<dyn PlayerGLContext>) -> Option<Render> {
+        Render::new(gl_context)
+    }
+}
+
 #[cfg(not(any(
     target_os = "linux",
     target_os = "dragonfly",
     target_os = "freebsd",
     target_os = "netbsd",
-    target_os = "openbsd"
+    target_os = "openbsd",
+    target_os = "macos",
 )))]
 mod platform {
     use servo_media_gstreamer_render::Render as RenderTrait;

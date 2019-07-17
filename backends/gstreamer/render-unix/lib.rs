@@ -24,9 +24,9 @@ extern crate servo_media_player as sm_player;
 
 use gst::prelude::*;
 use gst_gl::prelude::*;
-use sm_gst_render::{GStreamerBuffer, Render};
-use sm_player::context::{GlApi, GlContext, NativeDisplay, PlayerGLContext};
-use sm_player::frame::{Buffer, Frame, FrameData};
+use sm_gst_render::{to_gst_gl_api, GStreamerBuffer, Render};
+use sm_player::context::{GlContext, NativeDisplay, PlayerGLContext};
+use sm_player::frame::Frame;
 use sm_player::PlayerError;
 use std::sync::{Arc, Mutex};
 
@@ -51,19 +51,9 @@ impl RenderUnix {
             return None;
         }
 
-        let display_native = app_gl_context.get_native_display();
-        let gl_context = app_gl_context.get_gl_context();
-        let gl_api = match app_gl_context.get_gl_api() {
-            GlApi::OpenGL => gst_gl::GLAPI::OPENGL,
-            GlApi::OpenGL3 => gst_gl::GLAPI::OPENGL3,
-            GlApi::Gles1 => gst_gl::GLAPI::GLES1,
-            GlApi::Gles2 => gst_gl::GLAPI::GLES2,
-            GlApi::None => gst_gl::GLAPI::NONE,
-        };
-
-        match gl_context {
+        match app_gl_context.get_gl_context() {
             GlContext::Egl(context) => {
-                let display = match display_native {
+                let display = match app_gl_context.get_native_display() {
                     NativeDisplay::Egl(display_native) => unsafe {
                         gst_gl::GLDisplayEGL::new_with_egl_display(display_native)
                     },
@@ -77,7 +67,7 @@ impl RenderUnix {
                             &display,
                             context,
                             gst_gl::GLPlatform::EGL,
-                            gl_api,
+                            to_gst_gl_api(app_gl_context.get_gl_api()),
                         )
                     };
 
@@ -100,7 +90,7 @@ impl RenderUnix {
                                 Ok(())
                             });
                         Some(RenderUnix {
-                            display: display,
+                            display,
                             app_context: context,
                             gst_context: Arc::new(Mutex::new(None)),
                             gl_upload: Arc::new(Mutex::new(None)),

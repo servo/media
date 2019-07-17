@@ -497,7 +497,7 @@ dependencies = [
  "servo-media 0.1.0",
  "servo-media-auto 0.1.0",
  "servo-media-dummy 0.1.0",
- "servo-media-gstgl-macos-bindings 0.1.0",
+ "servo-media-gst-gl-macos-bindings 0.1.0",
  "time 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
  "webrender 0.58.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "websocket 0.22.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1958,7 +1958,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "servo-media-gstgl-macos-bindings"
+name = "servo-media-gst-gl-macos-bindings"
 version = "0.1.0"
 dependencies = [
  "glib 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2019,15 +2019,18 @@ dependencies = [
 name = "servo-media-gstreamer-render-macos"
 version = "0.1.0"
 dependencies = [
+ "gstreamer 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer-gl 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "servo-media-gstgl-macos-bindings 0.1.0",
+ "gstreamer-video 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "servo-media-gst-gl-macos-bindings 0.1.0",
+ "servo-media-gstreamer-render 0.1.0",
+ "servo-media-player 0.1.0",
 ]
 
 [[package]]
 name = "servo-media-gstreamer-render-unix"
 version = "0.1.0"
 dependencies = [
- "glib 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer-gl 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer-video 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",

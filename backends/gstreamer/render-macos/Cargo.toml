@@ -7,8 +7,17 @@ authors = ["The Servo Project Developers"]
 name = "servo_media_gstreamer_render_macos"
 path = "lib.rs"
 
-[dependencies.servo-media-gstgl-macos-bindings]
+[dependencies]
+gstreamer = "0.14"
+gstreamer-gl = "0.14"
+gstreamer-video = "0.14"
+
+[dependencies.servo-media-gst-gl-macos-bindings]
 path = "bindings"
 
-[dependencies]
-gstreamer-gl = "0.14"
+[dependencies.servo-media-player]
+path = "../../../player"
+
+[dependencies.servo-media-gstreamer-render]
+path = "../render"
+

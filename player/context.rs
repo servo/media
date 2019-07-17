@@ -18,6 +18,8 @@ pub enum GlContext {
     Egl(usize),
     /// The GLX platform used primarily with the X11 window system.
     Glx(usize),
+    /// The CGL platform used on MacOS.
+    Cgl(usize),
     Unknown,
 }
 

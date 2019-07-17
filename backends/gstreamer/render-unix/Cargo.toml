@@ -7,9 +7,6 @@ authors = ["The Servo Project Developers"]
 name = "servo_media_gstreamer_render_unix"
 path = "lib.rs"
 
-[dependencies.glib]
-version = "0.8"
-
 [dependencies.gstreamer]
 version = "0.14"
 

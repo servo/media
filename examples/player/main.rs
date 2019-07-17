@@ -309,10 +309,7 @@ fn main() {
 
     let no_video = clap_matches.is_present("no-video");
     let use_gl = clap_matches.is_present("gl");
-    let path = clap_matches
-        .value_of("file")
-        .map(|s| Path::new(s))
-        .unwrap();
+    let path = clap_matches.value_of("file").map(|s| Path::new(s)).unwrap();
 
     let app = Arc::new(Mutex::new(App::new()));
     ServoMedia::init::<servo_media_auto::Backend>();

@@ -19,6 +19,7 @@ extern crate gstreamer_video as gst_video;
 extern crate servo_media_player as sm_player;
 
 use gst_gl::prelude::*;
+use sm_player::context::GlApi;
 use sm_player::frame::{Buffer, FrameData};
 
 pub struct GStreamerBuffer {
@@ -71,4 +72,14 @@ pub trait Render {
         appsink: &gst::Element,
         pipeline: &gst::Element,
     ) -> Result<(), sm_player::PlayerError>;
+}
+
+pub fn to_gst_gl_api(gl_api: &GlApi) -> gst_gl::GLAPI {
+    match gl_api {
+        GlApi::OpenGL => gst_gl::GLAPI::OPENGL,
+        GlApi::OpenGL3 => gst_gl::GLAPI::OPENGL3,
+        GlApi::Gles1 => gst_gl::GLAPI::GLES1,
+        GlApi::Gles2 => gst_gl::GLAPI::GLES2,
+        GlApi::None => gst_gl::GLAPI::NONE,
+    }
 }
