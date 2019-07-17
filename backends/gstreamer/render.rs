@@ -44,7 +44,7 @@ mod platform {
     pub struct RenderDummy();
     pub type Render = RenderDummy;
 
-    pub fn create_render(_: Box<PlayerGLContext>) -> Option<RenderDummy> {
+    pub fn create_render(_: Box<dyn PlayerGLContext>) -> Option<RenderDummy> {
         None
     }
 

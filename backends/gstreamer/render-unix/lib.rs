@@ -24,27 +24,11 @@ extern crate servo_media_player as sm_player;
 
 use gst::prelude::*;
 use gst_gl::prelude::*;
-use sm_gst_render::Render;
+use sm_gst_render::{GStreamerBuffer, Render};
 use sm_player::context::{GlApi, GlContext, NativeDisplay, PlayerGLContext};
 use sm_player::frame::{Buffer, Frame, FrameData};
 use sm_player::PlayerError;
 use std::sync::{Arc, Mutex};
-
-struct GStreamerBuffer {
-    frame: gst_video::VideoFrame<gst_video::video_frame::Readable>,
-}
-
-impl Buffer for GStreamerBuffer {
-    fn to_vec(&self) -> Result<FrameData, ()> {
-        // packed formats are guaranteed to be in a single plane
-        if self.frame.format() == gst_video::VideoFormat::Rgba {
-            let tex_id = self.frame.get_texture_id(0).ok_or_else(|| ())?;
-            Ok(FrameData::Texture(tex_id))
-        } else {
-            Err(())
-        }
-    }
-}
 
 pub struct RenderUnix {
     display: gst_gl::GLDisplay,

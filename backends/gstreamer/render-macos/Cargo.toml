@@ -9,3 +9,6 @@ path = "lib.rs"
 
 [dependencies.servo-media-gstgl-macos-bindings]
 path = "bindings"
+
+[dependencies]
+gstreamer-gl = "0.14"

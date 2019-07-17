@@ -13,9 +13,29 @@
 //! pipeline, and handle the produced buffers.
 //!
 extern crate gstreamer as gst;
+extern crate gstreamer_gl as gst_gl;
 extern crate gstreamer_video as gst_video;
 
 extern crate servo_media_player as sm_player;
+
+use gst_gl::prelude::*;
+use sm_player::frame::{Buffer, FrameData};
+
+pub struct GStreamerBuffer {
+    pub frame: gst_video::VideoFrame<gst_video::video_frame::Readable>,
+}
+
+impl Buffer for GStreamerBuffer {
+    fn to_vec(&self) -> Result<FrameData, ()> {
+        // packed formats are guaranteed to be in a single plane
+        if self.frame.format() == gst_video::VideoFormat::Rgba {
+            let tex_id = self.frame.get_texture_id(0).ok_or_else(|| ())?;
+            Ok(FrameData::Texture(tex_id))
+        } else {
+            Err(())
+        }
+    }
+}
 
 pub trait Render {
     /// Returns `True` if the render implementation uses any version
