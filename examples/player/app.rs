@@ -71,6 +71,7 @@ enum PlayerCmd {
     Pause,
     Play,
     Seek(f64),
+    Mute,
     None,
 }
 
@@ -78,6 +79,7 @@ struct State {
     state: player::PlaybackState,
     pos: f64,
     duration: f64,
+    mute: bool,
 }
 
 impl Default for State {
@@ -86,6 +88,7 @@ impl Default for State {
             state: player::PlaybackState::Stopped,
             pos: 0.,
             duration: std::f64::NAN,
+            mute: false,
         }
     }
 }
@@ -311,6 +314,7 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
                             _ => PlayerCmd::None,
                         };
                     }
+                    glutin::VirtualKeyCode::M => playercmd = PlayerCmd::Mute,
                     _ => (),
                 },
                 _ => (), //println!("glutin event: {:?}", event),
@@ -352,6 +356,14 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
                     .unwrap()
                     .seek(time)
                     .map_err(|_| MiscError("Failed to seek"))?;
+            }
+            PlayerCmd::Mute => {
+                playerstate.mute = !playerstate.mute;
+                player
+                    .lock()
+                    .unwrap()
+                    .mute(playerstate.mute)
+                    .map_err(|_| MiscError("Failed to mute player"))?;
             }
             _ => (),
         }
