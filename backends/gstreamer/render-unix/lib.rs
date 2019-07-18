@@ -77,62 +77,87 @@ impl RenderUnix {
             GlApi::None => gst_gl::GLAPI::NONE,
         };
 
-        match gl_context {
+        let (wrapped_context, display) = match gl_context {
             GlContext::Egl(context) => {
                 let display = match display_native {
-                    NativeDisplay::Egl(display_native) => unsafe {
-                        gst_gl::GLDisplayEGL::new_with_egl_display(display_native)
-                    },
-                    _ => None, // XXX(victor): Add wayland
-                }
-                .and_then(|display| Some(display.upcast()));
-
-                let render = if let Some(display) = display {
-                    let context = unsafe {
-                        gst_gl::GLContext::new_wrapped(
-                            &display,
-                            context,
-                            gst_gl::GLPlatform::EGL,
-                            gl_api,
-                        )
-                    };
-
-                    let render = if let Some(context) = context {
-                        let cat = gst::DebugCategory::get("servoplayer").unwrap();
-                        let _: Result<(), ()> = context
-                            .activate(true)
-                            .and_then(|_| {
-                                context.fill_info().or_else(|err| {
-                                    gst_warning!(
-                                        cat,
-                                        "Couldn't fill the wrapped app GL context: {}",
-                                        err.to_string()
-                                    );
-                                    Ok(())
-                                })
-                            })
-                            .or_else(|_| {
-                                gst_warning!(cat, "Couldn't activate the wrapped app GL context");
-                                Ok(())
-                            });
-                        Some(RenderUnix {
-                            display: display,
-                            app_context: context,
-                            gst_context: Arc::new(Mutex::new(None)),
-                            gl_upload: Arc::new(Mutex::new(None)),
-                        })
-                    } else {
-                        None
-                    };
-
-                    render
-                } else {
-                    None
+                    NativeDisplay::Egl(display_native) => {
+                        unsafe { gst_gl::GLDisplayEGL::new_with_egl_display(display_native) }
+                            .and_then(|display| Some(display.upcast()))
+                    }
+                    NativeDisplay::Wayland(display_native) => {
+                        unsafe { gst_gl::GLDisplayWayland::new_with_display(display_native) }
+                            .and_then(|display| Some(display.upcast()))
+                    }
+                    _ => None,
                 };
 
-                render
+                RenderUnix::create_wrapped_context(
+                    display,
+                    context,
+                    gst_gl::GLPlatform::EGL,
+                    gl_api,
+                )
             }
-            _ => None, // XXX(victor): add GLX with X11 display
+            GlContext::Glx(context) => {
+                let display = match display_native {
+                    NativeDisplay::X11(display_native) => {
+                        unsafe { gst_gl::GLDisplayX11::new_with_display(display_native) }
+                            .and_then(|display| Some(display.upcast()))
+                    }
+                    _ => None,
+                };
+
+                RenderUnix::create_wrapped_context(
+                    display,
+                    context,
+                    gst_gl::GLPlatform::GLX,
+                    gl_api,
+                )
+            }
+            GlContext::Unknown => (None, None),
+        };
+
+        if let Some(app_context) = wrapped_context {
+            let cat = gst::DebugCategory::get("servoplayer").unwrap();
+            let _: Result<(), ()> = app_context
+                .activate(true)
+                .and_then(|_| {
+                    app_context.fill_info().or_else(|err| {
+                        gst_warning!(
+                            cat,
+                            "Couldn't fill the wrapped app GL context: {}",
+                            err.to_string()
+                        );
+                        Ok(())
+                    })
+                })
+                .or_else(|_| {
+                    gst_warning!(cat, "Couldn't activate the wrapped app GL context");
+                    Ok(())
+                });
+            Some(RenderUnix {
+                display: display.unwrap(),
+                app_context,
+                gst_context: Arc::new(Mutex::new(None)),
+                gl_upload: Arc::new(Mutex::new(None)),
+            })
+        } else {
+            None
+        }
+    }
+
+    fn create_wrapped_context(
+        display: Option<gst_gl::GLDisplay>,
+        handle: usize,
+        platform: gst_gl::GLPlatform,
+        api: gst_gl::GLAPI,
+    ) -> (Option<gst_gl::GLContext>, Option<gst_gl::GLDisplay>) {
+        if let Some(display) = display {
+            let wrapped_context =
+                unsafe { gst_gl::GLContext::new_wrapped(&display, handle, platform, api) };
+            (wrapped_context, Some(display))
+        } else {
+            (None, None)
         }
     }
 }

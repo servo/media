@@ -4,8 +4,9 @@ version = "0.1.0"
 license = "MPL-2.0"
 
 [dependencies]
-clap = { version = "2.33", default-features = false }
 euclid = "0.19.0"
+failure = "0.1"
+failure_derive = "0.1"
 gleam = "0.6.8"
 hyper = "0.12"
 rand = "0.5.0"
@@ -16,13 +17,15 @@ serde_json = "1.0"
 servo-media-dummy = { path = "../backends/dummy" }
 servo-media-auto = { path = "../backends/auto" }
 servo-media = { path = "../servo-media" }
-webrender = "0.58.0"
+webrender = "0.60.0"
+webrender_api = "0.60.0"
 websocket = "0.22"
 ipc-channel = "0.11"
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 winit = "0.19"
-glutin = "0.20"
+glutin = "0.21"
+clap = { version = "2.33", default-features = false }
 
 [[bin]]
 name = "dummy"
