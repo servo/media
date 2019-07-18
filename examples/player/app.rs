@@ -288,34 +288,34 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
                     framebuffer_size =
                         webrender_api::DeviceIntSize::new(size.width as i32, size.height as i32);
                 }
-                _ => (),
+                glutin::WindowEvent::KeyboardInput {
+                    input:
+                        glutin::KeyboardInput {
+                            state: glutin::ElementState::Pressed,
+                            virtual_keycode: Some(key),
+                            ..
+                        },
+                    ..
+                } => match key {
+                    glutin::VirtualKeyCode::Escape | glutin::VirtualKeyCode::Q => {
+                        playercmd = PlayerCmd::Stop
+                    }
+                    glutin::VirtualKeyCode::Right => playercmd = PlayerCmd::Seek(10.),
+                    glutin::VirtualKeyCode::Left => playercmd = PlayerCmd::Seek(-10.),
+                    glutin::VirtualKeyCode::Space => {
+                        playercmd = match playerstate.state {
+                            player::PlaybackState::Paused => PlayerCmd::Play,
+                            player::PlaybackState::Playing | player::PlaybackState::Buffering => {
+                                PlayerCmd::Pause
+                            }
+                            _ => PlayerCmd::None,
+                        };
+                    }
+                    _ => (),
+                },
+                _ => (), //println!("glutin event: {:?}", event),
             },
-            glutin::Event::DeviceEvent {
-                event:
-                    glutin::DeviceEvent::Key(glutin::KeyboardInput {
-                        state: glutin::ElementState::Pressed,
-                        virtual_keycode: Some(key),
-                        ..
-                    }),
-                ..
-            } => match key {
-                glutin::VirtualKeyCode::Escape | glutin::VirtualKeyCode::Q => {
-                    playercmd = PlayerCmd::Stop
-                }
-                glutin::VirtualKeyCode::Right => playercmd = PlayerCmd::Seek(10.),
-                glutin::VirtualKeyCode::Left => playercmd = PlayerCmd::Seek(-10.),
-                glutin::VirtualKeyCode::Space => {
-                    playercmd = match playerstate.state {
-                        player::PlaybackState::Paused => PlayerCmd::Play,
-                        player::PlaybackState::Playing | player::PlaybackState::Buffering => {
-                            PlayerCmd::Pause
-                        }
-                        _ => PlayerCmd::None,
-                    };
-                }
-                _ => (),
-            },
-            _ => (), //println!("glutin event: {:?}", event),
+            _ => (), // not our window
         });
 
         match playercmd {
