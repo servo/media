@@ -185,23 +185,34 @@ impl AudioNodeEngine for AudioBufferSourceNode {
 pub struct AudioBuffer {
     /// Invariant: all buffers must be of the same length
     pub buffers: Vec<Vec<f32>>,
+    pub sample_rate: f32,
 }
 
 impl AudioBuffer {
-    pub fn new(chan: u8, len: usize) -> Self {
+    pub fn new(chan: u8, len: usize, sample_rate: f32) -> Self {
         assert!(chan > 0);
         let mut buffers = Vec::with_capacity(chan as usize);
         let single = vec![0.; len];
         buffers.resize(chan as usize, single);
-        AudioBuffer { buffers }
+        AudioBuffer {
+            buffers,
+            sample_rate,
+        }
     }
 
-    pub fn from_buffers(buffers: Vec<Vec<f32>>) -> Self {
+    pub fn from_buffers(buffers: Vec<Vec<f32>>, sample_rate: f32) -> Self {
         for buf in &buffers {
             assert_eq!(buf.len(), buffers[0].len())
         }
 
-        Self { buffers }
+        Self {
+            buffers,
+            sample_rate,
+        }
+    }
+
+    pub fn from_buffer(buffer: Vec<f32>, sample_rate: f32) -> Self {
+        AudioBuffer::from_buffers(vec![buffer], sample_rate)
     }
 
     pub fn len(&self) -> usize {
@@ -214,17 +225,5 @@ impl AudioBuffer {
 
     pub fn data_chan_mut(&mut self, chan: u8) -> &mut [f32] {
         &mut self.buffers[chan as usize]
-    }
-}
-
-impl From<Vec<f32>> for AudioBuffer {
-    fn from(vec: Vec<f32>) -> Self {
-        Self { buffers: vec![vec] }
-    }
-}
-
-impl From<Vec<Vec<f32>>> for AudioBuffer {
-    fn from(vec: Vec<Vec<f32>>) -> Self {
-        AudioBuffer::from_buffers(vec)
     }
 }
