@@ -10,7 +10,7 @@ path = "lib.rs"
 
 [dependencies]
 boxfnonce = "0.1"
-euclid = "0.19.0"
+euclid = "0.20"
 serde_derive = "1.0.66"
 serde = "1.0.66"
 servo_media_derive = { path = "../servo-media-derive" }
