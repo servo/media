@@ -35,11 +35,15 @@ mod imp {
     #[derive(Debug)]
     struct Position {
         offset: u64,
+        requested_offset: u64,
     }
 
     impl Default for Position {
         fn default() -> Self {
-            Position { offset: 0 }
+            Position {
+                offset: 0,
+                requested_offset: 0,
+            }
         }
     }
 
@@ -63,18 +67,28 @@ mod imp {
         pub fn set_seek_offset<O: IsA<gst::Object>>(&self, parent: &O, offset: u64) -> bool {
             let mut pos = self.position.lock().unwrap();
 
-            if pos.offset == offset {
+            if pos.offset == offset || pos.requested_offset != 0 {
                 false
             } else {
-                pos.offset = offset;
-                gst_debug!(self.cat, obj: parent, "seeking to offset: {}", pos.offset);
                 self.seeking.store(true, Ordering::Relaxed);
+                pos.requested_offset = offset;
+                gst_debug!(
+                    self.cat,
+                    obj: parent,
+                    "seeking to offset: {}",
+                    pos.requested_offset
+                );
+
                 true
             }
         }
 
         pub fn set_seek_done(&self) {
             self.seeking.store(false, Ordering::Relaxed);
+
+            let mut pos = self.position.lock().unwrap();
+            pos.offset = pos.requested_offset;
+            pos.requested_offset = 0;
         }
 
         pub fn push_buffer<O: IsA<gst::Object>>(
@@ -98,6 +112,8 @@ mod imp {
             // X factor given current length
 
             pos.offset += length;
+
+            gst_trace!(self.cat, obj: parent, "offset: {}", pos.offset);
 
             // set the stream size (in bytes) to current offset if
             // size is lesser than it
