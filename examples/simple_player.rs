@@ -142,9 +142,10 @@ fn run_example(servo_media: Arc<ServoMedia>) {
                     }
                 }
             }
-            PlayerEvent::SeekData(p) => {
+            PlayerEvent::SeekData(p, sender) => {
                 println!("\nSeek requested to position {:?}", p);
                 seek_sender.send(p).unwrap();
+                sender.send(true).unwrap();
             }
             PlayerEvent::SeekDone(p) => println!("\nSeeked to {:?}", p),
             PlayerEvent::NeedData => println!("\nNeedData"),

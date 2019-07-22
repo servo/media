@@ -8,6 +8,7 @@ pub mod context;
 pub mod frame;
 pub mod metadata;
 
+use ipc_channel::ipc::IpcSender;
 use servo_media_traits::Muteable;
 use std::ops::Range;
 use streams::registry::MediaStreamId;
@@ -53,8 +54,9 @@ pub enum PlayerEvent {
     PositionChanged(u64),
     /// The player needs the data to perform a seek to the given offset.
     /// The next push_data should get the buffers from the new offset.
+    /// The player will be blocked until the user sends, through the IPC sender,
     /// This event is only received for seekable stream types.
-    SeekData(u64),
+    SeekData(u64, IpcSender<bool>),
     /// The player has performed a seek to the given offset.
     SeekDone(u64),
     StateChanged(PlaybackState),

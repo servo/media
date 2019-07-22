@@ -117,7 +117,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
                     muted = false;
                 }
             }
-            PlayerEvent::SeekData(_) => {}
+            PlayerEvent::SeekData(_, _) => {}
             PlayerEvent::SeekDone(_) => {}
             PlayerEvent::NeedData => println!("\nNeedData"),
             PlayerEvent::EnoughData => println!("\nEnoughData"),

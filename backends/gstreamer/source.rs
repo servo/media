@@ -8,6 +8,7 @@ use gst::subclass::prelude::*;
 use gst_app;
 use gst_base::prelude::*;
 use std::convert::TryFrom;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use url::Url;
 
@@ -49,6 +50,7 @@ mod imp {
         appsrc: gst_app::AppSrc,
         srcpad: gst::GhostPad,
         position: Mutex<Position>,
+        seeking: AtomicBool,
     }
 
     impl ServoSrc {
@@ -66,8 +68,13 @@ mod imp {
             } else {
                 pos.offset = offset;
                 gst_debug!(self.cat, obj: parent, "seeking to offset: {}", pos.offset);
+                self.seeking.store(true, Ordering::Relaxed);
                 true
             }
+        }
+
+        pub fn set_seek_done(&self) {
+            self.seeking.store(false, Ordering::Relaxed);
         }
 
         pub fn push_buffer<O: IsA<gst::Object>>(
@@ -75,6 +82,11 @@ mod imp {
             parent: &O,
             data: Vec<u8>,
         ) -> Result<gst::FlowSuccess, gst::FlowError> {
+            if self.seeking.load(Ordering::Relaxed) {
+                gst_debug!(self.cat, obj: parent, "seek in progress, ignored data");
+                return Ok(gst::FlowSuccess::Ok);
+            }
+
             let mut pos = self.position.lock().unwrap(); // will block seeking
 
             let length = u64::try_from(data.len()).unwrap();
@@ -134,6 +146,12 @@ mod imp {
                     let buffer = buffer.get_mut().unwrap();
                     buffer.set_offset(buffer_offset);
                     buffer.set_offset_end(buffer_offset_end);
+                }
+
+                if self.seeking.load(Ordering::Relaxed) {
+                    gst_trace!(self.cat, obj: parent, "stopping buffer appends due to seek");
+                    ret = Ok(gst::FlowSuccess::Ok);
+                    break;
                 }
 
                 gst_trace!(self.cat, obj: parent, "Pushing buffer {:?}", buffer);
@@ -232,6 +250,7 @@ mod imp {
                 appsrc: app_src,
                 srcpad: ghost_pad,
                 position: Mutex::new(Default::default()),
+                seeking: AtomicBool::new(false),
             }
         }
 
@@ -370,6 +389,10 @@ impl ServoSrc {
 
     pub fn set_seek_offset(&self, offset: u64) -> bool {
         imp::ServoSrc::from_instance(self).set_seek_offset(self, offset)
+    }
+
+    pub fn set_seek_done(&self) {
+        imp::ServoSrc::from_instance(self).set_seek_done();
     }
 
     pub fn push_buffer(&self, data: Vec<u8>) -> Result<gst::FlowSuccess, gst::FlowError> {

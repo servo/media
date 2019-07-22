@@ -389,9 +389,14 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
                         _ => (),
                     }
                 }
-                player::PlayerEvent::SeekData(offset) => {
+                player::PlayerEvent::SeekData(offset, sender) => {
                     input_eos = false;
-                    buf_reader.seek(SeekFrom::Start(offset))?;
+                    let ret = if let Ok(pos) = buf_reader.seek(SeekFrom::Start(offset)) {
+                        offset == pos
+                    } else {
+                        false
+                    };
+                    sender.send(ret).unwrap();
                 }
                 player::PlayerEvent::NeedData => {
                     if !input_eos {
