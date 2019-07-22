@@ -1,5 +1,5 @@
 use block::{Block, Chunk, Tick, FRAMES_PER_BLOCK};
-use euclid::Vector3D;
+use euclid::default::Vector3D;
 use node::{AudioNodeEngine, AudioNodeMessage, BlockInfo};
 use node::{AudioNodeType, ChannelInfo};
 use param::{Param, ParamDir, ParamType};

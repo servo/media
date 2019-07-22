@@ -1,5 +1,5 @@
 use byte_slice_cast::*;
-use euclid::Vector3D;
+use euclid::default::Vector3D;
 use graph::{PortIndex, PortKind};
 use node::ChannelInterpretation;
 use smallvec::SmallVec;
