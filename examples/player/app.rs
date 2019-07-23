@@ -71,6 +71,7 @@ enum PlayerCmd {
     Pause,
     Play,
     Seek(f64),
+    Mute,
     None,
 }
 
@@ -78,6 +79,7 @@ struct State {
     state: player::PlaybackState,
     pos: f64,
     duration: f64,
+    mute: bool,
 }
 
 impl Default for State {
@@ -86,6 +88,7 @@ impl Default for State {
             state: player::PlaybackState::Stopped,
             pos: 0.,
             duration: std::f64::NAN,
+            mute: false,
         }
     }
 }
@@ -263,7 +266,7 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
 
     // file reader
     let mut buf_reader = BufReader::new(file);
-    let mut buffer = [0; 8192];
+    let mut buffer = [0; 16384];
 
     player
         .lock()
@@ -288,34 +291,35 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
                     framebuffer_size =
                         webrender_api::DeviceIntSize::new(size.width as i32, size.height as i32);
                 }
-                _ => (),
+                glutin::WindowEvent::KeyboardInput {
+                    input:
+                        glutin::KeyboardInput {
+                            state: glutin::ElementState::Pressed,
+                            virtual_keycode: Some(key),
+                            ..
+                        },
+                    ..
+                } => match key {
+                    glutin::VirtualKeyCode::Escape | glutin::VirtualKeyCode::Q => {
+                        playercmd = PlayerCmd::Stop
+                    }
+                    glutin::VirtualKeyCode::Right => playercmd = PlayerCmd::Seek(10.),
+                    glutin::VirtualKeyCode::Left => playercmd = PlayerCmd::Seek(-10.),
+                    glutin::VirtualKeyCode::Space => {
+                        playercmd = match playerstate.state {
+                            player::PlaybackState::Paused => PlayerCmd::Play,
+                            player::PlaybackState::Playing | player::PlaybackState::Buffering => {
+                                PlayerCmd::Pause
+                            }
+                            _ => PlayerCmd::None,
+                        };
+                    }
+                    glutin::VirtualKeyCode::M => playercmd = PlayerCmd::Mute,
+                    _ => (),
+                },
+                _ => (), //println!("glutin event: {:?}", event),
             },
-            glutin::Event::DeviceEvent {
-                event:
-                    glutin::DeviceEvent::Key(glutin::KeyboardInput {
-                        state: glutin::ElementState::Pressed,
-                        virtual_keycode: Some(key),
-                        ..
-                    }),
-                ..
-            } => match key {
-                glutin::VirtualKeyCode::Escape | glutin::VirtualKeyCode::Q => {
-                    playercmd = PlayerCmd::Stop
-                }
-                glutin::VirtualKeyCode::Right => playercmd = PlayerCmd::Seek(10.),
-                glutin::VirtualKeyCode::Left => playercmd = PlayerCmd::Seek(-10.),
-                glutin::VirtualKeyCode::Space => {
-                    playercmd = match playerstate.state {
-                        player::PlaybackState::Paused => PlayerCmd::Play,
-                        player::PlaybackState::Playing | player::PlaybackState::Buffering => {
-                            PlayerCmd::Pause
-                        }
-                        _ => PlayerCmd::None,
-                    };
-                }
-                _ => (),
-            },
-            _ => (), //println!("glutin event: {:?}", event),
+            _ => (), // not our window
         });
 
         match playercmd {
@@ -353,6 +357,14 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
                     .seek(time)
                     .map_err(|_| MiscError("Failed to seek"))?;
             }
+            PlayerCmd::Mute => {
+                playerstate.mute = !playerstate.mute;
+                player
+                    .lock()
+                    .unwrap()
+                    .mute(playerstate.mute)
+                    .map_err(|_| MiscError("Failed to mute player"))?;
+            }
             _ => (),
         }
         playercmd = PlayerCmd::None;
@@ -377,9 +389,14 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
                         _ => (),
                     }
                 }
-                player::PlayerEvent::SeekData(offset) => {
+                player::PlayerEvent::SeekData(offset, sender) => {
                     input_eos = false;
-                    buf_reader.seek(SeekFrom::Start(offset))?;
+                    let ret = if let Ok(pos) = buf_reader.seek(SeekFrom::Start(offset)) {
+                        offset == pos
+                    } else {
+                        false
+                    };
+                    sender.send(ret).unwrap();
                 }
                 player::PlayerEvent::NeedData => {
                     if !input_eos {

@@ -6,7 +6,7 @@ use gst::prelude::*;
 use gst_app;
 use gst_player;
 use gst_player::prelude::*;
-use ipc_channel::ipc::IpcSender;
+use ipc_channel::ipc::{channel, IpcReceiver, IpcSender};
 use media_stream::GStreamerMediaStream;
 use media_stream_source::{register_servo_media_stream_src, ServoMediaStreamSrc};
 use render::GStreamerRender;
@@ -296,6 +296,26 @@ macro_rules! player(
         $inner.lock().unwrap().player
     }
 );
+
+struct SeekChannel {
+    sender: IpcSender<bool>,
+    recv: IpcReceiver<bool>,
+}
+
+impl SeekChannel {
+    fn new() -> Self {
+        let (sender, recv) = channel::<bool>().expect("Couldn't create IPC channel");
+        Self { sender, recv }
+    }
+
+    fn sender(&self) -> IpcSender<bool> {
+        self.sender.clone()
+    }
+
+    fn await(&self) -> bool {
+        self.recv.recv().unwrap()
+    }
+}
 
 pub struct GStreamerPlayer {
     id: usize,
@@ -615,6 +635,7 @@ impl GStreamerPlayer {
                         let servosrc_ = servosrc.clone();
                         let enough_data_ = inner.enough_data.clone();
                         let enough_data__ = inner.enough_data.clone();
+                        let seek_channel = Arc::new(Mutex::new(SeekChannel::new()));
                         servosrc.set_callbacks(
                             gst_app::AppSrcCallbacks::new()
                                 .need_data(move |_, _| {
@@ -635,10 +656,22 @@ impl GStreamerPlayer {
                                     notify!(observer__, PlayerEvent::EnoughData);
                                 })
                                 .seek_data(move |_, offset| {
-                                    if servosrc_.set_seek_offset(offset) {
-                                        notify!(observer___, PlayerEvent::SeekData(offset));
-                                    }
-                                    true
+                                    let ret = if servosrc_.set_seek_offset(offset) {
+                                        notify!(
+                                            observer___,
+                                            PlayerEvent::SeekData(
+                                                offset,
+                                                seek_channel.lock().unwrap().sender()
+                                            )
+                                        );
+                                        let ret = seek_channel.lock().unwrap().await();
+                                        ret
+                                    } else {
+                                        true
+                                    };
+
+                                    servosrc_.set_seek_done();
+                                    ret
                                 })
                                 .build(),
                         );
