@@ -55,10 +55,19 @@ mod imp {
         srcpad: gst::GhostPad,
         position: Mutex<Position>,
         seeking: AtomicBool,
+        size: Mutex<Option<i64>>,
     }
 
     impl ServoSrc {
         pub fn set_size(&self, size: i64) {
+            if self.seeking.load(Ordering::Relaxed) {
+                // We ignore set_size requests if we are seeking.
+                // The size value is temporarily stored so it
+                // is properly set once we are done seeking.
+                *self.size.lock().unwrap() = Some(size);
+                return;
+            }
+
             if self.appsrc.get_size() == -1 {
                 self.appsrc.set_size(size);
             }
@@ -85,6 +94,12 @@ mod imp {
 
         pub fn set_seek_done(&self) {
             self.seeking.store(false, Ordering::Relaxed);
+
+            if let Some(size) = self.size.lock().unwrap().take() {
+                if self.appsrc.get_size() == -1 {
+                    self.appsrc.set_size(size);
+                }
+            }
 
             let mut pos = self.position.lock().unwrap();
             pos.offset = pos.requested_offset;
@@ -267,6 +282,7 @@ mod imp {
                 srcpad: ghost_pad,
                 position: Mutex::new(Default::default()),
                 seeking: AtomicBool::new(false),
+                size: Mutex::new(None),
             }
         }
 
