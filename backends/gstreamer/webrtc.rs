@@ -310,7 +310,8 @@ impl GStreamerWebRtcController {
             let mut caps = gst::Caps::new_empty();
             let caps_mut = caps.get_mut().expect("Fresh caps should be uniquely owned");
             for format in media.formats() {
-                let pt = format.parse()
+                let pt = format
+                    .parse()
                     .expect("Gstreamer provided noninteger format");
                 caps_mut.append(
                     media

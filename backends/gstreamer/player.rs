@@ -13,7 +13,9 @@ use render::GStreamerRender;
 use servo_media_player::context::PlayerGLContext;
 use servo_media_player::frame::FrameRenderer;
 use servo_media_player::metadata::Metadata;
-use servo_media_player::{PlaybackState, Player, PlayerError, PlayerEvent, SeekLock, SeekLockMsg, StreamType};
+use servo_media_player::{
+    PlaybackState, Player, PlayerError, PlayerEvent, SeekLock, SeekLockMsg, StreamType,
+};
 use servo_media_streams::registry::{get_stream, MediaStreamId};
 use servo_media_traits::Muteable;
 use source::{register_servo_src, ServoSrc};
@@ -306,7 +308,7 @@ impl SeekChannel {
     fn new() -> Self {
         let (sender, recv) = channel::<SeekLockMsg>().expect("Couldn't create IPC channel");
         Self {
-            sender: SeekLock{
+            sender: SeekLock {
                 lock_channel: sender,
             },
             recv,
@@ -669,7 +671,8 @@ impl GStreamerPlayer {
                                                 seek_channel.lock().unwrap().sender()
                                             )
                                         );
-                                        let (ret, ack_channel) = seek_channel.lock().unwrap().await();
+                                        let (ret, ack_channel) =
+                                            seek_channel.lock().unwrap().await();
                                         ack_channel.send(()).unwrap();
                                         ret
                                     } else {

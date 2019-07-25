@@ -1,8 +1,8 @@
 extern crate boxfnonce;
 extern crate log;
 extern crate servo_media_streams;
-use servo_media_streams::MediaStreamType;
 use servo_media_streams::registry::MediaStreamId;
+use servo_media_streams::MediaStreamType;
 
 use std::fmt::Display;
 use std::str::FromStr;
