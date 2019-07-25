@@ -663,7 +663,7 @@ impl GStreamerPlayer {
                                     notify!(observer__, PlayerEvent::EnoughData);
                                 })
                                 .seek_data(move |_, offset| {
-                                    let ret = if servosrc_.set_seek_offset(offset) {
+                                    let (ret, ack_channel) = if servosrc_.set_seek_offset(offset) {
                                         notify!(
                                             observer___,
                                             PlayerEvent::SeekData(
@@ -673,13 +673,15 @@ impl GStreamerPlayer {
                                         );
                                         let (ret, ack_channel) =
                                             seek_channel.lock().unwrap().await();
-                                        ack_channel.send(()).unwrap();
-                                        ret
+                                        (ret, Some(ack_channel))
                                     } else {
-                                        true
+                                        (true, None)
                                     };
 
                                     servosrc_.set_seek_done();
+                                    if let Some(ack_channel) = ack_channel {
+                                        ack_channel.send(()).unwrap();
+                                    }
                                     ret
                                 })
                                 .build(),
