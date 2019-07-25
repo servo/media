@@ -22,5 +22,5 @@ pub trait MediaOutput: Send {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum MediaStreamType {
     Video,
-    Audio
+    Audio,
 }

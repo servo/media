@@ -13,7 +13,9 @@ use render::GStreamerRender;
 use servo_media_player::context::PlayerGLContext;
 use servo_media_player::frame::FrameRenderer;
 use servo_media_player::metadata::Metadata;
-use servo_media_player::{PlaybackState, Player, PlayerError, PlayerEvent, StreamType};
+use servo_media_player::{
+    PlaybackState, Player, PlayerError, PlayerEvent, SeekLock, SeekLockMsg, StreamType,
+};
 use servo_media_streams::registry::{get_stream, MediaStreamId};
 use servo_media_traits::Muteable;
 use source::{register_servo_src, ServoSrc};
@@ -298,21 +300,26 @@ macro_rules! player(
 );
 
 struct SeekChannel {
-    sender: IpcSender<bool>,
-    recv: IpcReceiver<bool>,
+    sender: SeekLock,
+    recv: IpcReceiver<SeekLockMsg>,
 }
 
 impl SeekChannel {
     fn new() -> Self {
-        let (sender, recv) = channel::<bool>().expect("Couldn't create IPC channel");
-        Self { sender, recv }
+        let (sender, recv) = channel::<SeekLockMsg>().expect("Couldn't create IPC channel");
+        Self {
+            sender: SeekLock {
+                lock_channel: sender,
+            },
+            recv,
+        }
     }
 
-    fn sender(&self) -> IpcSender<bool> {
+    fn sender(&self) -> SeekLock {
         self.sender.clone()
     }
 
-    fn await(&self) -> bool {
+    fn await(&self) -> SeekLockMsg {
         self.recv.recv().unwrap()
     }
 }
@@ -656,7 +663,7 @@ impl GStreamerPlayer {
                                     notify!(observer__, PlayerEvent::EnoughData);
                                 })
                                 .seek_data(move |_, offset| {
-                                    let ret = if servosrc_.set_seek_offset(offset) {
+                                    let (ret, ack_channel) = if servosrc_.set_seek_offset(offset) {
                                         notify!(
                                             observer___,
                                             PlayerEvent::SeekData(
@@ -664,13 +671,17 @@ impl GStreamerPlayer {
                                                 seek_channel.lock().unwrap().sender()
                                             )
                                         );
-                                        let ret = seek_channel.lock().unwrap().await();
-                                        ret
+                                        let (ret, ack_channel) =
+                                            seek_channel.lock().unwrap().await();
+                                        (ret, Some(ack_channel))
                                     } else {
-                                        true
+                                        (true, None)
                                     };
 
                                     servosrc_.set_seek_done();
+                                    if let Some(ack_channel) = ack_channel {
+                                        ack_channel.send(()).unwrap();
+                                    }
                                     ret
                                 })
                                 .build(),

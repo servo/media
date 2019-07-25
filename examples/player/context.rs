@@ -10,6 +10,7 @@ pub struct PlayerContextGlutin {
     gl_api: GlApi,
 }
 
+#[allow(unused_variables)]
 impl PlayerContextGlutin {
     pub fn new(
         use_gl: bool,
