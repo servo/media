@@ -8,7 +8,7 @@ pub mod context;
 pub mod frame;
 pub mod metadata;
 
-use ipc_channel::ipc::IpcSender;
+use ipc_channel::ipc::{self, IpcSender};
 use servo_media_traits::Muteable;
 use std::ops::Range;
 use streams::registry::MediaStreamId;
@@ -40,6 +40,21 @@ pub enum PlayerError {
     SetStreamFailed,
 }
 
+pub type SeekLockMsg = (bool, IpcSender<()>);
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct SeekLock {
+    pub lock_channel: IpcSender<SeekLockMsg>,
+}
+
+impl SeekLock {
+    pub fn unlock(&self, result: bool) {
+        let (ack_sender, ack_recv) = ipc::channel::<()>().expect("Could not create IPC channel");
+        self.lock_channel.send((result, ack_sender)).unwrap();
+        ack_recv.recv().unwrap()
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum PlayerEvent {
     EndOfStream,
@@ -54,9 +69,10 @@ pub enum PlayerEvent {
     PositionChanged(u64),
     /// The player needs the data to perform a seek to the given offset.
     /// The next push_data should get the buffers from the new offset.
-    /// The player will be blocked until the user sends, through the IPC sender,
+    /// The player will be blocked until the user unlocks it through
+    /// the given SeekLock instance.
     /// This event is only received for seekable stream types.
-    SeekData(u64, IpcSender<bool>),
+    SeekData(u64, SeekLock),
     /// The player has performed a seek to the given offset.
     SeekDone(u64),
     StateChanged(PlaybackState),
