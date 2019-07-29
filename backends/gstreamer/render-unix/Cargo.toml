@@ -3,9 +3,15 @@ name = "servo-media-gstreamer-render-unix"
 version = "0.1.0"
 authors = ["The Servo Project Developers"]
 
+[features]
+gl-egl = ["gstreamer-gl/egl"]
+gl-x11 = ["gstreamer-gl/x11"]
+gl-wayland = ["gstreamer-gl/wayland"]
+
 [lib]
 name = "servo_media_gstreamer_render_unix"
 path = "lib.rs"
+features = ["gl-egl", "gl-x11", "gl-wayland"]
 
 [dependencies.glib]
 version = "0.8"
@@ -15,7 +21,6 @@ version = "0.14"
 
 [dependencies.gstreamer-gl]
 version = "0.14"
-features = ["x11", "egl", "wayland"]
 
 [dependencies.gstreamer-video]
 version = "0.14"

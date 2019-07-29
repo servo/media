@@ -80,10 +80,12 @@ impl RenderUnix {
         let (wrapped_context, display) = match gl_context {
             GlContext::Egl(context) => {
                 let display = match display_native {
+                    #[cfg(feature = "gl-egl")]
                     NativeDisplay::Egl(display_native) => {
                         unsafe { gst_gl::GLDisplayEGL::new_with_egl_display(display_native) }
                             .and_then(|display| Some(display.upcast()))
                     }
+                    #[cfg(feature = "gl-wayland")]
                     NativeDisplay::Wayland(display_native) => {
                         unsafe { gst_gl::GLDisplayWayland::new_with_display(display_native) }
                             .and_then(|display| Some(display.upcast()))
@@ -100,6 +102,7 @@ impl RenderUnix {
             }
             GlContext::Glx(context) => {
                 let display = match display_native {
+                    #[cfg(feature = "gl-x11")]
                     NativeDisplay::X11(display_native) => {
                         unsafe { gst_gl::GLDisplayX11::new_with_display(display_native) }
                             .and_then(|display| Some(display.upcast()))
