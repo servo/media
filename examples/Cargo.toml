@@ -4,28 +4,35 @@ version = "0.1.0"
 license = "MPL-2.0"
 
 [dependencies]
-euclid = "0.19.0"
-failure = "0.1"
-failure_derive = "0.1"
-gleam = "0.6.8"
-hyper = "0.12"
-rand = "0.5.0"
-time = "0.1.40"
-serde = "1.0"
-serde_derive = "1.0"
-serde_json = "1.0"
+euclid = { version = "0.19.0", optional = true }
+failure = { version = "0.1", opional = true }
+failure_derive = { version = "0.1", optional = true }
+gleam = { version = "0.6.8", optional = true }
+hyper = { version = "0.12", optional = true }
+rand = { version = "0.5.0", optional = true }
+time = { version = "0.1.40", optional = true }
+serde = {version = "1.0", optional = true }
+serde_derive = { version = "1.0", optional = true }
+serde_json = { version = "1.0", optional = true }
 servo-media-dummy = { path = "../backends/dummy" }
 servo-media-auto = { path = "../backends/auto" }
 servo-media = { path = "../servo-media" }
-webrender = "0.60.0"
-webrender_api = "0.60.0"
-websocket = "0.22"
-ipc-channel = "0.11"
+webrender = { version = "0.60.0", optional = true }
+webrender_api = { version = "0.60.0", optional = true }
+websocket = { version = "0.22", optional = true }
+ipc-channel = { version = "0.11", optional = true }
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
-winit = "0.19"
-glutin = "0.21"
-clap = { version = "2.33", default-features = false }
+winit = { version = "0.19", optional = true }
+glutin = { version = "0.21", optional = true }
+clap = { version = "2.33", default-features = false, optional = true }
+
+[features]
+default = []
+gui = [ "winit", "glutin", "clap", "webrender", "webrender_api" ]
+player = [ "ipc-channel" ]
+noise = [ "rand" ]
+webrtc = [ "serde", "serde_derive", "serde_json" ]
 
 [[bin]]
 name = "dummy"
@@ -78,22 +85,27 @@ path = "play.rs"
 [[bin]]
 name = "play_noise"
 path = "play_noise.rs"
+required-features = [ "noise" ]
 
 [[bin]]
 name = "player"
 path = "player/main.rs"
+required-features = [ "player", "gui" ]
 
 [[bin]]
 name = "play_media_stream"
 path = "play_media_stream.rs"
+required-features = [ "player" ]
 
 [[bin]]
 name = "simple_player"
 path = "simple_player.rs"
+required-features = [ "player" ]
 
 [[bin]]
 name = "muted_player"
 path = "muted_player.rs"
+required-features = [ "player" ]
 
 [[bin]]
 name = "oscillator"
@@ -110,6 +122,7 @@ path = "constant_source.rs"
 [[bin]]
 name = "simple_webrtc"
 path = "simple_webrtc.rs"
+required-features = [ "webrtc" ]
 
 [[bin]]
 name = "set_value_curve"
