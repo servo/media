@@ -4,7 +4,7 @@
 //!
 //! Internally it uses GStreamer's *glsinkbin* element as *videosink*
 //! wrapping the *appsink* from the Player. And the shared frames are
-//! mapped as texuture IDs.
+//! mapped as texture IDs.
 
 #![cfg(any(
     target_os = "linux",
