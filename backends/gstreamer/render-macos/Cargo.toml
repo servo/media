@@ -1,0 +1,11 @@
+[package]
+name = "servo-media-gstreamer-render-macos"
+version = "0.1.0"
+authors = ["The Servo Project Developers"]
+
+[lib]
+name = "servo_media_gstreamer_render_macos"
+path = "lib.rs"
+
+[dependencies.servo-media-gst-gl-macos-bindings]
+path = "bindings"
