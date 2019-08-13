@@ -114,7 +114,7 @@ impl RenderUnix {
                     gl_api,
                 )
             }
-            GlContext::Unknown => (None, None),
+            _ => (None, None),
         };
 
         if let Some(app_context) = wrapped_context {
