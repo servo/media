@@ -185,9 +185,8 @@ impl App {
             }
         };
 
-        let client_context_id = servo_media::ClientContextId::build(1, 1);
         let player = servo_media.create_player(
-            &client_context_id,
+            &servo_media::ClientContextId::build(1, 1),
             player::StreamType::Seekable,
             player_event_sender,
             renderer,
@@ -208,7 +207,6 @@ impl App {
             player,
             file,
             player_event_receiver,
-            client_context_id,
             frame_renderer,
         })
     }
