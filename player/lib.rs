@@ -9,7 +9,7 @@ pub mod frame;
 pub mod metadata;
 
 use ipc_channel::ipc::{self, IpcSender};
-use servo_media_traits::Muteable;
+use servo_media_traits::MediaInstance;
 use std::ops::Range;
 use streams::registry::MediaStreamId;
 
@@ -86,7 +86,7 @@ pub enum StreamType {
     Seekable,
 }
 
-pub trait Player: Send + Muteable {
+pub trait Player: Send + MediaInstance {
     fn play(&self) -> Result<(), PlayerError>;
     fn pause(&self) -> Result<(), PlayerError>;
     fn stop(&self) -> Result<(), PlayerError>;
@@ -99,8 +99,6 @@ pub trait Player: Send + Muteable {
     fn end_of_stream(&self) -> Result<(), PlayerError>;
     /// Get the list of time ranges in seconds that have been buffered.
     fn buffered(&self) -> Result<Vec<Range<f64>>, PlayerError>;
-    /// Shut the player down. Stops playback and free up resources.
-    fn shutdown(&self) -> Result<(), PlayerError>;
     /// Set the stream to be played by the player.
     /// Only a single stream of the same type (audio or video) can be set.
     /// Subsequent calls with a stream of the same type will override the previously

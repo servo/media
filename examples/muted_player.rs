@@ -123,8 +123,6 @@ fn run_example(servo_media: Arc<ServoMedia>) {
             PlayerEvent::EnoughData => println!("\nEnoughData"),
         }
     }
-
-    servo_media.shutdown_player(&context_id, player);
 }
 
 fn main() {

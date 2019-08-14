@@ -37,7 +37,6 @@ pub trait Backend: Send + Sync {
         renderer: Option<Arc<Mutex<dyn FrameRenderer>>>,
         gl_context: Box<dyn PlayerGLContext>,
     ) -> Arc<Mutex<dyn Player>>;
-    fn shutdown_player(&self, id: &ClientContextId, player: Arc<Mutex<dyn Player>>);
     fn create_audiostream(&self) -> MediaStreamId;
     fn create_videostream(&self) -> MediaStreamId;
     fn create_stream_output(&self) -> Box<dyn MediaOutput>;
@@ -48,7 +47,6 @@ pub trait Backend: Send + Sync {
         id: &ClientContextId,
         options: AudioContextOptions,
     ) -> Arc<Mutex<AudioContext>>;
-    fn shutdown_audio_context(&self, id: &ClientContextId, audio_context: Arc<Mutex<AudioContext>>);
     fn create_webrtc(&self, signaller: Box<dyn WebRtcSignaller>) -> WebRtcController;
     fn can_play_type(&self, media_type: &str) -> SupportsMediaType;
     fn set_capture_mocking(&self, _mock: bool) {}

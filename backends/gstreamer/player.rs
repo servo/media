@@ -17,13 +17,13 @@ use servo_media_player::{
     PlaybackState, Player, PlayerError, PlayerEvent, SeekLock, SeekLockMsg, StreamType,
 };
 use servo_media_streams::registry::{get_stream, MediaStreamId};
-use servo_media_traits::Muteable;
+use servo_media_traits::{BackendMsg, ClientContextId, MediaInstance};
 use source::{register_servo_src, ServoSrc};
 use std::cell::RefCell;
 use std::error::Error;
 use std::ops::Range;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc;
+use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex, Once};
 use std::time;
 use std::u64;
@@ -325,7 +325,12 @@ impl SeekChannel {
 }
 
 pub struct GStreamerPlayer {
+    /// The player unique ID.
     id: usize,
+    /// The ID of the client context this player belongs to.
+    context_id: ClientContextId,
+    /// Channel to communicate with the owner GStreamerBackend instance.
+    backend_chan: Arc<Mutex<Sender<BackendMsg>>>,
     inner: RefCell<Option<Arc<Mutex<PlayerInner>>>>,
     observer: Arc<Mutex<IpcSender<PlayerEvent>>>,
     renderer: Option<Arc<Mutex<dyn FrameRenderer>>>,
@@ -334,13 +339,15 @@ pub struct GStreamerPlayer {
     is_ready: Arc<Once>,
     /// Indicates whether the type of media stream to be played is a live stream.
     stream_type: StreamType,
-    /// Decorator used to setup the video sink and process the produced frames
+    /// Decorator used to setup the video sink and process the produced frames.
     render: Arc<Mutex<GStreamerRender>>,
 }
 
 impl GStreamerPlayer {
     pub fn new(
         id: usize,
+        context_id: &ClientContextId,
+        backend_chan: Arc<Mutex<Sender<BackendMsg>>>,
         stream_type: StreamType,
         observer: IpcSender<PlayerEvent>,
         renderer: Option<Arc<Mutex<dyn FrameRenderer>>>,
@@ -353,7 +360,9 @@ impl GStreamerPlayer {
         );
 
         Self {
-            id: id,
+            id,
+            context_id: *context_id,
+            backend_chan,
             inner: RefCell::new(None),
             observer: Arc::new(Mutex::new(observer)),
             renderer,
@@ -766,10 +775,6 @@ impl Player for GStreamerPlayer {
     inner_player_proxy!(set_volume, value, f64);
     inner_player_proxy!(buffered, Vec<Range<f64>>);
 
-    fn shutdown(&self) -> Result<(), PlayerError> {
-        self.stop()
-    }
-
     fn render_use_gl(&self) -> bool {
         self.render.lock().unwrap().is_gl()
     }
@@ -782,12 +787,23 @@ impl Player for GStreamerPlayer {
     }
 }
 
-impl Muteable for GStreamerPlayer {
+impl MediaInstance for GStreamerPlayer {
     fn get_id(&self) -> usize {
         self.id
     }
 
     fn mute(&self, val: bool) -> Result<(), ()> {
         self.set_mute(val).map_err(|_| ())
+    }
+}
+
+impl Drop for GStreamerPlayer {
+    fn drop(&mut self) {
+        let _ = self.stop();
+        let _ = self
+            .backend_chan
+            .lock()
+            .unwrap()
+            .send(BackendMsg::Shutdown(self.context_id, self.id));
     }
 }

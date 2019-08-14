@@ -15,7 +15,13 @@ impl ClientContextId {
     }
 }
 
-pub trait Muteable: Send {
+pub trait MediaInstance: Send {
     fn get_id(&self) -> usize;
     fn mute(&self, val: bool) -> Result<(), ()>;
+}
+
+pub enum BackendMsg {
+    /// Message to notify about a media instance shutdown.
+    /// The given `usize` is the media instance ID.
+    Shutdown(ClientContextId, usize),
 }
