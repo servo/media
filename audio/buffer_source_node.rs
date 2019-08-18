@@ -8,6 +8,8 @@ use param::{Param, ParamType};
 pub enum AudioBufferSourceNodeMessage {
     /// Set the data block holding the audio sample data to be played.
     SetBuffer(Option<AudioBuffer>),
+    /// Set start parameters (offset, duration).
+    Start(Option<f64>, Option<f64>),
 }
 
 /// This specifies options for constructing an AudioBufferSourceNode.
@@ -48,6 +50,8 @@ pub(crate) struct AudioBufferSourceNode {
     channel_info: ChannelInfo,
     /// A data block holding the audio sample data to be played.
     buffer: Option<AudioBuffer>,
+    /// How many more buffer-frames to output. See buffer_pos for clarification.
+    buffer_duration: f64,
     /// "Index" of the next buffer frame to play. "Index" is in quotes because
     /// this variable maps to a playhead position (the offset in seconds can be
     /// obtained by dividing by self.buffer.sample_rate), and therefore has
@@ -70,6 +74,10 @@ pub(crate) struct AudioBufferSourceNode {
     playback_rate: Param,
     /// Time at which the source should start playing.
     start_at: Option<Tick>,
+    /// Offset parameter passed to Start().
+    start_offset: Option<f64>,
+    /// Duration parameter passed to Start().
+    start_duration: Option<f64>,
     /// Time at which the source should stop playing.
     stop_at: Option<Tick>,
     /// The ended event callback.
@@ -87,7 +95,10 @@ impl AudioBufferSourceNode {
             loop_end: options.loop_end,
             loop_start: options.loop_start,
             playback_rate: Param::new(options.playback_rate),
+            buffer_duration: std::f64::INFINITY,
             start_at: None,
+            start_offset: None,
+            start_duration: None,
             stop_at: None,
             onended_callback: None,
         }
@@ -97,6 +108,10 @@ impl AudioBufferSourceNode {
         match message {
             AudioBufferSourceNodeMessage::SetBuffer(buffer) => {
                 self.buffer = buffer;
+            }
+            AudioBufferSourceNodeMessage::Start(offset, duration) => {
+                self.start_offset = offset;
+                self.start_duration = duration;
             }
         }
     }
@@ -128,6 +143,18 @@ impl AudioNodeEngine for AudioBufferSourceNode {
         };
 
         let buffer = self.buffer.as_ref().unwrap();
+
+        // Apply the offset and duration parameters passed to start. We handle
+        // this here because the buffer may be set after Start() gets called, so
+        // this might be the first time we know the buffer's sample rate.
+        if let Some(start_offset) = self.start_offset {
+            self.buffer_pos = start_offset * (buffer.sample_rate as f64);
+            self.start_offset = None;
+        }
+        if let Some(start_duration) = self.start_duration {
+            self.buffer_duration = start_duration * (buffer.sample_rate as f64);
+            self.start_duration = None;
+        }
 
         // We will output at most this many frames (fewer if we run out of data).
         let frames_to_output = stop_at - start_at;
@@ -182,6 +209,7 @@ impl AudioNodeEngine for AudioBufferSourceNode {
             && buffer_offset_per_tick == 1.
             && self.buffer_pos.trunc() == self.buffer_pos
             && self.buffer_pos + (FRAMES_PER_BLOCK.0 as f64) <= actual_loop_end
+            && FRAMES_PER_BLOCK.0 as f64 <= self.buffer_duration
         {
             let mut block = Block::empty();
             let pos = self.buffer_pos as usize;
@@ -192,6 +220,7 @@ impl AudioNodeEngine for AudioBufferSourceNode {
 
             inputs.blocks.push(block);
             self.buffer_pos += FRAMES_PER_BLOCK.0 as f64;
+            self.buffer_duration -= FRAMES_PER_BLOCK.0 as f64;
         } else {
             // Slow path, with interpolation.
             let mut block = Block::default();
@@ -206,8 +235,13 @@ impl AudioNodeEngine for AudioBufferSourceNode {
                 let (data, _) = data.split_at_mut(frames_to_output);
 
                 let mut pos = self.buffer_pos;
+                let mut duration = self.buffer_duration;
 
                 for sample in data {
+                    if duration <= 0. {
+                        break;
+                    }
+
                     if self.loop_enabled {
                         if forward && pos >= actual_loop_end {
                             pos -= actual_loop_end - actual_loop_start;
@@ -220,17 +254,23 @@ impl AudioNodeEngine for AudioBufferSourceNode {
 
                     *sample = buffer.interpolate(chan, pos);
                     pos += buffer_offset_per_tick;
+                    duration -= buffer_offset_per_tick.abs();
                 }
 
+                // This is the last channel, update parameters.
                 if chan == buffer.chans() - 1 {
                     self.buffer_pos = pos;
+                    self.buffer_duration = duration;
                 }
             }
 
             inputs.blocks.push(block);
         }
 
-        if self.buffer_pos < 0. || self.buffer_pos >= buffer.len() as f64 {
+        if self.buffer_pos < 0.
+            || self.buffer_pos >= buffer.len() as f64
+            || self.buffer_duration <= 0.
+        {
             self.maybe_trigger_onended_callback();
         }
 
