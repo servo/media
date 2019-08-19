@@ -637,8 +637,9 @@ impl Div<f64> for Tick {
 
 impl Tick {
     pub const FRAMES_PER_BLOCK: Tick = FRAMES_PER_BLOCK;
+    const EPSILON: f64 = 1e-7;
     pub fn from_time(time: f64, rate: f32) -> Tick {
-        Tick((0.5 + time * rate as f64).floor() as u64)
+        Tick((time * rate as f64 - Tick::EPSILON).ceil() as u64)
     }
 
     pub fn advance(&mut self) {

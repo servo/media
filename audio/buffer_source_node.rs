@@ -8,8 +8,8 @@ use param::{Param, ParamType};
 pub enum AudioBufferSourceNodeMessage {
     /// Set the data block holding the audio sample data to be played.
     SetBuffer(Option<AudioBuffer>),
-    /// Set start parameters (offset, duration).
-    Start(Option<f64>, Option<f64>),
+    /// Set start parameters (when, offset, duration).
+    Start(f64, Option<f64>, Option<f64>),
 }
 
 /// This specifies options for constructing an AudioBufferSourceNode.
@@ -59,6 +59,8 @@ pub(crate) struct AudioBufferSourceNode {
     buffer_pos: f64,
     /// AudioParam to modulate the speed at which is rendered the audio stream.
     detune: Param,
+    /// Whether we need to compute offsets from scratch.
+    initialized_pos: bool,
     /// Indicates if the region of audio data designated by loopStart and loopEnd
     /// should be played continuously in a loop.
     loop_enabled: bool,
@@ -78,6 +80,9 @@ pub(crate) struct AudioBufferSourceNode {
     start_offset: Option<f64>,
     /// Duration parameter passed to Start().
     start_duration: Option<f64>,
+    /// The same as start_at, but with subsample accuracy.
+    /// FIXME: Maybe AudioScheduledSourceNode should use this as well?
+    start_when: f64,
     /// Time at which the source should stop playing.
     stop_at: Option<Tick>,
     /// The ended event callback.
@@ -91,6 +96,7 @@ impl AudioBufferSourceNode {
             buffer: options.buffer,
             buffer_pos: 0.,
             detune: Param::new(options.detune),
+            initialized_pos: false,
             loop_enabled: options.loop_enabled,
             loop_end: options.loop_end,
             loop_start: options.loop_start,
@@ -99,6 +105,7 @@ impl AudioBufferSourceNode {
             start_at: None,
             start_offset: None,
             start_duration: None,
+            start_when: 0.,
             stop_at: None,
             onended_callback: None,
         }
@@ -109,7 +116,8 @@ impl AudioBufferSourceNode {
             AudioBufferSourceNodeMessage::SetBuffer(buffer) => {
                 self.buffer = buffer;
             }
-            AudioBufferSourceNodeMessage::Start(offset, duration) => {
+            AudioBufferSourceNodeMessage::Start(when, offset, duration) => {
+                self.start_when = when;
                 self.start_offset = offset;
                 self.start_duration = duration;
             }
@@ -144,30 +152,6 @@ impl AudioNodeEngine for AudioBufferSourceNode {
 
         let buffer = self.buffer.as_ref().unwrap();
 
-        // Apply the offset and duration parameters passed to start. We handle
-        // this here because the buffer may be set after Start() gets called, so
-        // this might be the first time we know the buffer's sample rate.
-        if let Some(start_offset) = self.start_offset {
-            self.buffer_pos = start_offset * (buffer.sample_rate as f64);
-            self.start_offset = None;
-        }
-        if let Some(start_duration) = self.start_duration {
-            self.buffer_duration = start_duration * (buffer.sample_rate as f64);
-            self.start_duration = None;
-        }
-
-        // We will output at most this many frames (fewer if we run out of data).
-        let frames_to_output = stop_at - start_at;
-
-        self.playback_rate.update(info, Tick(0));
-        self.detune.update(info, Tick(0));
-        // computed_playback_rate can be negative or zero.
-        let computed_playback_rate =
-            self.playback_rate.value() as f64 * (2.0_f64).powf(self.detune.value() as f64 / 1200.);
-        let buffer_offset_per_tick =
-            computed_playback_rate * (buffer.sample_rate as f64 / info.sample_rate as f64);
-        let forward = computed_playback_rate >= 0.;
-
         let (mut actual_loop_start, mut actual_loop_end) = (0., buffer.len() as f64);
         if self.loop_enabled {
             let loop_start = self.loop_start.unwrap_or(0.);
@@ -177,17 +161,72 @@ impl AudioNodeEngine for AudioBufferSourceNode {
                 actual_loop_start = loop_start * (buffer.sample_rate as f64);
                 actual_loop_end = loop_end * (buffer.sample_rate as f64);
             }
+        }
 
-            if forward && self.buffer_pos >= actual_loop_end {
-                self.buffer_pos = actual_loop_start;
+        self.playback_rate.update(info, Tick(0));
+        self.detune.update(info, Tick(0));
+        // computed_playback_rate can be negative or zero.
+        let computed_playback_rate =
+            self.playback_rate.value() as f64 * (2.0_f64).powf(self.detune.value() as f64 / 1200.);
+        let forward = computed_playback_rate >= 0.;
+
+        if !self.initialized_pos {
+            self.initialized_pos = true;
+
+            // Apply the offset and duration parameters passed to start. We handle
+            // this here because the buffer may be set after Start() gets called, so
+            // this might be the first time we know the buffer's sample rate.
+            if let Some(start_offset) = self.start_offset {
+                self.buffer_pos = start_offset * (buffer.sample_rate as f64);
+                if self.buffer_pos < 0. {
+                    self.buffer_pos = 0.
+                } else if self.buffer_pos > buffer.len() as f64 {
+                    self.buffer_pos = buffer.len() as f64;
+                }
             }
-            // XXX(collares): This is technically not in the spec, but it's the
-            // only thing that makes sense. I suspect the spec was not fully
-            // updated for negative playbackRates.
-            if !forward && self.buffer_pos < actual_loop_start {
-                self.buffer_pos = actual_loop_end;
+
+            if self.loop_enabled {
+                if forward && self.buffer_pos >= actual_loop_end {
+                    self.buffer_pos = actual_loop_start;
+                }
+                // XXX(collares): This is technically not in the spec, but it's the
+                // only thing that makes sense. I suspect the spec was not fully
+                // updated for negative playbackRates.
+                if !forward && self.buffer_pos < actual_loop_start {
+                    self.buffer_pos = actual_loop_end;
+                }
+            }
+
+            if let Some(start_duration) = self.start_duration {
+                self.buffer_duration = start_duration * (buffer.sample_rate as f64);
+            }
+
+            // start_when can be subsample accurate. Correct buffer_pos.
+            //
+            // XXX(collares): What happens to "start_when" if the buffer gets
+            // set after Start()?
+            // XXX(collares): Need a better way to distingush between Start()
+            // being called with "when" in the past (in which case "when" must
+            // be ignored) and Start() being called with "when" in the future.
+            // This can now make a difference if "when" shouldn't be ignored
+            // but falls after the last frame of the previous quantum.
+            if self.start_when > info.time - 1. / info.sample_rate as f64 {
+                let first_time = info.time + start_at as f64 / info.sample_rate as f64;
+                if self.start_when <= first_time {
+                    let subsample_offset = (first_time - self.start_when)
+                        * (buffer.sample_rate as f64)
+                        * computed_playback_rate;
+                    self.buffer_pos += subsample_offset;
+                    self.buffer_duration -= subsample_offset.abs();
+                }
             }
         }
+
+        let buffer_offset_per_tick =
+            computed_playback_rate * (buffer.sample_rate as f64 / info.sample_rate as f64);
+
+        // We will output at most this many frames (fewer if we run out of data).
+        let frames_to_output = stop_at - start_at;
 
         if self.loop_enabled && buffer_offset_per_tick.abs() < actual_loop_end - actual_loop_start {
             // Refuse to output data in this extreme edge case.
