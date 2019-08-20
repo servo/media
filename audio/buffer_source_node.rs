@@ -306,8 +306,7 @@ impl AudioNodeEngine for AudioBufferSourceNode {
             inputs.blocks.push(block);
         }
 
-        if self.buffer_pos < 0.
-            || self.buffer_pos >= buffer.len() as f64
+        if !self.loop_enabled && (self.buffer_pos < 0. || self.buffer_pos >= buffer.len() as f64)
             || self.buffer_duration <= 0.
         {
             self.maybe_trigger_onended_callback();
