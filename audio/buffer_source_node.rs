@@ -8,8 +8,14 @@ use param::{Param, ParamType};
 pub enum AudioBufferSourceNodeMessage {
     /// Set the data block holding the audio sample data to be played.
     SetBuffer(Option<AudioBuffer>),
+    /// Set loop parameter.
+    SetLoopEnabled(bool),
+    /// Set loop parameter.
+    SetLoopEnd(f64),
+    /// Set loop parameter.
+    SetLoopStart(f64),
     /// Set start parameters (when, offset, duration).
-    Start(f64, Option<f64>, Option<f64>),
+    SetStartParams(f64, Option<f64>, Option<f64>),
 }
 
 /// This specifies options for constructing an AudioBufferSourceNode.
@@ -81,7 +87,7 @@ pub(crate) struct AudioBufferSourceNode {
     /// Duration parameter passed to Start().
     start_duration: Option<f64>,
     /// The same as start_at, but with subsample accuracy.
-    /// FIXME: Maybe AudioScheduledSourceNode should use this as well?
+    /// FIXME: AudioScheduledSourceNode should use this as well.
     start_when: f64,
     /// Time at which the source should stop playing.
     stop_at: Option<Tick>,
@@ -116,7 +122,18 @@ impl AudioBufferSourceNode {
             AudioBufferSourceNodeMessage::SetBuffer(buffer) => {
                 self.buffer = buffer;
             }
-            AudioBufferSourceNodeMessage::Start(when, offset, duration) => {
+            // XXX(collares): To fully support dynamically updating loop bounds,
+            // Must truncate self.buffer_pos if it is now outside the loop.
+            AudioBufferSourceNodeMessage::SetLoopEnabled(loop_enabled) => {
+                self.loop_enabled = loop_enabled
+            }
+            AudioBufferSourceNodeMessage::SetLoopEnd(loop_end) => {
+                self.loop_end = Some(loop_end)
+            }
+            AudioBufferSourceNodeMessage::SetLoopStart(loop_start) => {
+                self.loop_start = Some(loop_start)
+            }
+            AudioBufferSourceNodeMessage::SetStartParams(when, offset, duration) => {
                 self.start_when = when;
                 self.start_offset = offset;
                 self.start_duration = duration;
@@ -163,6 +180,7 @@ impl AudioNodeEngine for AudioBufferSourceNode {
             }
         }
 
+        // https://webaudio.github.io/web-audio-api/#computedplaybackrate
         self.playback_rate.update(info, Tick(0));
         self.detune.update(info, Tick(0));
         // computed_playback_rate can be negative or zero.
@@ -189,9 +207,7 @@ impl AudioNodeEngine for AudioBufferSourceNode {
                 if forward && self.buffer_pos >= actual_loop_end {
                     self.buffer_pos = actual_loop_start;
                 }
-                // XXX(collares): This is technically not in the spec, but it's the
-                // only thing that makes sense. I suspect the spec was not fully
-                // updated for negative playbackRates.
+                // https://github.com/WebAudio/web-audio-api/issues/2031
                 if !forward && self.buffer_pos < actual_loop_start {
                     self.buffer_pos = actual_loop_end;
                 }
@@ -374,6 +390,7 @@ impl AudioBuffer {
     // XXX(collares): There are better fast interpolation algorithms.
     // Firefox uses (via Speex's resampler) the algorithm described in
     // https://ccrma.stanford.edu/~jos/resample/resample.pdf
+    // There are Rust bindings: https://github.com/rust-av/speexdsp-rs
     pub fn interpolate(&self, chan: u8, pos: f64) -> f32 {
         debug_assert!(pos >= 0. && pos < self.len() as f64);
 
