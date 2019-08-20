@@ -23,7 +23,7 @@ ipc-channel = { version = "0.12", optional = true }
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 winit = { version = "0.19", optional = true }
-glutin = { version = "0.21", optional = true }
+glutin = { git = "https://github.com/rust-windowing/glutin", branch = "backport21", optional = true }
 clap = { version = "2.33", default-features = false, optional = true }
 
 [features]
