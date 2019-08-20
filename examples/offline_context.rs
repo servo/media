@@ -2,7 +2,7 @@ extern crate servo_media;
 extern crate servo_media_auto;
 
 use servo_media::audio::block::FRAMES_PER_BLOCK_USIZE;
-use servo_media::audio::buffer_source_node::AudioBufferSourceNodeMessage;
+use servo_media::audio::buffer_source_node::{AudioBuffer, AudioBufferSourceNodeMessage};
 use servo_media::audio::context::{AudioContextOptions, OfflineAudioContextOptions};
 use servo_media::audio::node::{AudioNodeInit, AudioNodeMessage, AudioScheduledSourceNodeMessage};
 use servo_media::{ClientContextId, ServoMedia};
@@ -16,6 +16,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let mut options = <OfflineAudioContextOptions>::default();
     options.channels = 2;
     options.length = 1024 * FRAMES_PER_BLOCK_USIZE;
+    let sample_rate = options.sample_rate;
     let options = AudioContextOptions::OfflineAudioContext(options);
     let context = servo_media.create_audio_context(&ClientContextId::build(1, 1), options);
     let context = context.lock().unwrap();
@@ -62,7 +63,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     context.message_node(
         buffer_source,
         AudioNodeMessage::AudioBufferSourceNode(AudioBufferSourceNodeMessage::SetBuffer(Some(
-            processed_audio_.lock().unwrap().to_vec().into(),
+            AudioBuffer::from_buffer(processed_audio_.lock().unwrap().to_vec(), sample_rate),
         ))),
     );
     let _ = context.resume();

@@ -1,7 +1,8 @@
 extern crate servo_media;
 extern crate servo_media_auto;
 
-use servo_media::audio::buffer_source_node::AudioBufferSourceNodeMessage;
+use servo_media::audio::buffer_source_node::{AudioBuffer, AudioBufferSourceNodeMessage};
+use servo_media::audio::context::{AudioContextOptions, RealTimeAudioContextOptions};
 use servo_media::audio::decoder::AudioDecoderCallbacks;
 use servo_media::audio::node::{AudioNodeInit, AudioNodeMessage, AudioScheduledSourceNodeMessage};
 use servo_media::{ClientContextId, ServoMedia};
@@ -14,8 +15,11 @@ use std::sync::{Arc, Mutex};
 use std::{thread, time};
 
 fn run_example(servo_media: Arc<ServoMedia>) {
+    let options = <RealTimeAudioContextOptions>::default();
+    let sample_rate = options.sample_rate;
     let context =
-        servo_media.create_audio_context(&ClientContextId::build(1, 1), Default::default());
+        servo_media.create_audio_context(&ClientContextId::build(1, 1),
+                                         AudioContextOptions::RealTimeAudioContext(options));
     let context = context.lock().unwrap();
     let args: Vec<_> = env::args().collect();
     let default = "./examples/resources/viper_cut.ogg";
@@ -69,7 +73,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     context.message_node(
         buffer_source,
         AudioNodeMessage::AudioBufferSourceNode(AudioBufferSourceNodeMessage::SetBuffer(Some(
-            decoded_audio.lock().unwrap().to_vec().into(),
+            AudioBuffer::from_buffers(decoded_audio.lock().unwrap().to_vec(), sample_rate)
         ))),
     );
     let _ = context.resume();

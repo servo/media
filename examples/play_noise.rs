@@ -2,7 +2,7 @@ extern crate rand;
 extern crate servo_media;
 extern crate servo_media_auto;
 
-use servo_media::audio::buffer_source_node::AudioBufferSourceNodeMessage;
+use servo_media::audio::buffer_source_node::{AudioBuffer, AudioBufferSourceNodeMessage};
 use servo_media::audio::node::OnEndedCallback;
 use servo_media::audio::node::{AudioNodeInit, AudioNodeMessage, AudioScheduledSourceNodeMessage};
 use servo_media::{ClientContextId, ServoMedia};
@@ -31,7 +31,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     context.message_node(
         buffer_source,
         AudioNodeMessage::AudioBufferSourceNode(AudioBufferSourceNodeMessage::SetBuffer(Some(
-            buffers.into(),
+            AudioBuffer::from_buffers(buffers, 44100.),
         ))),
     );
     let callback = OnEndedCallback::new(|| {
