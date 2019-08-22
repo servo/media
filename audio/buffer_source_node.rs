@@ -127,9 +127,7 @@ impl AudioBufferSourceNode {
             AudioBufferSourceNodeMessage::SetLoopEnabled(loop_enabled) => {
                 self.loop_enabled = loop_enabled
             }
-            AudioBufferSourceNodeMessage::SetLoopEnd(loop_end) => {
-                self.loop_end = Some(loop_end)
-            }
+            AudioBufferSourceNodeMessage::SetLoopEnd(loop_end) => self.loop_end = Some(loop_end),
             AudioBufferSourceNodeMessage::SetLoopStart(loop_start) => {
                 self.loop_start = Some(loop_start)
             }
@@ -396,10 +394,12 @@ impl AudioBuffer {
 
         let prev = pos.floor() as usize;
         let offset = pos - pos.floor();
-        let next_sample = *self.buffers[chan as usize].get(prev + 1).unwrap_or(&0.0);
+        let cur_sample = self.buffers[chan as usize][prev];
+        let next_sample = *self.buffers[chan as usize]
+            .get(prev + 1)
+            .unwrap_or(&cur_sample);
 
-        ((1. - offset) * (self.buffers[chan as usize][prev] as f64) + offset * (next_sample as f64))
-            as f32
+        ((1. - offset) * (cur_sample as f64) + offset * (next_sample as f64)) as f32
     }
 
     pub fn data_chan_mut(&mut self, chan: u8) -> &mut [f32] {
