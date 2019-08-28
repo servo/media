@@ -95,7 +95,7 @@ impl GStreamerRender {
         }
     }
 
-    pub fn get_frame_from_sample(&self, sample: &gst::Sample) -> Result<Frame, ()> {
+    pub fn get_frame_from_sample(&self, sample: gst::Sample) -> Result<Frame, ()> {
         let buffer = sample.get_buffer_owned().ok_or_else(|| ())?;
         let caps = sample.get_caps().ok_or_else(|| ())?;
         let info = gst_video::VideoInfo::from_caps(caps).ok_or_else(|| ())?;
