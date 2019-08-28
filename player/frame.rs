@@ -4,6 +4,7 @@ use std::sync::Arc;
 pub enum FrameData {
     Raw(Arc<Vec<u8>>),
     Texture(u32),
+    OESTexture(u32),
 }
 
 pub trait Buffer: Send + Sync {
@@ -47,14 +48,21 @@ impl Frame {
 
     pub fn get_texture_id(&self) -> u32 {
         match self.data {
-            FrameData::Texture(data) => data,
+            FrameData::Texture(data) | FrameData::OESTexture(data) => data,
             _ => unreachable!("invalid texture id request for raw data frame"),
         }
     }
 
     pub fn is_gl_texture(&self) -> bool {
         match self.data {
-            FrameData::Texture(_) => true,
+            FrameData::Texture(_) | FrameData::OESTexture(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_external_oes(&self) -> bool {
+        match self.data {
+            FrameData::OESTexture(_) => true,
             _ => false,
         }
     }
