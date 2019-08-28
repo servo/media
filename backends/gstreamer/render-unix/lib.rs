@@ -170,7 +170,7 @@ impl Render for RenderUnix {
         true
     }
 
-    fn build_frame(&self, buffer: gst::Buffer, info: gst_video::VideoInfo) -> Result<Frame, ()> {
+    fn build_frame(&self, sample: gst::Sample) -> Result<Frame, ()> {
         if self.gst_context.lock().unwrap().is_none() && self.gl_upload.lock().unwrap().is_some() {
             *self.gst_context.lock().unwrap() =
                 if let Some(glupload) = self.gl_upload.lock().unwrap().as_ref() {
@@ -182,6 +182,10 @@ impl Render for RenderUnix {
                     None
                 };
         }
+
+        let buffer = sample.get_buffer_owned().ok_or_else(|| ())?;
+        let caps = sample.get_caps().ok_or_else(|| ())?;
+        let info = gst_video::VideoInfo::from_caps(caps).ok_or_else(|| ())?;
 
         let frame =
             gst_video::VideoFrame::from_buffer_readable_gl(buffer, &info).or_else(|_| Err(()))?;
