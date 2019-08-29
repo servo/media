@@ -15,11 +15,19 @@ use servo_media_player::PlayerError;
     target_os = "dragonfly",
     target_os = "freebsd",
     target_os = "netbsd",
-    target_os = "openbsd"
+    target_os = "openbsd",
+    target_os = "windows",
 ))]
 mod platform {
+    #[cfg(not(target_os = "windows"))]
     extern crate servo_media_gstreamer_render_unix;
+    #[cfg(not(target_os = "windows"))]
     pub use self::servo_media_gstreamer_render_unix::RenderUnix as Render;
+
+    #[cfg(target_os = "windows")]
+    extern crate servo_media_gstreamer_render_windows;
+    #[cfg(target_os = "windows")]
+    pub use self::servo_media_gstreamer_render_windows::RenderWindows as Render;
 
     use super::*;
 
@@ -47,6 +55,7 @@ mod platform {
     target_os = "netbsd",
     target_os = "openbsd",
     target_os = "android",
+    target_os = "windows",
 )))]
 mod platform {
     use servo_media_gstreamer_render::Render as RenderTrait;

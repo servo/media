@@ -72,12 +72,41 @@ impl PlayerContextGlutin {
                 (gl_context, native_display, gl_api)
             }
 
+            #[cfg(target_os = "windows")]
+            {
+                let gl_context = {
+                    use glutin::os::windows::RawHandle;
+
+                    match raw_handle {
+                        RawHandle::Egl(egl_context) => GlContext::Egl(egl_context as usize),
+                        RawHandle::Wgl(wgl_context) => GlContext::Wgl(wgl_context as usize),
+                    }
+                };
+                let native_display = if let Some(display) =
+                    unsafe { windowed_context.context().get_egl_display() }
+                {
+                    NativeDisplay::Egl(display as usize)
+                } else {
+                    // XXX(ferjm) get wgl display.
+                    NativeDisplay::Unknown
+                };
+
+                let gl_api = match api {
+                    glutin::Api::OpenGl => GlApi::OpenGL3,
+                    glutin::Api::OpenGlEs => GlApi::Gles2,
+                    _ => GlApi::None,
+                };
+
+                (gl_context, native_display, gl_api)
+            }
+
             #[cfg(not(any(
                 target_os = "linux",
                 target_os = "dragonfly",
                 target_os = "freebsd",
                 target_os = "netbsd",
-                target_os = "openbsd"
+                target_os = "openbsd",
+                target_os = "windows",
             )))]
             {
                 println!("GL rendering unavailable for this platform");
