@@ -598,7 +598,7 @@ impl GStreamerPlayer {
                         let frame = render
                             .lock()
                             .unwrap()
-                            .get_frame_from_sample(&sample)
+                            .get_frame_from_sample(sample)
                             .or_else(|_| Err(gst::FlowError::Error))?;
                         renderer.lock().unwrap().render(frame);
                         notify!(observer, PlayerEvent::FrameUpdated);

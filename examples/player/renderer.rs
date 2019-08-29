@@ -138,6 +138,12 @@ impl frame::FrameRenderer for MediaFrameRenderer {
                 *height = frame.get_height();
 
                 let image_data = if frame.is_gl_texture() {
+                    let texture_target = if frame.is_external_oes() {
+                        webrender_api::TextureTarget::External
+                    } else {
+                        webrender_api::TextureTarget::Default
+                    };
+
                     self.current_frame_holder
                         .get_or_insert_with(|| FrameHolder::new(frame.clone()))
                         .set(frame);
@@ -145,9 +151,7 @@ impl frame::FrameRenderer for MediaFrameRenderer {
                     webrender_api::ImageData::External(webrender_api::ExternalImageData {
                         id: webrender_api::ExternalImageId(0),
                         channel_index: 0,
-                        image_type: webrender_api::ExternalImageType::TextureHandle(
-                            webrender_api::TextureTarget::Default,
-                        ),
+                        image_type: webrender_api::ExternalImageType::TextureHandle(texture_target),
                     })
                 } else {
                     webrender_api::ImageData::Raw(frame.get_data())
@@ -159,14 +163,18 @@ impl frame::FrameRenderer for MediaFrameRenderer {
                 self.current_frame = Some((image_key, frame.get_width(), frame.get_height()));
 
                 let image_data = if frame.is_gl_texture() {
+                    let texture_target = if frame.is_external_oes() {
+                        webrender_api::TextureTarget::External
+                    } else {
+                        webrender_api::TextureTarget::Default
+                    };
+
                     self.current_frame_holder = Some(FrameHolder::new(frame));
 
                     webrender_api::ImageData::External(webrender_api::ExternalImageData {
                         id: webrender_api::ExternalImageId(0),
                         channel_index: 0,
-                        image_type: webrender_api::ExternalImageType::TextureHandle(
-                            webrender_api::TextureTarget::Default,
-                        ),
+                        image_type: webrender_api::ExternalImageType::TextureHandle(texture_target),
                     })
                 } else {
                     webrender_api::ImageData::Raw(frame.get_data())

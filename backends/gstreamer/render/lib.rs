@@ -24,20 +24,15 @@ pub trait Render {
 
     /// Returns the Player's `Frame` to be consumed by the API user.
     ///
-    /// The implementator of this method will map the `buffer`,
-    /// according the `info`, to the rendering appropiate
-    /// structure. In the case of OpenGL-based renders, the `Frame`,
-    /// instead of the raw data, will transfer the texture ID.
+    /// The implementator of this method will map the `sample`'s
+    /// buffer to the rendering appropiate structure. In the case of
+    /// OpenGL-based renders, the `Frame`, instead of the raw data,
+    /// will transfer the texture ID.
     ///
     /// # Arguments
     ///
-    /// * `buffer` -  the GStreamer buffer to map
-    /// * `info` - buffer's video information
-    fn build_frame(
-        &self,
-        buffer: gst::Buffer,
-        info: gst_video::VideoInfo,
-    ) -> Result<sm_player::frame::Frame, ()>;
+    /// * `sample` -  the GStreamer sample with the buffer to map
+    fn build_frame(&self, sample: gst::Sample) -> Result<sm_player::frame::Frame, ()>;
 
     /// Sets the proper *video-sink* to GStreamer's `pipeline`, this
     /// video sink is simply a decorator of the passed `appsink`.

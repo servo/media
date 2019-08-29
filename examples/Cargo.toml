@@ -8,7 +8,6 @@ euclid = { version = "0.19.0", optional = true }
 failure = { version = "0.1", optional = true }
 failure_derive = { version = "0.1", optional = true }
 gleam = { version = "0.6.8", optional = true }
-hyper = { version = "0.12", optional = true }
 rand = { version = "0.5.0", optional = true }
 time = { version = "0.1.40", optional = true }
 serde = {version = "1.0", optional = true }
@@ -29,7 +28,7 @@ clap = { version = "2.33", default-features = false, optional = true }
 
 [features]
 default = []
-gui = [ "winit", "glutin", "clap", "webrender", "webrender_api" ]
+gui = [ "euclid", "clap", "failure", "failure_derive", "gleam", "glutin", "webrender", "webrender_api", "winit" ]
 player = [ "ipc-channel" ]
 noise = [ "rand" ]
 webrtc = [ "serde", "serde_derive", "serde_json" ]
