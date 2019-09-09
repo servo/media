@@ -38,6 +38,8 @@ pub enum PlayerError {
     /// Setting an audio or video stream failed.
     /// Possibly because the type of source is not PlayerSource::Stream.
     SetStreamFailed,
+    // Setting an audio or video track failed.
+    SetTrackFailed,
 }
 
 pub type SeekLockMsg = (bool, IpcSender<()>);
@@ -111,4 +113,6 @@ pub trait Player: Send + MediaInstance {
     fn set_stream(&self, stream: &MediaStreamId, only_stream: bool) -> Result<(), PlayerError>;
     /// If player's rendering draws using GL textures
     fn render_use_gl(&self) -> bool;
+    fn set_audio_track(&self, stream_index: i32, enabled: bool) -> Result<(), PlayerError>;
+    fn set_video_track(&self, stream_index: i32, enabled: bool) -> Result<(), PlayerError>;
 }

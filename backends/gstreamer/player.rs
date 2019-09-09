@@ -285,6 +285,22 @@ impl PlayerInner {
         }
         Err(PlayerError::SetStreamFailed)
     }
+
+    fn set_audio_track(&mut self, stream_index: i32, enabled: bool) -> Result<(), PlayerError> {
+        self.player
+            .set_audio_track(stream_index)
+            .map_err(|_| PlayerError::SetTrackFailed)?;
+        self.player.set_audio_track_enabled(enabled);
+        Ok(())
+    }
+
+    fn set_video_track(&mut self, stream_index: i32,  enabled: bool) -> Result<(), PlayerError> {
+        self.player
+            .set_video_track(stream_index)
+            .map_err(|_| PlayerError::SetTrackFailed)?;
+        self.player.set_video_track_enabled(enabled);
+        Ok(())
+    }
 }
 
 macro_rules! notify(
@@ -784,6 +800,20 @@ impl Player for GStreamerPlayer {
         let inner = self.inner.borrow();
         let mut inner = inner.as_ref().unwrap().lock().unwrap();
         inner.set_stream(stream, only_stream)
+    }
+
+    fn set_audio_track(&self, stream_index: i32, enabled: bool) -> Result<(), PlayerError> {
+        self.setup()?;
+        let inner = self.inner.borrow();
+        let mut inner = inner.as_ref().unwrap().lock().unwrap();
+        inner.set_audio_track(stream_index, enabled)
+    }
+
+    fn set_video_track(&self, stream_index: i32, enabled: bool) -> Result<(), PlayerError> {
+        self.setup()?;
+        let inner = self.inner.borrow();
+        let mut inner = inner.as_ref().unwrap().lock().unwrap();
+        inner.set_video_track(stream_index, enabled)
     }
 }
 
