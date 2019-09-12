@@ -6,14 +6,6 @@
 //! wrapping the *appsink* from the Player. And the shared frames are
 //! mapped as texture IDs.
 
-#![cfg(any(
-    target_os = "linux",
-    target_os = "dragonfly",
-    target_os = "freebsd",
-    target_os = "netbsd",
-    target_os = "openbsd"
-))]
-
 #[macro_use]
 extern crate gstreamer as gst;
 extern crate gstreamer_gl as gst_gl;
