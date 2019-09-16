@@ -1,12 +1,10 @@
-//! `RenderUnix` is a `Render` implementation for Unix-based
-//! platforms. It implements an OpenGL mechanism shared by Linux and
-//! many of the BSD flavors.
+//! `RenderAndroid` is a `Render` implementation for Android
+//! platform. It only implements an OpenGLES mechanism.
 //!
 //! Internally it uses GStreamer's *glsinkbin* element as *videosink*
 //! wrapping the *appsink* from the Player. And the shared frames are
 //! mapped as texture IDs.
 
-#[macro_use]
 extern crate gstreamer as gst;
 extern crate gstreamer_gl as gst_gl;
 extern crate gstreamer_video as gst_video;
@@ -43,21 +41,21 @@ impl Buffer for GStreamerBuffer {
     }
 }
 
-pub struct RenderUnix {
+pub struct RenderAndroid {
     display: gst_gl::GLDisplay,
     app_context: gst_gl::GLContext,
     gst_context: Arc<Mutex<Option<gst_gl::GLContext>>>,
     gl_upload: Arc<Mutex<Option<gst::Element>>>,
 }
 
-impl RenderUnix {
-    /// Tries to create a new intance of the `RenderUnix`
+impl RenderAndroid {
+    /// Tries to create a new intance of the `RenderAndroid`
     ///
     /// # Arguments
     ///
     /// * `context` - is the PlayerContext trait object from
     /// application.
-    pub fn new(app_gl_context: Box<dyn PlayerGLContext>) -> Option<RenderUnix> {
+    pub fn new(app_gl_context: Box<dyn PlayerGLContext>) -> Option<RenderAndroid> {
         // Check that we actually have the elements that we
         // need to make this work.
         if gst::ElementFactory::find("glsinkbin").is_none() {
@@ -77,65 +75,32 @@ impl RenderUnix {
         let (wrapped_context, display) = match gl_context {
             GlContext::Egl(context) => {
                 let display = match display_native {
-                    #[cfg(feature = "gl-egl")]
                     NativeDisplay::Egl(display_native) => {
                         unsafe { gst_gl::GLDisplayEGL::new_with_egl_display(display_native) }
                             .and_then(|display| Some(display.upcast()))
                     }
-                    #[cfg(feature = "gl-wayland")]
-                    NativeDisplay::Wayland(display_native) => {
-                        unsafe { gst_gl::GLDisplayWayland::new_with_display(display_native) }
-                            .and_then(|display| Some(display.upcast()))
-                    }
                     _ => None,
                 };
 
-                RenderUnix::create_wrapped_context(
-                    display,
-                    context,
-                    gst_gl::GLPlatform::EGL,
-                    gl_api,
-                )
+                if let Some(display) = display {
+                    let wrapped_context = unsafe {
+                        gst_gl::GLContext::new_wrapped(
+                            &display,
+                            context,
+                            gst_gl::GLPlatform::EGL,
+                            gl_api,
+                        )
+                    };
+                    (wrapped_context, Some(display))
+                } else {
+                    (None, None)
+                }
             }
-            GlContext::Glx(context) => {
-                let display = match display_native {
-                    #[cfg(feature = "gl-x11")]
-                    NativeDisplay::X11(display_native) => {
-                        unsafe { gst_gl::GLDisplayX11::new_with_display(display_native) }
-                            .and_then(|display| Some(display.upcast()))
-                    }
-                    _ => None,
-                };
-
-                RenderUnix::create_wrapped_context(
-                    display,
-                    context,
-                    gst_gl::GLPlatform::GLX,
-                    gl_api,
-                )
-            }
-            GlContext::Unknown => (None, None),
+            _ => (None, None),
         };
 
         if let Some(app_context) = wrapped_context {
-            let cat = gst::DebugCategory::get("servoplayer").unwrap();
-            let _: Result<(), ()> = app_context
-                .activate(true)
-                .and_then(|_| {
-                    app_context.fill_info().or_else(|err| {
-                        gst_warning!(
-                            cat,
-                            "Couldn't fill the wrapped app GL context: {}",
-                            err.to_string()
-                        );
-                        Ok(())
-                    })
-                })
-                .or_else(|_| {
-                    gst_warning!(cat, "Couldn't activate the wrapped app GL context");
-                    Ok(())
-                });
-            Some(RenderUnix {
+            Some(RenderAndroid {
                 display: display.unwrap(),
                 app_context,
                 gst_context: Arc::new(Mutex::new(None)),
@@ -145,24 +110,9 @@ impl RenderUnix {
             None
         }
     }
-
-    fn create_wrapped_context(
-        display: Option<gst_gl::GLDisplay>,
-        handle: usize,
-        platform: gst_gl::GLPlatform,
-        api: gst_gl::GLAPI,
-    ) -> (Option<gst_gl::GLContext>, Option<gst_gl::GLDisplay>) {
-        if let Some(display) = display {
-            let wrapped_context =
-                unsafe { gst_gl::GLContext::new_wrapped(&display, handle, platform, api) };
-            (wrapped_context, Some(display))
-        } else {
-            (None, None)
-        }
-    }
 }
 
-impl Render for RenderUnix {
+impl Render for RenderAndroid {
     fn is_gl(&self) -> bool {
         true
     }
@@ -197,8 +147,21 @@ impl Render for RenderUnix {
             .is_some();
 
         let info = gst_video::VideoInfo::from_caps(caps).ok_or_else(|| ())?;
+
+        if self.gst_context.lock().unwrap().is_some() {
+            if let Some(sync_meta) = buffer.get_meta::<gst_gl::GLSyncMeta>() {
+                sync_meta.set_sync_point(self.gst_context.lock().unwrap().as_ref().unwrap());
+            }
+        }
+
         let frame =
             gst_video::VideoFrame::from_buffer_readable_gl(buffer, &info).or_else(|_| Err(()))?;
+
+        if self.gst_context.lock().unwrap().is_some() {
+            if let Some(sync_meta) = frame.buffer().get_meta::<gst_gl::GLSyncMeta>() {
+                sync_meta.wait(&self.app_context);
+            }
+        }
 
         Frame::new(
             info.width() as i32,

@@ -2045,6 +2045,7 @@ dependencies = [
  "servo-media 0.1.0",
  "servo-media-audio 0.1.0",
  "servo-media-gstreamer-render 0.1.0",
+ "servo-media-gstreamer-render-android 0.1.0",
  "servo-media-gstreamer-render-unix 0.1.0",
  "servo-media-player 0.1.0",
  "servo-media-streams 0.1.0",
@@ -2060,6 +2061,18 @@ version = "0.1.0"
 dependencies = [
  "gstreamer 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gstreamer-video 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "servo-media-player 0.1.0",
+]
+
+[[package]]
+name = "servo-media-gstreamer-render-android"
+version = "0.1.0"
+dependencies = [
+ "glib 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gstreamer 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gstreamer-gl 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gstreamer-video 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "servo-media-gstreamer-render 0.1.0",
  "servo-media-player 0.1.0",
 ]
 
