@@ -317,4 +317,9 @@ impl MediaInstance for AudioContext {
         self.set_mute(val);
         Ok(())
     }
+
+    fn suspend(&self) -> Result<(), ()> {
+        let (tx, _) = mpsc::channel();
+        self.sender.send(AudioRenderThreadMsg::Suspend(tx)).map_err(|_| ())
+    }
 }

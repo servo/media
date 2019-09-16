@@ -825,6 +825,10 @@ impl MediaInstance for GStreamerPlayer {
     fn mute(&self, val: bool) -> Result<(), ()> {
         self.set_mute(val).map_err(|_| ())
     }
+
+    fn suspend(&self) -> Result<(), ()> {
+        self.pause().map_err(|_| ())
+    }
 }
 
 impl Drop for GStreamerPlayer {

@@ -277,4 +277,8 @@ impl MediaInstance for DummyPlayer {
     fn mute(&self, _val: bool) -> Result<(), ()> {
         Ok(())
     }
+
+    fn suspend(&self) -> Result<(), ()> {
+        Ok(())
+    }
 }

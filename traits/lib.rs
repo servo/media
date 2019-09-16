@@ -18,6 +18,7 @@ impl ClientContextId {
 pub trait MediaInstance: Send {
     fn get_id(&self) -> usize;
     fn mute(&self, val: bool) -> Result<(), ()>;
+    fn suspend(&self) -> Result<(), ()>;
 }
 
 pub enum BackendMsg {

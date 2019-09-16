@@ -257,11 +257,11 @@ impl Backend for GStreamerBackend {
     fn mute(&self, id: &ClientContextId, val: bool) {
         let mut instances = self.instances.lock().unwrap();
         match instances.get_mut(id) {
-            Some(vec) => vec.retain(|(_muteable_id, weak)| {
+            Some(vec) => vec.retain(|(_, weak)| {
                 if let Some(mutex) = weak.upgrade() {
-                    let muteable = mutex.lock().unwrap();
-                    if muteable.mute(val).is_err() {
-                        warn!("Could not mute muteable");
+                    let instance = mutex.lock().unwrap();
+                    if instance.mute(val).is_err() {
+                        warn!("Could not mute media instance");
                     }
                     true
                 } else {
@@ -270,6 +270,26 @@ impl Backend for GStreamerBackend {
             }),
             None => {
                 warn!("Trying to mute/unmute an unknown client context");
+            }
+        }
+    }
+
+    fn suspend(&self, id: &ClientContextId) {
+        let mut instances = self.instances.lock().unwrap();
+        match instances.get_mut(id) {
+            Some(vec) => vec.retain(|(_, weak)| {
+                if let Some(mutex) = weak.upgrade() {
+                    let instance = mutex.lock().unwrap();
+                    if instance.suspend().is_err() {
+                        warn!("Could not suspend media instance");
+                    }
+                    true
+                } else {
+                    false
+                }
+            }),
+            None => {
+                warn!("Trying to suspend an unknown client context");
             }
         }
     }

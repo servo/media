@@ -56,6 +56,15 @@ pub trait Backend: Send + Sync {
     /// The client context identifier is currently an abstraction of Servo's BrowsingContextId.
     /// https://github.com/servo/servo/blob/d8d70f66b1cbd156e9ff979babb84a1c5b579886/components/msg/constellation_msg.rs#L145
     fn mute(&self, _id: &ClientContextId, _val: bool) {}
+    /// Allow suspending all AudioContexts and Players playback associated with the given client
+    /// context identifier.
+    /// Note that suspending does not involve releasing any resources, so media playback can
+    /// be restarted.
+    /// Backend implementations are responsible for keeping a match between client contexts and the AudioContexts
+    /// and Players created for these contexts.
+    /// The client context identifier is currently an abstraction of Servo's BrowsingContextId.
+    /// https://github.com/servo/servo/blob/d8d70f66b1cbd156e9ff979babb84a1c5b579886/components/msg/constellation_msg.rs#L145
+    fn suspend(&self, _id: &ClientContextId) {}
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
