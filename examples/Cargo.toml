@@ -31,7 +31,7 @@ default = []
 gui = [ "euclid", "clap", "failure", "failure_derive", "gleam", "glutin", "webrender", "webrender_api", "winit" ]
 player = [ "ipc-channel" ]
 noise = [ "rand" ]
-webrtc = [ "serde", "serde_derive", "serde_json" ]
+webrtc = [ "serde", "serde_derive", "serde_json", "websocket" ]
 
 [[bin]]
 name = "dummy"
