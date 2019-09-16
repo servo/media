@@ -3,7 +3,6 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 use failure::Error;
-use gleam::gl;
 use ipc_channel::ipc::{self, IpcReceiver};
 use servo_media::player;
 use servo_media::player::frame;
@@ -133,15 +132,15 @@ impl App {
 
         let gl = match windowed_context.get_api() {
             glutin::Api::OpenGl => unsafe {
-                gl::GlFns::load_with(|s| windowed_context.get_proc_address(s) as *const _)
+                gleam::gl::GlFns::load_with(|s| windowed_context.get_proc_address(s) as *const _)
             },
             glutin::Api::OpenGlEs => unsafe {
-                gl::GlesFns::load_with(|s| windowed_context.get_proc_address(s) as *const _)
+                gleam::gl::GlesFns::load_with(|s| windowed_context.get_proc_address(s) as *const _)
             },
             glutin::Api::WebGl => unreachable!("webgl is unsupported"),
         };
 
-        println!("OpenGL version {}", gl.get_string(gl::VERSION));
+        println!("OpenGL version {}", gl.get_string(gleam::gl::VERSION));
 
         // WebRender
         let mut debug_flags = webrender::DebugFlags::empty();

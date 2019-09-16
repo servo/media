@@ -8,7 +8,6 @@ extern crate euclid;
 extern crate failure;
 #[macro_use]
 extern crate failure_derive;
-extern crate gleam;
 #[cfg(not(target_os = "android"))]
 extern crate glutin;
 extern crate ipc_channel;
