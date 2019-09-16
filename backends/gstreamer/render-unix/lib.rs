@@ -114,6 +114,7 @@ impl RenderUnix {
                     gl_api,
                 )
             }
+            GlContext::Wgl(_) |
             GlContext::Unknown => (None, None),
         };
 
