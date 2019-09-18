@@ -159,7 +159,13 @@ impl Render for RenderAndroid {
 
         if self.gst_context.lock().unwrap().is_some() {
             if let Some(sync_meta) = frame.buffer().get_meta::<gst_gl::GLSyncMeta>() {
-                sync_meta.wait(&self.app_context);
+                // This should possibly be
+                // sync_meta.wait(&self.app_context);
+                // since we want the main app thread to sync it's GPU pipeline too,
+                // but the main thread and the app context aren't managed by gstreamer,
+                // so we can't do that directly.
+                // https://github.com/servo/media/issues/309
+                sync_meta.wait(self.gst_context.lock().unwrap().as_ref().unwrap());
             }
         }
 
