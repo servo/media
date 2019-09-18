@@ -294,7 +294,7 @@ impl PlayerInner {
         Ok(())
     }
 
-    fn set_video_track(&mut self, stream_index: i32,  enabled: bool) -> Result<(), PlayerError> {
+    fn set_video_track(&mut self, stream_index: i32, enabled: bool) -> Result<(), PlayerError> {
         self.player
             .set_video_track(stream_index)
             .map_err(|_| PlayerError::SetTrackFailed)?;

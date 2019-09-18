@@ -71,6 +71,13 @@ use std::sync::{Arc, Mutex, Weak};
 use std::thread;
 use std::vec::Vec;
 
+// Re-export gstreamer log related functionality.
+// XXX(ferjm) ideally we should have an abstraction for this at the servo-media level.
+pub use gst::{
+    debug_add_log_function, debug_remove_default_log_function, DebugCategory, DebugLevel,
+    DebugLogFunction,
+};
+
 lazy_static! {
     static ref BACKEND_BASE_TIME: gst::ClockTime = { gst::SystemClock::obtain().get_time() };
 }
