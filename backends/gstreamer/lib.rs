@@ -293,6 +293,26 @@ impl Backend for GStreamerBackend {
             }
         }
     }
+
+    fn resume(&self, id: &ClientContextId) {
+        let mut instances = self.instances.lock().unwrap();
+        match instances.get_mut(id) {
+            Some(vec) => vec.retain(|(_, weak)| {
+                if let Some(mutex) = weak.upgrade() {
+                    let instance = mutex.lock().unwrap();
+                    if instance.resume().is_err() {
+                        warn!("Could not resume media instance");
+                    }
+                    true
+                } else {
+                    false
+                }
+            }),
+            None => {
+                warn!("Trying to resume an unknown client context");
+            }
+        }
+    }
 }
 
 impl AudioBackend for GStreamerBackend {

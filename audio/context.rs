@@ -322,4 +322,9 @@ impl MediaInstance for AudioContext {
         let (tx, _) = mpsc::channel();
         self.sender.send(AudioRenderThreadMsg::Suspend(tx)).map_err(|_| ())
     }
+
+    fn resume(&self) -> Result<(), ()> {
+        let (tx, _) = mpsc::channel();
+        self.sender.send(AudioRenderThreadMsg::Resume(tx)).map_err(|_| ())
+    }
 }

@@ -281,4 +281,8 @@ impl MediaInstance for DummyPlayer {
     fn suspend(&self) -> Result<(), ()> {
         Ok(())
     }
+
+    fn resume(&self) -> Result<(), ()> {
+        Ok(())
+    }
 }

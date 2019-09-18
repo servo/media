@@ -829,6 +829,10 @@ impl MediaInstance for GStreamerPlayer {
     fn suspend(&self) -> Result<(), ()> {
         self.pause().map_err(|_| ())
     }
+
+    fn resume(&self) -> Result<(), ()> {
+        self.play().map_err(|_| ())
+    }
 }
 
 impl Drop for GStreamerPlayer {
