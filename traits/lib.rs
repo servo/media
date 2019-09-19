@@ -15,9 +15,13 @@ impl ClientContextId {
     }
 }
 
+/// Common functionality for all high level media instances
+/// These currently are WebAudio AudioContexts and Players.
 pub trait MediaInstance: Send {
     fn get_id(&self) -> usize;
     fn mute(&self, val: bool) -> Result<(), ()>;
+    fn suspend(&self) -> Result<(), ()>;
+    fn resume(&self) -> Result<(), ()>;
 }
 
 pub enum BackendMsg {

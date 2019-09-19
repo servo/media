@@ -294,7 +294,7 @@ impl PlayerInner {
         Ok(())
     }
 
-    fn set_video_track(&mut self, stream_index: i32,  enabled: bool) -> Result<(), PlayerError> {
+    fn set_video_track(&mut self, stream_index: i32, enabled: bool) -> Result<(), PlayerError> {
         self.player
             .set_video_track(stream_index)
             .map_err(|_| PlayerError::SetTrackFailed)?;
@@ -824,6 +824,14 @@ impl MediaInstance for GStreamerPlayer {
 
     fn mute(&self, val: bool) -> Result<(), ()> {
         self.set_mute(val).map_err(|_| ())
+    }
+
+    fn suspend(&self) -> Result<(), ()> {
+        self.pause().map_err(|_| ())
+    }
+
+    fn resume(&self) -> Result<(), ()> {
+        self.play().map_err(|_| ())
     }
 }
 

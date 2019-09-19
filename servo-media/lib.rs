@@ -50,12 +50,25 @@ pub trait Backend: Send + Sync {
     fn create_webrtc(&self, signaller: Box<dyn WebRtcSignaller>) -> WebRtcController;
     fn can_play_type(&self, media_type: &str) -> SupportsMediaType;
     fn set_capture_mocking(&self, _mock: bool) {}
-    /// Allow muting/unmuting all AudioContexts and Players associated with the given client context identifier.
-    /// Backend implementations are responsible for keeping a match between client contexts and the AudioContexts
-    /// and Players created for these contexts.
-    /// The client context identifier is currently an abstraction of Servo's BrowsingContextId.
-    /// https://github.com/servo/servo/blob/d8d70f66b1cbd156e9ff979babb84a1c5b579886/components/msg/constellation_msg.rs#L145
+    /// Allow muting/unmuting the media instances associated with the given client context identifier.
+    /// Backend implementations are responsible for keeping a match between client contexts
+    /// and the media instances created for these contexts.
+    /// The client context identifier is currently an abstraction of Servo's PipelineId.
     fn mute(&self, _id: &ClientContextId, _val: bool) {}
+    /// Allow suspending the activity of all media instances associated with the given client
+    /// context identifier.
+    /// Note that suspending does not involve releasing any resources, so media playback can
+    /// be restarted.
+    /// Backend implementations are responsible for keeping a match between client contexts
+    /// and the media instances created for these contexts.
+    /// The client context identifier is currently an abstraction of Servo's PipelineId.
+    fn suspend(&self, _id: &ClientContextId) {}
+    /// Allow resuming the activity of all the media instances associated with the given client
+    /// context identifier.
+    /// Backend implementations are responsible for keeping a match between client contexts
+    /// and the media instances created for these contexts.
+    /// The client context identifier is currently an abstraction of Servo's PipelineId.
+    fn resume(&self, _id: &ClientContextId) {}
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

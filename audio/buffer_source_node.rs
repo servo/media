@@ -127,9 +127,7 @@ impl AudioBufferSourceNode {
             AudioBufferSourceNodeMessage::SetLoopEnabled(loop_enabled) => {
                 self.loop_enabled = loop_enabled
             }
-            AudioBufferSourceNodeMessage::SetLoopEnd(loop_end) => {
-                self.loop_end = Some(loop_end)
-            }
+            AudioBufferSourceNodeMessage::SetLoopEnd(loop_end) => self.loop_end = Some(loop_end),
             AudioBufferSourceNodeMessage::SetLoopStart(loop_start) => {
                 self.loop_start = Some(loop_start)
             }

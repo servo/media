@@ -139,6 +139,29 @@ impl GStreamerBackend {
             backend_chan: Arc::new(Mutex::new(backend_chan)),
         }))
     }
+
+    fn media_instance_action(
+        &self,
+        id: &ClientContextId,
+        cb: &dyn Fn(&dyn MediaInstance) -> Result<(), ()>,
+    ) {
+        let mut instances = self.instances.lock().unwrap();
+        match instances.get_mut(id) {
+            Some(vec) => vec.retain(|(_, weak)| {
+                if let Some(instance) = weak.upgrade() {
+                    if cb(&*(instance.lock().unwrap())).is_err() {
+                        warn!("Error executing media instance action");
+                    }
+                    true
+                } else {
+                    false
+                }
+            }),
+            None => {
+                warn!("Trying to exec media action on an unknown client context");
+            }
+        }
+    }
 }
 
 impl Backend for GStreamerBackend {
@@ -255,23 +278,18 @@ impl Backend for GStreamerBackend {
     }
 
     fn mute(&self, id: &ClientContextId, val: bool) {
-        let mut instances = self.instances.lock().unwrap();
-        match instances.get_mut(id) {
-            Some(vec) => vec.retain(|(_muteable_id, weak)| {
-                if let Some(mutex) = weak.upgrade() {
-                    let muteable = mutex.lock().unwrap();
-                    if muteable.mute(val).is_err() {
-                        warn!("Could not mute muteable");
-                    }
-                    true
-                } else {
-                    false
-                }
-            }),
-            None => {
-                warn!("Trying to mute/unmute an unknown client context");
-            }
-        }
+        self.media_instance_action(
+            id,
+            &(move |instance: &dyn MediaInstance| instance.mute(val)),
+        );
+    }
+
+    fn suspend(&self, id: &ClientContextId) {
+        self.media_instance_action(id, &|instance: &dyn MediaInstance| instance.suspend());
+    }
+
+    fn resume(&self, id: &ClientContextId) {
+        self.media_instance_action(id, &|instance: &dyn MediaInstance| instance.resume());
     }
 }
 

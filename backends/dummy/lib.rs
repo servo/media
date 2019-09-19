@@ -161,8 +161,12 @@ impl Player for DummyPlayer {
     fn render_use_gl(&self) -> bool {
         false
     }
-    fn set_audio_track(&self, _: i32, _: bool) -> Result<(), PlayerError> { Ok(()) }
-    fn set_video_track(&self, _: i32, _: bool) -> Result<(), PlayerError> { Ok(()) }
+    fn set_audio_track(&self, _: i32, _: bool) -> Result<(), PlayerError> {
+        Ok(())
+    }
+    fn set_video_track(&self, _: i32, _: bool) -> Result<(), PlayerError> {
+        Ok(())
+    }
 }
 
 impl WebRtcBackend for DummyBackend {
@@ -275,6 +279,14 @@ impl MediaInstance for DummyPlayer {
     }
 
     fn mute(&self, _val: bool) -> Result<(), ()> {
+        Ok(())
+    }
+
+    fn suspend(&self) -> Result<(), ()> {
+        Ok(())
+    }
+
+    fn resume(&self) -> Result<(), ()> {
         Ok(())
     }
 }
