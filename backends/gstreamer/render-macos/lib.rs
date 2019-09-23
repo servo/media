@@ -1,6 +1,9 @@
-//! `RenderMacOS` is a `Render` implementation for MacOS.
-
-#![cfg(target_os = "macos")]
+//! `RenderMacOS` is a `Render` implementation for MacOS
+//! platform.
+//!
+//! Internally it uses GStreamer's *glsinkbin* element as *videosink*
+//! wrapping the *appsink* from the Player. And the shared frames are
+//! mapped as texture IDs.
 
 #[macro_use]
 extern crate gstreamer as gst;
@@ -21,6 +24,7 @@ use sm_player::PlayerError;
 use std::sync::{Arc, Mutex};
 
 struct GStreamerBuffer {
+    is_external_oes: bool,
     frame: gst_video::VideoFrame<gst_video::video_frame::Readable>,
 }
 
@@ -29,7 +33,11 @@ impl Buffer for GStreamerBuffer {
         // packed formats are guaranteed to be in a single plane
         if self.frame.format() == gst_video::VideoFormat::Rgba {
             let tex_id = self.frame.get_texture_id(0).ok_or_else(|| ())?;
-            Ok(FrameData::Texture(tex_id))
+            Ok(if self.is_external_oes {
+                FrameData::OESTexture(tex_id)
+            } else {
+                FrameData::Texture(tex_id)
+            })
         } else {
             Err(())
         }
@@ -118,7 +126,7 @@ impl Render for RenderMacOS {
         true
     }
 
-    fn build_frame(&self, buffer: gst::Buffer, info: gst_video::VideoInfo) -> Result<Frame, ()> {
+    fn build_frame(&self, sample: gst::Sample) -> Result<Frame, ()> {
         if self.gst_context.lock().unwrap().is_none() && self.gl_upload.lock().unwrap().is_some() {
             *self.gst_context.lock().unwrap() =
                 if let Some(glupload) = self.gl_upload.lock().unwrap().as_ref() {
@@ -131,13 +139,52 @@ impl Render for RenderMacOS {
                 };
         }
 
+        let buffer = sample.get_buffer_owned().ok_or_else(|| ())?;
+        let caps = sample.get_caps().ok_or_else(|| ())?;
+
+        let is_external_oes = caps
+            .get_structure(0)
+            .and_then(|s| {
+                s.get::<&str>("texture-target").and_then(|target| {
+                    if target == "external-oes" {
+                        Some(s)
+                    } else {
+                        None
+                    }
+                })
+            })
+            .is_some();
+
+        let info = gst_video::VideoInfo::from_caps(caps).ok_or_else(|| ())?;
+
+        if self.gst_context.lock().unwrap().is_some() {
+            if let Some(sync_meta) = buffer.get_meta::<gst_gl::GLSyncMeta>() {
+                sync_meta.set_sync_point(self.gst_context.lock().unwrap().as_ref().unwrap());
+            }
+        }
+
         let frame =
             gst_video::VideoFrame::from_buffer_readable_gl(buffer, &info).or_else(|_| Err(()))?;
+
+        if self.gst_context.lock().unwrap().is_some() {
+            if let Some(sync_meta) = frame.buffer().get_meta::<gst_gl::GLSyncMeta>() {
+                // This should possibly be
+                // sync_meta.wait(&self.app_context);
+                // since we want the main app thread to sync it's GPU pipeline too,
+                // but the main thread and the app context aren't managed by gstreamer,
+                // so we can't do that directly.
+                // https://github.com/servo/media/issues/309
+                sync_meta.wait(self.gst_context.lock().unwrap().as_ref().unwrap());
+            }
+        }
 
         Frame::new(
             info.width() as i32,
             info.height() as i32,
-            Arc::new(GStreamerBuffer { frame }),
+            Arc::new(GStreamerBuffer {
+                is_external_oes,
+                frame,
+            }),
         )
     }
 
@@ -158,7 +205,7 @@ impl Render for RenderMacOS {
         let caps = gst::Caps::builder("video/x-raw")
             .features(&[&gst_gl::CAPS_FEATURE_MEMORY_GL_MEMORY])
             .field("format", &gst_video::VideoFormat::Rgba.to_string())
-            .field("texture-target", &"2D")
+            .field("texture-target", &gst::List::new(&[&"2D", &"external-oes"]))
             .build();
         appsink
             .set_property("caps", &caps)
