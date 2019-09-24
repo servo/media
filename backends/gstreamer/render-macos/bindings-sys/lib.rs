@@ -2,12 +2,17 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-use gst_gl_sys::{GstGLDisplay, GstGLDisplayClass};
+#![allow(non_camel_case_types, non_upper_case_globals, non_snake_case)]
+
+extern crate glib_sys as glib;
+extern crate gstreamer_gl_sys as gst_gl;
+
+use glib::GType;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct GstGLDisplayCocoaClass {
-    pub object_class: GstGLDisplayClass,
+    pub object_class: gst_gl::GstGLDisplayClass,
 }
 
 impl ::std::fmt::Debug for GstGLDisplayCocoaClass {
@@ -21,7 +26,7 @@ impl ::std::fmt::Debug for GstGLDisplayCocoaClass {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct GstGLDisplayCocoa {
-    pub parent: GstGLDisplay,
+    pub parent: gst_gl::GstGLDisplay,
 }
 
 impl ::std::fmt::Debug for GstGLDisplayCocoa {
@@ -36,6 +41,6 @@ extern "C" {
     //=========================================================================
     // GstGLDisplayCocoa
     //=========================================================================
-    pub fn gst_gl_display_cocoa_get_type() -> glib_sys::GType;
+    pub fn gst_gl_display_cocoa_get_type() -> GType;
     pub fn gst_gl_display_cocoa_new() -> *mut GstGLDisplayCocoa;
 }

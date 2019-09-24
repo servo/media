@@ -1,0 +1,21 @@
+[build-dependencies]
+pkg-config = "0.3.7"
+
+[dependencies.glib-sys]
+version = "0.9"
+
+[dependencies.gstreamer-gl-sys]
+version = "0.8"
+
+[lib]
+name = "servo_media_gst_gl_macos_bindings_sys"
+path = "lib.rs"
+
+[features]
+v1_16 = []
+
+[package]
+build = "build.rs"
+name = "servo-media-gst-gl-macos-bindings-sys"
+authors = ["The Servo Project Developers"]
+version = "0.1.0"
