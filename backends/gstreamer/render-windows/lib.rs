@@ -18,12 +18,13 @@ extern crate servo_media_player as sm_player;
 use gst::prelude::*;
 use gst_gl::prelude::*;
 use sm_gst_render::Render;
-use sm_player::context::{GlApi, GlContext, NativeDisplay, PlayerGLContext};
+use sm_player::context::{GlApi, GlContext, PlayerGLContext};
 use sm_player::frame::{Buffer, Frame, FrameData};
 use sm_player::PlayerError;
 use std::sync::{Arc, Mutex};
 
 struct GStreamerBuffer {
+    is_external_oes: bool,
     frame: gst_video::VideoFrame<gst_video::video_frame::Readable>,
 }
 
@@ -32,7 +33,11 @@ impl Buffer for GStreamerBuffer {
         // packed formats are guaranteed to be in a single plane
         if self.frame.format() == gst_video::VideoFormat::Rgba {
             let tex_id = self.frame.get_texture_id(0).ok_or_else(|| ())?;
-            Ok(FrameData::Texture(tex_id))
+            Ok(if self.is_external_oes {
+                FrameData::OESTexture(tex_id)
+            } else {
+                FrameData::Texture(tex_id)
+            })
         } else {
             Err(())
         }
@@ -142,7 +147,7 @@ impl Render for RenderWindows {
         true
     }
 
-    fn build_frame(&self, buffer: gst::Buffer, info: gst_video::VideoInfo) -> Result<Frame, ()> {
+    fn build_frame(&self, sample: gst::Sample) -> Result<Frame, ()> {
         if self.gst_context.lock().unwrap().is_none() && self.gl_upload.lock().unwrap().is_some() {
             *self.gst_context.lock().unwrap() =
                 if let Some(glupload) = self.gl_upload.lock().unwrap().as_ref() {
@@ -155,13 +160,52 @@ impl Render for RenderWindows {
                 };
         }
 
+        let buffer = sample.get_buffer_owned().ok_or_else(|| ())?;
+        let caps = sample.get_caps().ok_or_else(|| ())?;
+
+        let is_external_oes = caps
+            .get_structure(0)
+            .and_then(|s| {
+                s.get::<&str>("texture-target").and_then(|target| {
+                    if target == "external-oes" {
+                        Some(s)
+                    } else {
+                        None
+                    }
+                })
+            })
+            .is_some();
+
+        let info = gst_video::VideoInfo::from_caps(caps).ok_or_else(|| ())?;
+
+        if self.gst_context.lock().unwrap().is_some() {
+            if let Some(sync_meta) = buffer.get_meta::<gst_gl::GLSyncMeta>() {
+                sync_meta.set_sync_point(self.gst_context.lock().unwrap().as_ref().unwrap());
+            }
+        }
+
         let frame =
             gst_video::VideoFrame::from_buffer_readable_gl(buffer, &info).or_else(|_| Err(()))?;
+
+        if self.gst_context.lock().unwrap().is_some() {
+            if let Some(sync_meta) = frame.buffer().get_meta::<gst_gl::GLSyncMeta>() {
+                // This should possibly be
+                // sync_meta.wait(&self.app_context);
+                // since we want the main app thread to sync it's GPU pipeline too,
+                // but the main thread and the app context aren't managed by gstreamer,
+                // so we can't do that directly.
+                // https://github.com/servo/media/issues/309
+                sync_meta.wait(self.gst_context.lock().unwrap().as_ref().unwrap());
+            }
+        }
 
         Frame::new(
             info.width() as i32,
             info.height() as i32,
-            Arc::new(GStreamerBuffer { frame }),
+            Arc::new(GStreamerBuffer {
+                is_external_oes,
+                frame,
+            }),
         )
     }
 
