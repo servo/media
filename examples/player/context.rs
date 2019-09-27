@@ -39,6 +39,8 @@ impl PlayerContextGlutin {
                 target_os = "openbsd"
             ))]
             {
+                use glutin::os::unix::WindowExt;
+
                 let gl_context = {
                     use glutin::os::unix::RawHandle;
 
@@ -47,21 +49,19 @@ impl PlayerContextGlutin {
                         RawHandle::Glx(glx_context) => GlContext::Glx(glx_context as usize),
                     }
                 };
-                let native_display = if let Some(display) =
-                    unsafe { windowed_context.context().get_egl_display() }
-                {
-                    NativeDisplay::Egl(display as usize)
-                } else {
-                    use glutin::os::unix::WindowExt;
 
+                let native_display =
                     if let Some(display) = windowed_context.window().get_wayland_display() {
                         NativeDisplay::Wayland(display as usize)
                     } else if let Some(display) = windowed_context.window().get_xlib_display() {
                         NativeDisplay::X11(display as usize)
+                    } else if let Some(display) =
+                        unsafe { windowed_context.context().get_egl_display() }
+                    {
+                        NativeDisplay::Egl(display as usize)
                     } else {
                         NativeDisplay::Unknown
-                    }
-                };
+                    };
 
                 let gl_api = match api {
                     glutin::Api::OpenGl => GlApi::OpenGL3,
