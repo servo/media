@@ -6,6 +6,7 @@ members = [
   "backends/gstreamer",
   "backends/gstreamer/render",
   "backends/gstreamer/render-unix",
+  "backends/gstreamer/render-macos",
   "examples",
   "examples/android/lib",
   "player",
