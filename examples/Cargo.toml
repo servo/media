@@ -26,6 +26,10 @@ winit = { version = "0.19", optional = true }
 glutin = { git = "https://github.com/rust-windowing/glutin", branch = "backport21", optional = true }
 clap = { version = "2.33", default-features = false, optional = true }
 
+[target.'cfg(target_os = "macos")'.dependencies]
+cgl = { version = "0.3" }
+lazy_static = { version = "1" }
+
 [features]
 default = []
 gui = [ "euclid", "clap", "failure", "failure_derive", "gleam", "glutin", "webrender", "webrender_api", "winit" ]

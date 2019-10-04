@@ -3,11 +3,17 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 use servo_media::player::context::*;
+use std::mem;
+use std::sync::Mutex;
 
 pub struct PlayerContextGlutin {
     gl_context: GlContext,
     native_display: NativeDisplay,
     gl_api: GlApi,
+}
+
+lazy_static! {
+    static ref CHOOSE_PIXEL_FORMAT_MUTEX: Mutex<()> = Mutex::new(());
 }
 
 #[allow(unused_variables)]
@@ -74,7 +80,57 @@ impl PlayerContextGlutin {
 
             #[cfg(target_os = "macos")]
             {
-                let gl_context = GlContext::Cgl(raw_handle as usize);
+                #[allow(non_upper_case_globals)]
+                const kCGLOGLPVersion_3_2_Core: cgl::CGLPixelFormatAttribute = 0x3200;
+
+                // CGLChoosePixelFormat fails if multiple threads try to open a display connection
+                // simultaneously. The following error is returned by CGLChoosePixelFormat:
+                // kCGLBadConnection - Invalid connection to Core Graphics.
+                // We use a static mutex guard to fix this issue
+                let _guard = CHOOSE_PIXEL_FORMAT_MUTEX.lock().unwrap();
+
+                let mut attributes = [cgl::kCGLPFAOpenGLProfile, kCGLOGLPVersion_3_2_Core, 0];
+
+                let mut pixel_format = mem::MaybeUninit::uninit();
+                let mut pix_count = 0;
+
+                let pixel_format = unsafe {
+                    if cgl::CGLChoosePixelFormat(
+                        attributes.as_mut_ptr(),
+                        pixel_format.as_mut_ptr(),
+                        &mut pix_count,
+                    ) != 0
+                    {
+                        panic!();
+                    }
+
+                    if pix_count == 0 {
+                        panic!();
+                    }
+                    pixel_format.assume_init()
+                };
+
+                let mut native = mem::MaybeUninit::uninit();
+
+                let native = unsafe {
+                    // XXX: if a new context is created, not a shared one, the same error when drawing
+                    if cgl::CGLCreateContext(pixel_format, raw_handle as _, native.as_mut_ptr())
+                        != 0
+                    {
+                        // we face the same problem
+                        // https://github.com/servo/rust-offscreen-rendering-context/issues/82
+                        panic!();
+                    }
+                    native.assume_init()
+                };
+
+                unsafe {
+                    if cgl::CGLDestroyPixelFormat(pixel_format) != 0 {
+                        eprintln!("CGLDestroyPixelformat errored");
+                    }
+                }
+
+                let gl_context = GlContext::Cgl(native as usize);
                 let gl_api = match api {
                     glutin::Api::OpenGl => GlApi::OpenGL3,
                     _ => GlApi::None,
@@ -102,6 +158,23 @@ impl PlayerContextGlutin {
             native_display,
             gl_api,
         }
+    }
+}
+
+// XXX(victor): ensure the lifetime
+#[cfg(target_os = "macos")]
+impl Drop for PlayerContextGlutin {
+    fn drop(&mut self) {
+	let context = match self.gl_context {
+	    GlContext::Cgl(ctxt) => ctxt as cgl::CGLContextObj,
+	    _ => return
+	};
+	unsafe {
+	    if cgl::CGLGetCurrentContext() == context {
+		cgl::CGLSetCurrentContext(0 as cgl::CGLContextObj);
+	    }
+	    cgl::CGLDestroyContext(context);
+	}
     }
 }
 

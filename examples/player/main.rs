@@ -16,6 +16,11 @@ extern crate webrender;
 extern crate webrender_api;
 #[cfg(not(target_os = "android"))]
 extern crate winit;
+#[cfg(target_os = "macos")]
+extern crate cgl;
+#[cfg(target_os = "macos")]
+#[macro_use]
+extern crate lazy_static;
 
 use servo_media::ServoMedia;
 use std::path::Path;
