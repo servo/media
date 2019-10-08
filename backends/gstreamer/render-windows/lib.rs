@@ -18,7 +18,7 @@ extern crate servo_media_player as sm_player;
 use gst::prelude::*;
 use gst_gl::prelude::*;
 use sm_gst_render::Render;
-use sm_player::context::{GlApi, GlContext, PlayerGLContext};
+use sm_player::context::{GlApi, GlContext, NativeDisplay, PlayerGLContext};
 use sm_player::frame::{Buffer, Frame, FrameData};
 use sm_player::PlayerError;
 use std::sync::{Arc, Mutex};
