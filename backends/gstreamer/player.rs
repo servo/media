@@ -81,6 +81,7 @@ fn metadata_from_media_info(media_info: &gst_player::PlayerMediaInfo) -> Result<
 
     let is_seekable = media_info.is_seekable();
     let is_live = media_info.is_live();
+    let title = media_info.get_title().map(|s| s.as_str().to_string());
 
     Ok(Metadata {
         duration,
@@ -91,6 +92,7 @@ fn metadata_from_media_info(media_info: &gst_player::PlayerMediaInfo) -> Result<
         audio_tracks,
         video_tracks,
         is_live,
+        title,
     })
 }
 
