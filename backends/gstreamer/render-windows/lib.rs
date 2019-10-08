@@ -79,7 +79,6 @@ impl RenderWindows {
             // XXX(ferjm) add Wgl case.
             GlContext::Egl(context) => {
                 let display = match display_native {
-                    #[cfg(feature = "gl-egl")]
                     NativeDisplay::Egl(display_native) => {
                         unsafe { gst_gl::GLDisplayEGL::new_with_egl_display(display_native) }
                             .and_then(|display| Some(display.upcast()))
