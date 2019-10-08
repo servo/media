@@ -15,7 +15,7 @@ version = "0.14"
 
 [dependencies.gstreamer-gl]
 version = "0.14"
-features = []
+features = ["egl"]
 
 [dependencies.gstreamer-video]
 version = "0.14"
