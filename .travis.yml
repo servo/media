@@ -48,7 +48,7 @@ matrix:
 
       script:
         - cargo build
-        - ls examples/*.rs | xargs -I{} basename  {} .rs  | grep -v params_connect | RUST_BACKTRACE=1 GST_DEBUG=3 xargs -I{} cargo ex {} --all-features
+        - ls examples/*.rs | xargs -I{} basename  {} .rs  | grep -v params_connect | RUST_BACKTRACE=1 GST_DEBUG=3 xargs -I{} cargo ex {} --features="player noise webrtc"
 
     - name: "Android build"
       before_install:
