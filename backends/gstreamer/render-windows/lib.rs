@@ -97,23 +97,6 @@ impl RenderWindows {
         };
 
         if let Some(app_context) = wrapped_context {
-            let cat = gst::DebugCategory::get("servoplayer").unwrap();
-            let _: Result<(), ()> = app_context
-                .activate(true)
-                .and_then(|_| {
-                    app_context.fill_info().or_else(|err| {
-                        gst_warning!(
-                            cat,
-                            "Couldn't fill the wrapped app GL context: {}",
-                            err.to_string()
-                        );
-                        Ok(())
-                    })
-                })
-                .or_else(|_| {
-                    gst_warning!(cat, "Couldn't activate the wrapped app GL context");
-                    Ok(())
-                });
             Some(RenderWindows {
                 display: display.unwrap(),
                 app_context,
