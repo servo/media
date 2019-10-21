@@ -1,13 +1,10 @@
-//! `RenderWindows` is a `Render` implementation for Windows-based
-//! platforms.
+//! `RenderWindows` is a `Render` implementation for Android
+//! platform. It only implements an OpenGLES mechanism.
 //!
 //! Internally it uses GStreamer's *glsinkbin* element as *videosink*
 //! wrapping the *appsink* from the Player. And the shared frames are
 //! mapped as texture IDs.
 
-#![cfg(target_os = "windows")]
-
-#[macro_use]
 extern crate gstreamer as gst;
 extern crate gstreamer_gl as gst_gl;
 extern crate gstreamer_video as gst_video;
@@ -52,7 +49,7 @@ pub struct RenderWindows {
 }
 
 impl RenderWindows {
-    /// Tries to create a new intance of the `RenderWindows`
+    /// Tries to create a new instance of the `RenderWindows`
     ///
     /// # Arguments
     ///
@@ -76,7 +73,6 @@ impl RenderWindows {
         };
 
         let (wrapped_context, display) = match gl_context {
-            // XXX(ferjm) add Wgl case.
             GlContext::Egl(context) => {
                 let display = match display_native {
                     NativeDisplay::Egl(display_native) => {
@@ -86,12 +82,19 @@ impl RenderWindows {
                     _ => None,
                 };
 
-                RenderWindows::create_wrapped_context(
-                    display,
-                    context,
-                    gst_gl::GLPlatform::EGL,
-                    gl_api,
-                )
+                if let Some(display) = display {
+                    let wrapped_context = unsafe {
+                        gst_gl::GLContext::new_wrapped(
+                            &display,
+                            context,
+                            gst_gl::GLPlatform::EGL,
+                            gl_api,
+                        )
+                    };
+                    (wrapped_context, Some(display))
+                } else {
+                    (None, None)
+                }
             }
             _ => (None, None),
         };
@@ -105,21 +108,6 @@ impl RenderWindows {
             })
         } else {
             None
-        }
-    }
-
-    fn create_wrapped_context(
-        display: Option<gst_gl::GLDisplay>,
-        handle: usize,
-        platform: gst_gl::GLPlatform,
-        api: gst_gl::GLAPI,
-    ) -> (Option<gst_gl::GLContext>, Option<gst_gl::GLDisplay>) {
-        if let Some(display) = display {
-            let wrapped_context =
-                unsafe { gst_gl::GLContext::new_wrapped(&display, handle, platform, api) };
-            (wrapped_context, Some(display))
-        } else {
-            (None, None)
         }
     }
 }
@@ -208,7 +196,7 @@ impl Render for RenderWindows {
         let caps = gst::Caps::builder("video/x-raw")
             .features(&[&gst_gl::CAPS_FEATURE_MEMORY_GL_MEMORY])
             .field("format", &gst_video::VideoFormat::Rgba.to_string())
-            .field("texture-target", &"2D")
+            .field("texture-target", &gst::List::new(&[&"2D", &"external-oes"]))
             .build();
         appsink
             .set_property("caps", &caps)
