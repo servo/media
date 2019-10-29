@@ -78,7 +78,7 @@ lazy_static! {
 pub struct GStreamerBackend {
     capture_mocking: AtomicBool,
     instances: Arc<Mutex<HashMap<ClientContextId, Vec<(usize, Weak<Mutex<dyn MediaInstance>>)>>>>,
-    next_muteable_id: AtomicUsize,
+    next_instance_id: AtomicUsize,
     /// Channel to communicate media instances with its owner Backend.
     backend_chan: Arc<Mutex<Sender<BackendMsg>>>,
 }
@@ -120,9 +120,9 @@ impl GStreamerBackend {
             .name("GStreamerBackend ShutdownThread".to_owned())
             .spawn(move || {
                 match recvr.recv().unwrap() {
-                    BackendMsg::Shutdown(context_id, muteable_id) => {
+                    BackendMsg::Shutdown(context_id, instance_id) => {
                         if let Some(vec) = instances_.lock().unwrap().get_mut(&context_id) {
-                            vec.retain(|m| m.0 != muteable_id);
+                            vec.retain(|m| m.0 != instance_id);
                             if vec.is_empty() {
                                 instances_.lock().unwrap().remove(&context_id);
                             }
@@ -135,7 +135,7 @@ impl GStreamerBackend {
         Ok(Box::new(GStreamerBackend {
             capture_mocking: AtomicBool::new(false),
             instances,
-            next_muteable_id: AtomicUsize::new(0),
+            next_instance_id: AtomicUsize::new(0),
             backend_chan: Arc::new(Mutex::new(backend_chan)),
         }))
     }
@@ -173,7 +173,7 @@ impl Backend for GStreamerBackend {
         renderer: Option<Arc<Mutex<dyn FrameRenderer>>>,
         gl_context: Box<dyn PlayerGLContext>,
     ) -> Arc<Mutex<dyn Player>> {
-        let id = self.next_muteable_id.fetch_add(1, Ordering::Relaxed);
+        let id = self.next_instance_id.fetch_add(1, Ordering::Relaxed);
         let player = Arc::new(Mutex::new(player::GStreamerPlayer::new(
             id,
             context_id,
@@ -194,7 +194,7 @@ impl Backend for GStreamerBackend {
         client_context_id: &ClientContextId,
         options: AudioContextOptions,
     ) -> Arc<Mutex<AudioContext>> {
-        let id = self.next_muteable_id.fetch_add(1, Ordering::Relaxed);
+        let id = self.next_instance_id.fetch_add(1, Ordering::Relaxed);
         let context = Arc::new(Mutex::new(AudioContext::new::<Self>(
             id,
             client_context_id,
