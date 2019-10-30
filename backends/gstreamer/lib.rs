@@ -56,7 +56,7 @@ use servo_media_audio::decoder::AudioDecoder;
 use servo_media_audio::sink::AudioSinkError;
 use servo_media_audio::AudioBackend;
 use servo_media_player::context::PlayerGLContext;
-use servo_media_player::frame::FrameRenderer;
+use servo_media_player::video::VideoFrameRenderer;
 use servo_media_player::{Player, PlayerEvent, StreamType};
 use servo_media_streams::capture::MediaTrackConstraintSet;
 use servo_media_streams::registry::MediaStreamId;
@@ -170,7 +170,7 @@ impl Backend for GStreamerBackend {
         context_id: &ClientContextId,
         stream_type: StreamType,
         sender: IpcSender<PlayerEvent>,
-        renderer: Option<Arc<Mutex<dyn FrameRenderer>>>,
+        renderer: Option<Arc<Mutex<dyn VideoFrameRenderer>>>,
         gl_context: Box<dyn PlayerGLContext>,
     ) -> Arc<Mutex<dyn Player>> {
         let id = self.next_instance_id.fetch_add(1, Ordering::Relaxed);

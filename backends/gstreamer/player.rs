@@ -11,8 +11,8 @@ use media_stream::GStreamerMediaStream;
 use media_stream_source::{register_servo_media_stream_src, ServoMediaStreamSrc};
 use render::GStreamerRender;
 use servo_media_player::context::PlayerGLContext;
-use servo_media_player::frame::FrameRenderer;
 use servo_media_player::metadata::Metadata;
+use servo_media_player::video::VideoFrameRenderer;
 use servo_media_player::{
     PlaybackState, Player, PlayerError, PlayerEvent, SeekLock, SeekLockMsg, StreamType,
 };
@@ -105,7 +105,7 @@ enum PlayerSource {
 struct PlayerInner {
     player: gst_player::Player,
     source: Option<PlayerSource>,
-    appsink: gst_app::AppSink,
+    video_sink: gst_app::AppSink,
     input_size: u64,
     rate: f64,
     stream_type: StreamType,
@@ -351,7 +351,7 @@ pub struct GStreamerPlayer {
     backend_chan: Arc<Mutex<Sender<BackendMsg>>>,
     inner: RefCell<Option<Arc<Mutex<PlayerInner>>>>,
     observer: Arc<Mutex<IpcSender<PlayerEvent>>>,
-    renderer: Option<Arc<Mutex<dyn FrameRenderer>>>,
+    video_renderer: Option<Arc<Mutex<dyn VideoFrameRenderer>>>,
     /// Indicates whether the setup was succesfully performed and
     /// we are ready to consume a/v data.
     is_ready: Arc<Once>,
@@ -368,7 +368,7 @@ impl GStreamerPlayer {
         backend_chan: Arc<Mutex<Sender<BackendMsg>>>,
         stream_type: StreamType,
         observer: IpcSender<PlayerEvent>,
-        renderer: Option<Arc<Mutex<dyn FrameRenderer>>>,
+        video_renderer: Option<Arc<Mutex<dyn VideoFrameRenderer>>>,
         gl_context: Box<dyn PlayerGLContext>,
     ) -> GStreamerPlayer {
         let _ = gst::DebugCategory::new(
@@ -383,7 +383,7 @@ impl GStreamerPlayer {
             backend_chan,
             inner: RefCell::new(None),
             observer: Arc::new(Mutex::new(observer)),
-            renderer,
+            video_renderer,
             is_ready: Arc::new(Once::new()),
             stream_type,
             render: Arc::new(Mutex::new(GStreamerRender::new(gl_context))),
@@ -407,14 +407,13 @@ impl GStreamerPlayer {
         }
 
         let player = gst_player::Player::new(
-            /* video renderer */ None, /* signal dispatcher */ None,
+            /* video video_renderer */ None, /* signal dispatcher */ None,
         );
 
         let pipeline = player.get_pipeline();
 
         // FIXME(#282): The progressive downloading breaks playback on Windows and Android.
         if !cfg!(any(target_os = "windows", target_os = "android")) {
-
             // Set player to perform progressive downloading. This will make the
             // player store the downloaded media in a local temporary file for
             // faster playback of already-downloaded chunks.
@@ -462,7 +461,7 @@ impl GStreamerPlayer {
             .set_config(config)
             .map_err(|e| PlayerError::Backend(e.to_string()))?;
 
-        let appsink = self.render.lock().unwrap().setup_video_sink(&pipeline)?;
+        let video_sink = self.render.lock().unwrap().setup_video_sink(&pipeline)?;
 
         // There's a known bug in gstreamer that may cause a wrong transition
         // to the ready state while setting the uri property:
@@ -488,15 +487,15 @@ impl GStreamerPlayer {
             .set_property("uri", &uri)
             .expect("playbin doesn't have expected 'uri' property");
 
-        // No renderers no video
-        if self.renderer.is_none() {
+        // No video_renderers no video
+        if self.video_renderer.is_none() {
             player.set_video_track_enabled(false);
         }
 
         *self.inner.borrow_mut() = Some(Arc::new(Mutex::new(PlayerInner {
             player,
             source: None,
-            appsink,
+            video_sink,
             input_size: 0,
             rate: 1.0,
             stream_type: self.stream_type,
@@ -605,22 +604,22 @@ impl GStreamerPlayer {
             }
         });
 
-        self.renderer.clone().map(|renderer| {
+        self.video_renderer.clone().map(|video_renderer| {
             let render = self.render.clone();
             let observer = self.observer.clone();
-            // Set appsink callbacks.
-            inner.lock().unwrap().appsink.set_callbacks(
+            // Set video_sink callbacks.
+            inner.lock().unwrap().video_sink.set_callbacks(
                 gst_app::AppSinkCallbacks::new()
                     .new_preroll(|_| Ok(gst::FlowSuccess::Ok))
-                    .new_sample(move |appsink| {
-                        let sample = appsink.pull_sample().ok_or(gst::FlowError::Eos)?;
+                    .new_sample(move |video_sink| {
+                        let sample = video_sink.pull_sample().ok_or(gst::FlowError::Eos)?;
                         let frame = render
                             .lock()
                             .unwrap()
                             .get_frame_from_sample(sample)
                             .or_else(|_| Err(gst::FlowError::Error))?;
-                        renderer.lock().unwrap().render(frame);
-                        notify!(observer, PlayerEvent::FrameUpdated);
+                        video_renderer.lock().unwrap().render(frame);
+                        notify!(observer, PlayerEvent::VideoFrameUpdated);
                         Ok(gst::FlowSuccess::Ok)
                     })
                     .build(),

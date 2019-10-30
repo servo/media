@@ -16,7 +16,7 @@ use gst::prelude::*;
 use gst_gl::prelude::*;
 use sm_gst_render::Render;
 use sm_player::context::{GlApi, GlContext, NativeDisplay, PlayerGLContext};
-use sm_player::frame::{Buffer, Frame, FrameData};
+use sm_player::video::{Buffer, VideoFrame, VideoFrameData};
 use sm_player::PlayerError;
 use std::sync::{Arc, Mutex};
 
@@ -26,14 +26,14 @@ struct GStreamerBuffer {
 }
 
 impl Buffer for GStreamerBuffer {
-    fn to_vec(&self) -> Result<FrameData, ()> {
+    fn to_vec(&self) -> Result<VideoFrameData, ()> {
         // packed formats are guaranteed to be in a single plane
         if self.frame.format() == gst_video::VideoFormat::Rgba {
             let tex_id = self.frame.get_texture_id(0).ok_or_else(|| ())?;
             Ok(if self.is_external_oes {
-                FrameData::OESTexture(tex_id)
+                VideoFrameData::OESTexture(tex_id)
             } else {
-                FrameData::Texture(tex_id)
+                VideoFrameData::Texture(tex_id)
             })
         } else {
             Err(())
@@ -117,7 +117,7 @@ impl Render for RenderAndroid {
         true
     }
 
-    fn build_frame(&self, sample: gst::Sample) -> Result<Frame, ()> {
+    fn build_frame(&self, sample: gst::Sample) -> Result<VideoFrame, ()> {
         if self.gst_context.lock().unwrap().is_none() && self.gl_upload.lock().unwrap().is_some() {
             *self.gst_context.lock().unwrap() =
                 if let Some(glupload) = self.gl_upload.lock().unwrap().as_ref() {
@@ -169,7 +169,7 @@ impl Render for RenderAndroid {
             }
         }
 
-        Frame::new(
+        VideoFrame::new(
             info.width() as i32,
             info.height() as i32,
             Arc::new(GStreamerBuffer {
