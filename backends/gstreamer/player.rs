@@ -1,4 +1,5 @@
 use super::BACKEND_BASE_TIME;
+use byte_slice_cast::AsSliceOf;
 use glib;
 use glib::prelude::*;
 use gst;
@@ -10,6 +11,7 @@ use ipc_channel::ipc::{channel, IpcReceiver, IpcSender};
 use media_stream::GStreamerMediaStream;
 use media_stream_source::{register_servo_media_stream_src, ServoMediaStreamSrc};
 use render::GStreamerRender;
+use servo_media_player::audio::AudioRenderer;
 use servo_media_player::context::PlayerGLContext;
 use servo_media_player::metadata::Metadata;
 use servo_media_player::video::VideoFrameRenderer;
@@ -94,6 +96,13 @@ fn metadata_from_media_info(media_info: &gst_player::PlayerMediaInfo) -> Result<
         is_live,
         title,
     })
+}
+
+pub struct GStreamerAudioChunk(gst::buffer::MappedBuffer<gst::buffer::Readable>);
+impl AsRef<[f32]> for GStreamerAudioChunk {
+    fn as_ref(&self) -> &[f32] {
+        self.0.as_ref().as_slice_of::<f32>().unwrap()
+    }
 }
 
 #[derive(PartialEq)]
@@ -301,6 +310,72 @@ impl PlayerInner {
             .set_video_track(stream_index)
             .map_err(|_| PlayerError::SetTrackFailed)?;
         self.player.set_video_track_enabled(enabled);
+        Ok(())
+    }
+
+    fn set_audio_renderer(
+        &mut self,
+        audio_renderer: Arc<Mutex<dyn AudioRenderer>>,
+    ) -> Result<(), PlayerError> {
+        let playbin = self.player.get_pipeline();
+
+        let audio_sink = gst::ElementFactory::make("appsink", None)
+            .ok_or(PlayerError::Backend("appsink creation failed".to_owned()))?;
+
+        let current_audio_track = self.player.get_current_audio_track().expect("No audio");
+
+        let audio_info = gst_audio::AudioInfo::new(
+            gst_audio::AUDIO_FORMAT_F32,
+            current_audio_track.get_sample_rate() as u32,
+            current_audio_track.get_channels() as u32,
+        )
+        .build()
+        .ok_or(PlayerError::Backend("AudioInfo failed".to_owned()))?;
+
+        let caps = audio_info
+            .to_caps()
+            .ok_or(PlayerError::Backend("AudioInfo failed".to_owned()))?;
+
+        audio_sink
+            .set_property("caps", &caps)
+            .expect("appsink doesn't have expected 'caps' property");
+
+        playbin
+            .set_property("audio-sink", &audio_sink)
+            .expect("playbin doesn't have expected 'audio-sink' property");
+
+        let audio_sink = audio_sink.dynamic_cast::<gst_app::AppSink>().unwrap();
+        audio_sink.set_callbacks(
+            gst_app::AppSinkCallbacks::new()
+                .new_preroll(|_| Ok(gst::FlowSuccess::Ok))
+                .new_sample(move |audio_sink| {
+                    let sample = audio_sink.pull_sample().ok_or(gst::FlowError::Eos)?;
+
+                    let buffer = sample.get_buffer_owned().ok_or(gst::FlowError::Error)?;
+
+                    let audio_info = sample
+                        .get_caps()
+                        .and_then(|caps| gst_audio::AudioInfo::from_caps(caps))
+                        .ok_or({ gst::FlowError::Error })?;
+
+                    let positions = audio_info.positions().ok_or({ gst::FlowError::Error })?;
+
+                    for position in positions.iter() {
+                        let buffer = buffer.clone();
+                        let map = if let Ok(map) = buffer.into_mapped_buffer_readable() {
+                            map
+                        } else {
+                            return Err(gst::FlowError::Error);
+                        };
+                        let chunk = Box::new(GStreamerAudioChunk(map));
+                        let channel = position.to_mask() as u32;
+                        audio_renderer.lock().unwrap().render(chunk, channel);
+                    }
+                    Ok(gst::FlowSuccess::Ok)
+                })
+                .build(),
+        );
+
         Ok(())
     }
 }
@@ -792,6 +867,7 @@ impl Player for GStreamerPlayer {
     inner_player_proxy!(seek, time, f64);
     inner_player_proxy!(set_volume, value, f64);
     inner_player_proxy!(buffered, Vec<Range<f64>>);
+    inner_player_proxy!(set_audio_renderer, renderer, Arc<Mutex<dyn AudioRenderer>>);
 
     fn render_use_gl(&self) -> bool {
         self.render.lock().unwrap().is_gl()

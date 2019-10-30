@@ -17,7 +17,7 @@ use servo_media_audio::render_thread::AudioRenderThreadMsg;
 use servo_media_audio::sink::{AudioSink, AudioSinkError};
 use servo_media_audio::AudioBackend;
 use servo_media_player::context::PlayerGLContext;
-use servo_media_player::{video, Player, PlayerError, PlayerEvent, StreamType};
+use servo_media_player::{audio, video, Player, PlayerError, PlayerEvent, StreamType};
 use servo_media_streams::capture::MediaTrackConstraintSet;
 use servo_media_streams::registry::{register_stream, unregister_stream, MediaStreamId};
 use servo_media_streams::{MediaOutput, MediaStream, MediaStreamType};
@@ -165,6 +165,12 @@ impl Player for DummyPlayer {
         Ok(())
     }
     fn set_video_track(&self, _: i32, _: bool) -> Result<(), PlayerError> {
+        Ok(())
+    }
+    fn set_audio_renderer(
+        &self,
+        _: Arc<Mutex<dyn audio::AudioRenderer>>,
+    ) -> Result<(), PlayerError> {
         Ok(())
     }
 }
