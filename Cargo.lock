@@ -2054,6 +2054,7 @@ dependencies = [
  "petgraph 0.4.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
+ "servo-media-player 0.1.0",
  "servo-media-traits 0.1.0",
  "servo_media_derive 0.1.0",
  "smallvec 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",

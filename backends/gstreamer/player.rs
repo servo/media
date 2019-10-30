@@ -350,16 +350,12 @@ impl PlayerInner {
                 .new_preroll(|_| Ok(gst::FlowSuccess::Ok))
                 .new_sample(move |audio_sink| {
                     let sample = audio_sink.pull_sample().ok_or(gst::FlowError::Eos)?;
-
                     let buffer = sample.get_buffer_owned().ok_or(gst::FlowError::Error)?;
-
                     let audio_info = sample
                         .get_caps()
                         .and_then(|caps| gst_audio::AudioInfo::from_caps(caps))
-                        .ok_or({ gst::FlowError::Error })?;
-
-                    let positions = audio_info.positions().ok_or({ gst::FlowError::Error })?;
-
+                        .ok_or(gst::FlowError::Error)?;
+                    let positions = audio_info.positions().ok_or(gst::FlowError::Error)?;
                     for position in positions.iter() {
                         let buffer = buffer.clone();
                         let map = if let Ok(map) = buffer.into_mapped_buffer_readable() {
