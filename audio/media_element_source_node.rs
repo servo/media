@@ -71,7 +71,10 @@ impl AudioRenderer for MediaElementSourceNodeRenderer {
     fn render(&mut self, sample: Box<dyn AsRef<[f32]>>, channel_pos: u32) {
         let channel = match self.channels.entry(channel_pos) {
             Entry::Occupied(entry) => *entry.get(),
-            Entry::Vacant(entry) => *entry.insert(self.buffer.len()),
+            Entry::Vacant(entry) => {
+                self.buffer.resize(self.buffer.len() + 1, Vec::new());
+                *entry.insert(self.buffer.len())
+            }
         };
         self.buffer[(channel - 1) as usize].extend_from_slice((*sample).as_ref());
     }
