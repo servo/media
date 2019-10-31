@@ -134,3 +134,8 @@ path = "stereo_panner.rs"
 [[bin]]
 name = "wave_shaper"
 path = "wave_shaper.rs"
+
+[[bin]]
+name = "media_element_source_node"
+path = "media_element_source_node.rs"
+required-features = [ "player" ]

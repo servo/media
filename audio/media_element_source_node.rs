@@ -41,9 +41,15 @@ impl AudioNodeEngine for MediaElementSourceNode {
 
         inputs.blocks.push(Default::default());
 
+        inputs.blocks[0].explicit_silence();
+
         // XXX get data from the renderer's buffer
 
         inputs
+    }
+
+    fn input_count(&self) -> u32 {
+        0
     }
 }
 

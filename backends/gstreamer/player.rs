@@ -322,12 +322,12 @@ impl PlayerInner {
         let audio_sink = gst::ElementFactory::make("appsink", None)
             .ok_or(PlayerError::Backend("appsink creation failed".to_owned()))?;
 
-        let current_audio_track = self.player.get_current_audio_track().expect("No audio");
+        //let current_audio_track = self.player.get_current_audio_track().expect("No audio");
 
         let audio_info = gst_audio::AudioInfo::new(
             gst_audio::AUDIO_FORMAT_F32,
-            current_audio_track.get_sample_rate() as u32,
-            current_audio_track.get_channels() as u32,
+            44100, //current_audio_track.get_sample_rate() as u32,
+            2,     //current_audio_track.get_channels() as u32,
         )
         .build()
         .ok_or(PlayerError::Backend("AudioInfo failed".to_owned()))?;
