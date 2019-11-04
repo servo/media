@@ -4,7 +4,7 @@ extern crate servo_media_auto;
 
 use ipc_channel::ipc;
 use servo_media::audio::media_element_source_node::MediaElementSourceNodeOptions;
-use servo_media::audio::node::{AudioNodeInit, AudioNodeMessage};
+use servo_media::audio::node::AudioNodeInit;
 use servo_media::player::context::{GlApi, GlContext, NativeDisplay, PlayerGLContext};
 use servo_media::player::{PlayerEvent, StreamType};
 use servo_media::{ClientContextId, ServoMedia};
@@ -106,9 +106,6 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         servo_media.create_audio_context(&ClientContextId::build(1, 1), Default::default());
     let context = context.lock().unwrap();
 
-    let options = MediaElementSourceNodeOptions {
-        player: player.clone(),
-    };
     let source_node = context.create_node(
         AudioNodeInit::MediaElementSourceNode(MediaElementSourceNodeOptions {
             player: player.clone(),

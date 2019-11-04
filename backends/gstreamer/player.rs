@@ -504,6 +504,10 @@ impl GStreamerPlayer {
                 .set_property("caps", &caps)
                 .expect("appsink doesn't have expected 'caps' property");
 
+            audio_sink
+                .set_property("drop", &true)
+                .expect("appsink doesn't have expected 'drop' property");
+
             pipeline
                 .set_property("audio-sink", &audio_sink)
                 .expect("playbin doesn't have expected 'audio-sink' property");
@@ -511,8 +515,12 @@ impl GStreamerPlayer {
             let audio_sink = audio_sink.dynamic_cast::<gst_app::AppSink>().unwrap();
             audio_sink.set_callbacks(
                 gst_app::AppSinkCallbacks::new()
-                    .new_preroll(|_| Ok(gst::FlowSuccess::Ok))
+                    .new_preroll(|_| {
+                        println!("NEW PREROLL");
+                        Ok(gst::FlowSuccess::Ok)
+                    })
                     .new_sample(move |audio_sink| {
+                        println!("NEW SAMPLE");
                         let sample = audio_sink.pull_sample().ok_or(gst::FlowError::Eos)?;
                         let buffer = sample.get_buffer_owned().ok_or(gst::FlowError::Error)?;
                         let audio_info = sample
