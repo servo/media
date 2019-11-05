@@ -190,9 +190,7 @@ impl AudioRenderThread {
             }
             AudioNodeInit::ChannelSplitterNode => Box::new(ChannelSplitterNode::new(ch)),
             AudioNodeInit::WaveShaperNode(options) => Box::new(WaveShaperNode::new(options, ch)),
-            AudioNodeInit::MediaElementSourceNode(options) => {
-                Box::new(MediaElementSourceNode::new(options, ch))
-            }
+            AudioNodeInit::MediaElementSourceNode => Box::new(MediaElementSourceNode::new(ch)),
             _ => unimplemented!(),
         };
         let id = self.graph.add_node(node);

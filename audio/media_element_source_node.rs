@@ -1,33 +1,43 @@
 use block::{Block, Chunk, FRAMES_PER_BLOCK};
 use node::{AudioNodeEngine, AudioNodeType, BlockInfo, ChannelInfo};
 use player::audio::AudioRenderer;
-use player::Player;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
+use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
-pub struct MediaElementSourceNodeOptions {
-    pub player: Arc<Mutex<dyn Player>>,
+#[derive(Debug, Clone)]
+pub enum MediaElementSourceNodeMessage {
+    GetAudioRenderer(Sender<Arc<Mutex<dyn AudioRenderer>>>),
 }
 
 #[derive(AudioNodeCommon)]
 pub(crate) struct MediaElementSourceNode {
     channel_info: ChannelInfo,
+    renderer: Arc<Mutex<dyn AudioRenderer>>,
     buffers: Arc<Mutex<Vec<Vec<f32>>>>,
     playback_offset: usize,
 }
 
 impl MediaElementSourceNode {
-    pub fn new(options: MediaElementSourceNodeOptions, channel_info: ChannelInfo) -> Self {
+    pub fn new(channel_info: ChannelInfo) -> Self {
         let buffers = Arc::new(Mutex::new(Vec::new()));
         let renderer = Arc::new(Mutex::new(MediaElementSourceNodeRenderer::new(
             buffers.clone(),
         )));
-        let _ = options.player.lock().unwrap().set_audio_renderer(renderer);
         Self {
             channel_info,
+            renderer,
             buffers,
             playback_offset: 0,
+        }
+    }
+
+    pub fn handle_message(&mut self, message: MediaElementSourceNodeMessage, _: f32) {
+        match message {
+            MediaElementSourceNodeMessage::GetAudioRenderer(sender) => {
+                let _ = sender.send(self.renderer.clone());
+            }
         }
     }
 }
@@ -37,7 +47,7 @@ impl AudioNodeEngine for MediaElementSourceNode {
         AudioNodeType::MediaElementSourceNode
     }
 
-    fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
+    fn process(&mut self, mut inputs: Chunk, _info: &BlockInfo) -> Chunk {
         debug_assert!(inputs.len() == 0);
 
         inputs.blocks.push(Default::default());
@@ -89,9 +99,15 @@ impl AudioNodeEngine for MediaElementSourceNode {
     }
 
     fn output_count(&self) -> u32 {
-        // XXX handle two channels only for now.
-        2
+        let chans = self.buffers.lock().unwrap().len();
+        if chans > 0 {
+            chans as u32
+        } else {
+            1
+        }
     }
+
+    make_message_handler!(MediaElementSourceNode: handle_message);
 }
 
 struct MediaElementSourceNodeRenderer {

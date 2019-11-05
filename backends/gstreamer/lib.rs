@@ -55,6 +55,7 @@ use servo_media_audio::context::{AudioContext, AudioContextOptions};
 use servo_media_audio::decoder::AudioDecoder;
 use servo_media_audio::sink::AudioSinkError;
 use servo_media_audio::AudioBackend;
+use servo_media_player::audio::AudioRenderer;
 use servo_media_player::context::PlayerGLContext;
 use servo_media_player::video::VideoFrameRenderer;
 use servo_media_player::{Player, PlayerEvent, StreamType};
@@ -171,6 +172,7 @@ impl Backend for GStreamerBackend {
         stream_type: StreamType,
         sender: IpcSender<PlayerEvent>,
         renderer: Option<Arc<Mutex<dyn VideoFrameRenderer>>>,
+        audio_renderer: Option<Arc<Mutex<dyn AudioRenderer>>>,
         gl_context: Box<dyn PlayerGLContext>,
     ) -> Arc<Mutex<dyn Player>> {
         let id = self.next_instance_id.fetch_add(1, Ordering::Relaxed);
@@ -181,6 +183,7 @@ impl Backend for GStreamerBackend {
             stream_type,
             sender,
             renderer,
+            audio_renderer,
             gl_context,
         )));
         let mut instances = self.instances.lock().unwrap();

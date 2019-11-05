@@ -74,6 +74,7 @@ impl Backend for DummyBackend {
         _: StreamType,
         _: IpcSender<PlayerEvent>,
         _: Option<Arc<Mutex<dyn video::VideoFrameRenderer>>>,
+        _: Option<Arc<Mutex<dyn audio::AudioRenderer>>>,
         _: Box<dyn PlayerGLContext>,
     ) -> Arc<Mutex<dyn Player>> {
         Arc::new(Mutex::new(DummyPlayer))
@@ -165,12 +166,6 @@ impl Player for DummyPlayer {
         Ok(())
     }
     fn set_video_track(&self, _: i32, _: bool) -> Result<(), PlayerError> {
-        Ok(())
-    }
-    fn set_audio_renderer(
-        &self,
-        _: Arc<Mutex<dyn audio::AudioRenderer>>,
-    ) -> Result<(), PlayerError> {
         Ok(())
     }
 }

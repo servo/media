@@ -176,15 +176,6 @@ impl PlayerInner {
         Ok(())
     }
 
-    pub fn reset(&mut self) -> Result<(), PlayerError> {
-        let _ = self.stop();
-        let pipeline = self.player.get_pipeline();
-        pipeline
-            .set_state(gst::State::Null)
-            .map(|_| ())
-            .map_err(|_| PlayerError::Backend("Reset error".to_owned()))
-    }
-
     pub fn pause(&mut self) -> Result<(), PlayerError> {
         self.player.pause();
         Ok(())
@@ -369,10 +360,11 @@ pub struct GStreamerPlayer {
     backend_chan: Arc<Mutex<Sender<BackendMsg>>>,
     inner: RefCell<Option<Arc<Mutex<PlayerInner>>>>,
     observer: Arc<Mutex<IpcSender<PlayerEvent>>>,
+    audio_renderer: Option<Arc<Mutex<dyn AudioRenderer>>>,
     video_renderer: Option<Arc<Mutex<dyn VideoFrameRenderer>>>,
     /// Indicates whether the setup was succesfully performed and
     /// we are ready to consume a/v data.
-    is_ready: Arc<Mutex<Once>>,
+    is_ready: Arc<Once>,
     /// Indicates whether the type of media stream to be played is a live stream.
     stream_type: StreamType,
     /// Decorator used to setup the video sink and process the produced frames.
@@ -387,6 +379,7 @@ impl GStreamerPlayer {
         stream_type: StreamType,
         observer: IpcSender<PlayerEvent>,
         video_renderer: Option<Arc<Mutex<dyn VideoFrameRenderer>>>,
+        audio_renderer: Option<Arc<Mutex<dyn AudioRenderer>>>,
         gl_context: Box<dyn PlayerGLContext>,
     ) -> GStreamerPlayer {
         let _ = gst::DebugCategory::new(
@@ -401,18 +394,16 @@ impl GStreamerPlayer {
             backend_chan,
             inner: RefCell::new(None),
             observer: Arc::new(Mutex::new(observer)),
+            audio_renderer,
             video_renderer,
-            is_ready: Arc::new(Mutex::new(Once::new())),
+            is_ready: Arc::new(Once::new()),
             stream_type,
             render: Arc::new(Mutex::new(GStreamerRender::new(gl_context))),
         }
     }
 
-    fn setup(
-        &self,
-        audio_renderer: Option<Arc<Mutex<dyn AudioRenderer>>>,
-    ) -> Result<(), PlayerError> {
-        if self.inner.borrow().is_some() && audio_renderer.is_none() {
+    fn setup(&self) -> Result<(), PlayerError> {
+        if self.inner.borrow().is_some() {
             return Ok(());
         }
 
@@ -482,7 +473,7 @@ impl GStreamerPlayer {
             .set_config(config)
             .map_err(|e| PlayerError::Backend(e.to_string()))?;
 
-        if let Some(audio_renderer) = audio_renderer {
+        if let Some(ref audio_renderer) = self.audio_renderer {
             let audio_sink = gst::ElementFactory::make("appsink", None)
                 .ok_or(PlayerError::Backend("appsink creation failed".to_owned()))?;
 
@@ -513,14 +504,11 @@ impl GStreamerPlayer {
                 .expect("playbin doesn't have expected 'audio-sink' property");
 
             let audio_sink = audio_sink.dynamic_cast::<gst_app::AppSink>().unwrap();
+            let audio_renderer_ = audio_renderer.clone();
             audio_sink.set_callbacks(
                 gst_app::AppSinkCallbacks::new()
-                    .new_preroll(|_| {
-                        println!("NEW PREROLL");
-                        Ok(gst::FlowSuccess::Ok)
-                    })
+                    .new_preroll(|_| Ok(gst::FlowSuccess::Ok))
                     .new_sample(move |audio_sink| {
-                        println!("NEW SAMPLE");
                         let sample = audio_sink.pull_sample().ok_or(gst::FlowError::Eos)?;
                         let buffer = sample.get_buffer_owned().ok_or(gst::FlowError::Error)?;
                         let audio_info = sample
@@ -537,7 +525,7 @@ impl GStreamerPlayer {
                             };
                             let chunk = Box::new(GStreamerAudioChunk(map));
                             let channel = position.to_mask() as u32;
-                            audio_renderer.lock().unwrap().render(chunk, channel);
+                            audio_renderer_.lock().unwrap().render(chunk, channel);
                         }
                         Ok(gst::FlowSuccess::Ok)
                     })
@@ -762,7 +750,7 @@ impl GStreamerPlayer {
                                     // don't miss any data between the moment the client
                                     // calls setup and the player is actually ready to
                                     // get any data.
-                                    is_ready.lock().unwrap().call_once(|| {
+                                    is_ready.call_once(|| {
                                         let _ = sender_clone.lock().unwrap().send(Ok(()));
                                     });
 
@@ -806,7 +794,7 @@ impl GStreamerPlayer {
                             .dynamic_cast::<ServoMediaStreamSrc>()
                             .expect("Source element is expected to be a ServoMediaStreamSrc!");
                         let sender_clone = sender.clone();
-                        is_ready_clone.lock().unwrap().call_once(|| {
+                        is_ready_clone.call_once(|| {
                             let _ = notify!(sender_clone, Ok(()));
                         });
                         PlayerSource::Stream(media_stream_src)
@@ -847,7 +835,7 @@ impl GStreamerPlayer {
 macro_rules! inner_player_proxy {
     ($fn_name:ident, $return_type:ty) => (
         fn $fn_name(&self) -> Result<$return_type, PlayerError> {
-            self.setup(None)?;
+            self.setup()?;
             let inner = self.inner.borrow();
             let mut inner = inner.as_ref().unwrap().lock().unwrap();
             inner.$fn_name()
@@ -856,7 +844,7 @@ macro_rules! inner_player_proxy {
 
     ($fn_name:ident, $arg1:ident, $arg1_type:ty) => (
         fn $fn_name(&self, $arg1: $arg1_type) -> Result<(), PlayerError> {
-            self.setup(None)?;
+            self.setup()?;
             let inner = self.inner.borrow();
             let mut inner = inner.as_ref().unwrap().lock().unwrap();
             inner.$fn_name($arg1)
@@ -882,40 +870,24 @@ impl Player for GStreamerPlayer {
     }
 
     fn set_stream(&self, stream: &MediaStreamId, only_stream: bool) -> Result<(), PlayerError> {
-        self.setup(None)?;
+        self.setup()?;
         let inner = self.inner.borrow();
         let mut inner = inner.as_ref().unwrap().lock().unwrap();
         inner.set_stream(stream, only_stream)
     }
 
     fn set_audio_track(&self, stream_index: i32, enabled: bool) -> Result<(), PlayerError> {
-        self.setup(None)?;
+        self.setup()?;
         let inner = self.inner.borrow();
         let mut inner = inner.as_ref().unwrap().lock().unwrap();
         inner.set_audio_track(stream_index, enabled)
     }
 
     fn set_video_track(&self, stream_index: i32, enabled: bool) -> Result<(), PlayerError> {
-        self.setup(None)?;
+        self.setup()?;
         let inner = self.inner.borrow();
         let mut inner = inner.as_ref().unwrap().lock().unwrap();
         inner.set_video_track(stream_index, enabled)
-    }
-
-    fn set_audio_renderer(
-        &self,
-        renderer: Arc<Mutex<dyn AudioRenderer>>,
-    ) -> Result<(), PlayerError> {
-        {
-            let inner = self.inner.borrow();
-            let mut inner = inner.as_ref().unwrap().lock().unwrap();
-            let _ = inner.reset();
-        }
-        {
-            *self.inner.borrow_mut() = None;
-            *self.is_ready.lock().unwrap() = Once::new();
-        }
-        self.setup(Some(renderer))
     }
 }
 

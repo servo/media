@@ -5,7 +5,7 @@ use buffer_source_node::{AudioBufferSourceNodeMessage, AudioBufferSourceNodeOpti
 use channel_node::ChannelNodeOptions;
 use constant_source_node::ConstantSourceNodeOptions;
 use gain_node::GainNodeOptions;
-use media_element_source_node::MediaElementSourceNodeOptions;
+use media_element_source_node::MediaElementSourceNodeMessage;
 use oscillator_node::{OscillatorNodeMessage, OscillatorNodeOptions};
 use panner_node::{PannerNodeMessage, PannerNodeOptions};
 use param::{Param, ParamRate, ParamType, UserAutomationEvent};
@@ -27,7 +27,7 @@ pub enum AudioNodeInit {
     DynamicsCompressionNode,
     GainNode(GainNodeOptions),
     IIRFilterNode,
-    MediaElementSourceNode(MediaElementSourceNodeOptions),
+    MediaElementSourceNode,
     OscillatorNode(OscillatorNodeOptions),
     PannerNode(PannerNodeOptions),
     PeriodicWave,
@@ -186,9 +186,10 @@ pub enum AudioNodeMessage {
     AudioBufferSourceNode(AudioBufferSourceNodeMessage),
     AudioScheduledSourceNode(AudioScheduledSourceNodeMessage),
     BiquadFilterNode(BiquadFilterNodeMessage),
+    GetParamValue(ParamType, Sender<f32>),
+    MediaElementSourceNode(MediaElementSourceNodeMessage),
     OscillatorNode(OscillatorNodeMessage),
     PannerNode(PannerNodeMessage),
-    GetParamValue(ParamType, Sender<f32>),
     SetChannelCount(u8),
     SetChannelMode(ChannelCountMode),
     SetChannelInterpretation(ChannelInterpretation),

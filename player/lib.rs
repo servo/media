@@ -12,7 +12,6 @@ pub mod video;
 use ipc_channel::ipc::{self, IpcSender};
 use servo_media_traits::MediaInstance;
 use std::ops::Range;
-use std::sync::{Arc, Mutex};
 use streams::registry::MediaStreamId;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -117,11 +116,4 @@ pub trait Player: Send + MediaInstance {
     fn render_use_gl(&self) -> bool;
     fn set_audio_track(&self, stream_index: i32, enabled: bool) -> Result<(), PlayerError>;
     fn set_video_track(&self, stream_index: i32, enabled: bool) -> Result<(), PlayerError>;
-    /// Allows short-cutting the player pipeline by setting a custom audio renderer.
-    /// If no audio renderer is set, the player will automatically choose a default one.
-    /// The player must not be in playing state to be able to set a different audio renderer.
-    fn set_audio_renderer(
-        &self,
-        renderer: Arc<Mutex<dyn audio::AudioRenderer>>,
-    ) -> Result<(), PlayerError>;
 }

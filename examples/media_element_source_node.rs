@@ -3,8 +3,8 @@ extern crate servo_media;
 extern crate servo_media_auto;
 
 use ipc_channel::ipc;
-use servo_media::audio::media_element_source_node::MediaElementSourceNodeOptions;
-use servo_media::audio::node::AudioNodeInit;
+use servo_media::audio::media_element_source_node::MediaElementSourceNodeMessage;
+use servo_media::audio::node::{AudioNodeInit, AudioNodeMessage};
 use servo_media::player::context::{GlApi, GlContext, NativeDisplay, PlayerGLContext};
 use servo_media::player::{PlayerEvent, StreamType};
 use servo_media::{ClientContextId, ServoMedia};
@@ -33,12 +33,33 @@ impl PlayerGLContext for PlayerContextDummy {
 }
 
 fn run_example(servo_media: Arc<ServoMedia>) {
+    let context =
+        servo_media.create_audio_context(&ClientContextId::build(1, 1), Default::default());
+    let context = context.lock().unwrap();
+
+    let source_node =
+        context.create_node(AudioNodeInit::MediaElementSourceNode, Default::default());
+
+    let (sender, receiver) = mpsc::channel();
+    context.message_node(
+        source_node,
+        AudioNodeMessage::MediaElementSourceNode(MediaElementSourceNodeMessage::GetAudioRenderer(
+            sender,
+        )),
+    );
+    let audio_renderer = receiver.recv().unwrap();
+
+    let dest = context.dest_node();
+
+    context.connect_ports(source_node.output(0), dest.input(0));
+
     let (sender, receiver) = ipc::channel().unwrap();
     let player = servo_media.create_player(
         &ClientContextId::build(1, 1),
         StreamType::Seekable,
         sender,
         None,
+        Some(audio_renderer),
         Box::new(PlayerContextDummy()),
     );
 
@@ -102,21 +123,6 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         }
     });
 
-    let context =
-        servo_media.create_audio_context(&ClientContextId::build(1, 1), Default::default());
-    let context = context.lock().unwrap();
-
-    let source_node = context.create_node(
-        AudioNodeInit::MediaElementSourceNode(MediaElementSourceNodeOptions {
-            player: player.clone(),
-        }),
-        Default::default(),
-    );
-
-    let dest = context.dest_node();
-
-    context.connect_ports(source_node.output(0), dest.input(0));
-
     player.lock().unwrap().play().unwrap();
     seek_sender.send(0).unwrap();
 
@@ -138,8 +144,8 @@ fn run_example(servo_media: Arc<ServoMedia>) {
             PlayerEvent::StateChanged(ref s) => {
                 println!("\nPlayer state changed to {:?}", s);
             }
-            PlayerEvent::VideoFrameUpdated => eprint!("."),
-            PlayerEvent::PositionChanged(_) => {}
+            PlayerEvent::VideoFrameUpdated => {}
+            PlayerEvent::PositionChanged(_) => println!("."),
             PlayerEvent::SeekData(p, seek_lock) => {
                 println!("\nSeek requested to position {:?}", p);
                 seek_sender.send(p).unwrap();

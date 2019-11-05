@@ -10,6 +10,7 @@ use std::ops::Deref;
 use std::sync::{Arc, Mutex, Once};
 
 use audio::context::{AudioContext, AudioContextOptions};
+use player::audio::AudioRenderer;
 use player::context::PlayerGLContext;
 use player::ipc_channel::ipc::IpcSender;
 use player::video::VideoFrameRenderer;
@@ -35,6 +36,7 @@ pub trait Backend: Send + Sync {
         stream_type: StreamType,
         sender: IpcSender<PlayerEvent>,
         video_renderer: Option<Arc<Mutex<dyn VideoFrameRenderer>>>,
+        audio_renderer: Option<Arc<Mutex<dyn AudioRenderer>>>,
         gl_context: Box<dyn PlayerGLContext>,
     ) -> Arc<Mutex<dyn Player>>;
     fn create_audiostream(&self) -> MediaStreamId;
