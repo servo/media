@@ -477,28 +477,6 @@ impl GStreamerPlayer {
             let audio_sink = gst::ElementFactory::make("appsink", None)
                 .ok_or(PlayerError::Backend("appsink creation failed".to_owned()))?;
 
-            //let current_audio_track = self.player.get_current_audio_track().expect("No audio");
-
-            let audio_info = gst_audio::AudioInfo::new(
-                gst_audio::AUDIO_FORMAT_F32,
-                44100, //current_audio_track.get_sample_rate() as u32,
-                2,     //current_audio_track.get_channels() as u32,
-            )
-            .build()
-            .ok_or(PlayerError::Backend("AudioInfo failed".to_owned()))?;
-
-            let caps = audio_info
-                .to_caps()
-                .ok_or(PlayerError::Backend("AudioInfo failed".to_owned()))?;
-
-            audio_sink
-                .set_property("caps", &caps)
-                .expect("appsink doesn't have expected 'caps' property");
-
-            audio_sink
-                .set_property("drop", &true)
-                .expect("appsink doesn't have expected 'drop' property");
-
             pipeline
                 .set_property("audio-sink", &audio_sink)
                 .expect("playbin doesn't have expected 'audio-sink' property");
