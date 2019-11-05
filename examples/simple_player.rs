@@ -48,6 +48,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         StreamType::Seekable,
         sender,
         None,
+        None,
         Box::new(PlayerContextDummy()),
     );
 

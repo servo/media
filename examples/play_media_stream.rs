@@ -31,6 +31,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         StreamType::Stream,
         sender,
         None,
+        None,
         Box::new(PlayerContextDummy()),
     );
 

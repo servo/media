@@ -191,6 +191,7 @@ impl App {
             player::StreamType::Seekable,
             player_event_sender,
             renderer,
+            None,
             Box::new(PlayerContextGlutin::new(opts.use_gl, &windowed_context)),
         );
 
