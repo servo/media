@@ -4,6 +4,8 @@ extern crate serde_derive;
 #[macro_use]
 extern crate servo_media_derive;
 
+extern crate servo_media_player as player;
+
 extern crate boxfnonce;
 extern crate byte_slice_cast;
 extern crate euclid;
@@ -26,6 +28,7 @@ pub mod destination_node;
 pub mod gain_node;
 pub mod graph;
 pub mod listener;
+pub mod media_element_source_node;
 pub mod node;
 pub mod offline_sink;
 pub mod oscillator_node;

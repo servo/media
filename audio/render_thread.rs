@@ -7,6 +7,7 @@ use constant_source_node::ConstantSourceNode;
 use context::{AudioContextOptions, ProcessingState, StateChangeResult};
 use gain_node::GainNode;
 use graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
+use media_element_source_node::MediaElementSourceNode;
 use node::{AudioNodeEngine, AudioNodeInit, AudioNodeMessage};
 use node::{BlockInfo, ChannelInfo};
 use offline_sink::OfflineAudioSink;
@@ -189,6 +190,7 @@ impl AudioRenderThread {
             }
             AudioNodeInit::ChannelSplitterNode => Box::new(ChannelSplitterNode::new(ch)),
             AudioNodeInit::WaveShaperNode(options) => Box::new(WaveShaperNode::new(options, ch)),
+            AudioNodeInit::MediaElementSourceNode => Box::new(MediaElementSourceNode::new(ch)),
             _ => unimplemented!(),
         };
         let id = self.graph.add_node(node);

@@ -5,7 +5,7 @@
 use failure::Error;
 use ipc_channel::ipc::{self, IpcReceiver};
 use servo_media::player;
-use servo_media::player::frame;
+use servo_media::player::video;
 use servo_media::ServoMedia;
 use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom};
@@ -175,7 +175,9 @@ impl App {
         } else {
             None
         };
-        let renderer: Option<Arc<Mutex<dyn frame::FrameRenderer>>> = match frame_renderer.clone() {
+        let renderer: Option<Arc<Mutex<dyn video::VideoFrameRenderer>>> = match frame_renderer
+            .clone()
+        {
             None => None,
             Some(renderer) => {
                 webrender
@@ -189,6 +191,7 @@ impl App {
             player::StreamType::Seekable,
             player_event_sender,
             renderer,
+            None,
             Box::new(PlayerContextGlutin::new(opts.use_gl, &windowed_context)),
         );
 
@@ -413,7 +416,7 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
                         }
                     }
                 }
-                player::PlayerEvent::FrameUpdated => frameupdated = true,
+                player::PlayerEvent::VideoFrameUpdated => frameupdated = true,
                 player::PlayerEvent::PositionChanged(pos) => playerstate.pos = pos as f64,
                 _ => (),
             }

@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use servo_media::player::frame;
+use servo_media::player::video;
 use std::mem;
 use std::sync::{Arc, Mutex};
 
@@ -12,10 +12,10 @@ enum FrameStatus {
     Unlocked,
 }
 
-struct FrameHolder(FrameStatus, frame::Frame);
+struct FrameHolder(FrameStatus, video::VideoFrame);
 
 impl FrameHolder {
-    fn new(frame: frame::Frame) -> FrameHolder {
+    fn new(frame: video::VideoFrame) -> FrameHolder {
         FrameHolder(FrameStatus::Unlocked, frame)
     }
 
@@ -31,7 +31,7 @@ impl FrameHolder {
         };
     }
 
-    fn set(&mut self, new_frame: frame::Frame) {
+    fn set(&mut self, new_frame: video::VideoFrame) {
         if self.0 == FrameStatus::Unlocked {
             self.1 = new_frame
         };
@@ -90,8 +90,8 @@ impl MediaFrameRenderer {
     }
 }
 
-impl frame::FrameRenderer for MediaFrameRenderer {
-    fn render(&mut self, frame: frame::Frame) {
+impl video::VideoFrameRenderer for MediaFrameRenderer {
+    fn render(&mut self, frame: video::VideoFrame) {
         let mut transaction = webrender_api::Transaction::new();
 
         if let Some(old_image_key) = mem::replace(&mut self.very_old_frame, self.old_frame.take()) {

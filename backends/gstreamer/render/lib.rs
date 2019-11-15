@@ -32,7 +32,7 @@ pub trait Render {
     /// # Arguments
     ///
     /// * `sample` -  the GStreamer sample with the buffer to map
-    fn build_frame(&self, sample: gst::Sample) -> Result<sm_player::frame::Frame, ()>;
+    fn build_frame(&self, sample: gst::Sample) -> Result<sm_player::video::VideoFrame, ()>;
 
     /// Sets the proper *video-sink* to GStreamer's `pipeline`, this
     /// video sink is simply a decorator of the passed `appsink`.

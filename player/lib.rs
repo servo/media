@@ -4,9 +4,10 @@ extern crate serde_derive;
 extern crate servo_media_streams as streams;
 extern crate servo_media_traits;
 
+pub mod audio;
 pub mod context;
-pub mod frame;
 pub mod metadata;
+pub mod video;
 
 use ipc_channel::ipc::{self, IpcSender};
 use servo_media_traits::MediaInstance;
@@ -63,7 +64,7 @@ pub enum PlayerEvent {
     /// The player has enough data. The client should stop pushing data into.
     EnoughData,
     Error(String),
-    FrameUpdated,
+    VideoFrameUpdated,
     MetadataUpdated(metadata::Metadata),
     /// The internal player queue is running out of data. The client should start
     /// pushing more data.

@@ -17,7 +17,7 @@ use servo_media_audio::render_thread::AudioRenderThreadMsg;
 use servo_media_audio::sink::{AudioSink, AudioSinkError};
 use servo_media_audio::AudioBackend;
 use servo_media_player::context::PlayerGLContext;
-use servo_media_player::{frame, Player, PlayerError, PlayerEvent, StreamType};
+use servo_media_player::{audio, video, Player, PlayerError, PlayerEvent, StreamType};
 use servo_media_streams::capture::MediaTrackConstraintSet;
 use servo_media_streams::registry::{register_stream, unregister_stream, MediaStreamId};
 use servo_media_streams::{MediaOutput, MediaStream, MediaStreamType};
@@ -73,7 +73,8 @@ impl Backend for DummyBackend {
         _id: &ClientContextId,
         _: StreamType,
         _: IpcSender<PlayerEvent>,
-        _: Option<Arc<Mutex<dyn frame::FrameRenderer>>>,
+        _: Option<Arc<Mutex<dyn video::VideoFrameRenderer>>>,
+        _: Option<Arc<Mutex<dyn audio::AudioRenderer>>>,
         _: Box<dyn PlayerGLContext>,
     ) -> Arc<Mutex<dyn Player>> {
         Arc::new(Mutex::new(DummyPlayer))
