@@ -147,6 +147,9 @@ impl AudioDecoder for GStreamerAudioDecoder {
                 let convert = gst::ElementFactory::make("audioconvert", None).ok_or(
                     AudioDecoderError::Backend("audioconvert creation failed".to_owned()),
                 )?;
+                convert
+                    .set_property("mix-matrix", &gst::Array::new(&[]).to_value())
+                    .expect("mix-matrix property didn't work");
                 let resample = gst::ElementFactory::make("audioresample", None).ok_or(
                     AudioDecoderError::Backend("audioresample creation failed".to_owned()),
                 )?;
@@ -265,13 +268,17 @@ impl AudioDecoder for GStreamerAudioDecoder {
                     }
                 });
 
-                let audio_info = gst_audio::AudioInfo::new(
+                let mut audio_info_builder = gst_audio::AudioInfo::new(
                     gst_audio::AUDIO_FORMAT_F32,
                     options.sample_rate as u32,
                     channels,
-                )
-                .build()
-                .ok_or(AudioDecoderError::Backend("AudioInfo failed".to_owned()))?;
+                );
+                if let Some(positions) = sample_audio_info.positions() {
+                    audio_info_builder = audio_info_builder.positions(positions);
+                }
+                let audio_info = audio_info_builder
+                    .build()
+                    .ok_or(AudioDecoderError::Backend("AudioInfo failed".to_owned()))?;
                 let caps = audio_info
                     .to_caps()
                     .ok_or(AudioDecoderError::Backend("AudioInfo failed".to_owned()))?;
