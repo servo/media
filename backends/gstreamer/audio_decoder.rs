@@ -255,8 +255,8 @@ impl AudioDecoder for GStreamerAudioDecoder {
                                 .ok_or(AudioDecoderError::Backend(
                                     "Could not get static pad sink".to_owned(),
                                 ))?;
-                        src_pad.link(&sink_pad).map(|_| ()).map_err(|_| {
-                            AudioDecoderError::Backend("Sink pad link failed".to_owned())
+                        src_pad.link(&sink_pad).map(|_| ()).map_err(|e| {
+                            AudioDecoderError::Backend(format!("Sink pad link failed: {}", e))
                         })
                     };
 
@@ -299,7 +299,7 @@ impl AudioDecoder for GStreamerAudioDecoder {
                 src_pad
                     .link(&sink_pad)
                     .map(|_| ())
-                    .map_err(|_| AudioDecoderError::Backend("Sink pad link failed".to_owned()))
+                    .map_err(|e| AudioDecoderError::Backend(format!("Sink pad link failed: {}", e)))
             };
 
             if let Err(e) = insert_deinterleave() {
