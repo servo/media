@@ -16,6 +16,7 @@ path = "lib.rs"
 boxfnonce = "0.1.0"
 mime = "0.3.13"
 log = "0.4"
+ipc-channel = "0.13"
 
 [dependencies.byte-slice-cast]
 version = "0.2"
@@ -54,9 +55,6 @@ version = "0.14"
 
 [dependencies.gstreamer-video]
 version = "0.14"
-
-[dependencies.ipc-channel]
-version = "0.12"
 
 [dependencies.lazy_static]
 version = "1.2.0"
