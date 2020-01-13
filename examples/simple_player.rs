@@ -7,7 +7,6 @@ use servo_media::player::context::{GlApi, GlContext, NativeDisplay, PlayerGLCont
 use servo_media::player::{PlayerEvent, StreamType};
 use servo_media::{ClientContextId, ServoMedia};
 use std::env;
-use std::error::Error;
 use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::path::Path;
@@ -56,7 +55,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let display = path.display();
 
     let file = match File::open(&path) {
-        Err(why) => panic!("couldn't open {}: {}", display, why.description()),
+        Err(why) => panic!("couldn't open {}: {}", display, why),
         Ok(file) => file,
     };
 

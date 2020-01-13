@@ -136,7 +136,7 @@ impl GstMediaDevices {
             let _ = self.monitor.remove_filter(f);
         }
         if let Some(d) = devices.get(0) {
-            let element = d.create_element(None)?;
+            let element = d.create_element(None).ok()?;
             Some(GstMediaTrack { element })
         } else {
             None

@@ -29,7 +29,7 @@ impl GStreamerAudioSink {
         gst::init().map_err(|_| AudioSinkError::Backend("GStreamer init failed".to_owned()))?;
 
         let appsrc = gst::ElementFactory::make("appsrc", None)
-            .ok_or(AudioSinkError::Backend("appsrc creation failed".to_owned()))?;
+            .map_err(|_| AudioSinkError::Backend("appsrc creation failed".to_owned()))?;
         let appsrc = appsrc.downcast::<AppSrc>().unwrap();
         Ok(Self {
             pipeline: gst::Pipeline::new(None),
@@ -49,8 +49,8 @@ impl GStreamerAudioSink {
             channels.into(),
         )
         .build()
-        .ok_or(AudioSinkError::Backend("AudioInfo failed".to_owned()))?;
-        self.appsrc.set_caps(audio_info.to_caps().as_ref());
+        .map_err(|_| AudioSinkError::Backend("AudioInfo failed".to_owned()))?;
+        self.appsrc.set_caps(audio_info.to_caps().ok().as_ref());
         *self.audio_info.borrow_mut() = Some(audio_info);
         Ok(())
     }
@@ -95,15 +95,12 @@ impl AudioSink for GStreamerAudioSink {
             .unwrap();
 
         let appsrc = self.appsrc.as_ref().clone().upcast();
-        let resample = gst::ElementFactory::make("audioresample", None).ok_or(
-            AudioSinkError::Backend("audioresample creation failed".to_owned()),
-        )?;
-        let convert = gst::ElementFactory::make("audioconvert", None).ok_or(
-            AudioSinkError::Backend("audioconvert creation failed".to_owned()),
-        )?;
-        let sink = gst::ElementFactory::make("autoaudiosink", None).ok_or(
-            AudioSinkError::Backend("autoaudiosink creation failed".to_owned()),
-        )?;
+        let resample = gst::ElementFactory::make("audioresample", None)
+            .map_err(|_| AudioSinkError::Backend("audioresample creation failed".to_owned()))?;
+        let convert = gst::ElementFactory::make("audioconvert", None)
+            .map_err(|_| AudioSinkError::Backend("audioconvert creation failed".to_owned()))?;
+        let sink = gst::ElementFactory::make("autoaudiosink", None)
+            .map_err(|_| AudioSinkError::Backend("autoaudiosink creation failed".to_owned()))?;
         self.pipeline
             .add_many(&[&appsrc, &resample, &convert, &sink])
             .map_err(|e| AudioSinkError::Backend(e.to_string()))?;

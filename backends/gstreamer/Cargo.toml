@@ -21,7 +21,7 @@ log = "0.4"
 version = "0.2"
 
 [dependencies.glib]
-version = "0.8"
+version = "0.9"
 
 [dependencies.glib-sys]
 version = "0.9"
@@ -31,29 +31,28 @@ version = "0.8"
 features = ["v1_8"]
 
 [dependencies.gstreamer]
-version = "0.14"
-features = ["subclassing"]
+version = "0.15"
 
 [dependencies.gstreamer-app]
-version = "0.14"
+version = "0.15"
 
 [dependencies.gstreamer-audio]
-version = "0.14"
+version = "0.15"
 
 [dependencies.gstreamer-base]
-version = "0.14"
+version = "0.15"
 
 [dependencies.gstreamer-player]
-version = "0.14"
+version = "0.15"
 
 [dependencies.gstreamer-sdp]
-version = "0.14"
+version = "0.15"
 
 [dependencies.gstreamer-webrtc]
-version = "0.14"
+version = "0.15"
 
 [dependencies.gstreamer-video]
-version = "0.14"
+version = "0.15"
 
 [dependencies.ipc-channel]
 version = "0.12"

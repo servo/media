@@ -8,17 +8,17 @@ name = "servo_media_gstreamer_render_android"
 path = "lib.rs"
 
 [dependencies.glib]
-version = "0.8"
+version = "0.9"
 
 [dependencies.gstreamer]
-version = "0.14"
+version = "0.15"
 
 [dependencies.gstreamer-gl]
-version = "0.14"
+version = "0.15"
 features = ["egl"]
 
 [dependencies.gstreamer-video]
-version = "0.14"
+version = "0.15"
 
 [dependencies.servo-media-player]
 path = "../../../player"

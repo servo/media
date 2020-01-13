@@ -84,7 +84,7 @@ struct GStreamerBuffer {
 
 impl Buffer for GStreamerBuffer {
     fn to_vec(&self) -> Result<VideoFrameData, ()> {
-        let data = self.frame.plane_data(0).ok_or_else(|| ())?;
+        let data = self.frame.plane_data(0).map_err(|_| ())?;
         Ok(VideoFrameData::Raw(Arc::new(data.to_vec())))
     }
 }
@@ -114,10 +114,10 @@ impl GStreamerRender {
         } else {
             let buffer = sample.get_buffer_owned().ok_or_else(|| ())?;
             let caps = sample.get_caps().ok_or_else(|| ())?;
-            let info = gst_video::VideoInfo::from_caps(caps).ok_or_else(|| ())?;
+            let info = gst_video::VideoInfo::from_caps(caps).map_err(|_| ())?;
 
             let frame =
-                gst_video::VideoFrame::from_buffer_readable(buffer, &info).or_else(|_| Err(()))?;
+                gst_video::VideoFrame::from_buffer_readable(buffer, &info).map_err(|_| ())?;
 
             VideoFrame::new(
                 info.width() as i32,
@@ -132,7 +132,7 @@ impl GStreamerRender {
         pipeline: &gst::Element,
     ) -> Result<gst_app::AppSink, PlayerError> {
         let appsink = gst::ElementFactory::make("appsink", None)
-            .ok_or(PlayerError::Backend("appsink creation failed".to_owned()))?;
+            .map_err(|_| PlayerError::Backend("appsink creation failed".to_owned()))?;
 
         if let Some(render) = self.render.as_ref() {
             render.build_video_sink(&appsink, pipeline)?

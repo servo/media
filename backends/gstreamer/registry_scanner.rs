@@ -1,5 +1,6 @@
 use gst;
 use std::collections::HashSet;
+use std::str::FromStr;
 
 lazy_static! {
     // The GStreamer registry holds the metadata of the set of plugins available in the host.
@@ -247,12 +248,12 @@ impl GStreamerRegistryScanner {
 }
 
 fn has_element_for_media_type(factories: &Vec<gst::ElementFactory>, media_type: &str) -> bool {
-    match gst::caps::Caps::from_string(media_type) {
-        Some(caps) => {
+    match gst::caps::Caps::from_str(media_type) {
+        Ok(caps) => {
             let matching_factories =
                 gst::ElementFactory::list_filter(&factories, &caps, gst::PadDirection::Sink, false);
             matching_factories.len() > 0
         }
-        None => false,
+        _ => false,
     }
 }
