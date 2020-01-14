@@ -80,12 +80,14 @@ impl RenderUnix {
                     #[cfg(feature = "gl-egl")]
                     NativeDisplay::Egl(display_native) => {
                         unsafe { gst_gl::GLDisplayEGL::new_with_egl_display(display_native) }
-                            .and_then(|display| Some(display.upcast()))
+                            .and_then(|display| Ok(display.upcast()))
+                            .ok()
                     }
                     #[cfg(feature = "gl-wayland")]
                     NativeDisplay::Wayland(display_native) => {
                         unsafe { gst_gl::GLDisplayWayland::new_with_display(display_native) }
-                            .and_then(|display| Some(display.upcast()))
+                            .and_then(|display| Ok(display.upcast()))
+                            .ok()
                     }
                     _ => None,
                 };
@@ -102,7 +104,8 @@ impl RenderUnix {
                     #[cfg(feature = "gl-x11")]
                     NativeDisplay::X11(display_native) => {
                         unsafe { gst_gl::GLDisplayX11::new_with_display(display_native) }
-                            .and_then(|display| Some(display.upcast()))
+                            .and_then(|display| Ok(display.upcast()))
+                            .ok()
                     }
                     _ => None,
                 };
@@ -175,6 +178,7 @@ impl Render for RenderUnix {
                         .get_property("context")
                         .or_else(|_| Err(()))?
                         .get::<gst_gl::GLContext>()
+                        .unwrap_or_else(|_| None)
                 } else {
                     None
                 };
@@ -186,8 +190,8 @@ impl Render for RenderUnix {
         let is_external_oes = caps
             .get_structure(0)
             .and_then(|s| {
-                s.get::<&str>("texture-target").and_then(|target| {
-                    if target == "external-oes" {
+                s.get::<&str>("texture-target").ok().and_then(|target| {
+                    if target == Some("external-oes") {
                         Some(s)
                     } else {
                         None
@@ -196,9 +200,9 @@ impl Render for RenderUnix {
             })
             .is_some();
 
-        let info = gst_video::VideoInfo::from_caps(caps).ok_or_else(|| ())?;
+        let info = gst_video::VideoInfo::from_caps(caps).or_else(|_| Err(()))?;
         let frame =
-            gst_video::VideoFrame::from_buffer_readable_gl(buffer, &info).or_else(|_| Err(()))?;
+            gst_video::VideoFrame::from_buffer_readable_gl(buffer, &info).map_err(|_| ())?;
 
         VideoFrame::new(
             info.width() as i32,
@@ -222,7 +226,7 @@ impl Render for RenderUnix {
         }
 
         let vsinkbin = gst::ElementFactory::make("glsinkbin", Some("servo-media-vsink"))
-            .ok_or(PlayerError::Backend("glupload creation failed".to_owned()))?;
+            .map_err(|_| PlayerError::Backend("glupload creation failed".to_owned()))?;
 
         let caps = gst::Caps::builder("video/x-raw")
             .features(&[&gst_gl::CAPS_FEATURE_MEMORY_GL_MEMORY])

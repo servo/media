@@ -22,7 +22,6 @@ use servo_media_streams::registry::{get_stream, MediaStreamId};
 use servo_media_traits::{BackendMsg, ClientContextId, MediaInstance};
 use source::{register_servo_src, ServoSrc};
 use std::cell::RefCell;
-use std::error::Error;
 use std::ops::Range;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Sender};
@@ -346,7 +345,7 @@ impl SeekChannel {
         self.sender.clone()
     }
 
-    fn await(&self) -> SeekLockMsg {
+    fn _await(&self) -> SeekLockMsg {
         self.recv.recv().unwrap()
     }
 }
@@ -475,7 +474,7 @@ impl GStreamerPlayer {
 
         if let Some(ref audio_renderer) = self.audio_renderer {
             let audio_sink = gst::ElementFactory::make("appsink", None)
-                .ok_or(PlayerError::Backend("appsink creation failed".to_owned()))?;
+                .map_err(|_| PlayerError::Backend("appsink creation failed".to_owned()))?;
 
             pipeline
                 .set_property("audio-sink", &audio_sink)
@@ -487,11 +486,11 @@ impl GStreamerPlayer {
                 gst_app::AppSinkCallbacks::new()
                     .new_preroll(|_| Ok(gst::FlowSuccess::Ok))
                     .new_sample(move |audio_sink| {
-                        let sample = audio_sink.pull_sample().ok_or(gst::FlowError::Eos)?;
+                        let sample = audio_sink.pull_sample().map_err(|_| gst::FlowError::Eos)?;
                         let buffer = sample.get_buffer_owned().ok_or(gst::FlowError::Error)?;
                         let audio_info = sample
                             .get_caps()
-                            .and_then(|caps| gst_audio::AudioInfo::from_caps(caps))
+                            .and_then(|caps| gst_audio::AudioInfo::from_caps(caps).ok())
                             .ok_or(gst::FlowError::Error)?;
                         let positions = audio_info.positions().ok_or(gst::FlowError::Error)?;
                         for position in positions.iter() {
@@ -662,7 +661,7 @@ impl GStreamerPlayer {
                 gst_app::AppSinkCallbacks::new()
                     .new_preroll(|_| Ok(gst::FlowSuccess::Ok))
                     .new_sample(move |video_sink| {
-                        let sample = video_sink.pull_sample().ok_or(gst::FlowError::Eos)?;
+                        let sample = video_sink.pull_sample().map_err(|_| gst::FlowError::Eos)?;
                         let frame = render
                             .lock()
                             .unwrap()
@@ -689,8 +688,8 @@ impl GStreamerPlayer {
             let observer = self.observer.clone();
             let connect_result = pipeline.connect("source-setup", false, move |args| {
                 let source = match args[1].get::<gst::Element>() {
-                    Some(source) => source,
-                    None => {
+                    Ok(Some(source)) => source,
+                    _ => {
                         let _ = notify!(
                             sender,
                             Err(PlayerError::Backend("Source setup failed".to_owned()))
@@ -749,7 +748,7 @@ impl GStreamerPlayer {
                                             )
                                         );
                                         let (ret, ack_channel) =
-                                            seek_channel.lock().unwrap().await();
+                                            seek_channel.lock().unwrap()._await();
                                         (ret, Some(ack_channel))
                                     } else {
                                         (true, None)
@@ -792,10 +791,7 @@ impl GStreamerPlayer {
             }
 
             let error_handler_id = inner.player.connect_error(move |player, error| {
-                let _ = notify!(
-                    sender_clone,
-                    Err(PlayerError::Backend(error.description().to_string()))
-                );
+                let _ = notify!(sender_clone, Err(PlayerError::Backend(error.to_string())));
                 player.stop();
             });
 

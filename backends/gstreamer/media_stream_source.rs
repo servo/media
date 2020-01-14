@@ -235,7 +235,7 @@ mod imp {
     impl ObjectImpl for ServoMediaStreamSrc {
         glib_object_impl!();
 
-        fn get_property(&self, _: &glib::Object, id: usize) -> Result<gst::Value, ()> {
+        fn get_property(&self, _: &glib::Object, id: usize) -> Result<glib::Value, ()> {
             // We have a single property: is-live
             if id != 0 {
                 return Err(());

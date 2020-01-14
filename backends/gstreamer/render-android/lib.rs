@@ -77,7 +77,8 @@ impl RenderAndroid {
                 let display = match display_native {
                     NativeDisplay::Egl(display_native) => {
                         unsafe { gst_gl::GLDisplayEGL::new_with_egl_display(display_native) }
-                            .and_then(|display| Some(display.upcast()))
+                            .and_then(|display| Ok(display.upcast()))
+                            .ok()
                     }
                     _ => None,
                 };
@@ -125,6 +126,7 @@ impl Render for RenderAndroid {
                         .get_property("context")
                         .or_else(|_| Err(()))?
                         .get::<gst_gl::GLContext>()
+                        .unwrap_or_else(|_| None)
                 } else {
                     None
                 };
@@ -136,8 +138,8 @@ impl Render for RenderAndroid {
         let is_external_oes = caps
             .get_structure(0)
             .and_then(|s| {
-                s.get::<&str>("texture-target").and_then(|target| {
-                    if target == "external-oes" {
+                s.get::<&str>("texture-target").ok().and_then(|target| {
+                    if target == Some("external-oes") {
                         Some(s)
                     } else {
                         None
@@ -146,7 +148,7 @@ impl Render for RenderAndroid {
             })
             .is_some();
 
-        let info = gst_video::VideoInfo::from_caps(caps).ok_or_else(|| ())?;
+        let info = gst_video::VideoInfo::from_caps(caps).map_err(|_| ())?;
 
         if self.gst_context.lock().unwrap().is_some() {
             if let Some(sync_meta) = buffer.get_meta::<gst_gl::GLSyncMeta>() {
@@ -191,7 +193,7 @@ impl Render for RenderAndroid {
         }
 
         let vsinkbin = gst::ElementFactory::make("glsinkbin", Some("servo-media-vsink"))
-            .ok_or(PlayerError::Backend("glupload creation failed".to_owned()))?;
+            .map_err(|_| PlayerError::Backend("glupload creation failed".to_owned()))?;
 
         let caps = gst::Caps::builder("video/x-raw")
             .features(&[&gst_gl::CAPS_FEATURE_MEMORY_GL_MEMORY])

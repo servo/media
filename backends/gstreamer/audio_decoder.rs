@@ -36,8 +36,8 @@ impl AudioDecoder for GStreamerAudioDecoder {
         let callbacks = Arc::new(callbacks);
 
         let appsrc = match gst::ElementFactory::make("appsrc", None) {
-            Some(appsrc) => appsrc,
-            None => {
+            Ok(appsrc) => appsrc,
+            _ => {
                 return callbacks.error(AudioDecoderError::Backend(
                     "appsrc creation failed".to_owned(),
                 ));
@@ -45,8 +45,8 @@ impl AudioDecoder for GStreamerAudioDecoder {
         };
 
         let decodebin = match gst::ElementFactory::make("decodebin", None) {
-            Some(decodebin) => decodebin,
-            None => {
+            Ok(decodebin) => decodebin,
+            _ => {
                 return callbacks.error(AudioDecoderError::Backend(
                     "decodebin creation failed".to_owned(),
                 ));
@@ -133,8 +133,8 @@ impl AudioDecoder for GStreamerAudioDecoder {
             }
 
             let sample_audio_info = match gst_audio::AudioInfo::from_caps(&caps) {
-                Some(sample_audio_info) => sample_audio_info,
-                None => {
+                Ok(sample_audio_info) => sample_audio_info,
+                _ => {
                     callbacks.error(AudioDecoderError::Backend("AudioInfo failed".to_owned()));
                     let _ = sender.lock().unwrap().send(());
                     return;
@@ -144,22 +144,22 @@ impl AudioDecoder for GStreamerAudioDecoder {
             callbacks.ready(channels);
 
             let insert_deinterleave = || -> Result<(), AudioDecoderError> {
-                let convert = gst::ElementFactory::make("audioconvert", None).ok_or(
-                    AudioDecoderError::Backend("audioconvert creation failed".to_owned()),
-                )?;
+                let convert = gst::ElementFactory::make("audioconvert", None).map_err(|_| {
+                    AudioDecoderError::Backend("audioconvert creation failed".to_owned())
+                })?;
                 convert
                     .set_property("mix-matrix", &gst::Array::new(&[]).to_value())
                     .expect("mix-matrix property didn't work");
-                let resample = gst::ElementFactory::make("audioresample", None).ok_or(
-                    AudioDecoderError::Backend("audioresample creation failed".to_owned()),
-                )?;
-                let filter = gst::ElementFactory::make("capsfilter", None).ok_or(
-                    AudioDecoderError::Backend("capsfilter creation failed".to_owned()),
-                )?;
+                let resample = gst::ElementFactory::make("audioresample", None).map_err(|_| {
+                    AudioDecoderError::Backend("audioresample creation failed".to_owned())
+                })?;
+                let filter = gst::ElementFactory::make("capsfilter", None).map_err(|_| {
+                    AudioDecoderError::Backend("capsfilter creation failed".to_owned())
+                })?;
                 let deinterleave = gst::ElementFactory::make("deinterleave", Some("deinterleave"))
-                    .ok_or(AudioDecoderError::Backend(
-                        "deinterleave creation failed".to_owned(),
-                    ))?;
+                    .map_err(|_| {
+                        AudioDecoderError::Backend("deinterleave creation failed".to_owned())
+                    })?;
 
                 deinterleave
                     .set_property("keep-positions", &true.to_value())
@@ -183,12 +183,12 @@ impl AudioDecoder for GStreamerAudioDecoder {
                         }
                     };
                     let insert_sink = || -> Result<(), AudioDecoderError> {
-                        let queue = gst::ElementFactory::make("queue", None).ok_or(
-                            AudioDecoderError::Backend("queue creation failed".to_owned()),
-                        )?;
-                        let sink = gst::ElementFactory::make("appsink", None).ok_or(
-                            AudioDecoderError::Backend("appsink creation failed".to_owned()),
-                        )?;
+                        let queue = gst::ElementFactory::make("queue", None).map_err(|_| {
+                            AudioDecoderError::Backend("queue creation failed".to_owned())
+                        })?;
+                        let sink = gst::ElementFactory::make("appsink", None).map_err(|_| {
+                            AudioDecoderError::Backend("appsink creation failed".to_owned())
+                        })?;
                         let appsink = sink.clone().dynamic_cast::<gst_app::AppSink>().unwrap();
                         sink.set_property("sync", &false.to_value())
                             .expect("appsink doesn't handle expected 'sync' property");
@@ -198,7 +198,7 @@ impl AudioDecoder for GStreamerAudioDecoder {
                             gst_app::AppSinkCallbacks::new()
                                 .new_sample(move |appsink| {
                                     let sample =
-                                        appsink.pull_sample().ok_or(gst::FlowError::Eos)?;
+                                        appsink.pull_sample().map_err(|_| gst::FlowError::Eos)?;
                                     let buffer = sample.get_buffer_owned().ok_or_else(|| {
                                         callbacks_.error(AudioDecoderError::InvalidSample);
                                         gst::FlowError::Error
@@ -206,7 +206,7 @@ impl AudioDecoder for GStreamerAudioDecoder {
 
                                     let audio_info = sample
                                         .get_caps()
-                                        .and_then(|caps| gst_audio::AudioInfo::from_caps(caps))
+                                        .and_then(|caps| gst_audio::AudioInfo::from_caps(caps).ok())
                                         .ok_or_else(|| {
                                             callbacks_.error(AudioDecoderError::Backend(
                                                 "Could not get caps from sample".to_owned(),
@@ -278,10 +278,10 @@ impl AudioDecoder for GStreamerAudioDecoder {
                 }
                 let audio_info = audio_info_builder
                     .build()
-                    .ok_or(AudioDecoderError::Backend("AudioInfo failed".to_owned()))?;
+                    .map_err(|_| AudioDecoderError::Backend("AudioInfo failed".to_owned()))?;
                 let caps = audio_info
                     .to_caps()
-                    .ok_or(AudioDecoderError::Backend("AudioInfo failed".to_owned()))?;
+                    .map_err(|_| AudioDecoderError::Backend("AudioInfo failed".to_owned()))?;
                 filter
                     .set_property("caps", &caps)
                     .expect("capsfilter doesn't have expected 'caps' property");
