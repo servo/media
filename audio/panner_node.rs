@@ -333,7 +333,7 @@ impl AudioNodeEngine for PannerNode {
                     let x = if mono {
                         (azimuth + 90.) / 180.
                     } else if azimuth <= 0. {
-                        (azimuth + 90. / 90.)
+                        (azimuth + 90.) / 90.
                     } else {
                         azimuth / 90.
                     };
