@@ -394,10 +394,18 @@ impl AudioBuffer {
 
         let prev = pos.floor() as usize;
         let offset = pos - pos.floor();
-        let next_sample = *self.buffers[chan as usize].get(prev + 1).unwrap_or(&0.0);
-
-        ((1. - offset) * (self.buffers[chan as usize][prev] as f64) + offset * (next_sample as f64))
-            as f32
+        match self.buffers[chan as usize].get(prev + 1) {
+            Some(next_sample) => {
+                ((1. - offset) * (self.buffers[chan as usize][prev] as f64)
+                    + offset * (*next_sample as f64)) as f32
+            }
+            _ => {
+                // linear extrapolation of two prev samples
+                ((1. + offset) * (self.buffers[chan as usize][prev] as f64)
+                    - offset * (self.buffers[chan as usize][prev - 1] as f64))
+                    as f32
+            }
+        }
     }
 
     pub fn data_chan_mut(&mut self, chan: u8) -> &mut [f32] {
