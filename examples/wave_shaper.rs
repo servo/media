@@ -16,6 +16,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
 
     {
         let context = context.lock().unwrap();
+        let curve = vec![1., 0., 0., 0.75, 0.5];
 
         let dest = context.dest_node();
         let osc = context.create_node(
@@ -24,8 +25,22 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         );
         let wsh = context.create_node(
             AudioNodeInit::WaveShaperNode(WaveShaperNodeOptions {
-                curve: Some(vec![0., 0., 0., 4., 6.]),
+                curve: Some(curve.clone()),
                 oversample: OverSampleType::None,
+            }),
+            Default::default(),
+        );
+        let wshx2 = context.create_node(
+            AudioNodeInit::WaveShaperNode(WaveShaperNodeOptions {
+                curve: Some(curve.clone()),
+                oversample: OverSampleType::Double,
+            }),
+            Default::default(),
+        );
+        let wshx4 = context.create_node(
+            AudioNodeInit::WaveShaperNode(WaveShaperNodeOptions {
+                curve: Some(curve.clone()),
+                oversample: OverSampleType::Quadruple,
             }),
             Default::default(),
         );
@@ -40,8 +55,29 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         println!("raw oscillator");
         thread::sleep(time::Duration::from_millis(2000));
 
-        println!("oscillator through waveshaper");
+        println!("oscillator through waveshaper with no oversampling");
         context.disconnect_output(osc.output(0));
+        context.connect_ports(osc.output(0), wsh.input(0));
+        context.connect_ports(wsh.output(0), dest.input(0));
+        thread::sleep(time::Duration::from_millis(2000));
+
+        println!("oscillator through waveshaper with 2x oversampling");
+        context.disconnect_output(osc.output(0));
+        context.disconnect_output(wsh.output(0));
+        context.connect_ports(osc.output(0), wshx2.input(0));
+        context.connect_ports(wshx2.output(0), dest.input(0));
+        thread::sleep(time::Duration::from_millis(2000));
+
+        println!("oscillator through waveshaper with 4x oversampling");
+        context.disconnect_output(osc.output(0));
+        context.disconnect_output(wshx2.output(0));
+        context.connect_ports(osc.output(0), wshx4.input(0));
+        context.connect_ports(wshx4.output(0), dest.input(0));
+        thread::sleep(time::Duration::from_millis(2000));
+
+        println!("oscillator through waveshaper with no oversampling");
+        context.disconnect_output(osc.output(0));
+        context.disconnect_output(wshx4.output(0));
         context.connect_ports(osc.output(0), wsh.input(0));
         context.connect_ports(wsh.output(0), dest.input(0));
         thread::sleep(time::Duration::from_millis(2000));

@@ -12,6 +12,7 @@ extern crate euclid;
 extern crate num_traits;
 extern crate petgraph;
 extern crate smallvec;
+extern crate speexdsp_resampler;
 #[macro_use]
 pub mod macros;
 extern crate servo_media_traits;
