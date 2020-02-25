@@ -21,7 +21,7 @@ GST_DIR_TARGET="${GST_DIR}/${TARGET}"
 if [ ! -d $GST_DIR_TARGET ]; then
   GST_ZIP="../gstreamer-${TARGET}.zip"
   # Download the bundle containing all dependencies for Android.
-  wget http://servo-deps.s3.amazonaws.com/gstreamer/gstreamer-$TARGET-1.14.3-20181004-142930.zip -O $GST_ZIP
+  wget https://servo-deps.s3.amazonaws.com/gstreamer/gstreamer-$TARGET-1.14.3-20181004-142930.zip -O $GST_ZIP
   unzip $GST_ZIP -d $GST_DIR_TARGET > /dev/null
   rm $GST_ZIP
 fi
