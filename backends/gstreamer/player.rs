@@ -514,7 +514,7 @@ impl GStreamerPlayer {
 
         // There's a known bug in gstreamer that may cause a wrong transition
         // to the ready state while setting the uri property:
-        // http://cgit.freedesktop.org/gstreamer/gst-plugins-bad/commit/?id=afbbc3a97ec391c6a582f3c746965fdc3eb3e1f3
+        // https://cgit.freedesktop.org/gstreamer/gst-plugins-bad/commit/?id=afbbc3a97ec391c6a582f3c746965fdc3eb3e1f3
         // This may affect things like setting the config, so until the bug is
         // fixed, make sure that state dependent code happens before this line.
         // The estimated version for the fix is 1.14.5 / 1.15.1.

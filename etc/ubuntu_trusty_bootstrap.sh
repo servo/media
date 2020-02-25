@@ -7,7 +7,7 @@
 set -o errexit
 
 if [ ! -d "gst" ]; then
-  curl -L http://servo-deps.s3.amazonaws.com/gstreamer/gstreamer-1.14-x86_64-linux-gnu.20190213.tar.gz | tar xz
+  curl -L https://servo-deps.s3.amazonaws.com/gstreamer/gstreamer-1.14-x86_64-linux-gnu.20190213.tar.gz | tar xz
   sed -i "s;prefix=/opt/gst;prefix=$PWD/gst;g" $PWD/gst/lib/pkgconfig/*.pc
 fi
 export PKG_CONFIG_PATH=$PWD/gst/lib/pkgconfig
