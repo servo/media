@@ -23,7 +23,7 @@ use webrtc::{WebRtcController, WebRtcSignaller};
 pub struct ServoMedia(Box<dyn Backend>);
 
 static INITIALIZER: Once = Once::new();
-static mut INSTANCE: *mut Mutex<Option<Arc<ServoMedia>>> = 0 as *mut _;
+static mut INSTANCE: *mut Mutex<Option<Arc<ServoMedia>>> = std::ptr::null_mut();
 
 pub trait BackendInit {
     fn init() -> Box<dyn Backend>;
@@ -96,10 +96,14 @@ impl ServoMedia {
     }
 
     pub fn get() -> Result<Arc<ServoMedia>, ()> {
-        let instance = unsafe { &*INSTANCE }.lock().unwrap();
-        match *instance {
-            Some(ref instance) => Ok(instance.clone()),
-            None => Err(()),
+        if INITIALIZER.is_completed() {
+            let instance = unsafe { &*INSTANCE }.lock().unwrap();
+            match *instance {
+                Some(ref instance) => Ok(instance.clone()),
+                None => Err(()),
+            }
+        } else {
+            Err(())
         }
     }
 }
