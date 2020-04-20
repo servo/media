@@ -196,13 +196,13 @@ impl AudioContext {
         rx.recv().unwrap()
     }
 
-    /// Resume audio processing.
+    // Resume audio processing.
     make_state_change!(resume, Running, Resume);
 
-    /// Suspend audio processing.
+    // Suspend audio processing.
     make_state_change!(suspend, Suspended, Suspend);
 
-    /// Stop audio processing and close render thread.
+    // Stop audio processing and close render thread.
     make_state_change!(close, Closed, Close);
 
     pub fn message_node(&self, id: NodeId, msg: AudioNodeMessage) {
