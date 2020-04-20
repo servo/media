@@ -1,6 +1,4 @@
 #![feature(nll)]
-#![feature(once_is_completed)]
-
 extern crate boxfnonce;
 extern crate byte_slice_cast;
 extern crate mime;
@@ -73,7 +71,7 @@ use std::thread;
 use std::vec::Vec;
 
 lazy_static! {
-    static ref BACKEND_BASE_TIME: gst::ClockTime = { gst::SystemClock::obtain().get_time() };
+    static ref BACKEND_BASE_TIME: gst::ClockTime = gst::SystemClock::obtain().get_time();
 }
 
 pub struct GStreamerBackend {

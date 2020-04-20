@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 lazy_static! {
     static ref MEDIA_STREAMS_REGISTRY: Mutex<HashMap<MediaStreamId, Arc<Mutex<dyn MediaStream>>>> =
-        { Mutex::new(HashMap::new()) };
+        Mutex::new(HashMap::new());
 }
 
 #[derive(Clone, Copy, Hash, Eq, PartialEq)]
