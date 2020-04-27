@@ -16,7 +16,7 @@ serde = "1.0.66"
 servo_media_derive = { path = "../servo-media-derive" }
 servo-media-player = { path = "../player" }
 servo-media-traits = { path = "../traits" }
-smallvec = "0.6.1"
+smallvec = "1.0"
 speexdsp-resampler = "0.1.0"
 
 [dependencies.petgraph]
