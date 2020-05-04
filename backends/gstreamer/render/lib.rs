@@ -13,7 +13,6 @@
 //! pipeline, and handle the produced buffers.
 //!
 extern crate gstreamer as gst;
-extern crate gstreamer_video as gst_video;
 
 extern crate servo_media_player as sm_player;
 

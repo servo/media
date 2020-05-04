@@ -176,7 +176,9 @@ impl GStreamerRegistryScanner {
             self.supported_mime_types.insert("application/x-mpegurl");
         }
 
-        if has_element_for_media_type(&demux_factories, "application/x-wav") {
+        if has_element_for_media_type(&demux_factories, "application/x-wav")
+            || has_element_for_media_type(&demux_factories, "audio/x-wav")
+        {
             self.supported_mime_types.insert("audio/wav");
             self.supported_mime_types.insert("audio/vnd.wav");
             self.supported_mime_types.insert("audio/x-wav");
