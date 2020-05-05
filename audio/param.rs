@@ -68,6 +68,21 @@ impl Param {
         }
     }
 
+    pub fn new_krate(val: f32) -> Self {
+        Param {
+            val,
+            kind: ParamRate::KRate,
+            events: vec![],
+            current_event: 0,
+            event_start_time: Tick(0),
+            event_start_value: val,
+            blocks: Vec::new(),
+            block_mix_val: 0.,
+            summed: false,
+            dirty: false,
+        }
+    }
+
     /// Update the value of this param to the next
     ///
     /// Invariant: This should be called with monotonically increasing
