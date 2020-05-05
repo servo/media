@@ -136,6 +136,10 @@ name = "wave_shaper"
 path = "wave_shaper.rs"
 
 [[bin]]
+name = "iir_filter"
+path = "iir_filter.rs"
+
+[[bin]]
 name = "media_element_source_node"
 path = "media_element_source_node.rs"
 required-features = [ "player" ]
