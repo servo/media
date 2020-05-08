@@ -37,7 +37,7 @@ pub enum AudioNodeInit {
 }
 
 /// Type of AudioNodeEngine.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AudioNodeType {
     /// Not a constructable node
     AudioListenerNode,
