@@ -147,6 +147,14 @@ impl State {
         webrtc.add_stream(&video);
         webrtc.add_stream(&audio);
 
+        let (sender, receiver) = mpsc::channel::<Box<dyn WebRtcDataChannel>>();
+        webrtc.create_data_channel(
+            WebRtcDataChannelInit::default(),
+            sender,
+        );
+        let channel = receiver.recv().unwrap();
+        //channel.send("Hello from servo-media").unwrap();
+
         webrtc.configure(STUN_SERVER.into(), BundlePolicy::MaxBundle);
     }
 }
@@ -174,6 +182,7 @@ impl WebRtcSignaller for Signaller {
             sdp_mline_index: candidate.sdp_mline_index,
         })
         .unwrap();
+
         self.sender.send(OwnedMessage::Text(message)).unwrap();
     }
 

@@ -8,7 +8,9 @@ use boxfnonce::SendBoxFnOnce;
 use crate::{
     BundlePolicy, DescriptionType, IceCandidate, MediaStreamId, SdpType, SessionDescription,
 };
+
 use crate::{WebRtcBackend, WebRtcControllerBackend, WebRtcSignaller};
+use crate::{WebRtcDataChannel, WebRtcDataChannelInit};
 
 use servo_media_streams::MediaStreamType;
 
@@ -64,6 +66,13 @@ impl WebRtcController {
     pub fn add_stream(&self, stream: &MediaStreamId) {
         let _ = self.sender.send(RtcThreadEvent::AddStream(stream.clone()));
     }
+    pub fn create_data_channel(
+        &self,
+        init: WebRtcDataChannelInit,
+        channel: Sender<Box<dyn WebRtcDataChannel>>
+    ) {
+        let _ = self.sender.send(RtcThreadEvent::CreateDataChannel(init, channel));
+    }
 
     /// This should not be invoked by clients
     pub fn internal_event(&self, event: InternalEvent) {
@@ -83,6 +92,7 @@ pub enum RtcThreadEvent {
     CreateOffer(SendBoxFnOnce<'static, (SessionDescription,)>),
     CreateAnswer(SendBoxFnOnce<'static, (SessionDescription,)>),
     AddStream(MediaStreamId),
+    CreateDataChannel(WebRtcDataChannelInit, Sender<Box<dyn WebRtcDataChannel>>),
     InternalEvent(InternalEvent),
     Quit,
 }
@@ -96,6 +106,7 @@ pub enum InternalEvent {
     OnNegotiationNeeded,
     OnIceCandidate(IceCandidate),
     OnAddStream(MediaStreamId, MediaStreamType),
+    OnDataChannel(),
     DescriptionAdded(
         SendBoxFnOnce<'static, ()>,
         DescriptionType,
@@ -121,6 +132,7 @@ pub fn handle_rtc_event(
         RtcThreadEvent::CreateOffer(cb) => controller.create_offer(cb),
         RtcThreadEvent::CreateAnswer(cb) => controller.create_answer(cb),
         RtcThreadEvent::AddStream(media) => controller.add_stream(&media),
+        RtcThreadEvent::CreateDataChannel(init, channel) => controller.create_data_channel(&init, channel),
         RtcThreadEvent::InternalEvent(e) => controller.internal_event(e),
         RtcThreadEvent::Quit => {
             controller.quit();

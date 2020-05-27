@@ -1,13 +1,19 @@
+#![feature(fn_traits)]
+
 extern crate boxfnonce;
 extern crate log;
 extern crate servo_media_streams;
+extern crate uuid;
+
 use servo_media_streams::registry::MediaStreamId;
 use servo_media_streams::MediaStreamType;
 
 use std::fmt::Display;
 use std::str::FromStr;
+use std::sync::mpsc::Sender;
 
 use boxfnonce::SendBoxFnOnce;
+use uuid::Uuid;
 
 pub mod thread;
 
@@ -44,6 +50,11 @@ pub trait WebRtcControllerBackend: Send {
     fn create_offer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebrtcResult;
     fn create_answer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebrtcResult;
     fn add_stream(&mut self, stream: &MediaStreamId) -> WebrtcResult;
+    fn create_data_channel(
+        &mut self,
+        init: &WebRtcDataChannelInit,
+        channel: Sender<Box<dyn WebRtcDataChannel>>
+    ) -> WebrtcResult;
     fn internal_event(&mut self, event: thread::InternalEvent) -> WebrtcResult;
     fn quit(&mut self);
 }
@@ -57,6 +68,85 @@ pub trait WebRtcSignaller: Send {
     fn update_signaling_state(&self, _: SignalingState) {}
     fn update_gathering_state(&self, _: GatheringState) {}
     fn update_ice_connection_state(&self, _: IceConnectionState) {}
+
+    fn on_data_channel(&self, channel: Box<dyn WebRtcDataChannel>) {}
+}
+
+pub struct WebRtcDataChannelCallbacks {
+    pub open: Option<SendBoxFnOnce<'static, ()>>,
+    pub error: Option<SendBoxFnOnce<'static, (WebrtcError,)>>,
+    pub message: Option<Box<dyn Fn(String) + Send + Sync + 'static>>,
+    pub close: Option<SendBoxFnOnce<'static, ()>>,
+}
+
+impl WebRtcDataChannelCallbacks {
+    pub fn new() -> WebRtcDataChannelCallbacks {
+        WebRtcDataChannelCallbacks {
+            open: None,
+            error: None,
+            message: None,
+            close: None,
+        }
+    }
+
+    pub fn open(&mut self) {
+        if let Some(callback) = self.open.take() {
+            callback.call();
+        };
+    }
+
+    pub fn error(&mut self, error: WebrtcError) {
+        if let Some(callback) = self.error.take() {
+            callback.call(error);
+        };
+    }
+
+    pub fn message(&self, message: String) {
+        if let Some(ref callback) = self.message {
+            callback.call((message,));
+        };
+    }
+
+    pub fn close(&mut self) {
+        if let Some(callback) = self.close.take() {
+            callback.call();
+        };
+    }
+}
+
+pub trait WebRtcDataChannel: Send {
+    fn set_on_open(&self, SendBoxFnOnce<'static, ()>);
+    fn set_on_error(&self, SendBoxFnOnce<'static, (WebrtcError,)>);
+    fn set_on_message(&self, Box<dyn Fn(String) + Send + Sync + 'static>);
+    fn set_on_close(&self, SendBoxFnOnce<'static, ()>);
+    fn send(&self, &str) -> WebrtcResult;
+    fn close(&self);
+}
+
+// https://www.w3.org/TR/webrtc/#dom-rtcdatachannelinit
+// plus `label`
+pub struct WebRtcDataChannelInit {
+    pub label: String,
+    pub ordered: bool,
+    pub max_packet_life_time: Option<u16>,
+    pub max_retransmits: Option<u16>,
+    pub protocol: String,
+    pub negotiated: bool,
+    pub id: Option<u16>,
+}
+
+impl Default for WebRtcDataChannelInit {
+    fn default() -> WebRtcDataChannelInit {
+        WebRtcDataChannelInit {
+            label: Uuid::new_v4().to_string(),
+            ordered: true,
+            max_packet_life_time: None,
+            max_retransmits: None,
+            protocol: String::new(),
+            negotiated: false,
+            id: None,
+        }
+    }
 }
 
 pub trait WebRtcBackend {

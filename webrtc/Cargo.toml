@@ -9,6 +9,7 @@ path = "lib.rs"
 [dependencies]
 boxfnonce = "0.1.0"
 log = "0.4.6"
+uuid = { version = "0.8", features = ["v4"] }
 
 [dependencies.servo-media-streams]
 path = "../streams"

@@ -1,5 +1,6 @@
 use super::BACKEND_BASE_TIME;
 use boxfnonce::SendBoxFnOnce;
+use datachannel::GStreamerWebRtcDataChannel;
 use glib;
 use glib::prelude::*;
 use gst;
@@ -13,6 +14,7 @@ use servo_media_webrtc::thread::InternalEvent;
 use servo_media_webrtc::WebRtcController as WebRtcThread;
 use servo_media_webrtc::*;
 use std::sync::{Arc, Mutex};
+use std::sync::mpsc::Sender;
 use std::{cmp, mem};
 
 // TODO:
@@ -142,6 +144,22 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         Ok(())
     }
 
+    fn create_data_channel(
+        &mut self,
+        init: &WebRtcDataChannelInit,
+        sender: Sender<Box<dyn WebRtcDataChannel>>
+    ) -> WebrtcResult {
+        match GStreamerWebRtcDataChannel::new(&self.webrtc, init) {
+            Ok(channel) => {
+                let _ = sender.send(Box::new(channel));
+                Ok(())
+            },
+            Err(error) => {
+                Err(WebrtcError::Backend(error))
+            }
+        }
+    }
+
     fn configure(&mut self, stun_server: &str, policy: BundlePolicy) -> WebrtcResult {
         self.webrtc
             .set_property_from_str("stun-server", stun_server);
@@ -170,6 +188,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                 self.pipeline.set_state(gst::State::Playing)?;
                 self.signaller.on_add_stream(&stream, ty);
             }
+            InternalEvent::OnDataChannel() => {}
             InternalEvent::DescriptionAdded(cb, description_type, ty, remote_offer_generation) => {
                 if description_type == DescriptionType::Remote
                     && ty == SdpType::Offer
@@ -260,8 +279,6 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         self.signaller.close();
 
         self.pipeline.set_state(gst::State::Null).unwrap();
-
-        //main_loop.quit();
     }
 }
 
@@ -312,6 +329,9 @@ impl GStreamerWebRtcController {
             let mut caps = gst::Caps::new_empty();
             let caps_mut = caps.get_mut().expect("Fresh caps should be uniquely owned");
             for format in media.formats() {
+                if format == "webrtc-datachannel" {
+                    return;
+                }
                 let pt = format
                     .parse()
                     .expect("Gstreamer provided noninteger format");
@@ -510,6 +530,16 @@ impl GStreamerWebRtcController {
                     .internal_event(InternalEvent::UpdateGatheringState);
                 None
             })?;
+        let thread = Mutex::new(self.thread.clone());
+        self.webrtc
+            .connect("on-data-channel", false, move |channel| {
+                thread
+                    .lock()
+                    .unwrap()
+                    .internal_event(InternalEvent::OnDataChannel());
+                None
+            })?;
+
         self.pipeline.set_state(gst::State::Ready)?;
         Ok(())
     }
