@@ -19,17 +19,17 @@ mod imp {
     use super::*;
 
     macro_rules! inner_appsrc_proxy {
-        ($fn_name:ident, $return_type:ty) => (
+        ($fn_name:ident, $return_type:ty) => {
             pub fn $fn_name(&self) -> $return_type {
                 self.appsrc.$fn_name()
             }
-        );
+        };
 
-        ($fn_name:ident, $arg1:ident, $arg1_type:ty, $return_type:ty) => (
+        ($fn_name:ident, $arg1:ident, $arg1_type:ty, $return_type:ty) => {
             pub fn $fn_name(&self, $arg1: $arg1_type) -> $return_type {
                 self.appsrc.$fn_name($arg1)
             }
-        )
+        };
     }
 
     #[derive(Debug)]
@@ -401,17 +401,17 @@ unsafe impl Send for ServoSrc {}
 unsafe impl Sync for ServoSrc {}
 
 macro_rules! inner_servosrc_proxy {
-    ($fn_name:ident, $return_type:ty) => (
+    ($fn_name:ident, $return_type:ty) => {
         pub fn $fn_name(&self) -> $return_type {
             imp::ServoSrc::from_instance(self).$fn_name()
         }
-    );
+    };
 
-    ($fn_name:ident, $arg1:ident, $arg1_type:ty, $return_type:ty) => (
+    ($fn_name:ident, $arg1:ident, $arg1_type:ty, $return_type:ty) => {
         pub fn $fn_name(&self, $arg1: $arg1_type) -> $return_type {
             imp::ServoSrc::from_instance(self).$fn_name($arg1)
         }
-    )
+    };
 }
 
 impl ServoSrc {

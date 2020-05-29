@@ -53,7 +53,7 @@ impl GStreamerWebRtcDataChannel {
         GStreamerWebRtcDataChannel::from(channel, webrtc_thread)
     }
 
-    pub fn from(channel: glib::Object, webrtc_thread: WebRtcThread) -> Result <Self, String> {
+    pub fn from(channel: glib::Object, webrtc_thread: WebRtcThread) -> Result<Self, String> {
         let callbacks = Arc::new(Mutex::new(WebRtcDataChannelCallbacks::new()));
 
         let callbacks_ = callbacks.clone();
@@ -120,7 +120,7 @@ impl WebRtcDataChannelBackend for GStreamerWebRtcDataChannel {
         self.callbacks.lock().unwrap().close = Some(SendBoxFnOnce::from(cb));
     }
 
-    fn set_on_error(&self, cb: Box<dyn FnOnce(WebRtcError,) + Send + 'static>) {
+    fn set_on_error(&self, cb: Box<dyn FnOnce(WebRtcError) + Send + 'static>) {
         self.callbacks.lock().unwrap().error = Some(SendBoxFnOnce::from(cb));
     }
 

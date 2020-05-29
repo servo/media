@@ -53,7 +53,7 @@ pub trait WebRtcControllerBackend: Send {
     fn create_data_channel(
         &mut self,
         init: &WebRtcDataChannelInit,
-        channel: Sender<Box<dyn WebRtcDataChannelBackend>>
+        channel: Sender<Box<dyn WebRtcDataChannelBackend>>,
     ) -> WebRtcResult;
     fn internal_event(&mut self, event: thread::InternalEvent) -> WebRtcResult;
     fn quit(&mut self);

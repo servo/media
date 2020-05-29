@@ -13,8 +13,8 @@ use servo_media_streams::MediaStreamType;
 use servo_media_webrtc::thread::InternalEvent;
 use servo_media_webrtc::WebRtcController as WebRtcThread;
 use servo_media_webrtc::*;
-use std::sync::{Arc, Mutex};
 use std::sync::mpsc::Sender;
+use std::sync::{Arc, Mutex};
 use std::{cmp, mem};
 
 // TODO:
@@ -147,16 +147,14 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
     fn create_data_channel(
         &mut self,
         init: &WebRtcDataChannelInit,
-        sender: Sender<Box<dyn WebRtcDataChannelBackend>>
+        sender: Sender<Box<dyn WebRtcDataChannelBackend>>,
     ) -> WebRtcResult {
         match GStreamerWebRtcDataChannel::new(self.thread.clone(), &self.webrtc, init) {
             Ok(channel) => {
                 let _ = sender.send(Box::new(channel));
                 Ok(())
-            },
-            Err(error) => {
-                Err(WebRtcError::Backend(error))
             }
+            Err(error) => Err(WebRtcError::Backend(error)),
         }
     }
 
@@ -550,7 +548,7 @@ impl GStreamerWebRtcController {
                             .lock()
                             .unwrap()
                             .internal_event(InternalEvent::OnDataChannel(Box::new(channel)));
-                    },
+                    }
                     Err(error) => {
                         warn!("Could not create data channel {:?}", error);
                     }

@@ -148,14 +148,15 @@ impl State {
         webrtc.add_stream(&audio);
 
         let (sender, receiver) = mpsc::channel::<Box<dyn WebRtcDataChannelBackend>>();
-        webrtc.create_data_channel(
-            WebRtcDataChannelInit::default(),
-            sender,
-        );
+        webrtc.create_data_channel(WebRtcDataChannelInit::default(), sender);
         let channel = Arc::new(Mutex::new(receiver.recv().unwrap()));
         let channel_ = channel.clone();
         channel.lock().unwrap().set_on_open(Box::new(move || {
-            channel_.lock().unwrap().send("Hello from servo-media").unwrap();
+            channel_
+                .lock()
+                .unwrap()
+                .send("Hello from servo-media")
+                .unwrap();
         }));
         channel.lock().unwrap().set_on_error(Box::new(|error| {
             println!("Data channel error {:?}", error);
