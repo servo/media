@@ -34,6 +34,7 @@ pub mod graph;
 pub mod iir_filter_node;
 pub mod listener;
 pub mod media_element_source_node;
+pub mod media_stream_destination_node;
 pub mod node;
 pub mod offline_sink;
 pub mod oscillator_node;

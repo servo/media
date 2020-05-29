@@ -13,7 +13,7 @@ pub enum AudioSinkError {
     StateChangeFailed,
 }
 
-pub trait AudioSink {
+pub trait AudioSink: Send {
     fn init(
         &self,
         sample_rate: f32,

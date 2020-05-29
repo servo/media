@@ -9,6 +9,7 @@ use gain_node::GainNode;
 use graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
 use iir_filter_node::IIRFilterNode;
 use media_element_source_node::MediaElementSourceNode;
+use media_stream_destination_node::MediaStreamDestinationNode;
 use node::{AudioNodeEngine, AudioNodeInit, AudioNodeMessage};
 use node::{BlockInfo, ChannelInfo};
 use offline_sink::OfflineAudioSink;
@@ -195,6 +196,14 @@ impl AudioRenderThread {
             }
             AudioNodeInit::ConstantSourceNode(options) => {
                 Box::new(ConstantSourceNode::new(options, ch))
+            }
+            AudioNodeInit::MediaStreamDestinationNode(tx) => {
+                Box::new(MediaStreamDestinationNode::new(
+                    tx,
+                    self.sample_rate,
+                    (self.sink_factory)().unwrap(),
+                    ch
+                ))
             }
             AudioNodeInit::ChannelSplitterNode => Box::new(ChannelSplitterNode::new(ch)),
             AudioNodeInit::WaveShaperNode(options) => Box::new(WaveShaperNode::new(options, ch)),
