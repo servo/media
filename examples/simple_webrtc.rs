@@ -147,13 +147,22 @@ impl State {
         webrtc.add_stream(&video);
         webrtc.add_stream(&audio);
 
-        let (sender, receiver) = mpsc::channel::<Box<dyn WebRtcDataChannel>>();
+        let (sender, receiver) = mpsc::channel::<Box<dyn WebRtcDataChannelBackend>>();
         webrtc.create_data_channel(
             WebRtcDataChannelInit::default(),
             sender,
         );
-        let channel = receiver.recv().unwrap();
-        //channel.send("Hello from servo-media").unwrap();
+        let channel = Arc::new(Mutex::new(receiver.recv().unwrap()));
+        let channel_ = channel.clone();
+        channel.lock().unwrap().set_on_open(Box::new(move || {
+            channel_.lock().unwrap().send("Hello from servo-media").unwrap();
+        }));
+        channel.lock().unwrap().set_on_error(Box::new(|error| {
+            println!("Data channel error {:?}", error);
+        }));
+        channel.lock().unwrap().set_on_close(Box::new(|| {
+            println!("Data channel closed");
+        }));
 
         webrtc.configure(STUN_SERVER.into(), BundlePolicy::MaxBundle);
     }
@@ -202,6 +211,12 @@ impl WebRtcSignaller for Signaller {
 
     fn on_add_stream(&self, stream: &registry::MediaStreamId, _: MediaStreamType) {
         self.output.lock().unwrap().add_stream(&stream);
+    }
+
+    fn on_data_channel(&self, channel: Box<dyn WebRtcDataChannelBackend>) {
+        channel.set_on_message(Box::new(|message| {
+            println!("Got data channel message: {:?}", message);
+        }));
     }
 }
 

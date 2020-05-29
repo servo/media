@@ -53,7 +53,7 @@ pub trait WebRtcControllerBackend: Send {
     fn create_data_channel(
         &mut self,
         init: &WebRtcDataChannelInit,
-        channel: Sender<Box<dyn WebRtcDataChannel>>
+        channel: Sender<Box<dyn WebRtcDataChannelBackend>>
     ) -> WebrtcResult;
     fn internal_event(&mut self, event: thread::InternalEvent) -> WebrtcResult;
     fn quit(&mut self);
@@ -69,13 +69,13 @@ pub trait WebRtcSignaller: Send {
     fn update_gathering_state(&self, _: GatheringState) {}
     fn update_ice_connection_state(&self, _: IceConnectionState) {}
 
-    fn on_data_channel(&self, channel: Box<dyn WebRtcDataChannel>) {}
+    fn on_data_channel(&self, _: Box<dyn WebRtcDataChannelBackend>) {}
 }
 
 pub struct WebRtcDataChannelCallbacks {
     pub open: Option<SendBoxFnOnce<'static, ()>>,
     pub error: Option<SendBoxFnOnce<'static, (WebrtcError,)>>,
-    pub message: Option<Box<dyn Fn(String) + Send + Sync + 'static>>,
+    pub message: Option<Box<dyn Fn(String) + Send + 'static>>,
     pub close: Option<SendBoxFnOnce<'static, ()>>,
 }
 
@@ -114,13 +114,17 @@ impl WebRtcDataChannelCallbacks {
     }
 }
 
-pub trait WebRtcDataChannel: Send {
-    fn set_on_open(&self, SendBoxFnOnce<'static, ()>);
-    fn set_on_error(&self, SendBoxFnOnce<'static, (WebrtcError,)>);
-    fn set_on_message(&self, Box<dyn Fn(String) + Send + Sync + 'static>);
-    fn set_on_close(&self, SendBoxFnOnce<'static, ()>);
+pub trait WebRtcDataChannelBackend: Send {
+    fn set_on_open(&self, Box<dyn FnOnce() + Send + 'static>);
+    fn set_on_error(&self, Box<dyn FnOnce(WebrtcError,) + Send + 'static>);
+    fn set_on_message(&self, Box<dyn Fn(String) + Send + 'static>);
+    fn set_on_close(&self, Box<dyn FnOnce() + Send + 'static>);
     fn send(&self, &str) -> WebrtcResult;
     fn close(&self);
+}
+
+pub trait InnerWebRtcDataChannel: Send {
+    fn send(&self, &str) -> WebrtcResult;
 }
 
 // https://www.w3.org/TR/webrtc/#dom-rtcdatachannelinit

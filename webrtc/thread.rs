@@ -10,7 +10,7 @@ use crate::{
 };
 
 use crate::{WebRtcBackend, WebRtcControllerBackend, WebRtcSignaller};
-use crate::{WebRtcDataChannel, WebRtcDataChannelInit};
+use crate::{InnerWebRtcDataChannel, WebRtcDataChannelBackend, WebRtcDataChannelInit};
 
 use servo_media_streams::MediaStreamType;
 
@@ -69,7 +69,7 @@ impl WebRtcController {
     pub fn create_data_channel(
         &self,
         init: WebRtcDataChannelInit,
-        channel: Sender<Box<dyn WebRtcDataChannel>>
+        channel: Sender<Box<dyn WebRtcDataChannelBackend>>
     ) {
         let _ = self.sender.send(RtcThreadEvent::CreateDataChannel(init, channel));
     }
@@ -92,7 +92,7 @@ pub enum RtcThreadEvent {
     CreateOffer(SendBoxFnOnce<'static, (SessionDescription,)>),
     CreateAnswer(SendBoxFnOnce<'static, (SessionDescription,)>),
     AddStream(MediaStreamId),
-    CreateDataChannel(WebRtcDataChannelInit, Sender<Box<dyn WebRtcDataChannel>>),
+    CreateDataChannel(WebRtcDataChannelInit, Sender<Box<dyn WebRtcDataChannelBackend>>),
     InternalEvent(InternalEvent),
     Quit,
 }
@@ -106,13 +106,14 @@ pub enum InternalEvent {
     OnNegotiationNeeded,
     OnIceCandidate(IceCandidate),
     OnAddStream(MediaStreamId, MediaStreamType),
-    OnDataChannel(),
+    OnDataChannel(Box<dyn WebRtcDataChannelBackend>),
     DescriptionAdded(
         SendBoxFnOnce<'static, ()>,
         DescriptionType,
         SdpType,
         /* remote offer generation */ u32,
     ),
+    SendDataChannelMessage(Box<dyn InnerWebRtcDataChannel>, String),
     UpdateSignalingState,
     UpdateGatheringState,
     UpdateIceConnectionState,

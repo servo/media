@@ -147,9 +147,9 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
     fn create_data_channel(
         &mut self,
         init: &WebRtcDataChannelInit,
-        sender: Sender<Box<dyn WebRtcDataChannel>>
+        sender: Sender<Box<dyn WebRtcDataChannelBackend>>
     ) -> WebrtcResult {
-        match GStreamerWebRtcDataChannel::new(&self.webrtc, init) {
+        match GStreamerWebRtcDataChannel::new(self.thread.clone(), &self.webrtc, init) {
             Ok(channel) => {
                 let _ = sender.send(Box::new(channel));
                 Ok(())
@@ -188,7 +188,9 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                 self.pipeline.set_state(gst::State::Playing)?;
                 self.signaller.on_add_stream(&stream, ty);
             }
-            InternalEvent::OnDataChannel() => {}
+            InternalEvent::OnDataChannel(channel) => {
+                self.signaller.on_data_channel(channel);
+            }
             InternalEvent::DescriptionAdded(cb, description_type, ty, remote_offer_generation) => {
                 if description_type == DescriptionType::Remote
                     && ty == SdpType::Offer
@@ -270,6 +272,9 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                     }
                 };
                 self.signaller.update_ice_connection_state(state);
+            }
+            InternalEvent::SendDataChannelMessage(channel, message) => {
+                return channel.send(&message);
             }
         }
         Ok(())
@@ -533,10 +538,23 @@ impl GStreamerWebRtcController {
         let thread = Mutex::new(self.thread.clone());
         self.webrtc
             .connect("on-data-channel", false, move |channel| {
-                thread
-                    .lock()
-                    .unwrap()
-                    .internal_event(InternalEvent::OnDataChannel());
+                let channel = channel[1]
+                    .get::<glib::Object>()
+                    .map_err(|e| e.to_string())
+                    .expect("Invalid data channel")
+                    .expect("Invalid data channel");
+                let thread_ = thread.lock().unwrap().clone();
+                match GStreamerWebRtcDataChannel::from(channel, thread_) {
+                    Ok(channel) => {
+                        thread
+                            .lock()
+                            .unwrap()
+                            .internal_event(InternalEvent::OnDataChannel(Box::new(channel)));
+                    },
+                    Err(error) => {
+                        warn!("Could not create data channel {:?}", error);
+                    }
+                }
                 None
             })?;
 
