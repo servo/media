@@ -94,6 +94,7 @@ impl PortKind for OutputPort {
 pub struct AudioGraph {
     graph: StableGraph<Node, Edge>,
     dest_id: NodeId,
+    dests: Vec<NodeId>,
     listener_id: NodeId,
 }
 
@@ -165,6 +166,7 @@ impl AudioGraph {
         AudioGraph {
             graph,
             dest_id,
+            dests: vec![dest_id],
             listener_id,
         }
     }
@@ -322,6 +324,11 @@ impl AudioGraph {
         self.dest_id
     }
 
+    /// Add additional terminator nodes
+    pub fn add_extra_dest(&mut self, dest: NodeId) {
+        self.dests.push(dest);
+    }
+
     /// Get the id of the AudioListener in this graph
     ///
     /// All graphs have a single listener, with no ports (but nine AudioParams)
@@ -341,144 +348,148 @@ impl AudioGraph {
         //
         // This will only visit each node once
         let reversed = Reversed(&self.graph);
-        let mut visit = DfsPostOrder::new(reversed, self.dest_id.0);
 
         let mut blocks: SmallVec<[SmallVec<[Block; 1]>; 1]> = SmallVec::new();
         let mut output_counts: SmallVec<[u32; 1]> = SmallVec::new();
 
-        while let Some(ix) = visit.next(reversed) {
-            let mut curr = self.graph[ix].node.borrow_mut();
+        let mut visit = DfsPostOrder::empty(reversed);
 
-            let mut chunk = Chunk::default();
-            chunk
-                .blocks
-                .resize(curr.input_count() as usize, Default::default());
+        for dest in &self.dests {
+            visit.move_to(dest.0);
 
-            // if we have inputs, collect all the computed blocks
-            // and construct a Chunk
+            while let Some(ix) = visit.next(reversed) {
+                let mut curr = self.graph[ix].node.borrow_mut();
 
-            // set up scratch space to store all the blocks
-            blocks.clear();
-            blocks.resize(curr.input_count() as usize, Default::default());
+                let mut chunk = Chunk::default();
+                chunk
+                    .blocks
+                    .resize(curr.input_count() as usize, Default::default());
 
-            let mode = curr.channel_count_mode();
-            let count = curr.channel_count();
-            let interpretation = curr.channel_interpretation();
+                // if we have inputs, collect all the computed blocks
+                // and construct a Chunk
 
-            // all edges to this node are from its dependencies
-            for edge in self.graph.edges_directed(ix, Direction::Incoming) {
-                let edge = edge.weight();
-                for connection in &edge.connections {
-                    let mut block = connection
-                        .cache
-                        .borrow_mut()
-                        .take()
-                        .expect("Cache should have been filled from traversal");
+                // set up scratch space to store all the blocks
+                blocks.clear();
+                blocks.resize(curr.input_count() as usize, Default::default());
 
-                    match connection.input_idx {
-                        PortIndex::Port(idx) => {
-                            blocks[idx as usize].push(block);
+                let mode = curr.channel_count_mode();
+                let count = curr.channel_count();
+                let interpretation = curr.channel_interpretation();
+
+                // all edges to this node are from its dependencies
+                for edge in self.graph.edges_directed(ix, Direction::Incoming) {
+                    let edge = edge.weight();
+                    for connection in &edge.connections {
+                        let mut block = connection
+                            .cache
+                            .borrow_mut()
+                            .take()
+                            .expect("Cache should have been filled from traversal");
+
+                        match connection.input_idx {
+                            PortIndex::Port(idx) => {
+                                blocks[idx as usize].push(block);
+                            }
+                            PortIndex::Param(param) => {
+                                // param inputs are downmixed to mono
+                                // https://webaudio.github.io/web-audio-api/#dom-audionode-connect-destinationparam-output
+                                block.mix(1, ChannelInterpretation::Speakers);
+                                curr.get_param(param).add_block(block)
+                            }
+                            PortIndex::Listener(_) => curr.set_listenerdata(block),
                         }
-                        PortIndex::Param(param) => {
-                            // param inputs are downmixed to mono
-                            // https://webaudio.github.io/web-audio-api/#dom-audionode-connect-destinationparam-output
-                            block.mix(1, ChannelInterpretation::Speakers);
-                            curr.get_param(param).add_block(block)
-                        }
-                        PortIndex::Listener(_) => curr.set_listenerdata(block),
                     }
                 }
-            }
 
-            for (i, mut blocks) in blocks.drain().enumerate() {
-                if blocks.len() == 0 {
-                    if mode == ChannelCountMode::Explicit {
-                        // It's silence, but mix it anyway
-                        chunk.blocks[i].mix(count, interpretation);
-                    }
-                } else if blocks.len() == 1 {
-                    chunk.blocks[i] = blocks.pop().expect("`blocks` had length 1");
-                    match mode {
-                        ChannelCountMode::Explicit => {
+                for (i, mut blocks) in blocks.drain().enumerate() {
+                    if blocks.len() == 0 {
+                        if mode == ChannelCountMode::Explicit {
+                            // It's silence, but mix it anyway
                             chunk.blocks[i].mix(count, interpretation);
                         }
-                        ChannelCountMode::ClampedMax => {
-                            if chunk.blocks[i].chan_count() > count {
+                    } else if blocks.len() == 1 {
+                        chunk.blocks[i] = blocks.pop().expect("`blocks` had length 1");
+                        match mode {
+                            ChannelCountMode::Explicit => {
                                 chunk.blocks[i].mix(count, interpretation);
                             }
-                        }
-                        // It's one channel, it maxes itself
-                        ChannelCountMode::Max => (),
-                    }
-                } else {
-                    let mix_count = match mode {
-                        ChannelCountMode::Explicit => count,
-                        _ => {
-                            let mut max = 0; // max channel count
-                            for block in &blocks {
-                                max = cmp::max(max, block.chan_count());
+                            ChannelCountMode::ClampedMax => {
+                                if chunk.blocks[i].chan_count() > count {
+                                    chunk.blocks[i].mix(count, interpretation);
+                                }
                             }
-                            if mode == ChannelCountMode::ClampedMax {
-                                max = cmp::min(max, count);
-                            }
-                            max
+                            // It's one channel, it maxes itself
+                            ChannelCountMode::Max => (),
                         }
-                    };
-                    let block = blocks.into_iter().fold(Block::default(), |acc, mut block| {
-                        block.mix(mix_count, interpretation);
-                        acc.sum(block)
-                    });
-                    chunk.blocks[i] = block;
-                }
-            }
-
-            // actually run the node engine
-            let mut out = curr.process(chunk, info);
-
-            assert_eq!(out.len(), curr.output_count() as usize);
-            if curr.output_count() == 0 {
-                continue;
-            }
-
-            // Count how many output connections fan out from each port
-            // This is so that we don't have to needlessly clone audio buffers
-            //
-            // If this is inefficient, we can instead maintain this data
-            // cached on the node
-            output_counts.clear();
-            output_counts.resize(curr.output_count() as usize, 0);
-            for edge in self.graph.edges(ix) {
-                let edge = edge.weight();
-                for conn in &edge.connections {
-                    if let PortIndex::Port(idx) = conn.output_idx {
-                        output_counts[idx as usize] += 1;
                     } else {
-                        unreachable!()
-                    }
-                }
-            }
-
-            // all the edges from this node go to nodes which depend on it,
-            // i.e. the nodes it outputs to. Store the blocks for retrieval.
-            for edge in self.graph.edges(ix) {
-                let edge = edge.weight();
-                for conn in &edge.connections {
-                    if let PortIndex::Port(idx) = conn.output_idx {
-                        output_counts[idx as usize] -= 1;
-                        // if there are no consumers left after this, take the data
-                        let block = if output_counts[idx as usize] == 0 {
-                            out[conn.output_idx].take()
-                        } else {
-                            out[conn.output_idx].clone()
+                        let mix_count = match mode {
+                            ChannelCountMode::Explicit => count,
+                            _ => {
+                                let mut max = 0; // max channel count
+                                for block in &blocks {
+                                    max = cmp::max(max, block.chan_count());
+                                }
+                                if mode == ChannelCountMode::ClampedMax {
+                                    max = cmp::min(max, count);
+                                }
+                                max
+                            }
                         };
-                        *conn.cache.borrow_mut() = Some(block);
-                    } else {
-                        unreachable!()
+                        let block = blocks.into_iter().fold(Block::default(), |acc, mut block| {
+                            block.mix(mix_count, interpretation);
+                            acc.sum(block)
+                        });
+                        chunk.blocks[i] = block;
+                    }
+                }
+
+                // actually run the node engine
+                let mut out = curr.process(chunk, info);
+
+                assert_eq!(out.len(), curr.output_count() as usize);
+                if curr.output_count() == 0 {
+                    continue;
+                }
+
+                // Count how many output connections fan out from each port
+                // This is so that we don't have to needlessly clone audio buffers
+                //
+                // If this is inefficient, we can instead maintain this data
+                // cached on the node
+                output_counts.clear();
+                output_counts.resize(curr.output_count() as usize, 0);
+                for edge in self.graph.edges(ix) {
+                    let edge = edge.weight();
+                    for conn in &edge.connections {
+                        if let PortIndex::Port(idx) = conn.output_idx {
+                            output_counts[idx as usize] += 1;
+                        } else {
+                            unreachable!()
+                        }
+                    }
+                }
+
+                // all the edges from this node go to nodes which depend on it,
+                // i.e. the nodes it outputs to. Store the blocks for retrieval.
+                for edge in self.graph.edges(ix) {
+                    let edge = edge.weight();
+                    for conn in &edge.connections {
+                        if let PortIndex::Port(idx) = conn.output_idx {
+                            output_counts[idx as usize] -= 1;
+                            // if there are no consumers left after this, take the data
+                            let block = if output_counts[idx as usize] == 0 {
+                                out[conn.output_idx].take()
+                            } else {
+                                out[conn.output_idx].clone()
+                            };
+                            *conn.cache.borrow_mut() = Some(block);
+                        } else {
+                            unreachable!()
+                        }
                     }
                 }
             }
         }
-
         // The destination node stores its output on itself, extract it.
         self.graph[self.dest_id.0]
             .node

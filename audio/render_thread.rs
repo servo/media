@@ -174,6 +174,7 @@ impl AudioRenderThread {
 
     fn create_node(&mut self, node_type: AudioNodeInit, ch: ChannelInfo) -> NodeId {
         let mut needs_listener = false;
+        let mut is_dest = false;
         let node: Box<dyn AudioNodeEngine> = match node_type {
             AudioNodeInit::AnalyserNode(sender) => Box::new(AnalyserNode::new(sender, ch)),
             AudioNodeInit::AudioBufferSourceNode(options) => {
@@ -198,6 +199,7 @@ impl AudioRenderThread {
                 Box::new(ConstantSourceNode::new(options, ch))
             }
             AudioNodeInit::MediaStreamDestinationNode(tx) => {
+                is_dest = true;
                 Box::new(MediaStreamDestinationNode::new(
                     tx,
                     self.sample_rate,
@@ -215,6 +217,9 @@ impl AudioRenderThread {
         if needs_listener {
             let listener = self.graph.listener_id().output(0);
             self.graph.add_edge(listener, id.listener());
+        }
+        if is_dest {
+            self.graph.add_extra_dest(id);
         }
         id
     }
