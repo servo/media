@@ -807,23 +807,23 @@ impl GStreamerPlayer {
 }
 
 macro_rules! inner_player_proxy {
-    ($fn_name:ident, $return_type:ty) => (
+    ($fn_name:ident, $return_type:ty) => {
         fn $fn_name(&self) -> Result<$return_type, PlayerError> {
             self.setup()?;
             let inner = self.inner.borrow();
             let mut inner = inner.as_ref().unwrap().lock().unwrap();
             inner.$fn_name()
         }
-    );
+    };
 
-    ($fn_name:ident, $arg1:ident, $arg1_type:ty) => (
+    ($fn_name:ident, $arg1:ident, $arg1_type:ty) => {
         fn $fn_name(&self, $arg1: $arg1_type) -> Result<(), PlayerError> {
             self.setup()?;
             let inner = self.inner.borrow();
             let mut inner = inner.as_ref().unwrap().lock().unwrap();
             inner.$fn_name($arg1)
         }
-    )
+    };
 }
 
 impl Player for GStreamerPlayer {
