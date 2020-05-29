@@ -14,6 +14,7 @@ use node::{BlockInfo, ChannelInfo};
 use offline_sink::OfflineAudioSink;
 use oscillator_node::OscillatorNode;
 use panner_node::PannerNode;
+use servo_media_streams::MediaStreamId;
 use sink::{AudioSink, AudioSinkError};
 use std::sync::mpsc::{Receiver, Sender};
 use stereo_panner::StereoPannerNode;
@@ -56,6 +57,10 @@ impl AudioSink for Sink {
             Sink::RealTime(ref sink) => sink.init(sample_rate, sender),
             Sink::Offline(ref sink) => Ok(sink.init(sample_rate, sender).unwrap()),
         }
+    }
+
+    fn init_stream(&self, _: f32) -> Result<MediaStreamId, AudioSinkError> {
+        unreachable!("Sink should never be used for MediaStreamDestinationNode")
     }
 
     fn play(&self) -> Result<(), AudioSinkError> {

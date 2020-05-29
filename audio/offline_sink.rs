@@ -1,5 +1,6 @@
 use block::{Chunk, FRAMES_PER_BLOCK_USIZE};
 use render_thread::AudioRenderThreadMsg;
+use servo_media_streams::MediaStreamId;
 use sink::{AudioSink, AudioSinkError};
 use std::cell::{Cell, RefCell};
 use std::sync::mpsc::Sender;
@@ -38,7 +39,9 @@ impl AudioSink for OfflineAudioSink {
     fn init(&self, _: f32, _: Sender<AudioRenderThreadMsg>) -> Result<(), AudioSinkError> {
         Ok(())
     }
-
+    fn init_stream(&self, _: f32) -> Result<MediaStreamId, AudioSinkError> {
+        unreachable!("OfflineAudioSink should never be used for MediaStreamDestinationNode")
+    }
     fn play(&self) -> Result<(), AudioSinkError> {
         self.has_enough_data.set(false);
         Ok(())

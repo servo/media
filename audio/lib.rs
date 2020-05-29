@@ -17,6 +17,7 @@ extern crate smallvec;
 extern crate speexdsp_resampler;
 #[macro_use]
 pub mod macros;
+extern crate servo_media_streams;
 extern crate servo_media_traits;
 
 pub mod analyser_node;
