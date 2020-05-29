@@ -105,6 +105,7 @@ impl AudioSink for Sink {
 pub struct AudioRenderThread {
     pub graph: AudioGraph,
     pub sink: Sink,
+    pub sink_factory: Box<dyn Fn() -> Result<Box<dyn AudioSink + 'static>, AudioSinkError>>,
     pub state: ProcessingState,
     pub sample_rate: f32,
     pub current_time: f64,
@@ -124,7 +125,7 @@ impl AudioRenderThread {
         options: AudioContextOptions,
     ) -> Result<Self, AudioSinkError>
     where
-        F: FnOnce() -> Result<Box<dyn AudioSink + 'static>, AudioSinkError>,
+        F: Fn() -> Result<Box<dyn AudioSink + 'static>, AudioSinkError> + 'static,
     {
         let sink = match options {
             AudioContextOptions::RealTimeAudioContext(_) => Sink::RealTime(make_sink()?),
@@ -138,6 +139,7 @@ impl AudioRenderThread {
         Ok(Self {
             graph,
             sink,
+            sink_factory: Box::new(make_sink),
             state: ProcessingState::Suspended,
             sample_rate,
             current_time: 0.,
@@ -157,7 +159,7 @@ impl AudioRenderThread {
         graph: AudioGraph,
         options: AudioContextOptions,
     ) where
-        F: FnOnce() -> Result<Box<dyn AudioSink + 'static>, AudioSinkError>,
+        F: Fn() -> Result<Box<dyn AudioSink + 'static>, AudioSinkError> + 'static,
     {
         let mut thread =
             Self::prepare_thread(make_sink, sender.clone(), sample_rate, graph, options)
