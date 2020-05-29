@@ -4,7 +4,7 @@ use servo_media_webrtc::thread::InternalEvent;
 use servo_media_webrtc::WebRtcController as WebRtcThread;
 use servo_media_webrtc::{
     InnerWebRtcDataChannel, WebRtcDataChannelBackend, WebRtcDataChannelCallbacks,
-    WebRtcDataChannelInit, WebrtcError, WebrtcResult,
+    WebRtcDataChannelInit, WebRtcError, WebRtcResult,
 };
 use std::sync::{Arc, Mutex};
 
@@ -14,14 +14,14 @@ struct InnerDataChannel {
 }
 
 impl InnerWebRtcDataChannel for InnerDataChannel {
-    fn send(&self, message: &str) -> WebrtcResult {
+    fn send(&self, message: &str) -> WebRtcResult {
         if let Some(channel) = self.channel.upgrade() {
             channel
                 .emit("send-string", &[&Value::from(message)])
                 .map(|_| ())
-                .map_err(|e| WebrtcError::Backend(e.to_string()))
+                .map_err(|e| WebRtcError::Backend(e.to_string()))
         } else {
-            Err(WebrtcError::Backend("Dropped channel".to_owned()))
+            Err(WebRtcError::Backend("Dropped channel".to_owned()))
         }
     }
 }
@@ -82,7 +82,7 @@ impl GStreamerWebRtcDataChannel {
                     callbacks_
                         .lock()
                         .unwrap()
-                        .error(WebrtcError::Backend(error.to_string()));
+                        .error(WebRtcError::Backend(error.to_string()));
                 }
                 None
             })
@@ -120,7 +120,7 @@ impl WebRtcDataChannelBackend for GStreamerWebRtcDataChannel {
         self.callbacks.lock().unwrap().close = Some(SendBoxFnOnce::from(cb));
     }
 
-    fn set_on_error(&self, cb: Box<dyn FnOnce(WebrtcError,) + Send + 'static>) {
+    fn set_on_error(&self, cb: Box<dyn FnOnce(WebRtcError,) + Send + 'static>) {
         self.callbacks.lock().unwrap().error = Some(SendBoxFnOnce::from(cb));
     }
 
@@ -128,7 +128,7 @@ impl WebRtcDataChannelBackend for GStreamerWebRtcDataChannel {
         self.callbacks.lock().unwrap().message = Some(cb);
     }
 
-    fn send(&self, message: &str) -> WebrtcResult {
+    fn send(&self, message: &str) -> WebRtcResult {
         // glib::object::SendWeakRef needs to be upgraded from the thread
         // where it was created. In this case, the channel weak ref
         // was created on the webrtc controller's thread.

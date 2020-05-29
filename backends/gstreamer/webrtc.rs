@@ -79,7 +79,7 @@ pub struct GStreamerWebRtcController {
 }
 
 impl WebRtcControllerBackend for GStreamerWebRtcController {
-    fn add_ice_candidate(&mut self, candidate: IceCandidate) -> WebrtcResult {
+    fn add_ice_candidate(&mut self, candidate: IceCandidate) -> WebRtcResult {
         self.webrtc.emit(
             "add-ice-candidate",
             &[&candidate.sdp_mline_index, &candidate.candidate],
@@ -91,7 +91,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         &mut self,
         desc: SessionDescription,
         cb: SendBoxFnOnce<'static, ()>,
-    ) -> WebrtcResult {
+    ) -> WebRtcResult {
         self.set_description(desc, DescriptionType::Remote, cb)
     }
 
@@ -99,11 +99,11 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         &mut self,
         desc: SessionDescription,
         cb: SendBoxFnOnce<'static, ()>,
-    ) -> WebrtcResult {
+    ) -> WebRtcResult {
         self.set_description(desc, DescriptionType::Local, cb)
     }
 
-    fn create_offer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebrtcResult {
+    fn create_offer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebRtcResult {
         self.flush_pending_streams(true)?;
         self.pipeline.set_state(gst::State::Playing)?;
         let promise = gst::Promise::new_with_change_func(move |res| {
@@ -116,7 +116,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         Ok(())
     }
 
-    fn create_answer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebrtcResult {
+    fn create_answer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebRtcResult {
         let promise = gst::Promise::new_with_change_func(move |res| {
             res.map(|s| on_offer_or_answer_created(SdpType::Answer, s, cb))
                 .unwrap();
@@ -127,7 +127,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         Ok(())
     }
 
-    fn add_stream(&mut self, stream_id: &MediaStreamId) -> WebrtcResult {
+    fn add_stream(&mut self, stream_id: &MediaStreamId) -> WebRtcResult {
         let stream =
             get_stream(stream_id).expect("Media streams registry does not contain such ID");
         let mut stream = stream.lock().unwrap();
@@ -148,19 +148,19 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         &mut self,
         init: &WebRtcDataChannelInit,
         sender: Sender<Box<dyn WebRtcDataChannelBackend>>
-    ) -> WebrtcResult {
+    ) -> WebRtcResult {
         match GStreamerWebRtcDataChannel::new(self.thread.clone(), &self.webrtc, init) {
             Ok(channel) => {
                 let _ = sender.send(Box::new(channel));
                 Ok(())
             },
             Err(error) => {
-                Err(WebrtcError::Backend(error))
+                Err(WebRtcError::Backend(error))
             }
         }
     }
 
-    fn configure(&mut self, stun_server: &str, policy: BundlePolicy) -> WebrtcResult {
+    fn configure(&mut self, stun_server: &str, policy: BundlePolicy) -> WebRtcResult {
         self.webrtc
             .set_property_from_str("stun-server", stun_server);
         self.webrtc
@@ -168,7 +168,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         Ok(())
     }
 
-    fn internal_event(&mut self, e: thread::InternalEvent) -> WebrtcResult {
+    fn internal_event(&mut self, e: thread::InternalEvent) -> WebRtcResult {
         match e {
             InternalEvent::OnNegotiationNeeded => {
                 if self.streams.is_empty() && self.pending_streams.is_empty() {
@@ -221,7 +221,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                     HaveRemotePranswer => SignalingState::HaveRemotePranswer,
                     Closed => SignalingState::Closed,
                     i => {
-                        return Err(WebrtcError::Backend(format!(
+                        return Err(WebRtcError::Backend(format!(
                             "unknown signaling state: {:?}",
                             i
                         )))
@@ -241,7 +241,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                     Gathering => GatheringState::Gathering,
                     Complete => GatheringState::Complete,
                     i => {
-                        return Err(WebrtcError::Backend(format!(
+                        return Err(WebRtcError::Backend(format!(
                             "unknown gathering state: {:?}",
                             i
                         )))
@@ -265,7 +265,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                     Failed => IceConnectionState::Failed,
                     Closed => IceConnectionState::Closed,
                     i => {
-                        return Err(WebrtcError::Backend(format!(
+                        return Err(WebRtcError::Backend(format!(
                             "unknown ICE connection state: {:?}",
                             i
                         )))
@@ -293,7 +293,7 @@ impl GStreamerWebRtcController {
         desc: SessionDescription,
         description_type: DescriptionType,
         cb: SendBoxFnOnce<'static, ()>,
-    ) -> WebrtcResult {
+    ) -> WebRtcResult {
         let ty = match desc.type_ {
             SdpType::Answer => gst_webrtc::WebRTCSDPType::Answer,
             SdpType::Offer => gst_webrtc::WebRTCSDPType::Offer,
@@ -394,7 +394,7 @@ impl GStreamerWebRtcController {
         stream_id: &MediaStreamId,
         stream: &mut GStreamerMediaStream,
         request_new_pads: bool,
-    ) -> WebrtcResult {
+    ) -> WebRtcResult {
         let caps = stream.caps();
         let idx = self
             .remote_mline_info
@@ -457,7 +457,7 @@ impl GStreamerWebRtcController {
     }
 
     /// link_stream, but for all pending streams
-    fn flush_pending_streams(&mut self, request_new_pads: bool) -> WebrtcResult {
+    fn flush_pending_streams(&mut self, request_new_pads: bool) -> WebRtcResult {
         let pending_streams = mem::replace(&mut self.pending_streams, vec![]);
         for stream_id in pending_streams {
             let stream =
@@ -474,7 +474,7 @@ impl GStreamerWebRtcController {
 }
 
 impl GStreamerWebRtcController {
-    fn start_pipeline(&mut self) -> WebrtcResult {
+    fn start_pipeline(&mut self) -> WebRtcResult {
         self.pipeline.add(&self.webrtc)?;
 
         // gstreamer needs Sync on these callbacks for some reason
@@ -566,7 +566,7 @@ impl GStreamerWebRtcController {
 pub fn construct(
     signaller: Box<dyn WebRtcSignaller>,
     thread: WebRtcThread,
-) -> Result<GStreamerWebRtcController, WebrtcError> {
+) -> Result<GStreamerWebRtcController, WebRtcError> {
     let main_loop = glib::MainLoop::new(None, false);
     let pipeline = gst::Pipeline::new(Some("webrtc main"));
     pipeline.set_start_time(gst::ClockTime::none());

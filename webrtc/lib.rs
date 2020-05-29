@@ -20,42 +20,42 @@ pub mod thread;
 pub use thread::WebRtcController;
 
 #[derive(Debug)]
-pub enum WebrtcError {
+pub enum WebRtcError {
     Backend(String),
 }
 
-pub type WebrtcResult = Result<(), WebrtcError>;
+pub type WebRtcResult = Result<(), WebRtcError>;
 
-impl<T: Display> From<T> for WebrtcError {
+impl<T: Display> From<T> for WebRtcError {
     fn from(x: T) -> Self {
-        WebrtcError::Backend(x.to_string())
+        WebRtcError::Backend(x.to_string())
     }
 }
 
 /// This trait is implemented by backends and should never be used directly by
 /// the client. Use WebRtcController instead
 pub trait WebRtcControllerBackend: Send {
-    fn configure(&mut self, stun_server: &str, policy: BundlePolicy) -> WebrtcResult;
+    fn configure(&mut self, stun_server: &str, policy: BundlePolicy) -> WebRtcResult;
     fn set_remote_description(
         &mut self,
         SessionDescription,
         cb: SendBoxFnOnce<'static, ()>,
-    ) -> WebrtcResult;
+    ) -> WebRtcResult;
     fn set_local_description(
         &mut self,
         SessionDescription,
         cb: SendBoxFnOnce<'static, ()>,
-    ) -> WebrtcResult;
-    fn add_ice_candidate(&mut self, candidate: IceCandidate) -> WebrtcResult;
-    fn create_offer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebrtcResult;
-    fn create_answer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebrtcResult;
-    fn add_stream(&mut self, stream: &MediaStreamId) -> WebrtcResult;
+    ) -> WebRtcResult;
+    fn add_ice_candidate(&mut self, candidate: IceCandidate) -> WebRtcResult;
+    fn create_offer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebRtcResult;
+    fn create_answer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebRtcResult;
+    fn add_stream(&mut self, stream: &MediaStreamId) -> WebRtcResult;
     fn create_data_channel(
         &mut self,
         init: &WebRtcDataChannelInit,
         channel: Sender<Box<dyn WebRtcDataChannelBackend>>
-    ) -> WebrtcResult;
-    fn internal_event(&mut self, event: thread::InternalEvent) -> WebrtcResult;
+    ) -> WebRtcResult;
+    fn internal_event(&mut self, event: thread::InternalEvent) -> WebRtcResult;
     fn quit(&mut self);
 }
 
@@ -74,7 +74,7 @@ pub trait WebRtcSignaller: Send {
 
 pub struct WebRtcDataChannelCallbacks {
     pub open: Option<SendBoxFnOnce<'static, ()>>,
-    pub error: Option<SendBoxFnOnce<'static, (WebrtcError,)>>,
+    pub error: Option<SendBoxFnOnce<'static, (WebRtcError,)>>,
     pub message: Option<Box<dyn Fn(String) + Send + 'static>>,
     pub close: Option<SendBoxFnOnce<'static, ()>>,
 }
@@ -95,7 +95,7 @@ impl WebRtcDataChannelCallbacks {
         };
     }
 
-    pub fn error(&mut self, error: WebrtcError) {
+    pub fn error(&mut self, error: WebRtcError) {
         if let Some(callback) = self.error.take() {
             callback.call(error);
         };
@@ -116,15 +116,15 @@ impl WebRtcDataChannelCallbacks {
 
 pub trait WebRtcDataChannelBackend: Send {
     fn set_on_open(&self, Box<dyn FnOnce() + Send + 'static>);
-    fn set_on_error(&self, Box<dyn FnOnce(WebrtcError,) + Send + 'static>);
+    fn set_on_error(&self, Box<dyn FnOnce(WebRtcError,) + Send + 'static>);
     fn set_on_message(&self, Box<dyn Fn(String) + Send + 'static>);
     fn set_on_close(&self, Box<dyn FnOnce() + Send + 'static>);
-    fn send(&self, &str) -> WebrtcResult;
+    fn send(&self, &str) -> WebRtcResult;
     fn close(&self);
 }
 
 pub trait InnerWebRtcDataChannel: Send {
-    fn send(&self, &str) -> WebrtcResult;
+    fn send(&self, &str) -> WebRtcResult;
 }
 
 // https://www.w3.org/TR/webrtc/#dom-rtcdatachannelinit

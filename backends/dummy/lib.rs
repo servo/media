@@ -24,7 +24,7 @@ use servo_media_streams::{MediaOutput, MediaStream, MediaStreamType};
 use servo_media_traits::{ClientContextId, MediaInstance};
 use servo_media_webrtc::{
     thread, BundlePolicy, IceCandidate, SessionDescription, WebRtcBackend, WebRtcController,
-    WebRtcControllerBackend, WebRtcDataChannelBackend, WebRtcDataChannelInit, WebRtcSignaller, WebrtcResult,
+    WebRtcControllerBackend, WebRtcDataChannelBackend, WebRtcDataChannelInit, WebRtcSignaller, WebRtcResult,
 };
 use std::any::Any;
 use std::ops::Range;
@@ -239,39 +239,39 @@ impl MediaOutput for DummyMediaOutput {
 pub struct DummyWebRtcController;
 
 impl WebRtcControllerBackend for DummyWebRtcController {
-    fn configure(&mut self, _: &str, _: BundlePolicy) -> WebrtcResult {
+    fn configure(&mut self, _: &str, _: BundlePolicy) -> WebRtcResult {
         Ok(())
     }
     fn set_remote_description(
         &mut self,
         _: SessionDescription,
         _: SendBoxFnOnce<'static, ()>,
-    ) -> WebrtcResult {
+    ) -> WebRtcResult {
         Ok(())
     }
     fn set_local_description(
         &mut self,
         _: SessionDescription,
         _: SendBoxFnOnce<'static, ()>,
-    ) -> WebrtcResult {
+    ) -> WebRtcResult {
         Ok(())
     }
-    fn add_ice_candidate(&mut self, _: IceCandidate) -> WebrtcResult {
+    fn add_ice_candidate(&mut self, _: IceCandidate) -> WebRtcResult {
         Ok(())
     }
-    fn create_offer(&mut self, _: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebrtcResult {
+    fn create_offer(&mut self, _: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebRtcResult {
         Ok(())
     }
-    fn create_answer(&mut self, _: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebrtcResult {
+    fn create_answer(&mut self, _: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebRtcResult {
         Ok(())
     }
-    fn add_stream(&mut self, _: &MediaStreamId) -> WebrtcResult {
+    fn add_stream(&mut self, _: &MediaStreamId) -> WebRtcResult {
         Ok(())
     }
-    fn create_data_channel(&mut self, _: &WebRtcDataChannelInit, _: Sender<Box<dyn WebRtcDataChannelBackend>>) -> WebrtcResult {
+    fn create_data_channel(&mut self, _: &WebRtcDataChannelInit, _: Sender<Box<dyn WebRtcDataChannelBackend>>) -> WebRtcResult {
         Ok(())
     }
-    fn internal_event(&mut self, _: thread::InternalEvent) -> WebrtcResult {
+    fn internal_event(&mut self, _: thread::InternalEvent) -> WebRtcResult {
         Ok(())
     }
     fn quit(&mut self) {}
