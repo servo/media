@@ -216,7 +216,7 @@ impl AudioSink for DummyAudioSink {
     fn init(&self, _: f32, _: Sender<AudioRenderThreadMsg>) -> Result<(), AudioSinkError> {
         Ok(())
     }
-    fn init_stream(&self, _: f32) -> Result<MediaStreamId, AudioSinkError> {
+    fn init_stream(&self, _: u8, _: f32) -> Result<MediaStreamId, AudioSinkError> {
         Ok(register_stream(Arc::new(Mutex::new(DummyMediaStream {
             id: MediaStreamId::new(),
         }))))

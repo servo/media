@@ -18,7 +18,7 @@ impl MediaStreamDestinationNode {
         sink: Box<dyn AudioSink + 'static>,
         channel_info: ChannelInfo,
     ) -> Self {
-        let id = sink.init_stream(sample_rate).expect("init_stream failed");
+        let id = sink.init_stream(channel_info.count, sample_rate).expect("init_stream failed");
         sink.play().expect("Sink didn't start");
         tx.send(id).expect("Sending media stream failed");
         MediaStreamDestinationNode {

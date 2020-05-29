@@ -19,7 +19,7 @@ pub trait AudioSink: Send {
         sample_rate: f32,
         render_thread_channel: Sender<AudioRenderThreadMsg>,
     ) -> Result<(), AudioSinkError>;
-    fn init_stream(&self, sample_rate: f32) -> Result<MediaStreamId, AudioSinkError>;
+    fn init_stream(&self, channels: u8, sample_rate: f32) -> Result<MediaStreamId, AudioSinkError>;
     fn play(&self) -> Result<(), AudioSinkError>;
     fn stop(&self) -> Result<(), AudioSinkError>;
     fn has_enough_data(&self) -> bool;

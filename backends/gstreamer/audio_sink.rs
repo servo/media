@@ -112,9 +112,9 @@ impl AudioSink for GStreamerAudioSink {
         Ok(())
     }
 
-    fn init_stream(&self, sample_rate: f32) -> Result<MediaStreamId, AudioSinkError> {
+    fn init_stream(&self, channels: u8, sample_rate: f32) -> Result<MediaStreamId, AudioSinkError> {
         self.sample_rate.set(sample_rate);
-        self.set_audio_info(sample_rate, 2)?;
+        self.set_audio_info(sample_rate, channels)?;
         self.appsrc.set_property_format(gst::Format::Time);
 
         // Do not set max bytes or callback, we will push as needed

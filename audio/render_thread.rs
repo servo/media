@@ -60,7 +60,7 @@ impl AudioSink for Sink {
         }
     }
 
-    fn init_stream(&self, _: f32) -> Result<MediaStreamId, AudioSinkError> {
+    fn init_stream(&self, _: u8, _: f32) -> Result<MediaStreamId, AudioSinkError> {
         unreachable!("Sink should never be used for MediaStreamDestinationNode")
     }
 

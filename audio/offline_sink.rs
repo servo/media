@@ -39,7 +39,7 @@ impl AudioSink for OfflineAudioSink {
     fn init(&self, _: f32, _: Sender<AudioRenderThreadMsg>) -> Result<(), AudioSinkError> {
         Ok(())
     }
-    fn init_stream(&self, _: f32) -> Result<MediaStreamId, AudioSinkError> {
+    fn init_stream(&self, _: u8, _: f32) -> Result<MediaStreamId, AudioSinkError> {
         unreachable!("OfflineAudioSink should never be used for MediaStreamDestinationNode")
     }
     fn play(&self) -> Result<(), AudioSinkError> {
