@@ -400,10 +400,14 @@ impl AudioBuffer {
                     + offset * (*next_sample as f64)) as f32
             }
             _ => {
-                // linear extrapolation of two prev samples
-                ((1. + offset) * (self.buffers[chan as usize][prev] as f64)
-                    - offset * (self.buffers[chan as usize][prev - 1] as f64))
-                    as f32
+                // linear extrapolation of two prev samples if there are two
+                if prev > 0 {
+                    ((1. + offset) * (self.buffers[chan as usize][prev] as f64)
+                        - offset * (self.buffers[chan as usize][prev - 1] as f64))
+                        as f32
+                } else {
+                    self.buffers[chan as usize][prev]
+                }
             }
         }
     }
