@@ -9,11 +9,13 @@ use gain_node::GainNode;
 use graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
 use iir_filter_node::IIRFilterNode;
 use media_element_source_node::MediaElementSourceNode;
+use media_stream_destination_node::MediaStreamDestinationNode;
 use node::{AudioNodeEngine, AudioNodeInit, AudioNodeMessage};
 use node::{BlockInfo, ChannelInfo};
 use offline_sink::OfflineAudioSink;
 use oscillator_node::OscillatorNode;
 use panner_node::PannerNode;
+use servo_media_streams::MediaStreamId;
 use sink::{AudioSink, AudioSinkError};
 use std::sync::mpsc::{Receiver, Sender};
 use stereo_panner::StereoPannerNode;
@@ -58,6 +60,10 @@ impl AudioSink for Sink {
         }
     }
 
+    fn init_stream(&self, _: u8, _: f32) -> Result<MediaStreamId, AudioSinkError> {
+        unreachable!("Sink should never be used for MediaStreamDestinationNode")
+    }
+
     fn play(&self) -> Result<(), AudioSinkError> {
         match *self {
             Sink::RealTime(ref sink) => sink.play(),
@@ -100,6 +106,7 @@ impl AudioSink for Sink {
 pub struct AudioRenderThread {
     pub graph: AudioGraph,
     pub sink: Sink,
+    pub sink_factory: Box<dyn Fn() -> Result<Box<dyn AudioSink + 'static>, AudioSinkError>>,
     pub state: ProcessingState,
     pub sample_rate: f32,
     pub current_time: f64,
@@ -119,7 +126,7 @@ impl AudioRenderThread {
         options: AudioContextOptions,
     ) -> Result<Self, AudioSinkError>
     where
-        F: FnOnce() -> Result<Box<dyn AudioSink + 'static>, AudioSinkError>,
+        F: Fn() -> Result<Box<dyn AudioSink + 'static>, AudioSinkError> + 'static,
     {
         let sink = match options {
             AudioContextOptions::RealTimeAudioContext(_) => Sink::RealTime(make_sink()?),
@@ -133,6 +140,7 @@ impl AudioRenderThread {
         Ok(Self {
             graph,
             sink,
+            sink_factory: Box::new(make_sink),
             state: ProcessingState::Suspended,
             sample_rate,
             current_time: 0.,
@@ -152,7 +160,7 @@ impl AudioRenderThread {
         graph: AudioGraph,
         options: AudioContextOptions,
     ) where
-        F: FnOnce() -> Result<Box<dyn AudioSink + 'static>, AudioSinkError>,
+        F: Fn() -> Result<Box<dyn AudioSink + 'static>, AudioSinkError> + 'static,
     {
         let mut thread =
             Self::prepare_thread(make_sink, sender.clone(), sample_rate, graph, options)
@@ -166,6 +174,7 @@ impl AudioRenderThread {
 
     fn create_node(&mut self, node_type: AudioNodeInit, ch: ChannelInfo) -> NodeId {
         let mut needs_listener = false;
+        let mut is_dest = false;
         let node: Box<dyn AudioNodeEngine> = match node_type {
             AudioNodeInit::AnalyserNode(sender) => Box::new(AnalyserNode::new(sender, ch)),
             AudioNodeInit::AudioBufferSourceNode(options) => {
@@ -189,6 +198,15 @@ impl AudioRenderThread {
             AudioNodeInit::ConstantSourceNode(options) => {
                 Box::new(ConstantSourceNode::new(options, ch))
             }
+            AudioNodeInit::MediaStreamDestinationNode(tx) => {
+                is_dest = true;
+                Box::new(MediaStreamDestinationNode::new(
+                    tx,
+                    self.sample_rate,
+                    (self.sink_factory)().unwrap(),
+                    ch
+                ))
+            }
             AudioNodeInit::ChannelSplitterNode => Box::new(ChannelSplitterNode::new(ch)),
             AudioNodeInit::WaveShaperNode(options) => Box::new(WaveShaperNode::new(options, ch)),
             AudioNodeInit::MediaElementSourceNode => Box::new(MediaElementSourceNode::new(ch)),
@@ -199,6 +217,9 @@ impl AudioRenderThread {
         if needs_listener {
             let listener = self.graph.listener_id().output(0);
             self.graph.add_edge(listener, id.listener());
+        }
+        if is_dest {
+            self.graph.add_extra_dest(id);
         }
         id
     }
