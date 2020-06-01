@@ -9,8 +9,8 @@ use crate::{
     BundlePolicy, DescriptionType, IceCandidate, MediaStreamId, SdpType, SessionDescription,
 };
 
-use crate::{InnerWebRtcDataChannel, WebRtcDataChannelBackend, WebRtcDataChannelInit};
 use crate::{WebRtcBackend, WebRtcControllerBackend, WebRtcSignaller};
+use crate::{WebRtcDataChannelBackend, WebRtcDataChannelInit};
 
 use servo_media_streams::MediaStreamType;
 
@@ -118,7 +118,6 @@ pub enum InternalEvent {
         SdpType,
         /* remote offer generation */ u32,
     ),
-    SendDataChannelMessage(Box<dyn InnerWebRtcDataChannel>, String),
     UpdateSignalingState,
     UpdateGatheringState,
     UpdateIceConnectionState,

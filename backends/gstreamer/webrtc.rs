@@ -149,7 +149,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         init: &WebRtcDataChannelInit,
         sender: Sender<Box<dyn WebRtcDataChannelBackend>>,
     ) -> WebRtcResult {
-        match GStreamerWebRtcDataChannel::new(self.thread.clone(), &self.webrtc, init) {
+        match GStreamerWebRtcDataChannel::new(&self.webrtc, init) {
             Ok(channel) => {
                 let _ = sender.send(Box::new(channel));
                 Ok(())
@@ -270,9 +270,6 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                     }
                 };
                 self.signaller.update_ice_connection_state(state);
-            }
-            InternalEvent::SendDataChannelMessage(channel, message) => {
-                return channel.send(&message);
             }
         }
         Ok(())
@@ -541,8 +538,7 @@ impl GStreamerWebRtcController {
                     .map_err(|e| e.to_string())
                     .expect("Invalid data channel")
                     .expect("Invalid data channel");
-                let thread_ = thread.lock().unwrap().clone();
-                match GStreamerWebRtcDataChannel::from(channel, thread_) {
+                match GStreamerWebRtcDataChannel::from(channel) {
                     Ok(channel) => {
                         thread
                             .lock()

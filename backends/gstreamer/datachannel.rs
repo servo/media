@@ -1,43 +1,38 @@
 use boxfnonce::SendBoxFnOnce;
 use glib::{ObjectExt, Value};
-use servo_media_webrtc::thread::InternalEvent;
-use servo_media_webrtc::WebRtcController as WebRtcThread;
 use servo_media_webrtc::{
-    InnerWebRtcDataChannel, WebRtcDataChannelBackend, WebRtcDataChannelCallbacks,
-    WebRtcDataChannelInit, WebRtcError, WebRtcResult,
+    WebRtcDataChannelBackend, WebRtcDataChannelCallbacks, WebRtcDataChannelInit, WebRtcError,
+    WebRtcResult,
 };
 use std::sync::{Arc, Mutex};
 
-#[derive(Clone)]
-struct InnerDataChannel {
-    channel: glib::SendWeakRef<glib::Object>,
-}
+// XXX Most of this code will be outdated once
+//     https://gitlab.freedesktop.org/gstreamer/gst-plugins-bad/-/issues/1168
+//     is fixed.
 
-impl InnerWebRtcDataChannel for InnerDataChannel {
-    fn send(&self, message: &str) -> WebRtcResult {
-        if let Some(channel) = self.channel.upgrade() {
-            channel
-                .emit("send-string", &[&Value::from(message)])
-                .map(|_| ())
-                .map_err(|e| WebRtcError::Backend(e.to_string()))
-        } else {
-            Err(WebRtcError::Backend("Dropped channel".to_owned()))
-        }
+#[derive(Clone)]
+struct DataChannel(glib::Object);
+
+impl DataChannel {
+    pub fn send(&self, message: &str) -> WebRtcResult {
+        self.0
+            .emit("send-string", &[&Value::from(message)])
+            .map(|_| ())
+            .map_err(|e| WebRtcError::Backend(e.to_string()))
     }
 }
 
+// The datachannel object is thread-safe
+unsafe impl Send for DataChannel {}
+unsafe impl Sync for DataChannel {}
+
 pub struct GStreamerWebRtcDataChannel {
-    channel: InnerDataChannel,
-    webrtc_thread: WebRtcThread,
+    channel: DataChannel,
     callbacks: Arc<Mutex<WebRtcDataChannelCallbacks>>,
 }
 
 impl GStreamerWebRtcDataChannel {
-    pub fn new(
-        webrtc_thread: WebRtcThread,
-        webrtc: &gst::Element,
-        init: &WebRtcDataChannelInit,
-    ) -> Result<Self, String> {
+    pub fn new(webrtc: &gst::Element, init: &WebRtcDataChannelInit) -> Result<Self, String> {
         let channel = webrtc
             .emit(
                 "create-data-channel",
@@ -50,10 +45,10 @@ impl GStreamerWebRtcDataChannel {
             .map_err(|e| e.to_string())?
             .expect("Invalid datachannel");
 
-        GStreamerWebRtcDataChannel::from(channel, webrtc_thread)
+        GStreamerWebRtcDataChannel::from(channel)
     }
 
-    pub fn from(channel: glib::Object, webrtc_thread: WebRtcThread) -> Result<Self, String> {
+    pub fn from(channel: glib::Object) -> Result<Self, String> {
         let callbacks = Arc::new(Mutex::new(WebRtcDataChannelCallbacks::new()));
 
         let callbacks_ = callbacks.clone();
@@ -101,12 +96,8 @@ impl GStreamerWebRtcDataChannel {
             })
             .map_err(|e| e.to_string())?;
 
-        let channel = InnerDataChannel {
-            channel: glib::SendWeakRef::from(channel.downgrade()),
-        };
         Ok(Self {
-            webrtc_thread,
-            channel,
+            channel: DataChannel(channel),
             callbacks,
         })
     }
@@ -129,15 +120,7 @@ impl WebRtcDataChannelBackend for GStreamerWebRtcDataChannel {
     }
 
     fn send(&self, message: &str) -> WebRtcResult {
-        // glib::object::SendWeakRef needs to be upgraded from the thread
-        // where it was created. In this case, the channel weak ref
-        // was created on the webrtc controller's thread.
-        self.webrtc_thread
-            .internal_event(InternalEvent::SendDataChannelMessage(
-                Box::new(self.channel.clone()),
-                message.to_owned(),
-            ));
-        Ok(())
+        self.channel.send(message)
     }
 
     fn close(&self) {}

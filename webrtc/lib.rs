@@ -116,15 +116,11 @@ impl WebRtcDataChannelCallbacks {
 
 pub trait WebRtcDataChannelBackend: Send {
     fn set_on_open(&self, Box<dyn FnOnce() + Send + 'static>);
-    fn set_on_error(&self, Box<dyn FnOnce(WebRtcError,) + Send + 'static>);
+    fn set_on_error(&self, Box<dyn FnOnce(WebRtcError) + Send + 'static>);
     fn set_on_message(&self, Box<dyn Fn(String) + Send + 'static>);
     fn set_on_close(&self, Box<dyn FnOnce() + Send + 'static>);
     fn send(&self, &str) -> WebRtcResult;
     fn close(&self);
-}
-
-pub trait InnerWebRtcDataChannel: Send {
-    fn send(&self, &str) -> WebRtcResult;
 }
 
 // https://www.w3.org/TR/webrtc/#dom-rtcdatachannelinit
