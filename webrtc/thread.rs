@@ -72,6 +72,11 @@ impl WebRtcController {
             .send(RtcThreadEvent::CreateDataChannel(id, init));
         id
     }
+    pub fn send_data_channel_message(&self, id: &DataChannelId, message: String) {
+        let _ = self
+            .sender
+            .send(RtcThreadEvent::SendDataChannelMessage(*id, message));
+    }
 
     /// This should not be invoked by clients
     pub fn internal_event(&self, event: InternalEvent) {
@@ -92,6 +97,7 @@ pub enum RtcThreadEvent {
     CreateAnswer(SendBoxFnOnce<'static, (SessionDescription,)>),
     AddStream(MediaStreamId),
     CreateDataChannel(DataChannelId, DataChannelInit),
+    SendDataChannelMessage(DataChannelId, String),
     InternalEvent(InternalEvent),
     Quit,
 }
@@ -132,6 +138,9 @@ pub fn handle_rtc_event(
         RtcThreadEvent::CreateAnswer(cb) => controller.create_answer(cb),
         RtcThreadEvent::AddStream(media) => controller.add_stream(&media),
         RtcThreadEvent::CreateDataChannel(id, init) => controller.create_data_channel(&id, &init),
+        RtcThreadEvent::SendDataChannelMessage(id, message) => {
+            controller.send_data_channel_message(&id, &message)
+        }
         RtcThreadEvent::InternalEvent(e) => controller.internal_event(e),
         RtcThreadEvent::Quit => {
             controller.quit();

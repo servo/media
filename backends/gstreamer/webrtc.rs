@@ -153,9 +153,9 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         }
     }
 
-    fn send_data(&mut self, id: &DataChannelId, data: &str) -> WebRtcResult {
+    fn send_data_channel_message(&mut self, id: &DataChannelId, message: &str) -> WebRtcResult {
         match get_channel(id) {
-            Some(channel) => channel.lock().unwrap().send(data),
+            Some(channel) => channel.lock().unwrap().send(message),
             None => Err(WebRtcError::Backend("Unknown data channel".to_owned())),
         }
     }
@@ -189,7 +189,8 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                 self.signaller.on_add_stream(&stream, ty);
             }
             InternalEvent::OnDataChannelEvent(channel_id, event) => {
-                self.signaller.on_data_channel_event(channel_id, event);
+                self.signaller
+                    .on_data_channel_event(channel_id, event, &self.thread);
             }
             InternalEvent::DescriptionAdded(cb, description_type, ty, remote_offer_generation) => {
                 if description_type == DescriptionType::Remote
@@ -541,11 +542,8 @@ impl GStreamerWebRtcController {
                     .expect("Invalid data channel")
                     .expect("Invalid data channel");
                 let id = DataChannelId::new();
-                match GStreamerWebRtcDataChannel::from(
-                    &id,
-                    channel,
-                    &thread.lock().unwrap().clone(),
-                ) {
+                let thread_ = thread.lock().unwrap().clone();
+                match GStreamerWebRtcDataChannel::from(&id, channel, &thread_) {
                     Ok(channel) => {
                         if register_channel(&id, Arc::new(Mutex::new(channel))).is_ok() {
                             thread.lock().unwrap().internal_event(

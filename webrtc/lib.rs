@@ -54,7 +54,8 @@ pub trait WebRtcControllerBackend: Send {
     fn add_stream(&mut self, stream: &MediaStreamId) -> WebRtcResult;
 
     fn create_data_channel(&mut self, id: &DataChannelId, init: &DataChannelInit) -> WebRtcResult;
-    fn send_data(&mut self, channel: &DataChannelId, data: &str) -> WebRtcResult;
+    fn send_data_channel_message(&mut self, channel: &DataChannelId, message: &str)
+        -> WebRtcResult;
 
     fn internal_event(&mut self, event: thread::InternalEvent) -> WebRtcResult;
     fn quit(&mut self);
@@ -70,7 +71,7 @@ pub trait WebRtcSignaller: Send {
     fn update_gathering_state(&self, _: GatheringState) {}
     fn update_ice_connection_state(&self, _: IceConnectionState) {}
 
-    fn on_data_channel_event(&self, _: DataChannelId, _: DataChannelEvent) {}
+    fn on_data_channel_event(&self, _: DataChannelId, _: DataChannelEvent, _: &WebRtcController) {}
 }
 
 pub trait WebRtcBackend {

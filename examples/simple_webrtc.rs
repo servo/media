@@ -147,23 +147,7 @@ impl State {
         webrtc.add_stream(&video);
         webrtc.add_stream(&audio);
 
-        let (sender, receiver) = mpsc::channel::<Box<dyn WebRtcDataChannelBackend>>();
-        webrtc.create_data_channel(WebRtcDataChannelInit::default(), sender);
-        let channel = Arc::new(Mutex::new(receiver.recv().unwrap()));
-        let channel_ = channel.clone();
-        channel.lock().unwrap().set_on_open(Box::new(move || {
-            channel_
-                .lock()
-                .unwrap()
-                .send("Hello from servo-media")
-                .unwrap();
-        }));
-        channel.lock().unwrap().set_on_error(Box::new(|error| {
-            println!("Data channel error {:?}", error);
-        }));
-        channel.lock().unwrap().set_on_close(Box::new(|| {
-            println!("Data channel closed");
-        }));
+        webrtc.create_data_channel(DataChannelInit::default());
 
         webrtc.configure(STUN_SERVER.into(), BundlePolicy::MaxBundle);
     }
@@ -214,10 +198,30 @@ impl WebRtcSignaller for Signaller {
         self.output.lock().unwrap().add_stream(&stream);
     }
 
-    fn on_data_channel(&self, channel: Box<dyn WebRtcDataChannelBackend>) {
-        channel.set_on_message(Box::new(|message| {
-            println!("Got data channel message: {:?}", message);
-        }));
+    fn on_data_channel_event(
+        &self,
+        id: DataChannelId,
+        event: DataChannelEvent,
+        controller: &WebRtcController,
+    ) {
+        match event {
+            DataChannelEvent::NewChannel => {
+                println!("New channel {:?}", id);
+            }
+            DataChannelEvent::Open => {
+                println!("Channel opened {:?}", id);
+                controller.send_data_channel_message(&id, "Hello from servo-media".to_owned());
+            }
+            DataChannelEvent::Close => {
+                println!("Channel closed {:?}", id);
+            }
+            DataChannelEvent::OnMessage(message) => {
+                println!("Channel message {:?}", message);
+            }
+            DataChannelEvent::Error(error) => {
+                println!("Channel error {:?}", error);
+            }
+        }
     }
 }
 

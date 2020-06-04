@@ -48,7 +48,7 @@ impl Default for DataChannelInit {
     }
 }
 
-#[derive(Clone, Copy, Hash, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct DataChannelId(Uuid);
 impl DataChannelId {
     pub fn new() -> DataChannelId {

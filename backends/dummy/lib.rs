@@ -271,7 +271,7 @@ impl WebRtcControllerBackend for DummyWebRtcController {
     fn create_data_channel(&mut self, _: &DataChannelId, _: &DataChannelInit) -> WebRtcResult {
         Ok(())
     }
-    fn send_data(&mut self, _: &DataChannelId, _: &str) -> WebRtcResult {
+    fn send_data_channel_message(&mut self, _: &DataChannelId, _: &str) -> WebRtcResult {
         Ok(())
     }
     fn internal_event(&mut self, _: thread::InternalEvent) -> WebRtcResult {
