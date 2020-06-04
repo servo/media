@@ -23,9 +23,8 @@ use servo_media_streams::registry::{register_stream, unregister_stream, MediaStr
 use servo_media_streams::{MediaOutput, MediaStream, MediaStreamType};
 use servo_media_traits::{ClientContextId, MediaInstance};
 use servo_media_webrtc::{
-    thread, BundlePolicy, IceCandidate, SessionDescription, WebRtcBackend, WebRtcController,
-    WebRtcControllerBackend, WebRtcDataChannelBackend, WebRtcDataChannelInit, WebRtcResult,
-    WebRtcSignaller,
+    thread, BundlePolicy, DataChannelId, DataChannelInit, IceCandidate, SessionDescription,
+    WebRtcBackend, WebRtcController, WebRtcControllerBackend, WebRtcResult, WebRtcSignaller,
 };
 use std::any::Any;
 use std::ops::Range;
@@ -269,11 +268,10 @@ impl WebRtcControllerBackend for DummyWebRtcController {
     fn add_stream(&mut self, _: &MediaStreamId) -> WebRtcResult {
         Ok(())
     }
-    fn create_data_channel(
-        &mut self,
-        _: &WebRtcDataChannelInit,
-        _: Sender<Box<dyn WebRtcDataChannelBackend>>,
-    ) -> WebRtcResult {
+    fn create_data_channel(&mut self, _: &DataChannelId, _: &DataChannelInit) -> WebRtcResult {
+        Ok(())
+    }
+    fn send_data(&mut self, _: &DataChannelId, _: &str) -> WebRtcResult {
         Ok(())
     }
     fn internal_event(&mut self, _: thread::InternalEvent) -> WebRtcResult {

@@ -10,10 +10,10 @@ use gst_webrtc;
 use media_stream::GStreamerMediaStream;
 use servo_media_streams::registry::{get_stream, MediaStreamId};
 use servo_media_streams::MediaStreamType;
+use servo_media_webrtc::datachannel::{get_channel, register_channel};
 use servo_media_webrtc::thread::InternalEvent;
 use servo_media_webrtc::WebRtcController as WebRtcThread;
 use servo_media_webrtc::*;
-use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 use std::{cmp, mem};
 
@@ -144,17 +144,19 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         Ok(())
     }
 
-    fn create_data_channel(
-        &mut self,
-        init: &WebRtcDataChannelInit,
-        sender: Sender<Box<dyn WebRtcDataChannelBackend>>,
-    ) -> WebRtcResult {
-        match GStreamerWebRtcDataChannel::new(&self.webrtc, init) {
-            Ok(channel) => {
-                let _ = sender.send(Box::new(channel));
-                Ok(())
-            }
+    fn create_data_channel(&mut self, id: &DataChannelId, init: &DataChannelInit) -> WebRtcResult {
+        match GStreamerWebRtcDataChannel::new(id, &self.webrtc, &self.thread, init) {
+            Ok(channel) => register_channel(id, Arc::new(Mutex::new(channel))).map_err(|_| {
+                WebRtcError::Backend("Could not register data channel. ID collision".to_owned())
+            }),
             Err(error) => Err(WebRtcError::Backend(error)),
+        }
+    }
+
+    fn send_data(&mut self, id: &DataChannelId, data: &str) -> WebRtcResult {
+        match get_channel(id) {
+            Some(channel) => channel.lock().unwrap().send(data),
+            None => Err(WebRtcError::Backend("Unknown data channel".to_owned())),
         }
     }
 
@@ -186,8 +188,8 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                 self.pipeline.set_state(gst::State::Playing)?;
                 self.signaller.on_add_stream(&stream, ty);
             }
-            InternalEvent::OnDataChannel(channel) => {
-                self.signaller.on_data_channel(channel);
+            InternalEvent::OnDataChannelEvent(channel_id, event) => {
+                self.signaller.on_data_channel_event(channel_id, event);
             }
             InternalEvent::DescriptionAdded(cb, description_type, ty, remote_offer_generation) => {
                 if description_type == DescriptionType::Remote
@@ -538,12 +540,20 @@ impl GStreamerWebRtcController {
                     .map_err(|e| e.to_string())
                     .expect("Invalid data channel")
                     .expect("Invalid data channel");
-                match GStreamerWebRtcDataChannel::from(channel) {
+                let id = DataChannelId::new();
+                match GStreamerWebRtcDataChannel::from(
+                    &id,
+                    channel,
+                    &thread.lock().unwrap().clone(),
+                ) {
                     Ok(channel) => {
-                        thread
-                            .lock()
-                            .unwrap()
-                            .internal_event(InternalEvent::OnDataChannel(Box::new(channel)));
+                        if register_channel(&id, Arc::new(Mutex::new(channel))).is_ok() {
+                            thread.lock().unwrap().internal_event(
+                                InternalEvent::OnDataChannelEvent(id, DataChannelEvent::NewChannel),
+                            );
+                        } else {
+                            warn!("Could not register data channel");
+                        }
                     }
                     Err(error) => {
                         warn!("Could not create data channel {:?}", error);

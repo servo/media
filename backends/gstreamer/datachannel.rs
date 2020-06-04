@@ -1,10 +1,11 @@
-use boxfnonce::SendBoxFnOnce;
 use glib::{ObjectExt, Value};
+use servo_media_webrtc::datachannel::DataChannelBackend;
+use servo_media_webrtc::thread::InternalEvent;
+use servo_media_webrtc::WebRtcController as WebRtcThread;
 use servo_media_webrtc::{
-    WebRtcDataChannelBackend, WebRtcDataChannelCallbacks, WebRtcDataChannelInit, WebRtcError,
-    WebRtcResult,
+    DataChannelEvent, DataChannelId, DataChannelInit, WebRtcError, WebRtcResult,
 };
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 
 // XXX Most of this code will be outdated once
 //     https://gitlab.freedesktop.org/gstreamer/gst-plugins-bad/-/issues/1168
@@ -20,6 +21,13 @@ impl DataChannel {
             .map(|_| ())
             .map_err(|e| WebRtcError::Backend(e.to_string()))
     }
+
+    pub fn close(&self) -> WebRtcResult {
+        self.0
+            .emit("close", &[])
+            .map(|_| ())
+            .map_err(|e| WebRtcError::Backend(e.to_string()))
+    }
 }
 
 // The datachannel object is thread-safe
@@ -28,11 +36,15 @@ unsafe impl Sync for DataChannel {}
 
 pub struct GStreamerWebRtcDataChannel {
     channel: DataChannel,
-    callbacks: Arc<Mutex<WebRtcDataChannelCallbacks>>,
 }
 
 impl GStreamerWebRtcDataChannel {
-    pub fn new(webrtc: &gst::Element, init: &WebRtcDataChannelInit) -> Result<Self, String> {
+    pub fn new(
+        id: &DataChannelId,
+        webrtc: &gst::Element,
+        thread: &WebRtcThread,
+        init: &DataChannelInit,
+    ) -> Result<Self, String> {
         let channel = webrtc
             .emit(
                 "create-data-channel",
@@ -45,52 +57,79 @@ impl GStreamerWebRtcDataChannel {
             .map_err(|e| e.to_string())?
             .expect("Invalid datachannel");
 
-        GStreamerWebRtcDataChannel::from(channel)
+        GStreamerWebRtcDataChannel::from(id, channel, thread)
     }
 
-    pub fn from(channel: glib::Object) -> Result<Self, String> {
-        let callbacks = Arc::new(Mutex::new(WebRtcDataChannelCallbacks::new()));
-
-        let callbacks_ = callbacks.clone();
+    pub fn from(
+        id: &DataChannelId,
+        channel: glib::Object,
+        thread: &WebRtcThread,
+    ) -> Result<Self, String> {
+        let id_ = id.clone();
+        let thread_ = Mutex::new(thread.clone());
         channel
             .connect("on-open", false, move |_| {
-                callbacks_.lock().unwrap().open();
+                thread_
+                    .lock()
+                    .unwrap()
+                    .internal_event(InternalEvent::OnDataChannelEvent(
+                        id_,
+                        DataChannelEvent::Open,
+                    ));
                 None
             })
             .map_err(|e| e.to_string())?;
 
-        let callbacks_ = callbacks.clone();
+        let id_ = id.clone();
+        let thread_ = Mutex::new(thread.clone());
         channel
             .connect("on-close", false, move |_| {
-                callbacks_.lock().unwrap().close();
+                thread_
+                    .lock()
+                    .unwrap()
+                    .internal_event(InternalEvent::OnDataChannelEvent(
+                        id_,
+                        DataChannelEvent::Close,
+                    ));
                 None
             })
             .map_err(|e| e.to_string())?;
 
-        let callbacks_ = callbacks.clone();
+        let id_ = id.clone();
+        let thread_ = Mutex::new(thread.clone());
         channel
             .connect("on-error", false, move |error| {
                 if let Some(error) = error[0]
                     .get::<glib::error::Error>()
                     .expect("Invalid GError")
                 {
-                    callbacks_
+                    thread_
                         .lock()
                         .unwrap()
-                        .error(WebRtcError::Backend(error.to_string()));
+                        .internal_event(InternalEvent::OnDataChannelEvent(
+                            id_,
+                            DataChannelEvent::Error(WebRtcError::Backend(error.to_string())),
+                        ));
                 }
                 None
             })
             .map_err(|e| e.to_string())?;
 
-        let callbacks_ = callbacks.clone();
+        let id_ = id.clone();
+        let thread_ = Mutex::new(thread.clone());
         channel
             .connect("on-message-string", false, move |message| {
                 if let Some(message) = message[1]
                     .get::<String>()
                     .expect("Invalid data channel message")
                 {
-                    callbacks_.lock().unwrap().message(message);
+                    thread_
+                        .lock()
+                        .unwrap()
+                        .internal_event(InternalEvent::OnDataChannelEvent(
+                            id_,
+                            DataChannelEvent::OnMessage(message),
+                        ));
                 }
                 None
             })
@@ -98,30 +137,16 @@ impl GStreamerWebRtcDataChannel {
 
         Ok(Self {
             channel: DataChannel(channel),
-            callbacks,
         })
     }
 }
 
-impl WebRtcDataChannelBackend for GStreamerWebRtcDataChannel {
-    fn set_on_open(&self, cb: Box<dyn FnOnce() + Send + 'static>) {
-        self.callbacks.lock().unwrap().open = Some(SendBoxFnOnce::from(cb));
-    }
-    fn set_on_close(&self, cb: Box<dyn FnOnce() + Send + 'static>) {
-        self.callbacks.lock().unwrap().close = Some(SendBoxFnOnce::from(cb));
-    }
-
-    fn set_on_error(&self, cb: Box<dyn FnOnce(WebRtcError) + Send + 'static>) {
-        self.callbacks.lock().unwrap().error = Some(SendBoxFnOnce::from(cb));
-    }
-
-    fn set_on_message(&self, cb: Box<dyn Fn(String) + Send + 'static>) {
-        self.callbacks.lock().unwrap().message = Some(cb);
-    }
-
+impl DataChannelBackend for GStreamerWebRtcDataChannel {
     fn send(&self, message: &str) -> WebRtcResult {
         self.channel.send(message)
     }
 
-    fn close(&self) {}
+    fn close(&self) -> WebRtcResult {
+        self.channel.close()
+    }
 }
