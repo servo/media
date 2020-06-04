@@ -204,7 +204,7 @@ impl AudioRenderThread {
                     tx,
                     self.sample_rate,
                     (self.sink_factory)().unwrap(),
-                    ch
+                    ch,
                 ))
             }
             AudioNodeInit::ChannelSplitterNode => Box::new(ChannelSplitterNode::new(ch)),

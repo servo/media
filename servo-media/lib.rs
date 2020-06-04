@@ -17,7 +17,7 @@ use player::video::VideoFrameRenderer;
 use player::{Player, PlayerEvent, StreamType};
 use streams::capture::MediaTrackConstraintSet;
 use streams::registry::MediaStreamId;
-use streams::MediaOutput;
+use streams::{MediaOutput, MediaSocket, MediaStreamType};
 use webrtc::{WebRtcController, WebRtcSignaller};
 
 pub struct ServoMedia(Box<dyn Backend>);
@@ -42,6 +42,10 @@ pub trait Backend: Send + Sync {
     fn create_audiostream(&self) -> MediaStreamId;
     fn create_videostream(&self) -> MediaStreamId;
     fn create_stream_output(&self) -> Box<dyn MediaOutput>;
+    fn create_stream_and_socket(
+        &self,
+        ty: MediaStreamType,
+    ) -> (Box<dyn MediaSocket>, MediaStreamId);
     fn create_audioinput_stream(&self, set: MediaTrackConstraintSet) -> Option<MediaStreamId>;
     fn create_videoinput_stream(&self, set: MediaTrackConstraintSet) -> Option<MediaStreamId>;
     fn create_audio_context(

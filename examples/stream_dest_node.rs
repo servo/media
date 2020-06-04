@@ -4,8 +4,8 @@ extern crate servo_media_auto;
 use servo_media::audio::node::{AudioNodeInit, AudioNodeMessage, AudioScheduledSourceNodeMessage};
 use servo_media::audio::oscillator_node::OscillatorNodeOptions;
 use servo_media::{ClientContextId, ServoMedia};
-use std::sync::Arc;
 use std::sync::mpsc;
+use std::sync::Arc;
 use std::{thread, time};
 
 fn run_example(servo_media: Arc<ServoMedia>) {
@@ -32,7 +32,6 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         osc1,
         AudioNodeMessage::AudioScheduledSourceNode(AudioScheduledSourceNodeMessage::Start(0.)),
     );
-
 
     thread::sleep(time::Duration::from_millis(3000));
     let _ = context.close();
