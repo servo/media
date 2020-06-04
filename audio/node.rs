@@ -10,7 +10,7 @@ use media_element_source_node::MediaElementSourceNodeMessage;
 use oscillator_node::{OscillatorNodeMessage, OscillatorNodeOptions};
 use panner_node::{PannerNodeMessage, PannerNodeOptions};
 use param::{Param, ParamRate, ParamType, UserAutomationEvent};
-use servo_media_streams::MediaStreamId;
+use servo_media_streams::MediaSocket;
 use std::sync::mpsc::Sender;
 use stereo_panner::StereoPannerOptions;
 use wave_shaper_node::{WaveShaperNodeMessage, WaveShaperNodeOptions};
@@ -30,7 +30,7 @@ pub enum AudioNodeInit {
     GainNode(GainNodeOptions),
     IIRFilterNode(IIRFilterNodeOptions),
     MediaElementSourceNode,
-    MediaStreamDestinationNode(Sender<MediaStreamId>),
+    MediaStreamDestinationNode(Box<dyn MediaSocket>),
     OscillatorNode(OscillatorNodeOptions),
     PannerNode(PannerNodeOptions),
     PeriodicWave,

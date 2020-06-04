@@ -3,8 +3,8 @@ extern crate servo_media_auto;
 
 use servo_media::audio::node::{AudioNodeInit, AudioNodeMessage, AudioScheduledSourceNodeMessage};
 use servo_media::audio::oscillator_node::OscillatorNodeOptions;
+use servo_media::streams::MediaStreamType;
 use servo_media::{ClientContextId, ServoMedia};
-use std::sync::mpsc;
 use std::sync::Arc;
 use std::{thread, time};
 
@@ -18,15 +18,15 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         Default::default(),
     );
 
-    let (tx, rx) = mpsc::channel();
+    let (socket, id) = servo_media.create_stream_and_socket(MediaStreamType::Audio);
     let dest = context.create_node(
-        AudioNodeInit::MediaStreamDestinationNode(tx),
+        AudioNodeInit::MediaStreamDestinationNode(socket),
         Default::default(),
     );
     context.connect_ports(osc1.output(0), dest.input(0));
 
     let mut output = servo_media.create_stream_output();
-    output.add_stream(&rx.recv().unwrap());
+    output.add_stream(&id);
     let _ = context.resume();
     context.message_node(
         osc1,

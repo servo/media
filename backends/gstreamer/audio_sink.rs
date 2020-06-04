@@ -1,4 +1,4 @@
-use crate::media_stream::GStreamerMediaStream;
+use crate::media_stream::GstreamerMediaSocket;
 use byte_slice_cast::*;
 use gst;
 use gst::prelude::*;
@@ -7,7 +7,7 @@ use gst_audio;
 use servo_media_audio::block::{Chunk, FRAMES_PER_BLOCK};
 use servo_media_audio::render_thread::AudioRenderThreadMsg;
 use servo_media_audio::sink::{AudioSink, AudioSinkError};
-use servo_media_streams::MediaStreamId;
+use servo_media_streams::MediaSocket;
 use std::cell::{Cell, RefCell};
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
@@ -112,7 +112,12 @@ impl AudioSink for GStreamerAudioSink {
         Ok(())
     }
 
-    fn init_stream(&self, channels: u8, sample_rate: f32) -> Result<MediaStreamId, AudioSinkError> {
+    fn init_stream(
+        &self,
+        channels: u8,
+        sample_rate: f32,
+        socket: Box<dyn MediaSocket>,
+    ) -> Result<(), AudioSinkError> {
         self.sample_rate.set(sample_rate);
         self.set_audio_info(sample_rate, channels)?;
         self.appsrc.set_property_format(gst::Format::Time);
@@ -122,14 +127,12 @@ impl AudioSink for GStreamerAudioSink {
         let appsrc = self.appsrc.as_ref().clone().upcast();
         let convert = gst::ElementFactory::make("audioconvert", None)
             .map_err(|_| AudioSinkError::Backend("audioconvert creation failed".to_owned()))?;
-        let proxy_src = gst::ElementFactory::make("proxysrc", None)
-            .map_err(|_| AudioSinkError::Backend("proxysrc creation failed".to_owned()))?;
-        let sink = gst::ElementFactory::make("proxysink", None)
-            .map_err(|_| AudioSinkError::Backend("proxysink creation failed".to_owned()))?;
-
-        proxy_src
-            .set_property("proxysink", &sink)
-            .map_err(|_| AudioSinkError::Backend("proxysink connection failed".to_owned()))?;
+        let sink = socket
+            .as_any()
+            .downcast_ref::<GstreamerMediaSocket>()
+            .unwrap()
+            .proxy_sink()
+            .clone();
 
         self.pipeline
             .add_many(&[&appsrc, &convert, &sink])
@@ -137,7 +140,7 @@ impl AudioSink for GStreamerAudioSink {
         gst::Element::link_many(&[&appsrc, &convert, &sink])
             .map_err(|e| AudioSinkError::Backend(e.to_string()))?;
 
-        Ok(GStreamerMediaStream::create_audio_from(proxy_src))
+        Ok(())
     }
 
     fn play(&self) -> Result<(), AudioSinkError> {

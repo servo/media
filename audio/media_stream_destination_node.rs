@@ -1,9 +1,8 @@
 use block::Chunk;
 use node::{AudioNodeEngine, BlockInfo};
 use node::{AudioNodeType, ChannelInfo};
-use servo_media_streams::MediaStreamId;
+use servo_media_streams::MediaSocket;
 use sink::AudioSink;
-use std::sync::mpsc::Sender;
 
 #[derive(AudioNodeCommon)]
 pub(crate) struct MediaStreamDestinationNode {
@@ -13,16 +12,14 @@ pub(crate) struct MediaStreamDestinationNode {
 
 impl MediaStreamDestinationNode {
     pub fn new(
-        tx: Sender<MediaStreamId>,
+        socket: Box<dyn MediaSocket>,
         sample_rate: f32,
         sink: Box<dyn AudioSink + 'static>,
         channel_info: ChannelInfo,
     ) -> Self {
-        let id = sink
-            .init_stream(channel_info.count, sample_rate)
+        sink.init_stream(channel_info.count, sample_rate, socket)
             .expect("init_stream failed");
         sink.play().expect("Sink didn't start");
-        tx.send(id).expect("Sending media stream failed");
         MediaStreamDestinationNode { channel_info, sink }
     }
 }
