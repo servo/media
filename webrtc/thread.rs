@@ -65,12 +65,12 @@ impl WebRtcController {
     pub fn add_stream(&self, stream: &MediaStreamId) {
         let _ = self.sender.send(RtcThreadEvent::AddStream(stream.clone()));
     }
-    pub fn create_data_channel(&self, init: DataChannelInit) -> DataChannelId {
-        let id = DataChannelId::new();
+    pub fn create_data_channel(&self, init: DataChannelInit) -> Option<DataChannelId> {
+        let (sender, receiver) = channel();
         let _ = self
             .sender
-            .send(RtcThreadEvent::CreateDataChannel(id, init));
-        id
+            .send(RtcThreadEvent::CreateDataChannel(init, sender));
+        receiver.recv().unwrap()
     }
     pub fn send_data_channel_message(&self, id: &DataChannelId, message: String) {
         let _ = self
@@ -96,7 +96,7 @@ pub enum RtcThreadEvent {
     CreateOffer(SendBoxFnOnce<'static, (SessionDescription,)>),
     CreateAnswer(SendBoxFnOnce<'static, (SessionDescription,)>),
     AddStream(MediaStreamId),
-    CreateDataChannel(DataChannelId, DataChannelInit),
+    CreateDataChannel(DataChannelInit, Sender<Option<DataChannelId>>),
     SendDataChannelMessage(DataChannelId, String),
     InternalEvent(InternalEvent),
     Quit,
@@ -137,7 +137,16 @@ pub fn handle_rtc_event(
         RtcThreadEvent::CreateOffer(cb) => controller.create_offer(cb),
         RtcThreadEvent::CreateAnswer(cb) => controller.create_answer(cb),
         RtcThreadEvent::AddStream(media) => controller.add_stream(&media),
-        RtcThreadEvent::CreateDataChannel(id, init) => controller.create_data_channel(&id, &init),
+        RtcThreadEvent::CreateDataChannel(init, sender) => controller
+            .create_data_channel(&init)
+            .map(|id| {
+                let _ = sender.send(Some(id));
+                ()
+            })
+            .map_err(|e| {
+                let _ = sender.send(None);
+                e
+            }),
         RtcThreadEvent::SendDataChannelMessage(id, message) => {
             controller.send_data_channel_message(&id, &message)
         }

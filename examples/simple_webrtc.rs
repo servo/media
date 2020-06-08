@@ -205,9 +205,7 @@ impl WebRtcSignaller for Signaller {
         controller: &WebRtcController,
     ) {
         match event {
-            DataChannelEvent::NewChannel => {
-                println!("New channel {:?}", id);
-            }
+            DataChannelEvent::NewChannel => {}
             DataChannelEvent::Open => {
                 println!("Channel opened {:?}", id);
                 controller.send_data_channel_message(&id, "Hello from servo-media".to_owned());

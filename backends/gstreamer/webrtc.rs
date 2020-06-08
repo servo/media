@@ -10,10 +10,12 @@ use gst_webrtc;
 use media_stream::GStreamerMediaStream;
 use servo_media_streams::registry::{get_stream, MediaStreamId};
 use servo_media_streams::MediaStreamType;
-use servo_media_webrtc::datachannel::{get_channel, register_channel};
+use servo_media_webrtc::datachannel::DataChannelId;
 use servo_media_webrtc::thread::InternalEvent;
 use servo_media_webrtc::WebRtcController as WebRtcThread;
 use servo_media_webrtc::*;
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::{cmp, mem};
 
@@ -72,10 +74,9 @@ pub struct GStreamerWebRtcController {
     pending_remote_mline_info: Vec<MLineInfo>,
     /// In case we get multiple remote offers, this lets us keep track of which is the newest
     remote_offer_generation: u32,
-    //send_msg_tx: mpsc::Sender<OwnedMessage>,
-    //peer_id: String,
     _main_loop: glib::MainLoop,
-    //bus: gst::Bus,
+    data_channels: Arc<Mutex<HashMap<DataChannelId, GStreamerWebRtcDataChannel>>>,
+    next_data_channel_id: Arc<AtomicUsize>,
 }
 
 impl WebRtcControllerBackend for GStreamerWebRtcController {
@@ -144,18 +145,17 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         Ok(())
     }
 
-    fn create_data_channel(&mut self, id: &DataChannelId, init: &DataChannelInit) -> WebRtcResult {
-        match GStreamerWebRtcDataChannel::new(id, &self.webrtc, &self.thread, init) {
-            Ok(channel) => register_channel(id, Arc::new(Mutex::new(channel))).map_err(|_| {
-                WebRtcError::Backend("Could not register data channel. ID collision".to_owned())
-            }),
+    fn create_data_channel(&mut self, init: &DataChannelInit) -> WebRtcDataChannelResult {
+        let id = self.next_data_channel_id.fetch_add(1, Ordering::Relaxed);
+        match GStreamerWebRtcDataChannel::new(&id, &self.webrtc, &self.thread, init) {
+            Ok(channel) => register_data_channel(self.data_channels.clone(), id, channel),
             Err(error) => Err(WebRtcError::Backend(error)),
         }
     }
 
     fn send_data_channel_message(&mut self, id: &DataChannelId, message: &str) -> WebRtcResult {
-        match get_channel(id) {
-            Some(channel) => channel.lock().unwrap().send(message),
+        match self.data_channels.lock().unwrap().get(id) {
+            Some(ref channel) => channel.send(message),
             None => Err(WebRtcError::Backend("Unknown data channel".to_owned())),
         }
     }
@@ -469,9 +469,7 @@ impl GStreamerWebRtcController {
         }
         Ok(())
     }
-}
 
-impl GStreamerWebRtcController {
     fn start_pipeline(&mut self) -> WebRtcResult {
         self.pipeline.add(&self.webrtc)?;
 
@@ -534,6 +532,8 @@ impl GStreamerWebRtcController {
                 None
             })?;
         let thread = Mutex::new(self.thread.clone());
+        let data_channels = self.data_channels.clone();
+        let next_data_channel_id = self.next_data_channel_id.clone();
         self.webrtc
             .connect("on-data-channel", false, move |channel| {
                 let channel = channel[1]
@@ -541,11 +541,11 @@ impl GStreamerWebRtcController {
                     .map_err(|e| e.to_string())
                     .expect("Invalid data channel")
                     .expect("Invalid data channel");
-                let id = DataChannelId::new();
+                let id = next_data_channel_id.fetch_add(1, Ordering::Relaxed);
                 let thread_ = thread.lock().unwrap().clone();
                 match GStreamerWebRtcDataChannel::from(&id, channel, &thread_) {
                     Ok(channel) => {
-                        if register_channel(&id, Arc::new(Mutex::new(channel))).is_ok() {
+                        if register_data_channel(data_channels.clone(), id, channel).is_ok() {
                             thread.lock().unwrap().internal_event(
                                 InternalEvent::OnDataChannelEvent(id, DataChannelEvent::NewChannel),
                             );
@@ -590,6 +590,8 @@ pub fn construct(
         remote_offer_generation: 0,
         delayed_negotiation: false,
         _main_loop: main_loop,
+        data_channels: Arc::new(Mutex::new(HashMap::new())),
+        next_data_channel_id: Arc::new(AtomicUsize::new(0)),
     };
     controller.start_pipeline()?;
     Ok(controller)
@@ -710,4 +712,18 @@ fn candidate(values: &[glib::Value]) -> IceCandidate {
         sdp_mline_index,
         candidate,
     }
+}
+
+fn register_data_channel(
+    registry: Arc<Mutex<HashMap<DataChannelId, GStreamerWebRtcDataChannel>>>,
+    id: DataChannelId,
+    channel: GStreamerWebRtcDataChannel,
+) -> WebRtcDataChannelResult {
+    if registry.lock().unwrap().contains_key(&id) {
+        return Err(WebRtcError::Backend(
+            "Could not register data channel. ID collision".to_owned(),
+        ));
+    }
+    registry.lock().unwrap().insert(id, channel);
+    Ok(id)
 }

@@ -1,5 +1,4 @@
 use glib::{ObjectExt, Value};
-use servo_media_webrtc::datachannel::DataChannelBackend;
 use servo_media_webrtc::thread::InternalEvent;
 use servo_media_webrtc::WebRtcController as WebRtcThread;
 use servo_media_webrtc::{
@@ -139,14 +138,12 @@ impl GStreamerWebRtcDataChannel {
             channel: DataChannel(channel),
         })
     }
-}
 
-impl DataChannelBackend for GStreamerWebRtcDataChannel {
-    fn send(&self, message: &str) -> WebRtcResult {
+    pub fn send(&self, message: &str) -> WebRtcResult {
         self.channel.send(message)
     }
 
-    fn close(&self) -> WebRtcResult {
+    pub fn close(&self) -> WebRtcResult {
         self.channel.close()
     }
 }

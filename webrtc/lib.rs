@@ -1,8 +1,6 @@
 #![feature(fn_traits)]
 
 extern crate boxfnonce;
-#[macro_use]
-extern crate lazy_static;
 extern crate log;
 extern crate servo_media_streams;
 extern crate uuid;
@@ -27,6 +25,7 @@ pub enum WebRtcError {
 }
 
 pub type WebRtcResult = Result<(), WebRtcError>;
+pub type WebRtcDataChannelResult = Result<DataChannelId, WebRtcError>;
 
 impl<T: Display> From<T> for WebRtcError {
     fn from(x: T) -> Self {
@@ -53,7 +52,7 @@ pub trait WebRtcControllerBackend: Send {
     fn create_answer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebRtcResult;
     fn add_stream(&mut self, stream: &MediaStreamId) -> WebRtcResult;
 
-    fn create_data_channel(&mut self, id: &DataChannelId, init: &DataChannelInit) -> WebRtcResult;
+    fn create_data_channel(&mut self, init: &DataChannelInit) -> WebRtcDataChannelResult;
     fn send_data_channel_message(&mut self, channel: &DataChannelId, message: &str)
         -> WebRtcResult;
 
