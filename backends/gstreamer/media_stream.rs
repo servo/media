@@ -5,7 +5,7 @@ use gst::prelude::*;
 use servo_media_streams::registry::{
     get_stream, register_stream, unregister_stream, MediaStreamId,
 };
-use servo_media_streams::{MediaOutput, MediaStream, MediaStreamType};
+use servo_media_streams::{MediaOutput, MediaSocket, MediaStream, MediaStreamType};
 use std::any::Any;
 use std::sync::{Arc, Mutex};
 
@@ -210,6 +210,18 @@ impl GStreamerMediaStream {
             ],
         )
     }
+
+    pub fn create_proxy(ty: MediaStreamType) -> (MediaStreamId, GstreamerMediaSocket) {
+        let proxy_src = gst::ElementFactory::make("proxysrc", None).unwrap();
+        let proxy_sink = gst::ElementFactory::make("proxysink", None).unwrap();
+        proxy_src.set_property("proxysink", &proxy_sink).unwrap();
+        let stream = match ty {
+            MediaStreamType::Audio => Self::create_audio_from(proxy_src),
+            MediaStreamType::Video => Self::create_video_from(proxy_src),
+        };
+
+        (stream, GstreamerMediaSocket { proxy_sink })
+    }
 }
 
 impl Drop for GStreamerMediaStream {
@@ -254,5 +266,21 @@ impl MediaOutput for MediaSink {
             sink.sync_state_with_parent().unwrap();
         }
         self.streams.push(stream.clone());
+    }
+}
+
+pub struct GstreamerMediaSocket {
+    proxy_sink: gst::Element,
+}
+
+impl GstreamerMediaSocket {
+    pub fn proxy_sink(&self) -> &gst::Element {
+        &self.proxy_sink
+    }
+}
+
+impl MediaSocket for GstreamerMediaSocket {
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }

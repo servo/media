@@ -20,7 +20,7 @@ use servo_media_player::context::PlayerGLContext;
 use servo_media_player::{audio, video, Player, PlayerError, PlayerEvent, StreamType};
 use servo_media_streams::capture::MediaTrackConstraintSet;
 use servo_media_streams::registry::{register_stream, unregister_stream, MediaStreamId};
-use servo_media_streams::{MediaOutput, MediaStream, MediaStreamType};
+use servo_media_streams::{MediaOutput, MediaSocket, MediaStream, MediaStreamType};
 use servo_media_traits::{ClientContextId, MediaInstance};
 use servo_media_webrtc::{
     thread, BundlePolicy, IceCandidate, SessionDescription, WebRtcBackend, WebRtcController,
@@ -60,6 +60,16 @@ impl Backend for DummyBackend {
         Some(register_stream(Arc::new(Mutex::new(DummyMediaStream {
             id: MediaStreamId::new(),
         }))))
+    }
+
+    fn create_stream_and_socket(
+        &self,
+        _: MediaStreamType,
+    ) -> (Box<dyn MediaSocket>, MediaStreamId) {
+        let id = register_stream(Arc::new(Mutex::new(DummyMediaStream {
+            id: MediaStreamId::new(),
+        })));
+        (Box::new(DummySocket), id)
     }
 
     fn create_videoinput_stream(&self, _: MediaTrackConstraintSet) -> Option<MediaStreamId> {
@@ -186,6 +196,14 @@ impl AudioDecoder for DummyAudioDecoder {
     fn decode(&self, _: Vec<u8>, _: AudioDecoderCallbacks, _: Option<AudioDecoderOptions>) {}
 }
 
+pub struct DummySocket;
+
+impl MediaSocket for DummySocket {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
 pub struct DummyMediaStream {
     id: MediaStreamId,
 }
@@ -216,10 +234,8 @@ impl AudioSink for DummyAudioSink {
     fn init(&self, _: f32, _: Sender<AudioRenderThreadMsg>) -> Result<(), AudioSinkError> {
         Ok(())
     }
-    fn init_stream(&self, _: u8, _: f32) -> Result<MediaStreamId, AudioSinkError> {
-        Ok(register_stream(Arc::new(Mutex::new(DummyMediaStream {
-            id: MediaStreamId::new(),
-        }))))
+    fn init_stream(&self, _: u8, _: f32, _: Box<dyn MediaSocket>) -> Result<(), AudioSinkError> {
+        Ok(())
     }
     fn play(&self) -> Result<(), AudioSinkError> {
         Ok(())

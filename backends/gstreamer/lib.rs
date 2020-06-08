@@ -59,7 +59,7 @@ use servo_media_player::video::VideoFrameRenderer;
 use servo_media_player::{Player, PlayerEvent, StreamType};
 use servo_media_streams::capture::MediaTrackConstraintSet;
 use servo_media_streams::registry::MediaStreamId;
-use servo_media_streams::MediaOutput;
+use servo_media_streams::{MediaOutput, MediaSocket, MediaStreamType};
 use servo_media_traits::{BackendMsg, ClientContextId, MediaInstance};
 use servo_media_webrtc::{WebRtcBackend, WebRtcController, WebRtcSignaller};
 use std::collections::HashMap;
@@ -222,6 +222,14 @@ impl Backend for GStreamerBackend {
 
     fn create_stream_output(&self) -> Box<dyn MediaOutput> {
         Box::new(media_stream::MediaSink::new())
+    }
+
+    fn create_stream_and_socket(
+        &self,
+        ty: MediaStreamType,
+    ) -> (Box<dyn MediaSocket>, MediaStreamId) {
+        let (id, socket) = GStreamerMediaStream::create_proxy(ty);
+        (Box::new(socket), id)
     }
 
     fn create_audioinput_stream(&self, set: MediaTrackConstraintSet) -> Option<MediaStreamId> {
