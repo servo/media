@@ -153,6 +153,15 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         }
     }
 
+    fn close_data_channel(&mut self, id: &DataChannelId) -> WebRtcResult {
+        // There is no need to unregister the channel here. It will be unregistered
+        // when the data channel backend triggers the on closed event.
+        match self.data_channels.lock().unwrap().get(id) {
+            Some(ref channel) => channel.close(),
+            None => Err(WebRtcError::Backend("Unknown data channel".to_owned())),
+        }
+    }
+
     fn send_data_channel_message(&mut self, id: &DataChannelId, message: &str) -> WebRtcResult {
         match self.data_channels.lock().unwrap().get(id) {
             Some(ref channel) => channel.send(message),

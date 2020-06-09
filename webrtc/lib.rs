@@ -53,6 +53,7 @@ pub trait WebRtcControllerBackend: Send {
     fn add_stream(&mut self, stream: &MediaStreamId) -> WebRtcResult;
 
     fn create_data_channel(&mut self, init: &DataChannelInit) -> WebRtcDataChannelResult;
+    fn close_data_channel(&mut self, channel: &DataChannelId) -> WebRtcResult;
     fn send_data_channel_message(&mut self, channel: &DataChannelId, message: &str)
         -> WebRtcResult;
 

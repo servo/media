@@ -97,6 +97,7 @@ pub enum RtcThreadEvent {
     CreateAnswer(SendBoxFnOnce<'static, (SessionDescription,)>),
     AddStream(MediaStreamId),
     CreateDataChannel(DataChannelInit, Sender<Option<DataChannelId>>),
+    CloseDataChannel(DataChannelId),
     SendDataChannelMessage(DataChannelId, String),
     InternalEvent(InternalEvent),
     Quit,
@@ -147,6 +148,7 @@ pub fn handle_rtc_event(
                 let _ = sender.send(None);
                 e
             }),
+        RtcThreadEvent::CloseDataChannel(id) => controller.close_data_channel(&id),
         RtcThreadEvent::SendDataChannelMessage(id, message) => {
             controller.send_data_channel_message(&id, &message)
         }
