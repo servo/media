@@ -1,5 +1,6 @@
 use super::BACKEND_BASE_TIME;
 use boxfnonce::SendBoxFnOnce;
+use datachannel::GStreamerWebRtcDataChannel;
 use glib;
 use glib::prelude::*;
 use gst;
@@ -9,9 +10,12 @@ use gst_webrtc;
 use media_stream::GStreamerMediaStream;
 use servo_media_streams::registry::{get_stream, MediaStreamId};
 use servo_media_streams::MediaStreamType;
+use servo_media_webrtc::datachannel::DataChannelId;
 use servo_media_webrtc::thread::InternalEvent;
 use servo_media_webrtc::WebRtcController as WebRtcThread;
 use servo_media_webrtc::*;
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::{cmp, mem};
 
@@ -70,14 +74,13 @@ pub struct GStreamerWebRtcController {
     pending_remote_mline_info: Vec<MLineInfo>,
     /// In case we get multiple remote offers, this lets us keep track of which is the newest
     remote_offer_generation: u32,
-    //send_msg_tx: mpsc::Sender<OwnedMessage>,
-    //peer_id: String,
     _main_loop: glib::MainLoop,
-    //bus: gst::Bus,
+    data_channels: Arc<Mutex<HashMap<DataChannelId, GStreamerWebRtcDataChannel>>>,
+    next_data_channel_id: Arc<AtomicUsize>,
 }
 
 impl WebRtcControllerBackend for GStreamerWebRtcController {
-    fn add_ice_candidate(&mut self, candidate: IceCandidate) -> WebrtcResult {
+    fn add_ice_candidate(&mut self, candidate: IceCandidate) -> WebRtcResult {
         self.webrtc.emit(
             "add-ice-candidate",
             &[&candidate.sdp_mline_index, &candidate.candidate],
@@ -89,7 +92,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         &mut self,
         desc: SessionDescription,
         cb: SendBoxFnOnce<'static, ()>,
-    ) -> WebrtcResult {
+    ) -> WebRtcResult {
         self.set_description(desc, DescriptionType::Remote, cb)
     }
 
@@ -97,11 +100,11 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         &mut self,
         desc: SessionDescription,
         cb: SendBoxFnOnce<'static, ()>,
-    ) -> WebrtcResult {
+    ) -> WebRtcResult {
         self.set_description(desc, DescriptionType::Local, cb)
     }
 
-    fn create_offer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebrtcResult {
+    fn create_offer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebRtcResult {
         self.flush_pending_streams(true)?;
         self.pipeline.set_state(gst::State::Playing)?;
         let promise = gst::Promise::new_with_change_func(move |res| {
@@ -114,7 +117,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         Ok(())
     }
 
-    fn create_answer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebrtcResult {
+    fn create_answer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebRtcResult {
         let promise = gst::Promise::new_with_change_func(move |res| {
             res.map(|s| on_offer_or_answer_created(SdpType::Answer, s, cb))
                 .unwrap();
@@ -125,7 +128,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         Ok(())
     }
 
-    fn add_stream(&mut self, stream_id: &MediaStreamId) -> WebrtcResult {
+    fn add_stream(&mut self, stream_id: &MediaStreamId) -> WebRtcResult {
         let stream =
             get_stream(stream_id).expect("Media streams registry does not contain such ID");
         let mut stream = stream.lock().unwrap();
@@ -142,7 +145,35 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         Ok(())
     }
 
-    fn configure(&mut self, stun_server: &str, policy: BundlePolicy) -> WebrtcResult {
+    fn create_data_channel(&mut self, init: &DataChannelInit) -> WebRtcDataChannelResult {
+        let id = self.next_data_channel_id.fetch_add(1, Ordering::Relaxed);
+        match GStreamerWebRtcDataChannel::new(&id, &self.webrtc, &self.thread, init) {
+            Ok(channel) => register_data_channel(self.data_channels.clone(), id, channel),
+            Err(error) => Err(WebRtcError::Backend(error)),
+        }
+    }
+
+    fn close_data_channel(&mut self, id: &DataChannelId) -> WebRtcResult {
+        // There is no need to unregister the channel here. It will be unregistered
+        // when the data channel backend triggers the on closed event.
+        match self.data_channels.lock().unwrap().get(id) {
+            Some(ref channel) => channel.close(),
+            None => Err(WebRtcError::Backend("Unknown data channel".to_owned())),
+        }
+    }
+
+    fn send_data_channel_message(
+        &mut self,
+        id: &DataChannelId,
+        message: &DataChannelMessage,
+    ) -> WebRtcResult {
+        match self.data_channels.lock().unwrap().get(id) {
+            Some(ref channel) => channel.send(message),
+            None => Err(WebRtcError::Backend("Unknown data channel".to_owned())),
+        }
+    }
+
+    fn configure(&mut self, stun_server: &str, policy: BundlePolicy) -> WebRtcResult {
         self.webrtc
             .set_property_from_str("stun-server", stun_server);
         self.webrtc
@@ -150,7 +181,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         Ok(())
     }
 
-    fn internal_event(&mut self, e: thread::InternalEvent) -> WebrtcResult {
+    fn internal_event(&mut self, e: thread::InternalEvent) -> WebRtcResult {
         match e {
             InternalEvent::OnNegotiationNeeded => {
                 if self.streams.is_empty() && self.pending_streams.is_empty() {
@@ -169,6 +200,16 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
             InternalEvent::OnAddStream(stream, ty) => {
                 self.pipeline.set_state(gst::State::Playing)?;
                 self.signaller.on_add_stream(&stream, ty);
+            }
+            InternalEvent::OnDataChannelEvent(channel_id, event) => {
+                match event {
+                    DataChannelEvent::Close => {
+                        self.data_channels.lock().unwrap().remove(&channel_id);
+                    }
+                    _ => {}
+                }
+                self.signaller
+                    .on_data_channel_event(channel_id, event, &self.thread);
             }
             InternalEvent::DescriptionAdded(cb, description_type, ty, remote_offer_generation) => {
                 if description_type == DescriptionType::Remote
@@ -200,7 +241,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                     HaveRemotePranswer => SignalingState::HaveRemotePranswer,
                     Closed => SignalingState::Closed,
                     i => {
-                        return Err(WebrtcError::Backend(format!(
+                        return Err(WebRtcError::Backend(format!(
                             "unknown signaling state: {:?}",
                             i
                         )))
@@ -220,7 +261,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                     Gathering => GatheringState::Gathering,
                     Complete => GatheringState::Complete,
                     i => {
-                        return Err(WebrtcError::Backend(format!(
+                        return Err(WebRtcError::Backend(format!(
                             "unknown gathering state: {:?}",
                             i
                         )))
@@ -244,7 +285,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                     Failed => IceConnectionState::Failed,
                     Closed => IceConnectionState::Closed,
                     i => {
-                        return Err(WebrtcError::Backend(format!(
+                        return Err(WebRtcError::Backend(format!(
                             "unknown ICE connection state: {:?}",
                             i
                         )))
@@ -260,8 +301,6 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         self.signaller.close();
 
         self.pipeline.set_state(gst::State::Null).unwrap();
-
-        //main_loop.quit();
     }
 }
 
@@ -271,7 +310,7 @@ impl GStreamerWebRtcController {
         desc: SessionDescription,
         description_type: DescriptionType,
         cb: SendBoxFnOnce<'static, ()>,
-    ) -> WebrtcResult {
+    ) -> WebRtcResult {
         let ty = match desc.type_ {
             SdpType::Answer => gst_webrtc::WebRTCSDPType::Answer,
             SdpType::Offer => gst_webrtc::WebRTCSDPType::Offer,
@@ -312,6 +351,9 @@ impl GStreamerWebRtcController {
             let mut caps = gst::Caps::new_empty();
             let caps_mut = caps.get_mut().expect("Fresh caps should be uniquely owned");
             for format in media.formats() {
+                if format == "webrtc-datachannel" {
+                    return;
+                }
                 let pt = format
                     .parse()
                     .expect("Gstreamer provided noninteger format");
@@ -369,7 +411,7 @@ impl GStreamerWebRtcController {
         stream_id: &MediaStreamId,
         stream: &mut GStreamerMediaStream,
         request_new_pads: bool,
-    ) -> WebrtcResult {
+    ) -> WebRtcResult {
         let caps = stream.caps();
         let idx = self
             .remote_mline_info
@@ -432,7 +474,7 @@ impl GStreamerWebRtcController {
     }
 
     /// link_stream, but for all pending streams
-    fn flush_pending_streams(&mut self, request_new_pads: bool) -> WebrtcResult {
+    fn flush_pending_streams(&mut self, request_new_pads: bool) -> WebRtcResult {
         let pending_streams = mem::replace(&mut self.pending_streams, vec![]);
         for stream_id in pending_streams {
             let stream =
@@ -446,10 +488,8 @@ impl GStreamerWebRtcController {
         }
         Ok(())
     }
-}
 
-impl GStreamerWebRtcController {
-    fn start_pipeline(&mut self) -> WebrtcResult {
+    fn start_pipeline(&mut self) -> WebRtcResult {
         self.pipeline.add(&self.webrtc)?;
 
         // gstreamer needs Sync on these callbacks for some reason
@@ -510,6 +550,35 @@ impl GStreamerWebRtcController {
                     .internal_event(InternalEvent::UpdateGatheringState);
                 None
             })?;
+        let thread = Mutex::new(self.thread.clone());
+        let data_channels = self.data_channels.clone();
+        let next_data_channel_id = self.next_data_channel_id.clone();
+        self.webrtc
+            .connect("on-data-channel", false, move |channel| {
+                let channel = channel[1]
+                    .get::<glib::Object>()
+                    .map_err(|e| e.to_string())
+                    .expect("Invalid data channel")
+                    .expect("Invalid data channel");
+                let id = next_data_channel_id.fetch_add(1, Ordering::Relaxed);
+                let thread_ = thread.lock().unwrap().clone();
+                match GStreamerWebRtcDataChannel::from(&id, channel, &thread_) {
+                    Ok(channel) => {
+                        if register_data_channel(data_channels.clone(), id, channel).is_ok() {
+                            thread.lock().unwrap().internal_event(
+                                InternalEvent::OnDataChannelEvent(id, DataChannelEvent::NewChannel),
+                            );
+                        } else {
+                            warn!("Could not register data channel");
+                        }
+                    }
+                    Err(error) => {
+                        warn!("Could not create data channel {:?}", error);
+                    }
+                }
+                None
+            })?;
+
         self.pipeline.set_state(gst::State::Ready)?;
         Ok(())
     }
@@ -518,7 +587,7 @@ impl GStreamerWebRtcController {
 pub fn construct(
     signaller: Box<dyn WebRtcSignaller>,
     thread: WebRtcThread,
-) -> Result<GStreamerWebRtcController, WebrtcError> {
+) -> Result<GStreamerWebRtcController, WebRtcError> {
     let main_loop = glib::MainLoop::new(None, false);
     let pipeline = gst::Pipeline::new(Some("webrtc main"));
     pipeline.set_start_time(gst::ClockTime::none());
@@ -540,6 +609,8 @@ pub fn construct(
         remote_offer_generation: 0,
         delayed_negotiation: false,
         _main_loop: main_loop,
+        data_channels: Arc::new(Mutex::new(HashMap::new())),
+        next_data_channel_id: Arc::new(AtomicUsize::new(0)),
     };
     controller.start_pipeline()?;
     Ok(controller)
@@ -660,4 +731,18 @@ fn candidate(values: &[glib::Value]) -> IceCandidate {
         sdp_mline_index,
         candidate,
     }
+}
+
+fn register_data_channel(
+    registry: Arc<Mutex<HashMap<DataChannelId, GStreamerWebRtcDataChannel>>>,
+    id: DataChannelId,
+    channel: GStreamerWebRtcDataChannel,
+) -> WebRtcDataChannelResult {
+    if registry.lock().unwrap().contains_key(&id) {
+        return Err(WebRtcError::Backend(
+            "Could not register data channel. ID collision".to_owned(),
+        ));
+    }
+    registry.lock().unwrap().insert(id, channel);
+    Ok(id)
 }

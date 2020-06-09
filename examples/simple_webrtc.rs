@@ -147,6 +147,8 @@ impl State {
         webrtc.add_stream(&video);
         webrtc.add_stream(&audio);
 
+        webrtc.create_data_channel(DataChannelInit::default());
+
         webrtc.configure(STUN_SERVER.into(), BundlePolicy::MaxBundle);
     }
 }
@@ -174,6 +176,7 @@ impl WebRtcSignaller for Signaller {
             sdp_mline_index: candidate.sdp_mline_index,
         })
         .unwrap();
+
         self.sender.send(OwnedMessage::Text(message)).unwrap();
     }
 
@@ -193,6 +196,33 @@ impl WebRtcSignaller for Signaller {
 
     fn on_add_stream(&self, stream: &registry::MediaStreamId, _: MediaStreamType) {
         self.output.lock().unwrap().add_stream(&stream);
+    }
+
+    fn on_data_channel_event(
+        &self,
+        id: DataChannelId,
+        event: DataChannelEvent,
+        controller: &WebRtcController,
+    ) {
+        match event {
+            DataChannelEvent::NewChannel => {}
+            DataChannelEvent::Open => {
+                println!("Channel opened {:?}", id);
+                controller.send_data_channel_message(
+                    &id,
+                    DataChannelMessage::Text("Hello from servo-media".to_owned()),
+                );
+            }
+            DataChannelEvent::Close => {
+                println!("Channel closed {:?}", id);
+            }
+            DataChannelEvent::OnMessage(message) => {
+                println!("Channel message {:?}", message);
+            }
+            DataChannelEvent::Error(error) => {
+                println!("Channel error {:?}", error);
+            }
+        }
     }
 }
 

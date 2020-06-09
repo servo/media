@@ -1,6 +1,10 @@
+#![feature(fn_traits)]
+
 extern crate boxfnonce;
 extern crate log;
 extern crate servo_media_streams;
+extern crate uuid;
+
 use servo_media_streams::registry::MediaStreamId;
 use servo_media_streams::MediaStreamType;
 
@@ -9,42 +13,54 @@ use std::str::FromStr;
 
 use boxfnonce::SendBoxFnOnce;
 
+pub mod datachannel;
 pub mod thread;
 
+pub use datachannel::{DataChannelEvent, DataChannelId, DataChannelInit, DataChannelMessage};
 pub use thread::WebRtcController;
 
 #[derive(Debug)]
-pub enum WebrtcError {
+pub enum WebRtcError {
     Backend(String),
 }
 
-pub type WebrtcResult = Result<(), WebrtcError>;
+pub type WebRtcResult = Result<(), WebRtcError>;
+pub type WebRtcDataChannelResult = Result<DataChannelId, WebRtcError>;
 
-impl<T: Display> From<T> for WebrtcError {
+impl<T: Display> From<T> for WebRtcError {
     fn from(x: T) -> Self {
-        WebrtcError::Backend(x.to_string())
+        WebRtcError::Backend(x.to_string())
     }
 }
 
 /// This trait is implemented by backends and should never be used directly by
 /// the client. Use WebRtcController instead
 pub trait WebRtcControllerBackend: Send {
-    fn configure(&mut self, stun_server: &str, policy: BundlePolicy) -> WebrtcResult;
+    fn configure(&mut self, stun_server: &str, policy: BundlePolicy) -> WebRtcResult;
     fn set_remote_description(
         &mut self,
         SessionDescription,
         cb: SendBoxFnOnce<'static, ()>,
-    ) -> WebrtcResult;
+    ) -> WebRtcResult;
     fn set_local_description(
         &mut self,
         SessionDescription,
         cb: SendBoxFnOnce<'static, ()>,
-    ) -> WebrtcResult;
-    fn add_ice_candidate(&mut self, candidate: IceCandidate) -> WebrtcResult;
-    fn create_offer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebrtcResult;
-    fn create_answer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebrtcResult;
-    fn add_stream(&mut self, stream: &MediaStreamId) -> WebrtcResult;
-    fn internal_event(&mut self, event: thread::InternalEvent) -> WebrtcResult;
+    ) -> WebRtcResult;
+    fn add_ice_candidate(&mut self, candidate: IceCandidate) -> WebRtcResult;
+    fn create_offer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebRtcResult;
+    fn create_answer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebRtcResult;
+    fn add_stream(&mut self, stream: &MediaStreamId) -> WebRtcResult;
+
+    fn create_data_channel(&mut self, init: &DataChannelInit) -> WebRtcDataChannelResult;
+    fn close_data_channel(&mut self, channel: &DataChannelId) -> WebRtcResult;
+    fn send_data_channel_message(
+        &mut self,
+        channel: &DataChannelId,
+        message: &DataChannelMessage,
+    ) -> WebRtcResult;
+
+    fn internal_event(&mut self, event: thread::InternalEvent) -> WebRtcResult;
     fn quit(&mut self);
 }
 
@@ -57,6 +73,8 @@ pub trait WebRtcSignaller: Send {
     fn update_signaling_state(&self, _: SignalingState) {}
     fn update_gathering_state(&self, _: GatheringState) {}
     fn update_ice_connection_state(&self, _: IceConnectionState) {}
+
+    fn on_data_channel_event(&self, _: DataChannelId, _: DataChannelEvent, _: &WebRtcController) {}
 }
 
 pub trait WebRtcBackend {
