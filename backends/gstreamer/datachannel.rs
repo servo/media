@@ -35,6 +35,8 @@ unsafe impl Sync for DataChannel {}
 
 pub struct GStreamerWebRtcDataChannel {
     channel: DataChannel,
+    id: DataChannelId,
+    thread: WebRtcThread,
 }
 
 impl GStreamerWebRtcDataChannel {
@@ -135,6 +137,8 @@ impl GStreamerWebRtcDataChannel {
             .map_err(|e| e.to_string())?;
 
         Ok(Self {
+            id: id.clone(),
+            thread: thread.clone(),
             channel: DataChannel(channel),
         })
     }
@@ -145,5 +149,15 @@ impl GStreamerWebRtcDataChannel {
 
     pub fn close(&self) -> WebRtcResult {
         self.channel.close()
+    }
+}
+
+impl Drop for GStreamerWebRtcDataChannel {
+    fn drop(&mut self) {
+        self.thread
+            .internal_event(InternalEvent::OnDataChannelEvent(
+                self.id,
+                DataChannelEvent::Close,
+            ));
     }
 }

@@ -189,6 +189,12 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                 self.signaller.on_add_stream(&stream, ty);
             }
             InternalEvent::OnDataChannelEvent(channel_id, event) => {
+                match event {
+                    DataChannelEvent::Close => {
+                        self.data_channels.lock().unwrap().remove(&channel_id);
+                    }
+                    _ => {}
+                }
                 self.signaller
                     .on_data_channel_event(channel_id, event, &self.thread);
             }
