@@ -5,7 +5,7 @@ use log::error;
 
 use boxfnonce::SendBoxFnOnce;
 
-use crate::datachannel::{DataChannelEvent, DataChannelId, DataChannelInit};
+use crate::datachannel::{DataChannelEvent, DataChannelId, DataChannelInit, DataChannelMessage};
 use crate::{
     BundlePolicy, DescriptionType, IceCandidate, MediaStreamId, SdpType, SessionDescription,
 };
@@ -72,7 +72,7 @@ impl WebRtcController {
             .send(RtcThreadEvent::CreateDataChannel(init, sender));
         receiver.recv().unwrap()
     }
-    pub fn send_data_channel_message(&self, id: &DataChannelId, message: String) {
+    pub fn send_data_channel_message(&self, id: &DataChannelId, message: DataChannelMessage) {
         let _ = self
             .sender
             .send(RtcThreadEvent::SendDataChannelMessage(*id, message));
@@ -98,7 +98,7 @@ pub enum RtcThreadEvent {
     AddStream(MediaStreamId),
     CreateDataChannel(DataChannelInit, Sender<Option<DataChannelId>>),
     CloseDataChannel(DataChannelId),
-    SendDataChannelMessage(DataChannelId, String),
+    SendDataChannelMessage(DataChannelId, DataChannelMessage),
     InternalEvent(InternalEvent),
     Quit,
 }

@@ -208,7 +208,10 @@ impl WebRtcSignaller for Signaller {
             DataChannelEvent::NewChannel => {}
             DataChannelEvent::Open => {
                 println!("Channel opened {:?}", id);
-                controller.send_data_channel_message(&id, "Hello from servo-media".to_owned());
+                controller.send_data_channel_message(
+                    &id,
+                    DataChannelMessage::Text("Hello from servo-media".to_owned()),
+                );
             }
             DataChannelEvent::Close => {
                 println!("Channel closed {:?}", id);

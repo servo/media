@@ -2,7 +2,7 @@ use glib::{ObjectExt, Value};
 use servo_media_webrtc::thread::InternalEvent;
 use servo_media_webrtc::WebRtcController as WebRtcThread;
 use servo_media_webrtc::{
-    DataChannelEvent, DataChannelId, DataChannelInit, WebRtcError, WebRtcResult,
+    DataChannelEvent, DataChannelId, DataChannelInit, DataChannelMessage, WebRtcError, WebRtcResult,
 };
 use std::sync::Mutex;
 
@@ -14,11 +14,18 @@ use std::sync::Mutex;
 struct DataChannel(glib::Object);
 
 impl DataChannel {
-    pub fn send(&self, message: &str) -> WebRtcResult {
-        self.0
-            .emit("send-string", &[&Value::from(message)])
-            .map(|_| ())
-            .map_err(|e| WebRtcError::Backend(e.to_string()))
+    pub fn send(&self, message: &DataChannelMessage) -> WebRtcResult {
+        match message {
+            DataChannelMessage::Text(message) => {
+                self.0.emit("send-string", &[&Value::from(&message)])
+            }
+            DataChannelMessage::Binary(message) => {
+                let bytes = glib::Bytes::from(message);
+                self.0.emit("send-data", &[&Value::from(&bytes)])
+            }
+        }
+        .map(|_| ())
+        .map_err(|e| WebRtcError::Backend(e.to_string()))
     }
 
     pub fn close(&self) -> WebRtcResult {
@@ -143,7 +150,7 @@ impl GStreamerWebRtcDataChannel {
         })
     }
 
-    pub fn send(&self, message: &str) -> WebRtcResult {
+    pub fn send(&self, message: &DataChannelMessage) -> WebRtcResult {
         self.channel.send(message)
     }
 

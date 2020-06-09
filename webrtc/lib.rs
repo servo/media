@@ -16,7 +16,7 @@ use boxfnonce::SendBoxFnOnce;
 pub mod datachannel;
 pub mod thread;
 
-pub use datachannel::{DataChannelEvent, DataChannelId, DataChannelInit};
+pub use datachannel::{DataChannelEvent, DataChannelId, DataChannelInit, DataChannelMessage};
 pub use thread::WebRtcController;
 
 #[derive(Debug)]
@@ -54,8 +54,11 @@ pub trait WebRtcControllerBackend: Send {
 
     fn create_data_channel(&mut self, init: &DataChannelInit) -> WebRtcDataChannelResult;
     fn close_data_channel(&mut self, channel: &DataChannelId) -> WebRtcResult;
-    fn send_data_channel_message(&mut self, channel: &DataChannelId, message: &str)
-        -> WebRtcResult;
+    fn send_data_channel_message(
+        &mut self,
+        channel: &DataChannelId,
+        message: &DataChannelMessage,
+    ) -> WebRtcResult;
 
     fn internal_event(&mut self, event: thread::InternalEvent) -> WebRtcResult;
     fn quit(&mut self);

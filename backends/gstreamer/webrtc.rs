@@ -162,7 +162,11 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         }
     }
 
-    fn send_data_channel_message(&mut self, id: &DataChannelId, message: &str) -> WebRtcResult {
+    fn send_data_channel_message(
+        &mut self,
+        id: &DataChannelId,
+        message: &DataChannelMessage,
+    ) -> WebRtcResult {
         match self.data_channels.lock().unwrap().get(id) {
             Some(ref channel) => channel.send(message),
             None => Err(WebRtcError::Backend("Unknown data channel".to_owned())),

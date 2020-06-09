@@ -4,6 +4,11 @@ use uuid::Uuid;
 
 pub type DataChannelId = usize;
 
+pub enum DataChannelMessage {
+    Text(String),
+    Binary(Vec<u8>),
+}
+
 pub enum DataChannelEvent {
     NewChannel,
     Open,
