@@ -222,6 +222,9 @@ impl WebRtcSignaller for Signaller {
             DataChannelEvent::Error(error) => {
                 println!("Channel error {:?}", error);
             }
+            DataChannelEvent::StateChange(state) => {
+                println!("Channel state change to {:?}", state);
+            }
         }
     }
 }

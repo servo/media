@@ -16,7 +16,9 @@ use boxfnonce::SendBoxFnOnce;
 pub mod datachannel;
 pub mod thread;
 
-pub use datachannel::{DataChannelEvent, DataChannelId, DataChannelInit, DataChannelMessage};
+pub use datachannel::{
+    DataChannelEvent, DataChannelId, DataChannelInit, DataChannelMessage, DataChannelState,
+};
 pub use thread::WebRtcController;
 
 #[derive(Debug)]

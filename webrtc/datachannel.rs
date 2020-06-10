@@ -9,12 +9,23 @@ pub enum DataChannelMessage {
     Binary(Vec<u8>),
 }
 
+#[derive(Debug)]
+pub enum DataChannelState {
+    New,
+    Connecting,
+    Open,
+    Closing,
+    Closed,
+    __Unknown(i32),
+}
+
 pub enum DataChannelEvent {
     NewChannel,
     Open,
     Close,
     Error(WebRtcError),
     OnMessage(String),
+    StateChange(DataChannelState),
 }
 
 // https://www.w3.org/TR/webrtc/#dom-rtcdatachannelinit

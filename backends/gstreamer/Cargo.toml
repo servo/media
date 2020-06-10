@@ -50,6 +50,7 @@ version = "0.15"
 
 [dependencies.gstreamer-webrtc]
 version = "0.15"
+features = ["v1_16"]
 
 [dependencies.gstreamer-video]
 version = "0.15"

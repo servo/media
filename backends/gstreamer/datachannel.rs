@@ -1,8 +1,10 @@
 use glib::{ObjectExt, ToSendValue, Value};
+use gst_webrtc::WebRTCDataChannelState;
 use servo_media_webrtc::thread::InternalEvent;
 use servo_media_webrtc::WebRtcController as WebRtcThread;
 use servo_media_webrtc::{
-    DataChannelEvent, DataChannelId, DataChannelInit, DataChannelMessage, WebRtcError, WebRtcResult,
+    DataChannelEvent, DataChannelId, DataChannelInit, DataChannelMessage, DataChannelState,
+    WebRtcError, WebRtcResult,
 };
 use std::sync::Mutex;
 
@@ -157,6 +159,36 @@ impl GStreamerWebRtcDataChannel {
                             id_,
                             DataChannelEvent::OnMessage(message),
                         ));
+                }
+                None
+            })
+            .map_err(|e| e.to_string())?;
+
+        let id_ = id.clone();
+        let thread_ = Mutex::new(thread.clone());
+        channel
+            .connect("notify::ready-state", false, move |state| {
+                if let Ok(data_channel) = state[0].get::<glib::Object>() {
+                    if let Ok(ready_state) = data_channel.unwrap().get_property("ready-state") {
+                        if let Ok(ready_state) = ready_state.get::<WebRTCDataChannelState>() {
+                            let ready_state = match ready_state.unwrap() {
+                                WebRTCDataChannelState::New => DataChannelState::New,
+                                WebRTCDataChannelState::Connecting => DataChannelState::Connecting,
+                                WebRTCDataChannelState::Open => DataChannelState::Open,
+                                WebRTCDataChannelState::Closing => DataChannelState::Closing,
+                                WebRTCDataChannelState::Closed => DataChannelState::Closed,
+                                WebRTCDataChannelState::__Unknown(state) => {
+                                    DataChannelState::__Unknown(state)
+                                }
+                            };
+                            thread_.lock().unwrap().internal_event(
+                                InternalEvent::OnDataChannelEvent(
+                                    id_,
+                                    DataChannelEvent::StateChange(ready_state),
+                                ),
+                            );
+                        }
+                    }
                 }
                 None
             })
