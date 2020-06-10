@@ -1,4 +1,4 @@
-use glib::{ObjectExt, Value};
+use glib::{ObjectExt, ToSendValue, Value};
 use servo_media_webrtc::thread::InternalEvent;
 use servo_media_webrtc::WebRtcController as WebRtcThread;
 use servo_media_webrtc::{
@@ -53,11 +53,30 @@ impl GStreamerWebRtcDataChannel {
         thread: &WebRtcThread,
         init: &DataChannelInit,
     ) -> Result<Self, String> {
+        let label = &init.label;
+        let mut init_struct = gst::Structure::builder("options")
+            .field("ordered", &init.ordered)
+            .field("protocol", &init.protocol)
+            .field("negotiated", &init.negotiated)
+            .build();
+
+        if let Some(max_packet_life_time) = init.max_packet_life_time {
+            init_struct.set_value(
+                "max-packet-lifetime",
+                (max_packet_life_time as u32).to_send_value(),
+            );
+        }
+
+        if let Some(max_retransmits) = init.max_retransmits {
+            init_struct.set_value("max-retransmits", (max_retransmits as u32).to_send_value());
+        }
+
+        if let Some(channel_id) = init.id {
+            init_struct.set_value("id", (channel_id as u32).to_send_value());
+        }
+
         let channel = webrtc
-            .emit(
-                "create-data-channel",
-                &[&init.label, &None::<gst::Structure>],
-            )
+            .emit("create-data-channel", &[&label, &init_struct])
             .map_err(|e| e.to_string())?;
         let channel = channel
             .expect("Invalid datachannel")
