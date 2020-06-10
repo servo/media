@@ -10,12 +10,12 @@ extern crate servo_media_webrtc;
 use boxfnonce::SendBoxFnOnce;
 use ipc_channel::ipc::IpcSender;
 use servo_media::{Backend, BackendInit, SupportsMediaType};
-use servo_media_audio::block::Chunk;
+use servo_media_audio::block::{Block, Chunk};
 use servo_media_audio::context::{AudioContext, AudioContextOptions};
 use servo_media_audio::decoder::{AudioDecoder, AudioDecoderCallbacks, AudioDecoderOptions};
 use servo_media_audio::render_thread::AudioRenderThreadMsg;
 use servo_media_audio::sink::{AudioSink, AudioSinkError};
-use servo_media_audio::AudioBackend;
+use servo_media_audio::{AudioBackend, AudioStreamReader};
 use servo_media_player::context::PlayerGLContext;
 use servo_media_player::{audio, video, Player, PlayerError, PlayerEvent, StreamType};
 use servo_media_streams::capture::MediaTrackConstraintSet;
@@ -123,9 +123,20 @@ impl AudioBackend for DummyBackend {
     fn make_sink() -> Result<Self::Sink, AudioSinkError> {
         Ok(DummyAudioSink)
     }
+    fn make_streamreader(_id: MediaStreamId) -> Box<dyn AudioStreamReader> {
+        Box::new(DummyStreamReader)
+    }
 }
 
 pub struct DummyPlayer;
+
+pub struct DummyStreamReader;
+
+impl AudioStreamReader for DummyStreamReader {
+    fn pull(&self) -> Block {
+        Default::default()
+    }
+}
 
 impl Player for DummyPlayer {
     fn play(&self) -> Result<(), PlayerError> {

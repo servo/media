@@ -52,7 +52,7 @@ use servo_media::{Backend, BackendInit, SupportsMediaType};
 use servo_media_audio::context::{AudioContext, AudioContextOptions};
 use servo_media_audio::decoder::AudioDecoder;
 use servo_media_audio::sink::AudioSinkError;
-use servo_media_audio::AudioBackend;
+use servo_media_audio::{AudioBackend, AudioStreamReader};
 use servo_media_player::audio::AudioRenderer;
 use servo_media_player::context::PlayerGLContext;
 use servo_media_player::video::VideoFrameRenderer;
@@ -309,6 +309,10 @@ impl AudioBackend for GStreamerBackend {
     }
     fn make_sink() -> Result<Self::Sink, AudioSinkError> {
         audio_sink::GStreamerAudioSink::new()
+    }
+
+    fn make_streamreader(_id: MediaStreamId) -> Box<dyn AudioStreamReader> {
+        unimplemented!()
     }
 }
 
