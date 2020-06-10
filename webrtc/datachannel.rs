@@ -4,6 +4,7 @@ use uuid::Uuid;
 
 pub type DataChannelId = usize;
 
+#[derive(Debug)]
 pub enum DataChannelMessage {
     Text(String),
     Binary(Vec<u8>),
@@ -24,7 +25,7 @@ pub enum DataChannelEvent {
     Open,
     Close,
     Error(WebRtcError),
-    OnMessage(String),
+    OnMessage(DataChannelMessage),
     StateChange(DataChannelState),
 }
 

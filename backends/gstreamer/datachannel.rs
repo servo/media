@@ -157,7 +157,29 @@ impl GStreamerWebRtcDataChannel {
                         .unwrap()
                         .internal_event(InternalEvent::OnDataChannelEvent(
                             id_,
-                            DataChannelEvent::OnMessage(message),
+                            DataChannelEvent::OnMessage(DataChannelMessage::Text(message)),
+                        ));
+                }
+                None
+            })
+            .map_err(|e| e.to_string())?;
+
+        let id_ = id.clone();
+        let thread_ = Mutex::new(thread.clone());
+        channel
+            .connect("on-message-data", false, move |message| {
+                if let Some(message) = message[1]
+                    .get::<glib::Bytes>()
+                    .expect("Invalid data channel message")
+                {
+                    thread_
+                        .lock()
+                        .unwrap()
+                        .internal_event(InternalEvent::OnDataChannelEvent(
+                            id_,
+                            DataChannelEvent::OnMessage(DataChannelMessage::Binary(
+                                message.to_vec(),
+                            )),
                         ));
                 }
                 None
