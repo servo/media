@@ -34,6 +34,7 @@ extern crate url;
 
 pub mod audio_decoder;
 pub mod audio_sink;
+pub mod audio_stream_reader;
 mod datachannel;
 pub mod media_capture;
 pub mod media_stream;
