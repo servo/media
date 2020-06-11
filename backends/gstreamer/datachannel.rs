@@ -1,8 +1,10 @@
-use glib::{ObjectExt, Value};
+use glib::{ObjectExt, ToSendValue, Value};
+use gst_webrtc::WebRTCDataChannelState;
 use servo_media_webrtc::thread::InternalEvent;
 use servo_media_webrtc::WebRtcController as WebRtcThread;
 use servo_media_webrtc::{
-    DataChannelEvent, DataChannelId, DataChannelInit, DataChannelMessage, WebRtcError, WebRtcResult,
+    DataChannelEvent, DataChannelId, DataChannelInit, DataChannelMessage, DataChannelState,
+    WebRtcError, WebRtcResult,
 };
 use std::sync::Mutex;
 
@@ -48,16 +50,35 @@ pub struct GStreamerWebRtcDataChannel {
 
 impl GStreamerWebRtcDataChannel {
     pub fn new(
-        id: &DataChannelId,
+        servo_channel_id: &DataChannelId,
         webrtc: &gst::Element,
         thread: &WebRtcThread,
         init: &DataChannelInit,
     ) -> Result<Self, String> {
+        let label = &init.label;
+        let mut init_struct = gst::Structure::builder("options")
+            .field("ordered", &init.ordered)
+            .field("protocol", &init.protocol)
+            .field("negotiated", &init.negotiated)
+            .build();
+
+        if let Some(max_packet_life_time) = init.max_packet_life_time {
+            init_struct.set_value(
+                "max-packet-lifetime",
+                (max_packet_life_time as u32).to_send_value(),
+            );
+        }
+
+        if let Some(max_retransmits) = init.max_retransmits {
+            init_struct.set_value("max-retransmits", (max_retransmits as u32).to_send_value());
+        }
+
+        if let Some(id) = init.id {
+            init_struct.set_value("id", (id as u32).to_send_value());
+        }
+
         let channel = webrtc
-            .emit(
-                "create-data-channel",
-                &[&init.label, &None::<gst::Structure>],
-            )
+            .emit("create-data-channel", &[&label, &init_struct])
             .map_err(|e| e.to_string())?;
         let channel = channel
             .expect("Invalid datachannel")
@@ -65,7 +86,7 @@ impl GStreamerWebRtcDataChannel {
             .map_err(|e| e.to_string())?
             .expect("Invalid datachannel");
 
-        GStreamerWebRtcDataChannel::from(id, channel, thread)
+        GStreamerWebRtcDataChannel::from(servo_channel_id, channel, thread)
     }
 
     pub fn from(
@@ -136,8 +157,60 @@ impl GStreamerWebRtcDataChannel {
                         .unwrap()
                         .internal_event(InternalEvent::OnDataChannelEvent(
                             id_,
-                            DataChannelEvent::OnMessage(message),
+                            DataChannelEvent::OnMessage(DataChannelMessage::Text(message)),
                         ));
+                }
+                None
+            })
+            .map_err(|e| e.to_string())?;
+
+        let id_ = id.clone();
+        let thread_ = Mutex::new(thread.clone());
+        channel
+            .connect("on-message-data", false, move |message| {
+                if let Some(message) = message[1]
+                    .get::<glib::Bytes>()
+                    .expect("Invalid data channel message")
+                {
+                    thread_
+                        .lock()
+                        .unwrap()
+                        .internal_event(InternalEvent::OnDataChannelEvent(
+                            id_,
+                            DataChannelEvent::OnMessage(DataChannelMessage::Binary(
+                                message.to_vec(),
+                            )),
+                        ));
+                }
+                None
+            })
+            .map_err(|e| e.to_string())?;
+
+        let id_ = id.clone();
+        let thread_ = Mutex::new(thread.clone());
+        channel
+            .connect("notify::ready-state", false, move |state| {
+                if let Ok(data_channel) = state[0].get::<glib::Object>() {
+                    if let Ok(ready_state) = data_channel.unwrap().get_property("ready-state") {
+                        if let Ok(ready_state) = ready_state.get::<WebRTCDataChannelState>() {
+                            let ready_state = match ready_state.unwrap() {
+                                WebRTCDataChannelState::New => DataChannelState::New,
+                                WebRTCDataChannelState::Connecting => DataChannelState::Connecting,
+                                WebRTCDataChannelState::Open => DataChannelState::Open,
+                                WebRTCDataChannelState::Closing => DataChannelState::Closing,
+                                WebRTCDataChannelState::Closed => DataChannelState::Closed,
+                                WebRTCDataChannelState::__Unknown(state) => {
+                                    DataChannelState::__Unknown(state)
+                                }
+                            };
+                            thread_.lock().unwrap().internal_event(
+                                InternalEvent::OnDataChannelEvent(
+                                    id_,
+                                    DataChannelEvent::StateChange(ready_state),
+                                ),
+                            );
+                        }
+                    }
                 }
                 None
             })

@@ -4,9 +4,20 @@ use uuid::Uuid;
 
 pub type DataChannelId = usize;
 
+#[derive(Debug)]
 pub enum DataChannelMessage {
     Text(String),
     Binary(Vec<u8>),
+}
+
+#[derive(Debug)]
+pub enum DataChannelState {
+    New,
+    Connecting,
+    Open,
+    Closing,
+    Closed,
+    __Unknown(i32),
 }
 
 pub enum DataChannelEvent {
@@ -14,7 +25,8 @@ pub enum DataChannelEvent {
     Open,
     Close,
     Error(WebRtcError),
-    OnMessage(String),
+    OnMessage(DataChannelMessage),
+    StateChange(DataChannelState),
 }
 
 // https://www.w3.org/TR/webrtc/#dom-rtcdatachannelinit
