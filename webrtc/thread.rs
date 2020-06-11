@@ -77,6 +77,9 @@ impl WebRtcController {
             .sender
             .send(RtcThreadEvent::SendDataChannelMessage(*id, message));
     }
+    pub fn close_data_channel(&self, id: &DataChannelId) {
+        let _ = self.sender.send(RtcThreadEvent::CloseDataChannel(*id));
+    }
 
     /// This should not be invoked by clients
     pub fn internal_event(&self, event: InternalEvent) {
