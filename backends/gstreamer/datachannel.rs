@@ -50,7 +50,7 @@ pub struct GStreamerWebRtcDataChannel {
 
 impl GStreamerWebRtcDataChannel {
     pub fn new(
-        id: &DataChannelId,
+        servo_channel_id: &DataChannelId,
         webrtc: &gst::Element,
         thread: &WebRtcThread,
         init: &DataChannelInit,
@@ -73,8 +73,8 @@ impl GStreamerWebRtcDataChannel {
             init_struct.set_value("max-retransmits", (max_retransmits as u32).to_send_value());
         }
 
-        if let Some(channel_id) = init.id {
-            init_struct.set_value("id", (channel_id as u32).to_send_value());
+        if let Some(id) = init.id {
+            init_struct.set_value("id", (id as u32).to_send_value());
         }
 
         let channel = webrtc
@@ -86,7 +86,7 @@ impl GStreamerWebRtcDataChannel {
             .map_err(|e| e.to_string())?
             .expect("Invalid datachannel");
 
-        GStreamerWebRtcDataChannel::from(id, channel, thread)
+        GStreamerWebRtcDataChannel::from(servo_channel_id, channel, thread)
     }
 
     pub fn from(
