@@ -87,13 +87,6 @@ impl GStreamerMediaStream {
         }
     }
 
-    pub fn insert_capsfilter(&mut self) {
-        assert!(self.pipeline.is_none());
-        let capsfilter = gst::ElementFactory::make("capsfilter", None).unwrap();
-        capsfilter.set_property("caps", self.caps()).unwrap();
-        self.elements.push(capsfilter);
-    }
-
     pub fn src_element(&self) -> gst::Element {
         self.elements.last().unwrap().clone()
     }
@@ -130,9 +123,55 @@ impl GStreamerMediaStream {
             .set_property("is-live", &true)
             .expect("videotestsrc doesn't have expected 'is-live' property");
 
-        register_stream(Arc::new(Mutex::new(Self::create_video_from_encoded(
-            videotestsrc,
-        ))))
+        Self::create_video_from(videotestsrc)
+    }
+
+    /// Attaches encoding adapters to the stream, returning the source element
+    pub fn encoded(&mut self) -> gst::Element {
+        let pipeline = self
+            .pipeline
+            .as_ref()
+            .expect("GStreamerMediaStream::encoded() should not be called without a pipeline");
+        let src = self.src_element();
+
+        let capsfilter = gst::ElementFactory::make("capsfilter", None).unwrap();
+        capsfilter.set_property("caps", self.caps()).unwrap();
+        match self.type_ {
+            MediaStreamType::Video => {
+                let vp8enc = gst::ElementFactory::make("vp8enc", None).unwrap();
+                vp8enc
+                    .set_property("deadline", &1i64)
+                    .expect("vp8enc doesn't have expected 'deadline' property");
+
+                let rtpvp8pay = gst::ElementFactory::make("rtpvp8pay", None).unwrap();
+                let queue2 = gst::ElementFactory::make("queue", None).unwrap();
+
+                pipeline
+                    .add_many(&[&vp8enc, &rtpvp8pay, &queue2, &capsfilter])
+                    .unwrap();
+                gst::Element::link_many(&[&src, &vp8enc, &rtpvp8pay, &queue2, &capsfilter])
+                    .unwrap();
+                vp8enc.sync_state_with_parent().unwrap();
+                rtpvp8pay.sync_state_with_parent().unwrap();
+                queue2.sync_state_with_parent().unwrap();
+                capsfilter.sync_state_with_parent().unwrap();
+                capsfilter
+            }
+            MediaStreamType::Audio => {
+                let opusenc = gst::ElementFactory::make("opusenc", None).unwrap();
+                let rtpopuspay = gst::ElementFactory::make("rtpopuspay", None).unwrap();
+                let queue3 = gst::ElementFactory::make("queue", None).unwrap();
+                pipeline
+                    .add_many(&[&opusenc, &rtpopuspay, &queue3, &capsfilter])
+                    .unwrap();
+                gst::Element::link_many(&[&src, &opusenc, &rtpopuspay, &queue3, &capsfilter])
+                    .unwrap();
+                opusenc.sync_state_with_parent().unwrap();
+                rtpopuspay.sync_state_with_parent().unwrap();
+                queue3.sync_state_with_parent().unwrap();
+                capsfilter
+            }
+        }
     }
 
     pub fn create_video_from(source: gst::Element) -> MediaStreamId {
@@ -145,24 +184,6 @@ impl GStreamerMediaStream {
         ))))
     }
 
-    pub fn create_video_from_encoded(source: gst::Element) -> GStreamerMediaStream {
-        let videoconvert = gst::ElementFactory::make("videoconvert", None).unwrap();
-        let queue = gst::ElementFactory::make("queue", None).unwrap();
-        let vp8enc = gst::ElementFactory::make("vp8enc", None).unwrap();
-
-        vp8enc
-            .set_property("deadline", &1i64)
-            .expect("vp8enc doesn't have expected 'deadline' property");
-
-        let rtpvp8pay = gst::ElementFactory::make("rtpvp8pay", None).unwrap();
-        let queue2 = gst::ElementFactory::make("queue", None).unwrap();
-
-        GStreamerMediaStream::new(
-            MediaStreamType::Video,
-            vec![source, videoconvert, queue, vp8enc, rtpvp8pay, queue2],
-        )
-    }
-
     pub fn create_audio() -> MediaStreamId {
         let audiotestsrc = gst::ElementFactory::make("audiotestsrc", None).unwrap();
         audiotestsrc.set_property_from_str("wave", "sine");
@@ -170,9 +191,7 @@ impl GStreamerMediaStream {
             .set_property("is-live", &true)
             .expect("audiotestsrc doesn't have expected 'is-live' property");
 
-        register_stream(Arc::new(Mutex::new(Self::create_audio_from_encoded(
-            audiotestsrc,
-        ))))
+        Self::create_audio_from(audiotestsrc)
     }
 
     pub fn create_audio_from(source: gst::Element) -> MediaStreamId {
@@ -185,30 +204,6 @@ impl GStreamerMediaStream {
             MediaStreamType::Audio,
             vec![source, queue, audioconvert, audioresample, queue2],
         ))))
-    }
-
-    pub fn create_audio_from_encoded(source: gst::Element) -> GStreamerMediaStream {
-        let queue = gst::ElementFactory::make("queue", None).unwrap();
-        let audioconvert = gst::ElementFactory::make("audioconvert", None).unwrap();
-        let audioresample = gst::ElementFactory::make("audioresample", None).unwrap();
-        let queue2 = gst::ElementFactory::make("queue", None).unwrap();
-        let opusenc = gst::ElementFactory::make("opusenc", None).unwrap();
-        let rtpopuspay = gst::ElementFactory::make("rtpopuspay", None).unwrap();
-        let queue3 = gst::ElementFactory::make("queue", None).unwrap();
-
-        GStreamerMediaStream::new(
-            MediaStreamType::Audio,
-            vec![
-                source,
-                queue,
-                audioconvert,
-                audioresample,
-                queue2,
-                opusenc,
-                rtpopuspay,
-                queue3,
-            ],
-        )
     }
 
     pub fn create_proxy(ty: MediaStreamType) -> (MediaStreamId, GstreamerMediaSocket) {

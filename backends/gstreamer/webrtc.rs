@@ -136,7 +136,6 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
             .as_mut_any()
             .downcast_mut::<GStreamerMediaStream>()
             .ok_or("Does not currently support non-gstreamer streams")?;
-        stream.insert_capsfilter();
         self.link_stream(stream_id, &mut stream, false)?;
         if self.delayed_negotiation && (self.streams.len() > 1 || self.pending_streams.len() > 1) {
             self.delayed_negotiation = false;
@@ -420,8 +419,6 @@ impl GStreamerWebRtcController {
             .filter(|(_, x)| !x.is_used)
             .find(|(_, x)| x.caps.can_intersect(&caps))
             .map(|x| x.0);
-        let element = stream.src_element();
-
         if let Some(idx) = idx {
             if idx >= self.request_pad_counter {
                 for i in self.request_pad_counter..=idx {
@@ -440,6 +437,7 @@ impl GStreamerWebRtcController {
                 self.request_pad_counter = idx + 1;
             }
             stream.attach_to_pipeline(&self.pipeline);
+            let element = stream.encoded();
             self.remote_mline_info[idx].is_used = true;
             let caps = stream.caps_with_payload(self.remote_mline_info[idx].payload);
             element.set_property("caps", &caps)?;
@@ -454,6 +452,7 @@ impl GStreamerWebRtcController {
             self.streams.push(stream_id.clone());
         } else if request_new_pads {
             stream.attach_to_pipeline(&self.pipeline);
+            let element = stream.encoded();
             let caps = stream.caps_with_payload(self.pt_counter);
             self.pt_counter += 1;
             element.set_property("caps", &caps)?;
@@ -622,7 +621,6 @@ fn on_offer_or_answer_created(
     cb: SendBoxFnOnce<'static, (SessionDescription,)>,
 ) {
     debug_assert!(ty == SdpType::Offer || ty == SdpType::Answer);
-
     let reply = reply
         .get_value(ty.as_str())
         .unwrap()
