@@ -39,6 +39,14 @@ name = "dummy"
 path = "dummy.rs"
 
 [[bin]]
+name = "audioinput_stream"
+path = "audioinput_stream.rs"
+
+[[bin]]
+name = "videoinput_stream"
+path = "videoinput_stream.rs"
+
+[[bin]]
 name = "audio_decoder"
 path = "audio_decoder.rs"
 
