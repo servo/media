@@ -123,7 +123,7 @@ impl AudioBackend for DummyBackend {
     fn make_sink() -> Result<Self::Sink, AudioSinkError> {
         Ok(DummyAudioSink)
     }
-    fn make_streamreader(_id: MediaStreamId) -> Box<dyn AudioStreamReader> {
+    fn make_streamreader(_id: MediaStreamId) -> Box<dyn AudioStreamReader + Send> {
         Box::new(DummyStreamReader)
     }
 }
