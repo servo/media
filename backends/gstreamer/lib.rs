@@ -312,10 +312,7 @@ impl AudioBackend for GStreamerBackend {
         audio_sink::GStreamerAudioSink::new()
     }
 
-    fn make_streamreader(
-        id: MediaStreamId,
-        sample_rate: f32,
-    ) -> Box<dyn AudioStreamReader + Send> {
+    fn make_streamreader(id: MediaStreamId, sample_rate: f32) -> Box<dyn AudioStreamReader + Send> {
         Box::new(audio_stream_reader::GStreamerAudioStreamReader::new(id, sample_rate).unwrap())
     }
 }
