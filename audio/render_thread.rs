@@ -20,6 +20,7 @@ use sink::{AudioSink, AudioSinkError};
 use std::sync::mpsc::{Receiver, Sender};
 use stereo_panner::StereoPannerNode;
 use wave_shaper_node::WaveShaperNode;
+use AudioBackend;
 
 pub enum AudioRenderThreadMsg {
     CreateNode(AudioNodeInit, Sender<NodeId>, ChannelInfo),
@@ -118,18 +119,15 @@ impl AudioRenderThread {
     /// Initializes the AudioRenderThread object
     ///
     /// You must call .event_loop() on this to run it!
-    fn prepare_thread<F>(
-        make_sink: F,
+    fn prepare_thread<B: AudioBackend>(
         sender: Sender<AudioRenderThreadMsg>,
         sample_rate: f32,
         graph: AudioGraph,
         options: AudioContextOptions,
-    ) -> Result<Self, AudioSinkError>
-    where
-        F: Fn() -> Result<Box<dyn AudioSink + 'static>, AudioSinkError> + 'static,
-    {
+    ) -> Result<Self, AudioSinkError> {
+        let sink_factory = Box::new(|| B::make_sink().map(|s| Box::new(s) as Box<dyn AudioSink>));
         let sink = match options {
-            AudioContextOptions::RealTimeAudioContext(_) => Sink::RealTime(make_sink()?),
+            AudioContextOptions::RealTimeAudioContext(_) => Sink::RealTime(sink_factory()?),
             AudioContextOptions::OfflineAudioContext(options) => Sink::Offline(
                 OfflineAudioSink::new(options.channels as usize, options.length),
             ),
@@ -140,7 +138,7 @@ impl AudioRenderThread {
         Ok(Self {
             graph,
             sink,
-            sink_factory: Box::new(make_sink),
+            sink_factory,
             state: ProcessingState::Suspended,
             sample_rate,
             current_time: 0.,
@@ -152,19 +150,15 @@ impl AudioRenderThread {
     /// Start the audio render thread
     ///
     /// In case something fails, it will instead start a thread with a dummy backend
-    pub fn start<F>(
-        make_sink: F,
+    pub fn start<B: AudioBackend>(
         event_queue: Receiver<AudioRenderThreadMsg>,
         sender: Sender<AudioRenderThreadMsg>,
         sample_rate: f32,
         graph: AudioGraph,
         options: AudioContextOptions,
-    ) where
-        F: Fn() -> Result<Box<dyn AudioSink + 'static>, AudioSinkError> + 'static,
-    {
-        let mut thread =
-            Self::prepare_thread(make_sink, sender.clone(), sample_rate, graph, options)
-                .expect("Could not start audio render thread");
+    ) {
+        let mut thread = Self::prepare_thread::<B>(sender.clone(), sample_rate, graph, options)
+            .expect("Could not start audio render thread");
         thread.event_loop(event_queue)
     }
 
