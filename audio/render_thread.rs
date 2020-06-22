@@ -15,12 +15,12 @@ use node::{BlockInfo, ChannelInfo};
 use offline_sink::OfflineAudioSink;
 use oscillator_node::OscillatorNode;
 use panner_node::PannerNode;
-use servo_media_streams::MediaSocket;
+use servo_media_streams::{MediaSocket, MediaStreamId};
 use sink::{AudioSink, AudioSinkError};
 use std::sync::mpsc::{Receiver, Sender};
 use stereo_panner::StereoPannerNode;
 use wave_shaper_node::WaveShaperNode;
-use AudioBackend;
+use {AudioBackend, AudioStreamReader};
 
 pub enum AudioRenderThreadMsg {
     CreateNode(AudioNodeInit, Sender<NodeId>, ChannelInfo),
@@ -108,6 +108,7 @@ pub struct AudioRenderThread {
     pub graph: AudioGraph,
     pub sink: Sink,
     pub sink_factory: Box<dyn Fn() -> Result<Box<dyn AudioSink + 'static>, AudioSinkError>>,
+    pub reader_factory: Box<dyn Fn(MediaStreamId, f32) -> Box<dyn AudioStreamReader + Send>>,
     pub state: ProcessingState,
     pub sample_rate: f32,
     pub current_time: f64,
@@ -126,6 +127,7 @@ impl AudioRenderThread {
         options: AudioContextOptions,
     ) -> Result<Self, AudioSinkError> {
         let sink_factory = Box::new(|| B::make_sink().map(|s| Box::new(s) as Box<dyn AudioSink>));
+        let reader_factory = Box::new(|id, sample_rate| B::make_streamreader(id, sample_rate));
         let sink = match options {
             AudioContextOptions::RealTimeAudioContext(_) => Sink::RealTime(sink_factory()?),
             AudioContextOptions::OfflineAudioContext(options) => Sink::Offline(
@@ -139,6 +141,7 @@ impl AudioRenderThread {
             graph,
             sink,
             sink_factory,
+            reader_factory,
             state: ProcessingState::Suspended,
             sample_rate,
             current_time: 0.,

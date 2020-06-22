@@ -146,13 +146,7 @@ impl AudioContext {
         Builder::new()
             .name("AudioRenderThread".to_owned())
             .spawn(move || {
-                AudioRenderThread::start::<B>(
-                    receiver,
-                    sender_,
-                    sample_rate,
-                    graph,
-                    options,
-                );
+                AudioRenderThread::start::<B>(receiver, sender_, sample_rate, graph, options);
             })
             .unwrap();
         Self {
