@@ -49,7 +49,10 @@ pub trait AudioBackend {
     type Sink: sink::AudioSink + 'static;
     fn make_decoder() -> Box<dyn decoder::AudioDecoder>;
     fn make_sink() -> Result<Self::Sink, sink::AudioSinkError>;
-    fn make_streamreader(id: servo_media_streams::MediaStreamId) -> Box<dyn AudioStreamReader + Send>;
+    fn make_streamreader(
+        id: servo_media_streams::MediaStreamId,
+        sample_rate: f32,
+    ) -> Box<dyn AudioStreamReader + Send>;
 }
 
 pub trait AudioStreamReader {
