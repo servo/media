@@ -313,10 +313,10 @@ impl AudioBackend for GStreamerBackend {
     }
 
     fn make_streamreader(
-        _id: MediaStreamId,
+        id: MediaStreamId,
         sample_rate: f32,
     ) -> Box<dyn AudioStreamReader + Send> {
-        unimplemented!()
+        Box::new(audio_stream_reader::GStreamerAudioStreamReader::new(id, sample_rate).unwrap())
     }
 }
 
