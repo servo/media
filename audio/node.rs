@@ -59,6 +59,7 @@ pub enum AudioNodeType {
     IIRFilterNode,
     MediaElementSourceNode,
     MediaStreamDestinationNode,
+    MediaStreamSourceNode,
     OscillatorNode,
     PannerNode,
     PeriodicWave,
