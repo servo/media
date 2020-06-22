@@ -97,6 +97,9 @@ name = "play_media_stream"
 path = "play_media_stream.rs"
 required-features = [ "player" ]
 
+[[bin]]
+name = "stream_reader_node"
+path = "stream_reader_node.rs"
 
 [[bin]]
 name = "stream_dest_node"
