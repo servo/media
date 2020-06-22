@@ -137,6 +137,8 @@ impl AudioStreamReader for DummyStreamReader {
     fn pull(&self) -> Block {
         Default::default()
     }
+    fn start(&self) {}
+    fn stop(&self) {}
 }
 
 impl Player for DummyPlayer {

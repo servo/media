@@ -54,4 +54,6 @@ pub trait AudioBackend {
 
 pub trait AudioStreamReader {
     fn pull(&self) -> block::Block;
+    fn start(&self);
+    fn stop(&self);
 }

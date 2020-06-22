@@ -116,7 +116,7 @@ impl Block {
         Block {
             channels: (buffer.len() / FRAMES_PER_BLOCK_USIZE) as u8,
             repeat: false,
-            buffer
+            buffer,
         }
     }
 

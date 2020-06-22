@@ -4,13 +4,14 @@ use servo_media_audio::AudioStreamReader;
 use servo_media_streams::registry::{get_stream, MediaStreamId};
 use std::sync::mpsc::{channel, Receiver};
 
+use byte_slice_cast::*;
 use gst::prelude::*;
 use gst::{Caps, Fraction};
 use gst_audio::AUDIO_FORMAT_F32;
-use byte_slice_cast::*;
 
 pub struct GStreamerAudioStreamReader {
     rx: Receiver<Block>,
+    pipeline: gst::Pipeline,
 }
 
 impl GStreamerAudioStreamReader {
@@ -66,24 +67,34 @@ impl GStreamerAudioStreamReader {
                     let sample = appsink.pull_sample().map_err(|_| gst::FlowError::Eos)?;
                     let buffer = sample.get_buffer_owned().ok_or(gst::FlowError::Error)?;
 
-                    let buffer = buffer.into_mapped_buffer_readable().map_err(|_| gst::FlowError::Error)?;
-                    let floatref = buffer.as_slice().as_slice_of::<f32>().map_err(|_| gst::FlowError::Error)?;
-                    
+                    let buffer = buffer
+                        .into_mapped_buffer_readable()
+                        .map_err(|_| gst::FlowError::Error)?;
+                    let floatref = buffer
+                        .as_slice()
+                        .as_slice_of::<f32>()
+                        .map_err(|_| gst::FlowError::Error)?;
+
                     let block = Block::for_vec(floatref.into());
                     tx.send(block).map_err(|_| gst::FlowError::Error)?;
                     Ok(gst::FlowSuccess::Ok)
                 })
                 .build(),
         );
-        pipeline
-            .set_state(gst::State::Playing)
-            .map_err(|_| "pipeline state change failed".to_owned())?;
-        Ok(Self { rx })
+        Ok(Self { rx, pipeline })
     }
 }
 
 impl AudioStreamReader for GStreamerAudioStreamReader {
     fn pull(&self) -> Block {
         self.rx.recv().unwrap()
+    }
+
+    fn start(&self) {
+        self.pipeline.set_state(gst::State::Playing).unwrap();
+    }
+
+    fn stop(&self) {
+        self.pipeline.set_state(gst::State::Null).unwrap();
     }
 }
