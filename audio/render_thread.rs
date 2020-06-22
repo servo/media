@@ -10,6 +10,7 @@ use graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
 use iir_filter_node::IIRFilterNode;
 use media_element_source_node::MediaElementSourceNode;
 use media_stream_destination_node::MediaStreamDestinationNode;
+use media_stream_source_node::MediaStreamSourceNode;
 use node::{AudioNodeEngine, AudioNodeInit, AudioNodeMessage};
 use node::{BlockInfo, ChannelInfo};
 use offline_sink::OfflineAudioSink;
@@ -187,6 +188,10 @@ impl AudioRenderThread {
             AudioNodeInit::PannerNode(options) => {
                 needs_listener = true;
                 Box::new(PannerNode::new(options, ch))
+            }
+            AudioNodeInit::MediaStreamSourceNode(id) => {
+                let reader = (self.reader_factory)(id, self.sample_rate);
+                Box::new(MediaStreamSourceNode::new(reader, ch))
             }
             AudioNodeInit::OscillatorNode(options) => Box::new(OscillatorNode::new(options, ch)),
             AudioNodeInit::ChannelMergerNode(options) => {
