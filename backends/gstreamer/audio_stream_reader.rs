@@ -28,6 +28,13 @@ impl GStreamerAudioStreamReader {
         drop(stream);
         let time_per_block = Fraction::new(FRAMES_PER_BLOCK_USIZE as i32, sample_rate as i32);
 
+        // XXXManishearth this is only necessary because of an upstream
+        // gstreamer bug
+        let capsfilter0 = gst::ElementFactory::make("capsfilter", None)
+            .map_err(|_| "capsfilter creation failed".to_owned())?;
+        let caps = Caps::new_simple("audio/x-raw", &[("layout", &"interleaved")]);
+        capsfilter0.set_property("caps", &caps).unwrap();
+
         let split = gst::ElementFactory::make("audiobuffersplit", None)
             .map_err(|_| "audiobuffersplit creation failed".to_owned())?;
         split
@@ -53,7 +60,7 @@ impl GStreamerAudioStreamReader {
 
         let appsink = sink.clone().dynamic_cast::<gst_app::AppSink>().unwrap();
 
-        let elements = [&element, &split, &convert, &capsfilter, &sink];
+        let elements = [&element, &capsfilter0, &split, &convert, &capsfilter, &sink];
         pipeline
             .add_many(&elements[1..])
             .map_err(|_| "pipeline adding failed".to_owned())?;
