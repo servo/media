@@ -561,6 +561,7 @@ dependencies = [
  "servo-media 0.1.0",
  "servo-media-auto 0.1.0",
  "servo-media-dummy 0.1.0",
+ "servo-media-gstreamer 0.1.0",
  "time 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
  "webrender 0.60.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "webrender_api 0.60.0 (registry+https://github.com/rust-lang/crates.io-index)",

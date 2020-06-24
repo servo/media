@@ -35,6 +35,7 @@ pub mod iir_filter_node;
 pub mod listener;
 pub mod media_element_source_node;
 pub mod media_stream_destination_node;
+pub mod media_stream_source_node;
 pub mod node;
 pub mod offline_sink;
 pub mod oscillator_node;
@@ -49,4 +50,14 @@ pub trait AudioBackend {
     type Sink: sink::AudioSink + 'static;
     fn make_decoder() -> Box<dyn decoder::AudioDecoder>;
     fn make_sink() -> Result<Self::Sink, sink::AudioSinkError>;
+    fn make_streamreader(
+        id: servo_media_streams::MediaStreamId,
+        sample_rate: f32,
+    ) -> Box<dyn AudioStreamReader + Send>;
+}
+
+pub trait AudioStreamReader {
+    fn pull(&self) -> block::Block;
+    fn start(&self);
+    fn stop(&self);
 }

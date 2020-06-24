@@ -60,7 +60,7 @@ impl Chunk {
 /// We render audio in blocks of size FRAMES_PER_BLOCK
 ///
 /// A single block may contain multiple channels
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Block {
     /// The number of channels in this block
     channels: u8,
@@ -109,6 +109,15 @@ impl Block {
     /// This provides the entire buffer as a mutable slice of u8
     pub fn as_mut_byte_slice(&mut self) -> &mut [u8] {
         self.data_mut().as_mut_byte_slice().expect("casting failed")
+    }
+
+    pub fn for_vec(buffer: Vec<f32>) -> Self {
+        assert!(buffer.len() % FRAMES_PER_BLOCK_USIZE == 0);
+        Block {
+            channels: (buffer.len() / FRAMES_PER_BLOCK_USIZE) as u8,
+            repeat: false,
+            buffer,
+        }
     }
 
     /// Zero-gain sum with another buffer

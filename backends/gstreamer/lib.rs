@@ -34,6 +34,7 @@ extern crate url;
 
 pub mod audio_decoder;
 pub mod audio_sink;
+pub mod audio_stream_reader;
 mod datachannel;
 pub mod media_capture;
 pub mod media_stream;
@@ -53,7 +54,7 @@ use servo_media::{Backend, BackendInit, SupportsMediaType};
 use servo_media_audio::context::{AudioContext, AudioContextOptions};
 use servo_media_audio::decoder::AudioDecoder;
 use servo_media_audio::sink::AudioSinkError;
-use servo_media_audio::AudioBackend;
+use servo_media_audio::{AudioBackend, AudioStreamReader};
 use servo_media_player::audio::AudioRenderer;
 use servo_media_player::context::PlayerGLContext;
 use servo_media_player::video::VideoFrameRenderer;
@@ -310,6 +311,10 @@ impl AudioBackend for GStreamerBackend {
     }
     fn make_sink() -> Result<Self::Sink, AudioSinkError> {
         audio_sink::GStreamerAudioSink::new()
+    }
+
+    fn make_streamreader(id: MediaStreamId, sample_rate: f32) -> Box<dyn AudioStreamReader + Send> {
+        Box::new(audio_stream_reader::GStreamerAudioStreamReader::new(id, sample_rate).unwrap())
     }
 }
 

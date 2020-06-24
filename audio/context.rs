@@ -4,7 +4,6 @@ use node::{AudioNodeInit, AudioNodeMessage, ChannelInfo};
 use render_thread::AudioRenderThread;
 use render_thread::AudioRenderThreadMsg;
 use servo_media_traits::{BackendMsg, ClientContextId, MediaInstance};
-use sink::AudioSink;
 use std::cell::Cell;
 use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex};
@@ -147,14 +146,7 @@ impl AudioContext {
         Builder::new()
             .name("AudioRenderThread".to_owned())
             .spawn(move || {
-                AudioRenderThread::start(
-                    || B::make_sink().map(|s| Box::new(s) as Box<dyn AudioSink>),
-                    receiver,
-                    sender_,
-                    sample_rate,
-                    graph,
-                    options,
-                );
+                AudioRenderThread::start::<B>(receiver, sender_, sample_rate, graph, options);
             })
             .unwrap();
         Self {

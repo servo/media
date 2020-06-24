@@ -10,16 +10,18 @@ use graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
 use iir_filter_node::IIRFilterNode;
 use media_element_source_node::MediaElementSourceNode;
 use media_stream_destination_node::MediaStreamDestinationNode;
+use media_stream_source_node::MediaStreamSourceNode;
 use node::{AudioNodeEngine, AudioNodeInit, AudioNodeMessage};
 use node::{BlockInfo, ChannelInfo};
 use offline_sink::OfflineAudioSink;
 use oscillator_node::OscillatorNode;
 use panner_node::PannerNode;
-use servo_media_streams::MediaSocket;
+use servo_media_streams::{MediaSocket, MediaStreamId};
 use sink::{AudioSink, AudioSinkError};
 use std::sync::mpsc::{Receiver, Sender};
 use stereo_panner::StereoPannerNode;
 use wave_shaper_node::WaveShaperNode;
+use {AudioBackend, AudioStreamReader};
 
 pub enum AudioRenderThreadMsg {
     CreateNode(AudioNodeInit, Sender<NodeId>, ChannelInfo),
@@ -107,6 +109,7 @@ pub struct AudioRenderThread {
     pub graph: AudioGraph,
     pub sink: Sink,
     pub sink_factory: Box<dyn Fn() -> Result<Box<dyn AudioSink + 'static>, AudioSinkError>>,
+    pub reader_factory: Box<dyn Fn(MediaStreamId, f32) -> Box<dyn AudioStreamReader + Send>>,
     pub state: ProcessingState,
     pub sample_rate: f32,
     pub current_time: f64,
@@ -118,18 +121,16 @@ impl AudioRenderThread {
     /// Initializes the AudioRenderThread object
     ///
     /// You must call .event_loop() on this to run it!
-    fn prepare_thread<F>(
-        make_sink: F,
+    fn prepare_thread<B: AudioBackend>(
         sender: Sender<AudioRenderThreadMsg>,
         sample_rate: f32,
         graph: AudioGraph,
         options: AudioContextOptions,
-    ) -> Result<Self, AudioSinkError>
-    where
-        F: Fn() -> Result<Box<dyn AudioSink + 'static>, AudioSinkError> + 'static,
-    {
+    ) -> Result<Self, AudioSinkError> {
+        let sink_factory = Box::new(|| B::make_sink().map(|s| Box::new(s) as Box<dyn AudioSink>));
+        let reader_factory = Box::new(|id, sample_rate| B::make_streamreader(id, sample_rate));
         let sink = match options {
-            AudioContextOptions::RealTimeAudioContext(_) => Sink::RealTime(make_sink()?),
+            AudioContextOptions::RealTimeAudioContext(_) => Sink::RealTime(sink_factory()?),
             AudioContextOptions::OfflineAudioContext(options) => Sink::Offline(
                 OfflineAudioSink::new(options.channels as usize, options.length),
             ),
@@ -140,7 +141,8 @@ impl AudioRenderThread {
         Ok(Self {
             graph,
             sink,
-            sink_factory: Box::new(make_sink),
+            sink_factory,
+            reader_factory,
             state: ProcessingState::Suspended,
             sample_rate,
             current_time: 0.,
@@ -152,19 +154,15 @@ impl AudioRenderThread {
     /// Start the audio render thread
     ///
     /// In case something fails, it will instead start a thread with a dummy backend
-    pub fn start<F>(
-        make_sink: F,
+    pub fn start<B: AudioBackend>(
         event_queue: Receiver<AudioRenderThreadMsg>,
         sender: Sender<AudioRenderThreadMsg>,
         sample_rate: f32,
         graph: AudioGraph,
         options: AudioContextOptions,
-    ) where
-        F: Fn() -> Result<Box<dyn AudioSink + 'static>, AudioSinkError> + 'static,
-    {
-        let mut thread =
-            Self::prepare_thread(make_sink, sender.clone(), sample_rate, graph, options)
-                .expect("Could not start audio render thread");
+    ) {
+        let mut thread = Self::prepare_thread::<B>(sender.clone(), sample_rate, graph, options)
+            .expect("Could not start audio render thread");
         thread.event_loop(event_queue)
     }
 
@@ -190,6 +188,10 @@ impl AudioRenderThread {
             AudioNodeInit::PannerNode(options) => {
                 needs_listener = true;
                 Box::new(PannerNode::new(options, ch))
+            }
+            AudioNodeInit::MediaStreamSourceNode(id) => {
+                let reader = (self.reader_factory)(id, self.sample_rate);
+                Box::new(MediaStreamSourceNode::new(reader, ch))
             }
             AudioNodeInit::OscillatorNode(options) => Box::new(OscillatorNode::new(options, ch)),
             AudioNodeInit::ChannelMergerNode(options) => {

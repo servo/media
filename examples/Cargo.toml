@@ -15,6 +15,7 @@ serde_derive = { version = "1.0", optional = true }
 serde_json = { version = "1.0", optional = true }
 servo-media-dummy = { path = "../backends/dummy" }
 servo-media-auto = { path = "../backends/auto" }
+servo-media-gstreamer = { path = "../backends/gstreamer" }
 servo-media = { path = "../servo-media" }
 webrender = { version = "0.60.0", optional = true }
 webrender_api = { version = "0.60.0", optional = true }
@@ -36,6 +37,14 @@ webrtc = [ "rand", "serde", "serde_derive", "serde_json", "websocket" ]
 [[bin]]
 name = "dummy"
 path = "dummy.rs"
+
+[[bin]]
+name = "audioinput_stream"
+path = "audioinput_stream.rs"
+
+[[bin]]
+name = "videoinput_stream"
+path = "videoinput_stream.rs"
 
 [[bin]]
 name = "audio_decoder"
@@ -96,6 +105,9 @@ name = "play_media_stream"
 path = "play_media_stream.rs"
 required-features = [ "player" ]
 
+[[bin]]
+name = "stream_reader_node"
+path = "stream_reader_node.rs"
 
 [[bin]]
 name = "stream_dest_node"
