@@ -76,6 +76,7 @@ pub struct GStreamerWebRtcController {
     remote_offer_generation: u32,
     _main_loop: glib::MainLoop,
     data_channels: Arc<Mutex<HashMap<DataChannelId, GStreamerWebRtcDataChannel>>>,
+    data_channels_event_queue: Arc<Mutex<HashMap<DataChannelId, Vec<DataChannelEvent>>>>,
     next_data_channel_id: Arc<AtomicUsize>,
 }
 
@@ -201,6 +202,12 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                 self.signaller.on_add_stream(&stream, ty);
             }
             InternalEvent::OnDataChannelEvent(channel_id, event) => {
+                if !self.data_channels.lock().unwrap().contains_key(&channel_id) {
+                    let mut events = self.data_channels_event_queue.lock().unwrap();
+                    let events = events.entry(channel_id).or_insert(Vec::new());
+                    events.push(event);
+                    return Ok(());
+                }
                 match event {
                     DataChannelEvent::Close => {
                         self.data_channels.lock().unwrap().remove(&channel_id);
@@ -551,6 +558,7 @@ impl GStreamerWebRtcController {
             })?;
         let thread = Mutex::new(self.thread.clone());
         let data_channels = self.data_channels.clone();
+        let data_channels_event_queue = self.data_channels_event_queue.clone();
         let next_data_channel_id = self.next_data_channel_id.clone();
         self.webrtc
             .connect("on-data-channel", false, move |channel| {
@@ -563,13 +571,23 @@ impl GStreamerWebRtcController {
                 let thread_ = thread.lock().unwrap().clone();
                 match GStreamerWebRtcDataChannel::from(&id, channel, &thread_) {
                     Ok(channel) => {
-                        if register_data_channel(data_channels.clone(), id, channel).is_ok() {
-                            thread.lock().unwrap().internal_event(
-                                InternalEvent::OnDataChannelEvent(id, DataChannelEvent::NewChannel),
-                            );
-                        } else {
-                            warn!("Could not register data channel");
+                        if register_data_channel(data_channels.clone(), id, channel).is_err() {
+                            warn!("Could not register data channel {:?}", id);
+                            return None;
                         }
+                        let thread = thread.lock().unwrap();
+                        thread.internal_event(InternalEvent::OnDataChannelEvent(
+                            id,
+                            DataChannelEvent::NewChannel,
+                        ));
+                        let mut data_channels_event_queue =
+                            data_channels_event_queue.lock().unwrap();
+                        if let Some(ref mut events) = data_channels_event_queue.get_mut(&id) {
+                            for event in events.drain(0..) {
+                                thread.internal_event(InternalEvent::OnDataChannelEvent(id, event));
+                            }
+                        }
+                        data_channels_event_queue.remove(&id);
                     }
                     Err(error) => {
                         warn!("Could not create data channel {:?}", error);
@@ -609,6 +627,7 @@ pub fn construct(
         delayed_negotiation: false,
         _main_loop: main_loop,
         data_channels: Arc::new(Mutex::new(HashMap::new())),
+        data_channels_event_queue: Arc::new(Mutex::new(HashMap::new())),
         next_data_channel_id: Arc::new(AtomicUsize::new(0)),
     };
     controller.start_pipeline()?;
