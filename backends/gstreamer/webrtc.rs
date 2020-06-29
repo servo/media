@@ -593,12 +593,22 @@ impl GStreamerWebRtcController {
                 let thread_ = thread.lock().unwrap().clone();
                 match GStreamerWebRtcDataChannel::from(&id, channel, &thread_) {
                     Ok(channel) => {
+                        let mut closed_channel = false;
                         {
+                            thread_.internal_event(InternalEvent::OnDataChannelEvent(
+                                id,
+                                DataChannelEvent::NewChannel,
+                            ));
+
                             let mut data_channels = data_channels.lock().unwrap();
                             if let Some(ref mut channel) = data_channels.get_mut(&id) {
                                 match channel {
                                     DataChannelEventTarget::Buffered(ref mut events) => {
                                         for event in events.drain(0..) {
+                                            match event {
+                                                DataChannelEvent::Close => closed_channel = true,
+                                                _ => {}
+                                            }
                                             thread_.internal_event(
                                                 InternalEvent::OnDataChannelEvent(id, event),
                                             );
@@ -612,14 +622,12 @@ impl GStreamerWebRtcController {
                             }
                             data_channels.remove(&id);
                         }
-                        if register_data_channel(data_channels.clone(), id, channel).is_err() {
-                            warn!("Could not register data channel {:?}", id);
-                            return None;
+                        if !closed_channel {
+                            if register_data_channel(data_channels.clone(), id, channel).is_err() {
+                                warn!("Could not register data channel {:?}", id);
+                                return None;
+                            }
                         }
-                        thread_.internal_event(InternalEvent::OnDataChannelEvent(
-                            id,
-                            DataChannelEvent::NewChannel,
-                        ));
                     }
                     Err(error) => {
                         warn!("Could not create data channel {:?}", error);
