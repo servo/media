@@ -32,6 +32,11 @@ pub struct MLineInfo {
     payload: i32,
 }
 
+enum DataChannelEventTarget {
+    Buffered(Vec<DataChannelEvent>),
+    Created(GStreamerWebRtcDataChannel),
+}
+
 pub struct GStreamerWebRtcController {
     webrtc: gst::Element,
     pipeline: gst::Pipeline,
@@ -75,7 +80,7 @@ pub struct GStreamerWebRtcController {
     /// In case we get multiple remote offers, this lets us keep track of which is the newest
     remote_offer_generation: u32,
     _main_loop: glib::MainLoop,
-    data_channels: Arc<Mutex<HashMap<DataChannelId, GStreamerWebRtcDataChannel>>>,
+    data_channels: Arc<Mutex<HashMap<DataChannelId, DataChannelEventTarget>>>,
     next_data_channel_id: Arc<AtomicUsize>,
 }
 
@@ -155,8 +160,15 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
     fn close_data_channel(&mut self, id: &DataChannelId) -> WebRtcResult {
         // There is no need to unregister the channel here. It will be unregistered
         // when the data channel backend triggers the on closed event.
-        match self.data_channels.lock().unwrap().get(id) {
-            Some(ref channel) => channel.close(),
+        let mut data_channels = self.data_channels.lock().unwrap();
+        match data_channels.get(id) {
+            Some(ref channel) => match channel {
+                DataChannelEventTarget::Created(ref channel) => channel.close(),
+                DataChannelEventTarget::Buffered(_) => data_channels
+                    .remove(id)
+                    .ok_or(WebRtcError::Backend("Unknown data channel".to_owned()))
+                    .map(|_| ()),
+            },
             None => Err(WebRtcError::Backend("Unknown data channel".to_owned())),
         }
     }
@@ -167,7 +179,10 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         message: &DataChannelMessage,
     ) -> WebRtcResult {
         match self.data_channels.lock().unwrap().get(id) {
-            Some(ref channel) => channel.send(message),
+            Some(ref channel) => match channel {
+                DataChannelEventTarget::Created(ref channel) => channel.send(message),
+                _ => Ok(()),
+            },
             None => Err(WebRtcError::Backend("Unknown data channel".to_owned())),
         }
     }
@@ -201,14 +216,29 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                 self.signaller.on_add_stream(&stream, ty);
             }
             InternalEvent::OnDataChannelEvent(channel_id, event) => {
-                match event {
-                    DataChannelEvent::Close => {
-                        self.data_channels.lock().unwrap().remove(&channel_id);
+                let mut data_channels = self.data_channels.lock().unwrap();
+                match data_channels.get_mut(&channel_id) {
+                    None => {
+                        data_channels
+                            .insert(channel_id, DataChannelEventTarget::Buffered(vec![event]));
                     }
-                    _ => {}
+                    Some(ref mut channel) => match channel {
+                        DataChannelEventTarget::Buffered(ref mut events) => {
+                            events.push(event);
+                            return Ok(());
+                        }
+                        DataChannelEventTarget::Created(_) => {
+                            match event {
+                                DataChannelEvent::Close => {
+                                    data_channels.remove(&channel_id);
+                                }
+                                _ => {}
+                            }
+                            self.signaller
+                                .on_data_channel_event(channel_id, event, &self.thread);
+                        }
+                    },
                 }
-                self.signaller
-                    .on_data_channel_event(channel_id, event, &self.thread);
             }
             InternalEvent::DescriptionAdded(cb, description_type, ty, remote_offer_generation) => {
                 if description_type == DescriptionType::Remote
@@ -563,13 +593,33 @@ impl GStreamerWebRtcController {
                 let thread_ = thread.lock().unwrap().clone();
                 match GStreamerWebRtcDataChannel::from(&id, channel, &thread_) {
                     Ok(channel) => {
-                        if register_data_channel(data_channels.clone(), id, channel).is_ok() {
-                            thread.lock().unwrap().internal_event(
-                                InternalEvent::OnDataChannelEvent(id, DataChannelEvent::NewChannel),
-                            );
-                        } else {
-                            warn!("Could not register data channel");
+                        {
+                            let mut data_channels = data_channels.lock().unwrap();
+                            if let Some(ref mut channel) = data_channels.get_mut(&id) {
+                                match channel {
+                                    DataChannelEventTarget::Buffered(ref mut events) => {
+                                        for event in events.drain(0..) {
+                                            thread_.internal_event(
+                                                InternalEvent::OnDataChannelEvent(id, event),
+                                            );
+                                        }
+                                    }
+                                    _ => debug_assert!(
+                                        false,
+                                        "Trying to register a data channel with an existing ID"
+                                    ),
+                                }
+                            }
+                            data_channels.remove(&id);
                         }
+                        if register_data_channel(data_channels.clone(), id, channel).is_err() {
+                            warn!("Could not register data channel {:?}", id);
+                            return None;
+                        }
+                        thread_.internal_event(InternalEvent::OnDataChannelEvent(
+                            id,
+                            DataChannelEvent::NewChannel,
+                        ));
                     }
                     Err(error) => {
                         warn!("Could not create data channel {:?}", error);
@@ -732,7 +782,7 @@ fn candidate(values: &[glib::Value]) -> IceCandidate {
 }
 
 fn register_data_channel(
-    registry: Arc<Mutex<HashMap<DataChannelId, GStreamerWebRtcDataChannel>>>,
+    registry: Arc<Mutex<HashMap<DataChannelId, DataChannelEventTarget>>>,
     id: DataChannelId,
     channel: GStreamerWebRtcDataChannel,
 ) -> WebRtcDataChannelResult {
@@ -741,6 +791,9 @@ fn register_data_channel(
             "Could not register data channel. ID collision".to_owned(),
         ));
     }
-    registry.lock().unwrap().insert(id, channel);
+    registry
+        .lock()
+        .unwrap()
+        .insert(id, DataChannelEventTarget::Created(channel));
     Ok(id)
 }
