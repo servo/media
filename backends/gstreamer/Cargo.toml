@@ -13,6 +13,7 @@ name = "servo_media_gstreamer"
 path = "lib.rs"
 
 [dependencies]
+atomic_refcell = "0.1.6"
 boxfnonce = "0.1.0"
 mime = "0.3.13"
 log = "0.4"

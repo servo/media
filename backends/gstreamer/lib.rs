@@ -1,4 +1,6 @@
 #![feature(nll)]
+
+extern crate atomic_refcell;
 extern crate boxfnonce;
 extern crate byte_slice_cast;
 extern crate mime;
@@ -36,6 +38,7 @@ pub mod audio_decoder;
 pub mod audio_sink;
 pub mod audio_stream_reader;
 mod datachannel;
+mod device_monitor;
 pub mod media_capture;
 pub mod media_stream;
 mod media_stream_source;
@@ -45,12 +48,13 @@ mod render;
 mod source;
 pub mod webrtc;
 
+use device_monitor::GStreamerDeviceMonitor;
 use gst::ClockExt;
 use ipc_channel::ipc::IpcSender;
 use media_stream::GStreamerMediaStream;
 use mime::Mime;
 use registry_scanner::GSTREAMER_REGISTRY_SCANNER;
-use servo_media::{Backend, BackendInit, SupportsMediaType};
+use servo_media::{Backend, BackendInit, MediaDeviceInfo, SupportsMediaType};
 use servo_media_audio::context::{AudioContext, AudioContextOptions};
 use servo_media_audio::decoder::AudioDecoder;
 use servo_media_audio::sink::AudioSinkError;
@@ -82,6 +86,7 @@ pub struct GStreamerBackend {
     next_instance_id: AtomicUsize,
     /// Channel to communicate media instances with its owner Backend.
     backend_chan: Arc<Mutex<Sender<BackendMsg>>>,
+    device_monitor: GStreamerDeviceMonitor,
 }
 
 #[derive(Debug)]
@@ -138,6 +143,7 @@ impl GStreamerBackend {
             instances,
             next_instance_id: AtomicUsize::new(0),
             backend_chan: Arc::new(Mutex::new(backend_chan)),
+            device_monitor: GStreamerDeviceMonitor::new(),
         }))
     }
 
@@ -301,6 +307,10 @@ impl Backend for GStreamerBackend {
 
     fn resume(&self, id: &ClientContextId) {
         self.media_instance_action(id, &|instance: &dyn MediaInstance| instance.resume());
+    }
+
+    fn enumerate_devices(&self) -> Result<Vec<MediaDeviceInfo>, ()> {
+        self.device_monitor.enumerate_devices()
     }
 }
 

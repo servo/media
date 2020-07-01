@@ -41,6 +41,11 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         panic!("Usage: cargo run --bin player <file_path>")
     };
 
+    let devices = servo_media.enumerate_devices();
+    for device in devices {
+        println!("{:?}", device);
+    }
+
     let (sender, receiver) = ipc::channel().unwrap();
     let player = servo_media.create_player(
         &ClientContextId::build(1, 1),

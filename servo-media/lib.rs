@@ -75,6 +75,8 @@ pub trait Backend: Send + Sync {
     /// and the media instances created for these contexts.
     /// The client context identifier is currently an abstraction of Servo's PipelineId.
     fn resume(&self, _id: &ClientContextId) {}
+
+    fn enumerate_devices(&self) -> Result<Vec<MediaDeviceInfo>, ()>;
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -82,6 +84,21 @@ pub enum SupportsMediaType {
     Maybe,
     No,
     Probably,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum MediaDeviceKind {
+    AudioInput,
+    AudioOutput,
+    VideoInput,
+    __Unknown,
+}
+
+#[derive(Clone, Debug)]
+pub struct MediaDeviceInfo {
+    pub device_id: String,
+    pub kind: MediaDeviceKind,
+    pub label: String,
 }
 
 impl ServoMedia {

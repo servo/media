@@ -9,7 +9,7 @@ extern crate servo_media_webrtc;
 
 use boxfnonce::SendBoxFnOnce;
 use ipc_channel::ipc::IpcSender;
-use servo_media::{Backend, BackendInit, SupportsMediaType};
+use servo_media::{Backend, BackendInit, MediaDeviceInfo, SupportsMediaType};
 use servo_media_audio::block::{Block, Chunk};
 use servo_media_audio::context::{AudioContext, AudioContextOptions};
 use servo_media_audio::decoder::{AudioDecoder, AudioDecoderCallbacks, AudioDecoderOptions};
@@ -112,6 +112,10 @@ impl Backend for DummyBackend {
 
     fn can_play_type(&self, _media_type: &str) -> SupportsMediaType {
         SupportsMediaType::No
+    }
+
+    fn enumerate_devices(&self) -> Result<Vec<MediaDeviceInfo>, ()> {
+        Ok(Vec::new())
     }
 }
 
