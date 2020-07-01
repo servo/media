@@ -11,6 +11,7 @@ use oscillator_node::{OscillatorNodeMessage, OscillatorNodeOptions};
 use panner_node::{PannerNodeMessage, PannerNodeOptions};
 use param::{Param, ParamRate, ParamType, UserAutomationEvent};
 use servo_media_streams::{MediaSocket, MediaStreamId};
+use sink::AudioSink;
 use std::sync::mpsc::Sender;
 use stereo_panner::StereoPannerOptions;
 use wave_shaper_node::{WaveShaperNodeMessage, WaveShaperNodeOptions};
@@ -30,7 +31,7 @@ pub enum AudioNodeInit {
     GainNode(GainNodeOptions),
     IIRFilterNode(IIRFilterNodeOptions),
     MediaElementSourceNode,
-    MediaStreamDestinationNode(Box<dyn MediaSocket>),
+    MediaStreamDestinationNode,
     MediaStreamSourceNode(MediaStreamId),
     OscillatorNode(OscillatorNodeOptions),
     PannerNode(PannerNodeOptions),
@@ -184,7 +185,19 @@ pub(crate) trait AudioNodeEngine: Send + AudioNodeCommon {
     }
 
     fn set_listenerdata(&mut self, _: Block) {
-        panic!("{:?} can't accept listener connections")
+        panic!("{:?} can't accept listener connections", self.node_type())
+    }
+
+    fn set_socket(
+        &mut self,
+        _sink: Box<dyn AudioSink + 'static>,
+        _socket: Box<dyn MediaSocket>,
+        _sample_rate: f32,
+    ) {
+        panic!(
+            "{:?} is not a MediaStreamAudioDestinationNode",
+            self.node_type()
+        )
     }
 }
 
@@ -202,6 +215,7 @@ pub enum AudioNodeMessage {
     SetParam(ParamType, UserAutomationEvent),
     SetParamRate(ParamType, ParamRate),
     WaveShaperNode(WaveShaperNodeMessage),
+    SetMediaStream(Box<dyn MediaSocket>),
 }
 
 pub struct OnEndedCallback(pub SendBoxFnOnce<'static, ()>);

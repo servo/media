@@ -6,8 +6,7 @@ use std::sync::Arc;
 use std::{thread, time};
 
 fn run_example(servo_media: Arc<ServoMedia>) {
-    if let Some(stream) = servo_media
-        .create_audioinput_stream(Default::default()) {
+    if let Some(stream) = servo_media.create_audioinput_stream(Default::default()) {
         let mut output = servo_media.create_stream_output();
         output.add_stream(&stream);
         thread::sleep(time::Duration::from_millis(6000));

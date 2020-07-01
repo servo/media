@@ -20,9 +20,10 @@ fn run_example(servo_media: Arc<ServoMedia>) {
 
     let (socket, id) = servo_media.create_stream_and_socket(MediaStreamType::Audio);
     let dest = context.create_node(
-        AudioNodeInit::MediaStreamDestinationNode(socket),
+        AudioNodeInit::MediaStreamDestinationNode,
         Default::default(),
     );
+    context.message_node(dest, AudioNodeMessage::SetMediaStream(socket));
     context.connect_ports(osc1.output(0), dest.input(0));
 
     let mut output = servo_media.create_stream_output();

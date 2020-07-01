@@ -200,14 +200,9 @@ impl AudioRenderThread {
             AudioNodeInit::ConstantSourceNode(options) => {
                 Box::new(ConstantSourceNode::new(options, ch))
             }
-            AudioNodeInit::MediaStreamDestinationNode(socket) => {
+            AudioNodeInit::MediaStreamDestinationNode => {
                 is_dest = true;
-                Box::new(MediaStreamDestinationNode::new(
-                    socket,
-                    self.sample_rate,
-                    (self.sink_factory)().unwrap(),
-                    ch,
-                ))
+                Box::new(MediaStreamDestinationNode::new(ch))
             }
             AudioNodeInit::ChannelSplitterNode => Box::new(ChannelSplitterNode::new(ch)),
             AudioNodeInit::WaveShaperNode(options) => Box::new(WaveShaperNode::new(options, ch)),
@@ -270,6 +265,13 @@ impl AudioRenderThread {
                 }
                 AudioRenderThreadMsg::GetCurrentTime(response) => {
                     response.send(context.current_time).unwrap()
+                }
+                AudioRenderThreadMsg::MessageNode(id, AudioNodeMessage::SetMediaStream(socket)) => {
+                    context.graph.node_mut(id).set_socket(
+                        (context.sink_factory)().unwrap(),
+                        socket,
+                        sample_rate,
+                    )
                 }
                 AudioRenderThreadMsg::MessageNode(id, msg) => {
                     context.graph.node_mut(id).message(msg, sample_rate)
