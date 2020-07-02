@@ -1,18 +1,12 @@
 use crate::AudioStreamReader;
-use block::{Chunk, Tick};
-use node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, BlockInfo, OnEndedCallback};
-use node::{AudioNodeType, ChannelInfo, ShouldPlay};
+use block::Chunk;
+use node::{AudioNodeEngine, BlockInfo};
+use node::{AudioNodeType, ChannelInfo};
 use param::{Param, ParamType};
 
-#[derive(AudioScheduledSourceNode, AudioNodeCommon)]
+#[derive(AudioNodeCommon)]
 pub(crate) struct MediaStreamSourceNode {
     channel_info: ChannelInfo,
-    /// Time at which the source should start playing.
-    start_at: Option<Tick>,
-    /// Time at which the source should stop playing.
-    stop_at: Option<Tick>,
-    /// The ended event callback.
-    onended_callback: Option<OnEndedCallback>,
     reader: Box<dyn AudioStreamReader + Send>,
     playing: bool,
 }
@@ -21,9 +15,6 @@ impl MediaStreamSourceNode {
     pub fn new(reader: Box<dyn AudioStreamReader + Send>, channel_info: ChannelInfo) -> Self {
         Self {
             channel_info,
-            start_at: None,
-            stop_at: None,
-            onended_callback: None,
             reader,
             playing: false,
         }
@@ -35,19 +26,8 @@ impl AudioNodeEngine for MediaStreamSourceNode {
         AudioNodeType::MediaStreamSourceNode
     }
 
-    fn process(&mut self, mut inputs: Chunk, info: &BlockInfo) -> Chunk {
+    fn process(&mut self, mut inputs: Chunk, _: &BlockInfo) -> Chunk {
         debug_assert!(inputs.len() == 0);
-        match self.should_play_at(info.frame) {
-            ShouldPlay::No => {
-                if self.playing {
-                    self.playing = false;
-                    self.reader.stop();
-                }
-                inputs.blocks.push(Default::default());
-                return inputs;
-            }
-            ShouldPlay::Between(_start, _end) => (),
-        };
 
         if !self.playing {
             self.playing = true;
@@ -55,7 +35,6 @@ impl AudioNodeEngine for MediaStreamSourceNode {
         }
 
         let block = self.reader.pull();
-        // XXXManishearth truncate start and end
         inputs.blocks.push(block);
 
         inputs
@@ -68,5 +47,4 @@ impl AudioNodeEngine for MediaStreamSourceNode {
     fn get_param(&mut self, _: ParamType) -> &mut Param {
         panic!("No params on MediaStreamSourceNode");
     }
-    make_message_handler!(AudioScheduledSourceNode: handle_source_node_message);
 }
