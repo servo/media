@@ -54,7 +54,7 @@ use ipc_channel::ipc::IpcSender;
 use media_stream::GStreamerMediaStream;
 use mime::Mime;
 use registry_scanner::GSTREAMER_REGISTRY_SCANNER;
-use servo_media::{Backend, BackendInit, MediaDeviceInfo, SupportsMediaType};
+use servo_media::{Backend, BackendInit, SupportsMediaType};
 use servo_media_audio::context::{AudioContext, AudioContextOptions};
 use servo_media_audio::decoder::AudioDecoder;
 use servo_media_audio::sink::AudioSinkError;
@@ -64,6 +64,7 @@ use servo_media_player::context::PlayerGLContext;
 use servo_media_player::video::VideoFrameRenderer;
 use servo_media_player::{Player, PlayerEvent, StreamType};
 use servo_media_streams::capture::MediaTrackConstraintSet;
+use servo_media_streams::device_monitor::MediaDeviceMonitor;
 use servo_media_streams::registry::MediaStreamId;
 use servo_media_streams::{MediaOutput, MediaSocket, MediaStreamType};
 use servo_media_traits::{BackendMsg, ClientContextId, MediaInstance};
@@ -86,7 +87,6 @@ pub struct GStreamerBackend {
     next_instance_id: AtomicUsize,
     /// Channel to communicate media instances with its owner Backend.
     backend_chan: Arc<Mutex<Sender<BackendMsg>>>,
-    device_monitor: GStreamerDeviceMonitor,
 }
 
 #[derive(Debug)]
@@ -143,7 +143,6 @@ impl GStreamerBackend {
             instances,
             next_instance_id: AtomicUsize::new(0),
             backend_chan: Arc::new(Mutex::new(backend_chan)),
-            device_monitor: GStreamerDeviceMonitor::new(),
         }))
     }
 
@@ -309,8 +308,8 @@ impl Backend for GStreamerBackend {
         self.media_instance_action(id, &|instance: &dyn MediaInstance| instance.resume());
     }
 
-    fn enumerate_devices(&self) -> Result<Vec<MediaDeviceInfo>, ()> {
-        self.device_monitor.enumerate_devices()
+    fn get_device_monitor(&self) -> Box<dyn MediaDeviceMonitor> {
+        Box::new(GStreamerDeviceMonitor {})
     }
 }
 

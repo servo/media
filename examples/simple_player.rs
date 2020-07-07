@@ -41,7 +41,10 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         panic!("Usage: cargo run --bin player <file_path>")
     };
 
-    let devices = servo_media.enumerate_devices();
+    let devices = servo_media
+        .get_device_monitor()
+        .enumerate_devices()
+        .unwrap();
     for device in devices {
         println!("{:?}", device);
     }
