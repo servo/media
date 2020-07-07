@@ -100,6 +100,9 @@ pub(crate) struct PannerNode {
 
 impl PannerNode {
     pub fn new(options: PannerNodeOptions, channel_info: ChannelInfo) -> Self {
+        if options.panning_model == PanningModel::HRTF {
+            log::warn!("HRTF requested but not supported")
+        }
         Self {
             channel_info,
             panning_model: options.panning_model,
@@ -304,9 +307,7 @@ impl AudioNodeEngine for PannerNode {
 
             let distance_gain_fn = self.distance_gain_fn();
 
-            if self.panning_model == PanningModel::HRTF {
-                unimplemented!()
-            } else {
+            if self.panning_model == PanningModel::EqualPower {
                 let (l, r) = block.data_mut().split_at_mut(FRAMES_PER_BLOCK.0 as usize);
                 for frame in 0..FRAMES_PER_BLOCK.0 {
                     let frame = Tick(frame);
@@ -393,7 +394,12 @@ impl AudioNodeEngine for PannerNode {
     fn message_specific(&mut self, message: AudioNodeMessage, _sample_rate: f32) {
         match message {
             AudioNodeMessage::PannerNode(p) => match p {
-                PannerNodeMessage::SetPanningModel(p) => self.panning_model = p,
+                PannerNodeMessage::SetPanningModel(p) => {
+                    if p == PanningModel::HRTF {
+                        log::warn!("HRTF requested but not supported");
+                    }
+                    self.panning_model = p;
+                }
                 PannerNodeMessage::SetDistanceModel(d) => self.distance_model = d,
                 PannerNodeMessage::SetRefDistance(val) => self.ref_distance = val,
                 PannerNodeMessage::SetMaxDistance(val) => self.max_distance = val,
