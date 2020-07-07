@@ -309,7 +309,7 @@ impl Backend for GStreamerBackend {
     }
 
     fn get_device_monitor(&self) -> Box<dyn MediaDeviceMonitor> {
-        Box::new(GStreamerDeviceMonitor {})
+        Box::new(GStreamerDeviceMonitor::new())
     }
 }
 

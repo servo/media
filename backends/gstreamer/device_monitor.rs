@@ -3,13 +3,22 @@ use gst::DeviceExt;
 use gst::DeviceMonitor as GstDeviceMonitor;
 use gst::DeviceMonitorExt;
 use gst::DeviceMonitorExtManual;
+use std::cell::RefCell;
 
 use servo_media_streams::device_monitor::{MediaDeviceInfo, MediaDeviceKind, MediaDeviceMonitor};
 
-pub struct GStreamerDeviceMonitor;
+pub struct GStreamerDeviceMonitor {
+    devices: RefCell<Option<Vec<MediaDeviceInfo>>>,
+}
 
-impl MediaDeviceMonitor for GStreamerDeviceMonitor {
-    fn enumerate_devices(&self) -> Result<Vec<MediaDeviceInfo>, ()> {
+impl GStreamerDeviceMonitor {
+    pub fn new() -> Self {
+        Self {
+            devices: RefCell::new(None),
+        }
+    }
+
+    fn get_devices(&self) -> Result<Vec<MediaDeviceInfo>, ()> {
         const AUDIO_SOURCE: &str = "Audio/Source";
         const AUDIO_SINK: &str = "Audio/Sink";
         const VIDEO_SOURCE: &str = "Video/Source";
@@ -36,6 +45,19 @@ impl MediaDeviceMonitor for GStreamerDeviceMonitor {
                 })
             })
             .collect();
+        Ok(devices)
+    }
+}
+
+impl MediaDeviceMonitor for GStreamerDeviceMonitor {
+    fn enumerate_devices(&self) -> Result<Vec<MediaDeviceInfo>, ()> {
+        {
+            if let Some(ref devices) = *self.devices.borrow() {
+                return Ok(devices.clone());
+            }
+        }
+        let devices = self.get_devices()?;
+        *self.devices.borrow_mut() = Some(devices.clone());
         Ok(devices)
     }
 }
