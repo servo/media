@@ -36,6 +36,7 @@ pub mod audio_decoder;
 pub mod audio_sink;
 pub mod audio_stream_reader;
 mod datachannel;
+mod device_monitor;
 pub mod media_capture;
 pub mod media_stream;
 mod media_stream_source;
@@ -45,6 +46,7 @@ mod render;
 mod source;
 pub mod webrtc;
 
+use device_monitor::GStreamerDeviceMonitor;
 use gst::ClockExt;
 use ipc_channel::ipc::IpcSender;
 use media_stream::GStreamerMediaStream;
@@ -60,6 +62,7 @@ use servo_media_player::context::PlayerGLContext;
 use servo_media_player::video::VideoFrameRenderer;
 use servo_media_player::{Player, PlayerEvent, StreamType};
 use servo_media_streams::capture::MediaTrackConstraintSet;
+use servo_media_streams::device_monitor::MediaDeviceMonitor;
 use servo_media_streams::registry::MediaStreamId;
 use servo_media_streams::{MediaOutput, MediaSocket, MediaStreamType};
 use servo_media_traits::{BackendMsg, ClientContextId, MediaInstance};
@@ -301,6 +304,10 @@ impl Backend for GStreamerBackend {
 
     fn resume(&self, id: &ClientContextId) {
         self.media_instance_action(id, &|instance: &dyn MediaInstance| instance.resume());
+    }
+
+    fn get_device_monitor(&self) -> Box<dyn MediaDeviceMonitor> {
+        Box::new(GStreamerDeviceMonitor::new())
     }
 }
 

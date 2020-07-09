@@ -2,6 +2,7 @@
 extern crate lazy_static;
 
 pub mod capture;
+pub mod device_monitor;
 pub mod registry;
 
 use std::any::Any;

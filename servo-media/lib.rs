@@ -16,6 +16,7 @@ use player::ipc_channel::ipc::IpcSender;
 use player::video::VideoFrameRenderer;
 use player::{Player, PlayerEvent, StreamType};
 use streams::capture::MediaTrackConstraintSet;
+use streams::device_monitor::MediaDeviceMonitor;
 use streams::registry::MediaStreamId;
 use streams::{MediaOutput, MediaSocket, MediaStreamType};
 use webrtc::{WebRtcController, WebRtcSignaller};
@@ -75,6 +76,8 @@ pub trait Backend: Send + Sync {
     /// and the media instances created for these contexts.
     /// The client context identifier is currently an abstraction of Servo's PipelineId.
     fn resume(&self, _id: &ClientContextId) {}
+
+    fn get_device_monitor(&self) -> Box<dyn MediaDeviceMonitor>;
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

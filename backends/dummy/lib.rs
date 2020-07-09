@@ -19,6 +19,7 @@ use servo_media_audio::{AudioBackend, AudioStreamReader};
 use servo_media_player::context::PlayerGLContext;
 use servo_media_player::{audio, video, Player, PlayerError, PlayerEvent, StreamType};
 use servo_media_streams::capture::MediaTrackConstraintSet;
+use servo_media_streams::device_monitor::{MediaDeviceInfo, MediaDeviceMonitor};
 use servo_media_streams::registry::{register_stream, unregister_stream, MediaStreamId};
 use servo_media_streams::{MediaOutput, MediaSocket, MediaStream, MediaStreamType};
 use servo_media_traits::{ClientContextId, MediaInstance};
@@ -112,6 +113,10 @@ impl Backend for DummyBackend {
 
     fn can_play_type(&self, _media_type: &str) -> SupportsMediaType {
         SupportsMediaType::No
+    }
+
+    fn get_device_monitor(&self) -> Box<dyn MediaDeviceMonitor> {
+        Box::new(DummyMediaDeviceMonitor {})
     }
 }
 
@@ -340,5 +345,13 @@ impl MediaInstance for DummyPlayer {
 
     fn resume(&self) -> Result<(), ()> {
         Ok(())
+    }
+}
+
+struct DummyMediaDeviceMonitor;
+
+impl MediaDeviceMonitor for DummyMediaDeviceMonitor {
+    fn enumerate_devices(&self) -> Result<Vec<MediaDeviceInfo>, ()> {
+        Ok(vec![])
     }
 }
