@@ -75,11 +75,6 @@ version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
-name = "atomic_refcell"
-version = "0.1.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
 name = "autocfg"
 version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2184,7 +2179,6 @@ dependencies = [
 name = "servo-media-gstreamer"
 version = "0.1.0"
 dependencies = [
- "atomic_refcell 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "boxfnonce 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "byte-slice-cast 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "glib 0.9.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3002,7 +2996,6 @@ dependencies = [
 "checksum array-init 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "f30bbe2f5e3d117f55bd8c7a1f9191e4a5deba9f15f595bbea4f670c59c765db"
 "checksum arrayvec 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)" = "a1e964f9e24d588183fcb43503abda40d288c8657dfc27311516ce2f05675aef"
 "checksum ascii 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)" = "3ae7d751998c189c1d4468cf0a39bb2eae052a9c58d50ebb3b9591ee3813ad50"
-"checksum atomic_refcell 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "3bc31dce067eab974c815a9deb95f6217806de7b53685d7fc31f8ccf3fb2539f"
 "checksum autocfg 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)" = "1d49d90015b3c36167a20fe2810c5cd875ad504b39cff3d4eae7977e6b7c1cb2"
 "checksum autocfg 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f8aac770f1885fd7e387acedd76065302551364496e46b3dd00860b2f8359b9d"
 "checksum backtrace 0.3.12 (registry+https://github.com/rust-lang/crates.io-index)" = "a2eff3830839471718ef8522b9025b399bfb713e25bc220da721364efb660d7d"

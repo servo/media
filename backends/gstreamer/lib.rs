@@ -1,6 +1,4 @@
 #![feature(nll)]
-
-extern crate atomic_refcell;
 extern crate boxfnonce;
 extern crate byte_slice_cast;
 extern crate mime;
