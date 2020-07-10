@@ -3,7 +3,7 @@ use gst;
 use gst::prelude::*;
 use servo_media_streams::capture::*;
 use servo_media_streams::registry::MediaStreamId;
-use servo_media_streams::MediaStreamType;
+use servo_media_streams::{MediaSource, MediaStreamType};
 use std::i32;
 
 trait AddToCaps {
@@ -150,6 +150,7 @@ pub struct GstMediaTrack {
 fn create_input_stream(
     stream_type: MediaStreamType,
     constraint_set: MediaTrackConstraintSet,
+    source: MediaSource,
 ) -> Option<MediaStreamId> {
     let devices = GstMediaDevices::new();
     devices
@@ -159,14 +160,22 @@ fn create_input_stream(
                 MediaStreamType::Audio => GStreamerMediaStream::create_audio_from,
                 MediaStreamType::Video => GStreamerMediaStream::create_video_from,
             };
-            f(track.element)
+            f(match source {
+                MediaSource::Device => track.element,
+                MediaSource::App => {
+                    gst::ElementFactory::make("appsrc", None).expect("appsrc creation failed")
+                }
+            })
         })
 }
 
 pub fn create_audioinput_stream(constraint_set: MediaTrackConstraintSet) -> Option<MediaStreamId> {
-    create_input_stream(MediaStreamType::Audio, constraint_set)
+    create_input_stream(MediaStreamType::Audio, constraint_set, MediaSource::Device)
 }
 
-pub fn create_videoinput_stream(constraint_set: MediaTrackConstraintSet) -> Option<MediaStreamId> {
-    create_input_stream(MediaStreamType::Video, constraint_set)
+pub fn create_videoinput_stream(
+    constraint_set: MediaTrackConstraintSet,
+    source: MediaSource,
+) -> Option<MediaStreamId> {
+    create_input_stream(MediaStreamType::Video, constraint_set, source)
 }

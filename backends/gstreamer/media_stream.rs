@@ -2,6 +2,7 @@ use super::BACKEND_BASE_TIME;
 use glib::prelude::*;
 use gst;
 use gst::prelude::*;
+use gst_app::AppSrc;
 use servo_media_streams::registry::{
     get_stream, register_stream, unregister_stream, MediaStreamId,
 };
@@ -46,6 +47,17 @@ impl MediaStream for GStreamerMediaStream {
 
     fn ty(&self) -> MediaStreamType {
         self.type_
+    }
+
+    fn push_data(&self, data: Vec<u8>) {
+        if let Some(source) = self.elements.last() {
+            if let Some(appsrc) = source.downcast_ref::<AppSrc>() {
+                let buffer = gst::Buffer::from_slice(data);
+                if let Err(error) = appsrc.push_buffer(buffer) {
+                    warn!("{}", error);
+                }
+            }
+        }
     }
 }
 
@@ -216,6 +228,16 @@ impl GStreamerMediaStream {
         };
 
         (stream, GstreamerMediaSocket { proxy_sink })
+    }
+
+    pub fn push_data(stream: &MediaStreamId, data: Vec<u8>) {
+        let stream = get_stream(stream).expect("Media streams registry does not contain such ID");
+        let mut stream = stream.lock().unwrap();
+        let stream = stream
+            .as_mut_any()
+            .downcast_mut::<GStreamerMediaStream>()
+            .unwrap();
+        stream.push_data(data);
     }
 }
 
