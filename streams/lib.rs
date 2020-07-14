@@ -1,5 +1,7 @@
 #[macro_use]
 extern crate lazy_static;
+#[macro_use]
+extern crate serde;
 
 pub mod capture;
 pub mod device_monitor;
