@@ -65,7 +65,7 @@ mod imp {
 
             // Append a proxysink to the media stream pipeline.
             let pipeline = stream.pipeline_or_new();
-            let last_element = stream.src_element();
+            let last_element = stream.encoded();
             let sink = gst::ElementFactory::make("proxysink", None).unwrap();
             pipeline.add(&sink).unwrap();
             gst::Element::link_many(&[&last_element, &sink][..]).unwrap();
