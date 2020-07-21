@@ -1,4 +1,6 @@
 use super::BACKEND_BASE_TIME;
+
+use euclid::default::Size2D;
 use glib::prelude::*;
 use gst;
 use gst::prelude::*;
@@ -30,6 +32,7 @@ pub struct GStreamerMediaStream {
     type_: MediaStreamType,
     elements: Vec<gst::Element>,
     pipeline: Option<gst::Pipeline>,
+    video_app_source: Option<AppSrc>,
 }
 
 impl MediaStream for GStreamerMediaStream {
@@ -50,12 +53,10 @@ impl MediaStream for GStreamerMediaStream {
     }
 
     fn push_data(&self, data: Vec<u8>) {
-        if let Some(source) = self.elements.last() {
-            if let Some(appsrc) = source.downcast_ref::<AppSrc>() {
-                let buffer = gst::Buffer::from_slice(data);
-                if let Err(error) = appsrc.push_buffer(buffer) {
-                    warn!("{}", error);
-                }
+        if let Some(ref appsrc) = self.video_app_source {
+            let buffer = gst::Buffer::from_slice(data);
+            if let Err(error) = appsrc.push_buffer(buffer) {
+                warn!("{}", error);
             }
         }
     }
@@ -68,6 +69,7 @@ impl GStreamerMediaStream {
             type_,
             elements,
             pipeline: None,
+            video_app_source: None,
         }
     }
 
@@ -103,6 +105,10 @@ impl GStreamerMediaStream {
         self.elements.last().unwrap().clone()
     }
 
+    pub fn first_element(&self) -> gst::Element {
+        self.elements.first().unwrap().clone()
+    }
+
     pub fn attach_to_pipeline(&mut self, pipeline: &gst::Pipeline) {
         assert!(self.pipeline.is_none());
         let elements: Vec<_> = self.elements.iter().collect();
@@ -135,7 +141,7 @@ impl GStreamerMediaStream {
             .set_property("is-live", &true)
             .expect("videotestsrc doesn't have expected 'is-live' property");
 
-        Self::create_video_from(videotestsrc)
+        Self::create_video_from(videotestsrc, None)
     }
 
     /// Attaches encoding adapters to the stream, returning the source element
@@ -186,14 +192,74 @@ impl GStreamerMediaStream {
         }
     }
 
-    pub fn create_video_from(source: gst::Element) -> MediaStreamId {
+    pub fn set_video_app_source(&mut self, source: &AppSrc) {
+        self.video_app_source = Some(source.clone());
+    }
+
+    pub fn create_video_from(source: gst::Element, size: Option<Size2D<u32>>) -> MediaStreamId {
+        let src = gst::ElementFactory::make("proxysrc", None).unwrap();
         let videoconvert = gst::ElementFactory::make("videoconvert", None).unwrap();
         let queue = gst::ElementFactory::make("queue", None).unwrap();
-
-        register_stream(Arc::new(Mutex::new(GStreamerMediaStream::new(
+        let stream = Arc::new(Mutex::new(GStreamerMediaStream::new(
             MediaStreamType::Video,
-            vec![source, videoconvert, queue],
-        ))))
+            vec![src, videoconvert, queue],
+        )));
+
+        let pipeline = gst::Pipeline::new(Some("video pipeline"));
+        let clock = gst::SystemClock::obtain();
+        pipeline.set_start_time(gst::ClockTime::none());
+        pipeline.set_base_time(*BACKEND_BASE_TIME);
+        pipeline.use_clock(Some(&clock));
+
+        let decodebin = gst::ElementFactory::make("decodebin", None).unwrap();
+
+        let stream_ = stream.clone();
+        let video_pipeline = pipeline.clone();
+        decodebin.connect_pad_added(move |decodebin, _| {
+            // Append a proxysink to the video pipeline.
+            let proxy_sink = gst::ElementFactory::make("proxysink", None).unwrap();
+            video_pipeline.add(&proxy_sink).unwrap();
+            gst::Element::link_many(&[decodebin, &proxy_sink]).unwrap();
+
+            // And connect the video and media stream pipelines.
+            let stream = stream_.lock().unwrap();
+            let first_element = stream.first_element();
+            first_element
+                .set_property("proxysink", &proxy_sink)
+                .unwrap();
+
+            proxy_sink.sync_state_with_parent().unwrap();
+            decodebin.sync_state_with_parent().unwrap();
+        });
+
+        if let Some(size) = size {
+            let caps = gst::Caps::builder("video/x-raw")
+                .field("format", &gst_video::VideoFormat::Bgra.to_string())
+                .field("pixel-aspect-ratio", &gst::Fraction::from((1, 1)))
+                .field("width", &(size.width as i32))
+                .field("height", &(size.height as i32))
+                .build();
+            source
+                .set_property("caps", &caps)
+                .expect("source doesn't have expected 'caps' property");
+        }
+
+        if let Some(appsrc) = source.downcast_ref::<AppSrc>() {
+            appsrc.set_property_format(gst::Format::Time);
+            stream.lock().unwrap().set_video_app_source(appsrc);
+        }
+
+        pipeline.add_many(&[&source, &decodebin]).unwrap();
+        gst::Element::link_many(&[&source, &decodebin]).unwrap();
+
+        pipeline.set_state(gst::State::Playing).unwrap();
+
+        #[cfg(debug_assertions)]
+        pipeline
+            .upcast::<gst::Bin>()
+            .debug_to_dot_file(gst::DebugGraphDetails::all(), "VideoPipeline_PLAYING");
+
+        register_stream(stream)
     }
 
     pub fn create_audio() -> MediaStreamId {
@@ -224,7 +290,7 @@ impl GStreamerMediaStream {
         proxy_src.set_property("proxysink", &proxy_sink).unwrap();
         let stream = match ty {
             MediaStreamType::Audio => Self::create_audio_from(proxy_src),
-            MediaStreamType::Video => Self::create_video_from(proxy_src),
+            MediaStreamType::Video => Self::create_video_from(proxy_src, None),
         };
 
         (stream, GstreamerMediaSocket { proxy_sink })
