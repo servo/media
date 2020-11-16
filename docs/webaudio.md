@@ -64,7 +64,7 @@ For offline rendering to an audio buffer, there is an [OfflineAudioSink](https:/
 
 For hardware rendering, the `AudioSink` trait is expected to be implemented by the media backends. For `GStreamer` the [implementation](https://github.com/servo/media/blob/2610789d1abfbe4443579021113c822ba05f34dc/backends/gstreamer/audio_sink.rs#L73) creates a simple audio pipeline as the following:
 
-![WebAudio Playback Pipeline](/images/webaudiopipeline.png)
+![WebAudio Playback Pipeline](images/webaudiopipeline.png)
 
 The core piece of the audio sink is the initial [appsrc](https://gstreamer.freedesktop.org/documentation/applib/gstappsrc.html?gi-language=c) element, that we use to insert the audio chunks into the GStreamer pipeline. We use the `appsrc` in push mode, where we repeatedly call the [push-buffer](https://gstreamer.freedesktop.org/documentation/applib/gstappsrc.html?gi-language=c#gst_app_src_push_buffer) method with a new buffer.
 To make audio playback nice and smooth and to continue processing control events coming from the `control thread`, we cannot use the appsrc's `block` property, that would essentially block the render thread when we fill the appsrc internal queue. Instead, we set the maximum amount of bytes that can be queued in the appsrc to 1 and use a combination of [get_current_level_bytes](https://gstreamer.freedesktop.org/documentation/applib/gstappsrc.html?gi-language=c#gst_app_src_get_current_level_bytes) and the [need-data](https://gstreamer.freedesktop.org/documentation/applib/gstappsrc.html?gi-language=c#GstAppSrc::need-data) signal to decide whether we should push the new audio buffer or not.
@@ -79,7 +79,7 @@ WebAudio also supports decoding audio data.
 
 The GStreamer backend implementation of the `AudioDecoder` trait creates a pipeline that has this form:
 
-![WebAudio Decoding Pipeline](/images/webaudiopipeline_decoder.png)
+![WebAudio Decoding Pipeline](images/webaudiopipeline_decoder.png)
 
 The `decodebin` element is the core element of this pipeline and it auto-magically constructs a decoding pipeline using available decoders and demuxers via auto-plugging.
 
