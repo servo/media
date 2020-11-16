@@ -10,7 +10,7 @@ In WebAudio everything happens within an [AudioContext](https://github.com/servo
 
 The `servo-media` Rust API for WebAudio is deliverately close to the actual WebAudio JavaScript API.
 
-```
+```rust
 /*
   This is an example of a very basic WebAudio pipeline with an OscillatorNode connected to a GainNode.
   ------------------------------------------------------------
