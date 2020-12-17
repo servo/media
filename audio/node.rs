@@ -184,7 +184,7 @@ pub(crate) trait AudioNodeEngine: Send + AudioNodeCommon {
     }
 
     fn set_listenerdata(&mut self, _: Block) {
-        panic!("{:?} can't accept listener connections")
+        panic!("can't accept listener connections")
     }
 }
 

@@ -87,7 +87,8 @@ impl IIRFilterNode {
 
         debug_assert!(
             options.feedforward.len() <= MAX_COEFFS,
-            "NotSupportedError: feedforward max length is {}"
+            "NotSupportedError: feedforward max length is {}",
+            MAX_COEFFS
         );
 
         debug_assert!(
@@ -102,7 +103,8 @@ impl IIRFilterNode {
 
         debug_assert!(
             options.feedback.len() <= MAX_COEFFS,
-            "NotSupportedError: feedback max length is {}"
+            "NotSupportedError: feedback max length is {}",
+            MAX_COEFFS
         );
 
         debug_assert!(
