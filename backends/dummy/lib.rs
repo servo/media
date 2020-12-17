@@ -21,7 +21,7 @@ use servo_media_player::{audio, video, Player, PlayerError, PlayerEvent, StreamT
 use servo_media_streams::capture::MediaTrackConstraintSet;
 use servo_media_streams::device_monitor::{MediaDeviceInfo, MediaDeviceMonitor};
 use servo_media_streams::registry::{register_stream, unregister_stream, MediaStreamId};
-use servo_media_streams::{MediaOutput, MediaSocket, MediaStream, MediaStreamType};
+use servo_media_streams::{MediaOutput, MediaSocket, MediaSource, MediaStream, MediaStreamType};
 use servo_media_traits::{ClientContextId, MediaInstance};
 use servo_media_webrtc::{
     thread, BundlePolicy, DataChannelId, DataChannelInit, DataChannelMessage, IceCandidate,
@@ -74,7 +74,11 @@ impl Backend for DummyBackend {
         (Box::new(DummySocket), id)
     }
 
-    fn create_videoinput_stream(&self, _: MediaTrackConstraintSet) -> Option<MediaStreamId> {
+    fn create_videoinput_stream(
+        &self,
+        _: MediaTrackConstraintSet,
+        _: MediaSource,
+    ) -> Option<MediaStreamId> {
         Some(register_stream(Arc::new(Mutex::new(DummyMediaStream {
             id: MediaStreamId::new(),
         }))))
@@ -118,6 +122,8 @@ impl Backend for DummyBackend {
     fn get_device_monitor(&self) -> Box<dyn MediaDeviceMonitor> {
         Box::new(DummyMediaDeviceMonitor {})
     }
+
+    fn push_stream_data(&self, _: &MediaStreamId, _: Vec<u8>) {}
 }
 
 impl AudioBackend for DummyBackend {
@@ -242,6 +248,8 @@ impl MediaStream for DummyMediaStream {
     fn ty(&self) -> MediaStreamType {
         MediaStreamType::Audio
     }
+
+    fn push_data(&self, _: Vec<u8>) {}
 }
 
 impl Drop for DummyMediaStream {

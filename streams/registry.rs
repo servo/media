@@ -8,7 +8,7 @@ lazy_static! {
         Mutex::new(HashMap::new());
 }
 
-#[derive(Clone, Copy, Hash, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Hash, Eq, PartialEq, Serialize)]
 pub struct MediaStreamId(Uuid);
 impl MediaStreamId {
     pub fn new() -> MediaStreamId {

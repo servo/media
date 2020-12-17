@@ -77,6 +77,11 @@ mod imp {
             sink.sync_state_with_parent().unwrap();
 
             pipeline.set_state(gst::State::Playing).unwrap();
+
+            #[cfg(debug_assertions)]
+            pipeline
+                .upcast::<gst::Bin>()
+                .debug_to_dot_file(gst::DebugGraphDetails::all(), "ServoMediaStreamSrc_PLAYING");
         }
 
         fn setup_proxy_src(
