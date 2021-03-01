@@ -1,0 +1,1346 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'servo_media_audio'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=servo-media-audio"
+                ],
+                "filter": {
+                    "name": "servo_media_audio",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'servo_media_player'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=servo-media-player"
+                ],
+                "filter": {
+                    "name": "servo_media_player",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'servo_media_streams'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=servo-media-streams"
+                ],
+                "filter": {
+                    "name": "servo_media_streams",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'servo_media_traits'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=servo-media-traits"
+                ],
+                "filter": {
+                    "name": "servo_media_traits",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'servo_media_auto'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=servo-media-auto"
+                ],
+                "filter": {
+                    "name": "servo_media_auto",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'servo_media_gstreamer'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=servo-media-gstreamer"
+                ],
+                "filter": {
+                    "name": "servo_media_gstreamer",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'servo_media'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=servo-media"
+                ],
+                "filter": {
+                    "name": "servo_media",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'servo-media-webrtc'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=servo-media-webrtc"
+                ],
+                "filter": {
+                    "name": "servo-media-webrtc",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'servo_media_gstreamer_render'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=servo-media-gstreamer-render"
+                ],
+                "filter": {
+                    "name": "servo_media_gstreamer_render",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'servo_media_gstreamer_render_unix'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=servo-media-gstreamer-render-unix"
+                ],
+                "filter": {
+                    "name": "servo_media_gstreamer_render_unix",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'servo_media_gstreamer_render_android'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=servo-media-gstreamer-render-android"
+                ],
+                "filter": {
+                    "name": "servo_media_gstreamer_render_android",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'servo_media_dummy'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=servo-media-dummy"
+                ],
+                "filter": {
+                    "name": "servo_media_dummy",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'dummy'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=dummy",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "dummy",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'dummy'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=dummy",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "dummy",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'audioinput_stream'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=audioinput_stream",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "audioinput_stream",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'audioinput_stream'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=audioinput_stream",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "audioinput_stream",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'videoinput_stream'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=videoinput_stream",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "videoinput_stream",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'videoinput_stream'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=videoinput_stream",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "videoinput_stream",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'audio_decoder'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=audio_decoder",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "audio_decoder",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'audio_decoder'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=audio_decoder",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "audio_decoder",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'biquad'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=biquad",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "biquad",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'biquad'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=biquad",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "biquad",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'channels'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=channels",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "channels",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'channels'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=channels",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "channels",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'channelsum'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=channelsum",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "channelsum",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'channelsum'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=channelsum",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "channelsum",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'offline_context'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=offline_context",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "offline_context",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'offline_context'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=offline_context",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "offline_context",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'panner'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=panner",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "panner",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'panner'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=panner",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "panner",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'params'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=params",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "params",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'params'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=params",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "params",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'params_settarget'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=params_settarget",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "params_settarget",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'params_settarget'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=params_settarget",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "params_settarget",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'params_connect'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=params_connect",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "params_connect",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'params_connect'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=params_connect",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "params_connect",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'params_connect2'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=params_connect2",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "params_connect2",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'params_connect2'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=params_connect2",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "params_connect2",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'play'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=play",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "play",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'play'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=play",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "play",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'play_noise'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=play_noise",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "play_noise",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'play_noise'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=play_noise",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "play_noise",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'player'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=player",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "player",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'player'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=player",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "player",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'play_media_stream'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=play_media_stream",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "play_media_stream",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'play_media_stream'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=play_media_stream",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "play_media_stream",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'stream_reader_node'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=stream_reader_node",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "stream_reader_node",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'stream_reader_node'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=stream_reader_node",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "stream_reader_node",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'stream_dest_node'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=stream_dest_node",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "stream_dest_node",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'stream_dest_node'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=stream_dest_node",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "stream_dest_node",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'simple_player'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=simple_player",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "simple_player",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'simple_player'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=simple_player",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "simple_player",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'muted_player'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=muted_player",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "muted_player",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'muted_player'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=muted_player",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "muted_player",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'oscillator'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=oscillator",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "oscillator",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'oscillator'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=oscillator",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "oscillator",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'muted_audiocontext'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=muted_audiocontext",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "muted_audiocontext",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'muted_audiocontext'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=muted_audiocontext",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "muted_audiocontext",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'constant_source'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=constant_source",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "constant_source",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'constant_source'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=constant_source",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "constant_source",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'simple_webrtc'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=simple_webrtc",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "simple_webrtc",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'simple_webrtc'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=simple_webrtc",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "simple_webrtc",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'set_value_curve'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=set_value_curve",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "set_value_curve",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'set_value_curve'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=set_value_curve",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "set_value_curve",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'stereo_panner'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=stereo_panner",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "stereo_panner",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'stereo_panner'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=stereo_panner",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "stereo_panner",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'wave_shaper'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=wave_shaper",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "wave_shaper",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'wave_shaper'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=wave_shaper",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "wave_shaper",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'iir_filter'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=iir_filter",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "iir_filter",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'iir_filter'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=iir_filter",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "iir_filter",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'media_element_source_node'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=media_element_source_node",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "media_element_source_node",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'media_element_source_node'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=media_element_source_node",
+                    "--package=examples"
+                ],
+                "filter": {
+                    "name": "media_element_source_node",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}

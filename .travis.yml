@@ -1,14 +1,14 @@
 language: rust
 sudo: required
 rust:
-  - nightly
+  - stable
 os:
   - linux
 dist: xenial
 
 matrix:
   include:
-    - name: "Desktop build"
+    - name: 'Desktop build'
       addons:
         apt:
           packages:
@@ -49,4 +49,3 @@ matrix:
       script:
         - cargo build
         - ls examples/*.rs | xargs -I{} basename  {} .rs  | grep -v params_connect | RUST_BACKTRACE=1 GST_DEBUG=3 xargs -I{} cargo ex {} --all-features
-

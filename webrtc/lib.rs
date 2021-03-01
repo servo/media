@@ -1,5 +1,3 @@
-#![feature(fn_traits)]
-
 extern crate boxfnonce;
 extern crate log;
 extern crate servo_media_streams;
