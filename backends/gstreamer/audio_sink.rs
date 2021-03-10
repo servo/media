@@ -8,22 +8,48 @@ use servo_media_audio::block::{Chunk, FRAMES_PER_BLOCK};
 use servo_media_audio::render_thread::AudioRenderThreadMsg;
 use servo_media_audio::sink::{AudioSink, AudioSinkError};
 use servo_media_streams::MediaSocket;
-use std::cell::{Cell, RefCell};
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::thread::Builder;
+use std::{
+    cell::{Cell, RefCell},
+    marker::PhantomData,
+};
 
 const DEFAULT_SAMPLE_RATE: f32 = 44100.;
 
-pub struct GStreamerAudioSink {
+pub trait GStreamerSinkTypeImpl {
+    fn get_sink_name() -> String;
+}
+
+pub trait GStreamerSinkType: GStreamerSinkTypeImpl + Send + Sync + 'static {}
+
+pub struct GStreamerAutoSinkType;
+impl GStreamerSinkTypeImpl for GStreamerAutoSinkType {
+    fn get_sink_name() -> String {
+        "autoaudiosink".to_owned()
+    }
+}
+impl GStreamerSinkType for GStreamerAutoSinkType {}
+
+pub struct GStreamerDummySinkType;
+impl GStreamerSinkTypeImpl for GStreamerDummySinkType {
+    fn get_sink_name() -> String {
+        "fakesink".to_owned()
+    }
+}
+impl GStreamerSinkType for GStreamerDummySinkType {}
+
+pub struct GStreamerAudioSink<T: GStreamerSinkType> {
     pipeline: gst::Pipeline,
     appsrc: Arc<AppSrc>,
     sample_rate: Cell<f32>,
     audio_info: RefCell<Option<gst_audio::AudioInfo>>,
     sample_offset: Cell<u64>,
+    phantom: PhantomData<T>,
 }
 
-impl GStreamerAudioSink {
+impl<T: GStreamerSinkType> GStreamerAudioSink<T> {
     pub fn new() -> Result<Self, AudioSinkError> {
         if let Some(category) = gst::DebugCategory::get("openslessink") {
             category.set_threshold(gst::DebugLevel::Trace);
@@ -39,11 +65,12 @@ impl GStreamerAudioSink {
             sample_rate: Cell::new(DEFAULT_SAMPLE_RATE),
             audio_info: RefCell::new(None),
             sample_offset: Cell::new(0),
+            phantom: PhantomData,
         })
     }
 }
 
-impl GStreamerAudioSink {
+impl<T: GStreamerSinkType> GStreamerAudioSink<T> {
     fn set_audio_info(&self, sample_rate: f32, channels: u8) -> Result<(), AudioSinkError> {
         let audio_info = gst_audio::AudioInfo::new(
             gst_audio::AUDIO_FORMAT_F32,
@@ -70,7 +97,7 @@ impl GStreamerAudioSink {
     }
 }
 
-impl AudioSink for GStreamerAudioSink {
+impl<T: GStreamerSinkType> AudioSink for GStreamerAudioSink<T> {
     fn init(
         &self,
         sample_rate: f32,
@@ -101,7 +128,7 @@ impl AudioSink for GStreamerAudioSink {
             .map_err(|_| AudioSinkError::Backend("audioresample creation failed".to_owned()))?;
         let convert = gst::ElementFactory::make("audioconvert", None)
             .map_err(|_| AudioSinkError::Backend("audioconvert creation failed".to_owned()))?;
-        let sink = gst::ElementFactory::make("autoaudiosink", None)
+        let sink = gst::ElementFactory::make(&T::get_sink_name(), None)
             .map_err(|_| AudioSinkError::Backend("autoaudiosink creation failed".to_owned()))?;
         self.pipeline
             .add_many(&[&appsrc, &resample, &convert, &sink])
@@ -219,7 +246,7 @@ impl AudioSink for GStreamerAudioSink {
     fn set_eos_callback(&self, _: Box<dyn Fn(Box<dyn AsRef<[f32]>>) + Send + Sync + 'static>) {}
 }
 
-impl Drop for GStreamerAudioSink {
+impl<T: GStreamerSinkType> Drop for GStreamerAudioSink<T> {
     fn drop(&mut self) {
         let _ = self.stop();
     }

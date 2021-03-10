@@ -45,6 +45,7 @@ mod render;
 mod source;
 pub mod webrtc;
 
+use audio_sink::GStreamerSinkType;
 use device_monitor::GStreamerDeviceMonitor;
 use gst::ClockExt;
 use ipc_channel::ipc::IpcSender;
@@ -66,30 +67,31 @@ use servo_media_streams::registry::MediaStreamId;
 use servo_media_streams::{MediaOutput, MediaSocket, MediaStreamType};
 use servo_media_traits::{BackendMsg, ClientContextId, MediaInstance};
 use servo_media_webrtc::{WebRtcBackend, WebRtcController, WebRtcSignaller};
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex, Weak};
 use std::thread;
 use std::vec::Vec;
+use std::{collections::HashMap, marker::PhantomData};
 
 lazy_static! {
     static ref BACKEND_BASE_TIME: gst::ClockTime = gst::SystemClock::obtain().get_time();
 }
 
-pub struct GStreamerBackend {
+pub struct GStreamerBackend<T: GStreamerSinkType> {
     capture_mocking: AtomicBool,
     instances: Arc<Mutex<HashMap<ClientContextId, Vec<(usize, Weak<Mutex<dyn MediaInstance>>)>>>>,
     next_instance_id: AtomicUsize,
     /// Channel to communicate media instances with its owner Backend.
     backend_chan: Arc<Mutex<Sender<BackendMsg>>>,
+    phantom: PhantomData<T>,
 }
 
 #[derive(Debug)]
 pub struct ErrorLoadingPlugins(Vec<&'static str>);
 
-impl GStreamerBackend {
+impl<T: GStreamerSinkType> GStreamerBackend<T> {
     pub fn init_with_plugins(
         plugin_dir: PathBuf,
         plugins: &[&'static str],
@@ -140,6 +142,7 @@ impl GStreamerBackend {
             instances,
             next_instance_id: AtomicUsize::new(0),
             backend_chan: Arc::new(Mutex::new(backend_chan)),
+            phantom: PhantomData::<T>,
         }))
     }
 
@@ -167,7 +170,7 @@ impl GStreamerBackend {
     }
 }
 
-impl Backend for GStreamerBackend {
+impl<T: GStreamerSinkType> Backend for GStreamerBackend<T> {
     fn create_player(
         &self,
         context_id: &ClientContextId,
@@ -310,8 +313,8 @@ impl Backend for GStreamerBackend {
     }
 }
 
-impl AudioBackend for GStreamerBackend {
-    type Sink = audio_sink::GStreamerAudioSink;
+impl<T: GStreamerSinkType> AudioBackend for GStreamerBackend<T> {
+    type Sink = audio_sink::GStreamerAudioSink<T>;
     fn make_decoder() -> Box<dyn AudioDecoder> {
         Box::new(audio_decoder::GStreamerAudioDecoder::new())
     }
@@ -324,7 +327,7 @@ impl AudioBackend for GStreamerBackend {
     }
 }
 
-impl WebRtcBackend for GStreamerBackend {
+impl<T: GStreamerSinkType> WebRtcBackend for GStreamerBackend<T> {
     type Controller = webrtc::GStreamerWebRtcController;
 
     fn construct_webrtc_controller(
@@ -335,7 +338,7 @@ impl WebRtcBackend for GStreamerBackend {
     }
 }
 
-impl BackendInit for GStreamerBackend {
+impl<T: GStreamerSinkType> BackendInit for GStreamerBackend<T> {
     fn init() -> Box<dyn Backend> {
         Self::init_with_plugins(PathBuf::new(), &[]).unwrap()
     }
