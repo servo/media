@@ -129,7 +129,10 @@ impl<T: GStreamerSinkType> AudioSink for GStreamerAudioSink<T> {
         let convert = gst::ElementFactory::make("audioconvert", None)
             .map_err(|_| AudioSinkError::Backend("audioconvert creation failed".to_owned()))?;
         let sink = gst::ElementFactory::make(&T::get_sink_name(), None)
-            .map_err(|_| AudioSinkError::Backend("autoaudiosink creation failed".to_owned()))?;
+            .map_err(|_| AudioSinkError::Backend("sink creation failed".to_owned()))?;
+        sink.set_property("sync", &true.to_value())
+            .expect("sink doesn't handle expected 'sync' property");
+
         self.pipeline
             .add_many(&[&appsrc, &resample, &convert, &sink])
             .map_err(|e| AudioSinkError::Backend(e.to_string()))?;
