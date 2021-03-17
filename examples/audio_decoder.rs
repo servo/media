@@ -6,12 +6,12 @@ use servo_media::audio::context::{AudioContextOptions, RealTimeAudioContextOptio
 use servo_media::audio::decoder::AudioDecoderCallbacks;
 use servo_media::audio::node::{AudioNodeInit, AudioNodeMessage, AudioScheduledSourceNodeMessage};
 use servo_media::{ClientContextId, ServoMedia};
-use std::env;
-use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
+use std::{collections::VecDeque, env};
+use std::{fs::File, iter::FromIterator};
 use std::{thread, time};
 
 fn run_example(servo_media: Arc<ServoMedia>) {
@@ -74,7 +74,15 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     context.message_node(
         buffer_source,
         AudioNodeMessage::AudioBufferSourceNode(AudioBufferSourceNodeMessage::SetBuffer(Some(
-            AudioBuffer::from_buffers(decoded_audio.lock().unwrap().to_vec(), sample_rate),
+            AudioBuffer::from_buffers(
+                decoded_audio
+                    .lock()
+                    .unwrap()
+                    .iter()
+                    .map(|a| VecDeque::from_iter(a.to_owned()))
+                    .collect::<Vec<_>>(),
+                sample_rate,
+            ),
         ))),
     );
     let _ = context.resume();

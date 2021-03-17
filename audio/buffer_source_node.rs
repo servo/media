@@ -1,3 +1,5 @@
+use std::{collections::VecDeque, usize};
+
 use block::{Block, Chunk, Tick, FRAMES_PER_BLOCK};
 use node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, BlockInfo, OnEndedCallback};
 use node::{AudioNodeType, ChannelInfo, ShouldPlay};
@@ -165,7 +167,7 @@ impl AudioNodeEngine for AudioBufferSourceNode {
             ShouldPlay::Between(start, end) => (start.0 as usize, end.0 as usize),
         };
 
-        let buffer = self.buffer.as_ref().unwrap();
+        let buffer = self.buffer.as_mut().unwrap();
 
         let (mut actual_loop_start, mut actual_loop_end) = (0., buffer.len() as f64);
         if self.loop_enabled {
@@ -265,10 +267,13 @@ impl AudioNodeEngine for AudioBufferSourceNode {
             && FRAMES_PER_BLOCK.0 as f64 <= self.buffer_duration
         {
             let mut block = Block::empty();
-            let pos = self.buffer_pos as usize;
+            //let pos = self.buffer_pos as usize;
 
-            for chan in 0..buffer.chans() {
-                block.push_chan(&buffer.buffers[chan as usize][pos..(pos + frames_to_output)]);
+            // for chan in 0..buffer.chans() {
+            //     block.push_chan(&buffer.buffers[chan as usize][pos..(pos + frames_to_output)]);
+            // }
+            for chan in buffer.drain(frames_to_output) {
+                block.push_chan(&chan);
             }
 
             inputs.blocks.push(block);
@@ -346,23 +351,25 @@ impl AudioNodeEngine for AudioBufferSourceNode {
 #[derive(Debug, Clone)]
 pub struct AudioBuffer {
     /// Invariant: all buffers must be of the same length
-    pub buffers: Vec<Vec<f32>>,
+    pub buffers: Vec<VecDeque<f32>>,
     pub sample_rate: f32,
+    pub start_position: usize,
 }
 
 impl AudioBuffer {
     pub fn new(chan: u8, len: usize, sample_rate: f32) -> Self {
         assert!(chan > 0);
         let mut buffers = Vec::with_capacity(chan as usize);
-        let single = vec![0.; len];
+        let single = VecDeque::with_capacity(len);
         buffers.resize(chan as usize, single);
         AudioBuffer {
             buffers,
             sample_rate,
+            start_position: 0,
         }
     }
 
-    pub fn from_buffers(buffers: Vec<Vec<f32>>, sample_rate: f32) -> Self {
+    pub fn from_buffers(buffers: Vec<VecDeque<f32>>, sample_rate: f32) -> Self {
         for buf in &buffers {
             assert_eq!(buf.len(), buffers[0].len())
         }
@@ -370,11 +377,26 @@ impl AudioBuffer {
         Self {
             buffers,
             sample_rate,
+            start_position: 0,
         }
     }
 
-    pub fn from_buffer(buffer: Vec<f32>, sample_rate: f32) -> Self {
+    pub fn from_buffer(buffer: VecDeque<f32>, sample_rate: f32) -> Self {
         AudioBuffer::from_buffers(vec![buffer], sample_rate)
+    }
+
+    pub fn push(&mut self, buffers: Vec<VecDeque<f32>>) {
+        assert_eq!(self.buffers.len(), buffers.len());
+        for (i, mut buf) in buffers.into_iter().enumerate() {
+            self.buffers[i].append(&mut buf);
+        }
+    }
+
+    pub fn drain(&mut self, count: usize) -> Vec<Vec<f32>> {
+        self.buffers
+            .iter_mut()
+            .map(|b| b.drain(..count).collect::<Vec<_>>())
+            .collect::<Vec<_>>()
     }
 
     pub fn len(&self) -> usize {
@@ -413,6 +435,6 @@ impl AudioBuffer {
     }
 
     pub fn data_chan_mut(&mut self, chan: u8) -> &mut [f32] {
-        &mut self.buffers[chan as usize]
+        self.buffers[chan as usize].as_mut_slices().0
     }
 }
