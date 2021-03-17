@@ -6,7 +6,7 @@
     target_arch = "x86_64"
 ))]
 mod platform {
-    pub extern crate servo_media_gstreamer;
+    extern crate servo_media_gstreamer;
     pub use self::servo_media_gstreamer::GStreamerBackend as Backend;
     pub use platform::servo_media_gstreamer::sink_type::{AutoSinkType, DummySinkType};
 }
