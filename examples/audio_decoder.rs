@@ -83,7 +83,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
 }
 
 fn main() {
-    ServoMedia::init::<servo_media_auto::DummyBackend>();
+    ServoMedia::init::<servo_media_auto::Backend>();
     if let Ok(servo_media) = ServoMedia::get() {
         run_example(servo_media);
     } else {
