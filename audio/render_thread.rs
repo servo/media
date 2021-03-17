@@ -131,6 +131,7 @@ impl AudioRenderThread {
         let reader_factory = Box::new(|id, sample_rate| B::make_streamreader(id, sample_rate));
         let sink = match options {
             AudioContextOptions::RealTimeAudioContext(_) => Sink::RealTime(sink_factory()?),
+            AudioContextOptions::DummyAudioContext(_) => Sink::RealTime(sink_factory()?),
             AudioContextOptions::OfflineAudioContext(options) => Sink::Offline(
                 OfflineAudioSink::new(options.channels as usize, options.length),
             ),

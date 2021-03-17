@@ -94,6 +94,7 @@ impl From<OfflineAudioContextOptions> for AudioContextOptions {
 pub enum AudioContextOptions {
     RealTimeAudioContext(RealTimeAudioContextOptions),
     OfflineAudioContext(OfflineAudioContextOptions),
+    DummyAudioContext(RealTimeAudioContextOptions),
 }
 
 impl Default for AudioContextOptions {
@@ -133,6 +134,7 @@ impl AudioContext {
     ) -> Self {
         let (sample_rate, channels) = match options {
             AudioContextOptions::RealTimeAudioContext(ref options) => (options.sample_rate, 2),
+            AudioContextOptions::DummyAudioContext(ref options) => (options.sample_rate, 2),
             AudioContextOptions::OfflineAudioContext(ref options) => {
                 (options.sample_rate, options.channels)
             }
