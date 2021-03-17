@@ -8,6 +8,7 @@ use servo_media_audio::block::{Chunk, FRAMES_PER_BLOCK};
 use servo_media_audio::render_thread::AudioRenderThreadMsg;
 use servo_media_audio::sink::{AudioSink, AudioSinkError};
 use servo_media_streams::MediaSocket;
+use sink_type::SinkType;
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::thread::Builder;
@@ -18,29 +19,7 @@ use std::{
 
 const DEFAULT_SAMPLE_RATE: f32 = 44100.;
 
-pub trait GStreamerSinkTypeImpl {
-    fn get_sink_name() -> String;
-}
-
-pub trait GStreamerSinkType: GStreamerSinkTypeImpl + Send + Sync + 'static {}
-
-pub struct GStreamerAutoSinkType;
-impl GStreamerSinkTypeImpl for GStreamerAutoSinkType {
-    fn get_sink_name() -> String {
-        "autoaudiosink".to_owned()
-    }
-}
-impl GStreamerSinkType for GStreamerAutoSinkType {}
-
-pub struct GStreamerDummySinkType;
-impl GStreamerSinkTypeImpl for GStreamerDummySinkType {
-    fn get_sink_name() -> String {
-        "fakesink".to_owned()
-    }
-}
-impl GStreamerSinkType for GStreamerDummySinkType {}
-
-pub struct GStreamerAudioSink<T: GStreamerSinkType> {
+pub struct GStreamerAudioSink<T: SinkType> {
     pipeline: gst::Pipeline,
     appsrc: Arc<AppSrc>,
     sample_rate: Cell<f32>,
@@ -49,7 +28,7 @@ pub struct GStreamerAudioSink<T: GStreamerSinkType> {
     phantom: PhantomData<T>,
 }
 
-impl<T: GStreamerSinkType> GStreamerAudioSink<T> {
+impl<T: SinkType> GStreamerAudioSink<T> {
     pub fn new() -> Result<Self, AudioSinkError> {
         if let Some(category) = gst::DebugCategory::get("openslessink") {
             category.set_threshold(gst::DebugLevel::Trace);
@@ -70,7 +49,7 @@ impl<T: GStreamerSinkType> GStreamerAudioSink<T> {
     }
 }
 
-impl<T: GStreamerSinkType> GStreamerAudioSink<T> {
+impl<T: SinkType> GStreamerAudioSink<T> {
     fn set_audio_info(&self, sample_rate: f32, channels: u8) -> Result<(), AudioSinkError> {
         let audio_info = gst_audio::AudioInfo::new(
             gst_audio::AUDIO_FORMAT_F32,
@@ -97,7 +76,7 @@ impl<T: GStreamerSinkType> GStreamerAudioSink<T> {
     }
 }
 
-impl<T: GStreamerSinkType> AudioSink for GStreamerAudioSink<T> {
+impl<T: SinkType> AudioSink for GStreamerAudioSink<T> {
     fn init(
         &self,
         sample_rate: f32,
@@ -249,7 +228,7 @@ impl<T: GStreamerSinkType> AudioSink for GStreamerAudioSink<T> {
     fn set_eos_callback(&self, _: Box<dyn Fn(Box<dyn AsRef<[f32]>>) + Send + Sync + 'static>) {}
 }
 
-impl<T: GStreamerSinkType> Drop for GStreamerAudioSink<T> {
+impl<T: SinkType> Drop for GStreamerAudioSink<T> {
     fn drop(&mut self) {
         let _ = self.stop();
     }

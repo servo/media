@@ -1,6 +1,3 @@
-use platform::servo_media_gstreamer::audio_sink::GStreamerAutoSinkType;
-use platform::servo_media_gstreamer::audio_sink::GStreamerSinkType;
-
 #[cfg(any(
     all(
         target_os = "android",
@@ -11,6 +8,7 @@ use platform::servo_media_gstreamer::audio_sink::GStreamerSinkType;
 mod platform {
     pub extern crate servo_media_gstreamer;
     pub use self::servo_media_gstreamer::GStreamerBackend as Backend;
+    pub use platform::servo_media_gstreamer::sink_type::{AutoSinkType, DummySinkType};
 }
 
 #[cfg(not(any(
@@ -25,6 +23,5 @@ mod platform {
     pub use self::servo_media_dummy::DummyBackend as Backend;
 }
 
-pub type Backend = platform::Backend<servo_media_gstreamer::audio_sink::GStreamerAutoSinkType>;
-pub type DummyBackend =
-    platform::Backend<servo_media_gstreamer::audio_sink::GStreamerDummySinkType>;
+pub type Backend = platform::Backend<platform::AutoSinkType>;
+pub type DummyBackend = platform::Backend<platform::DummySinkType>;

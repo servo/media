@@ -5,12 +5,9 @@ use render_thread::AudioRenderThread;
 use render_thread::AudioRenderThreadMsg;
 use servo_media_traits::{BackendMsg, ClientContextId, MediaInstance};
 use std::cell::Cell;
+use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread::Builder;
-use std::{
-    fmt,
-    sync::mpsc::{self, Sender},
-};
 use AudioBackend;
 
 /// Describes the state of the audio context on the control thread.
@@ -125,12 +122,6 @@ pub struct AudioContext {
     dest_node: NodeId,
     listener: NodeId,
     make_decoder: Arc<(dyn Fn() -> Box<dyn AudioDecoder> + Sync + Send)>,
-}
-
-impl fmt::Debug for AudioContext {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("AudioContext ID {}", self.id))
-    }
 }
 
 impl AudioContext {
