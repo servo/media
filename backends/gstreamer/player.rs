@@ -315,7 +315,7 @@ impl PlayerInner {
 
 macro_rules! notify(
     ($observer:expr, $event:expr) => {
-        $observer.lock().unwrap().send($event).unwrap();
+        $observer.lock().unwrap().send($event).unwrap()
     };
 );
 
