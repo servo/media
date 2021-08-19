@@ -2,7 +2,7 @@
 authors = ["Fernando Jiménez Moreno <ferjmoreno@gmail.com>"]
 license = "MPL-2.0"
 name = "servo-media-audio"
-version = "0.1.0"
+version = "0.2.0"
 
 [lib]
 name = "servo_media_audio"
@@ -10,7 +10,7 @@ path = "lib.rs"
 
 [dependencies]
 boxfnonce = "0.1"
-euclid = "0.20"
+euclid = "0.22"
 log = "0.4"
 serde_derive = "1.0.66"
 serde = "1.0.66"
