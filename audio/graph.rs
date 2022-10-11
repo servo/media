@@ -401,7 +401,7 @@ impl AudioGraph {
                     }
                 }
 
-                for (i, mut blocks) in blocks.drain().enumerate() {
+                for (i, mut blocks) in blocks.drain(..).enumerate() {
                     if blocks.len() == 0 {
                         if mode == ChannelCountMode::Explicit {
                             // It's silence, but mix it anyway
