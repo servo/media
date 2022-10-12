@@ -1,4 +1,3 @@
-#![feature(nll)]
 extern crate boxfnonce;
 extern crate byte_slice_cast;
 extern crate mime;
