@@ -16,7 +16,7 @@ pub struct VideoFrame {
     width: i32,
     height: i32,
     data: VideoFrameData,
-    buffer: Arc<dyn Buffer>,
+    _buffer: Arc<dyn Buffer>,
 }
 
 impl VideoFrame {
@@ -27,7 +27,7 @@ impl VideoFrame {
             width,
             height,
             data,
-            buffer,
+            _buffer: buffer,
         })
     }
 
