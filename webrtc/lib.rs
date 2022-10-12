@@ -41,12 +41,12 @@ pub trait WebRtcControllerBackend: Send {
     fn configure(&mut self, stun_server: &str, policy: BundlePolicy) -> WebRtcResult;
     fn set_remote_description(
         &mut self,
-        SessionDescription,
+        _: SessionDescription,
         cb: SendBoxFnOnce<'static, ()>,
     ) -> WebRtcResult;
     fn set_local_description(
         &mut self,
-        SessionDescription,
+        _: SessionDescription,
         cb: SendBoxFnOnce<'static, ()>,
     ) -> WebRtcResult;
     fn add_ice_candidate(&mut self, candidate: IceCandidate) -> WebRtcResult;
