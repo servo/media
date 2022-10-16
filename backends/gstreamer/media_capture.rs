@@ -1,9 +1,10 @@
 use crate::media_stream::GStreamerMediaStream;
+
 use gst;
 use gst::prelude::*;
 use servo_media_streams::capture::*;
 use servo_media_streams::registry::MediaStreamId;
-use servo_media_streams::MediaStreamType;
+use servo_media_streams::{MediaSource, MediaStreamType};
 use std::i32;
 
 trait AddToCaps {
@@ -150,23 +151,34 @@ pub struct GstMediaTrack {
 fn create_input_stream(
     stream_type: MediaStreamType,
     constraint_set: MediaTrackConstraintSet,
+    source: MediaSource,
 ) -> Option<MediaStreamId> {
     let devices = GstMediaDevices::new();
     devices
         .get_track(stream_type == MediaStreamType::Video, constraint_set)
-        .map(|track| {
-            let f = match stream_type {
-                MediaStreamType::Audio => GStreamerMediaStream::create_audio_from,
-                MediaStreamType::Video => GStreamerMediaStream::create_video_from,
-            };
-            f(track.element)
+        .map(|track| match stream_type {
+            MediaStreamType::Audio => GStreamerMediaStream::create_audio_from(match source {
+                MediaSource::Device => track.element,
+                MediaSource::App(_) => unimplemented!(),
+            }),
+            MediaStreamType::Video => match source {
+                MediaSource::Device => GStreamerMediaStream::create_video_from(track.element, None),
+                MediaSource::App(size) => {
+                    let appsrc =
+                        gst::ElementFactory::make("appsrc", None).expect("appsrc creation failed");
+                    GStreamerMediaStream::create_video_from(appsrc, Some(size))
+                }
+            },
         })
 }
 
 pub fn create_audioinput_stream(constraint_set: MediaTrackConstraintSet) -> Option<MediaStreamId> {
-    create_input_stream(MediaStreamType::Audio, constraint_set)
+    create_input_stream(MediaStreamType::Audio, constraint_set, MediaSource::Device)
 }
 
-pub fn create_videoinput_stream(constraint_set: MediaTrackConstraintSet) -> Option<MediaStreamId> {
-    create_input_stream(MediaStreamType::Video, constraint_set)
+pub fn create_videoinput_stream(
+    constraint_set: MediaTrackConstraintSet,
+    source: MediaSource,
+) -> Option<MediaStreamId> {
+    create_input_stream(MediaStreamType::Video, constraint_set, source)
 }

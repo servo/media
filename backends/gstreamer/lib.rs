@@ -1,5 +1,6 @@
 extern crate boxfnonce;
 extern crate byte_slice_cast;
+extern crate euclid;
 extern crate mime;
 
 extern crate glib_sys as glib_ffi;
@@ -63,7 +64,7 @@ use servo_media_player::{Player, PlayerEvent, StreamType};
 use servo_media_streams::capture::MediaTrackConstraintSet;
 use servo_media_streams::device_monitor::MediaDeviceMonitor;
 use servo_media_streams::registry::MediaStreamId;
-use servo_media_streams::{MediaOutput, MediaSocket, MediaStreamType};
+use servo_media_streams::{MediaOutput, MediaSocket, MediaSource, MediaStreamType};
 use servo_media_traits::{BackendMsg, ClientContextId, MediaInstance};
 use servo_media_webrtc::{WebRtcBackend, WebRtcController, WebRtcSignaller};
 use std::collections::HashMap;
@@ -244,12 +245,20 @@ impl Backend for GStreamerBackend {
         media_capture::create_audioinput_stream(set)
     }
 
-    fn create_videoinput_stream(&self, set: MediaTrackConstraintSet) -> Option<MediaStreamId> {
+    fn create_videoinput_stream(
+        &self,
+        set: MediaTrackConstraintSet,
+        source: MediaSource,
+    ) -> Option<MediaStreamId> {
         if self.capture_mocking.load(Ordering::Acquire) {
             // XXXManishearth we should caps filter this
             return Some(self.create_videostream());
         }
-        media_capture::create_videoinput_stream(set)
+        media_capture::create_videoinput_stream(set, source)
+    }
+
+    fn push_stream_data(&self, stream: &MediaStreamId, data: Vec<u8>) {
+        GStreamerMediaStream::push_data(stream, data);
     }
 
     fn can_play_type(&self, media_type: &str) -> SupportsMediaType {

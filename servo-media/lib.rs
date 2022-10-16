@@ -18,7 +18,7 @@ use player::{Player, PlayerEvent, StreamType};
 use streams::capture::MediaTrackConstraintSet;
 use streams::device_monitor::MediaDeviceMonitor;
 use streams::registry::MediaStreamId;
-use streams::{MediaOutput, MediaSocket, MediaStreamType};
+use streams::{MediaOutput, MediaSocket, MediaSource, MediaStreamType};
 use webrtc::{WebRtcController, WebRtcSignaller};
 
 pub struct ServoMedia(Box<dyn Backend>);
@@ -48,7 +48,12 @@ pub trait Backend: Send + Sync {
         ty: MediaStreamType,
     ) -> (Box<dyn MediaSocket>, MediaStreamId);
     fn create_audioinput_stream(&self, set: MediaTrackConstraintSet) -> Option<MediaStreamId>;
-    fn create_videoinput_stream(&self, set: MediaTrackConstraintSet) -> Option<MediaStreamId>;
+    fn create_videoinput_stream(
+        &self,
+        set: MediaTrackConstraintSet,
+        source: MediaSource,
+    ) -> Option<MediaStreamId>;
+    fn push_stream_data(&self, stream: &MediaStreamId, data: Vec<u8>);
     fn create_audio_context(
         &self,
         id: &ClientContextId,
@@ -76,7 +81,6 @@ pub trait Backend: Send + Sync {
     /// and the media instances created for these contexts.
     /// The client context identifier is currently an abstraction of Servo's PipelineId.
     fn resume(&self, _id: &ClientContextId) {}
-
     fn get_device_monitor(&self) -> Box<dyn MediaDeviceMonitor>;
 }
 
