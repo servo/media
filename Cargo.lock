@@ -567,9 +567,9 @@ dependencies = [
 
 [[package]]
 name = "euclid"
-version = "0.20.14"
+version = "0.22.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2bb7ef65b3777a325d1eeefefab5b6d4959da54747e33bd6258e789640f307ad"
+checksum = "b52c2ef4a78da0ba68fbe1fd920627411096d2ac478f7f4c9f3a54ba6705bade"
 dependencies = [
  "num-traits",
 ]
@@ -2386,11 +2386,11 @@ dependencies = [
 
 [[package]]
 name = "servo-media-audio"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "boxfnonce",
  "byte-slice-cast",
- "euclid 0.20.14",
+ "euclid 0.22.7",
  "log 0.4.17",
  "num-complex",
  "num-traits",
