@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-20.04]
         rust: [nightly]
         target: ["default"]
     steps:
@@ -22,10 +22,21 @@ jobs:
         sudo bash -c 'apt-add-repository -y https://mirrors.kernel.org/ubuntu'
         sudo apt update
         sudo apt install -y \
+          gstreamer1.0-libav \
+          gstreamer1.0-plugins-bad \
+          gstreamer1.0-plugins-base \
+          gstreamer1.0-plugins-good \
+          gstreamer1.0-plugins-ugly \
+          gstreamer1.0-tools \
           libasound2-plugins \
           libfaad2 \
-          libffi6
+          libffi7 \
           libfftw3-single3 \
+          libges-1.0-dev \
+          libgstreamer-plugins-bad1.0-dev\
+          libgstreamer-plugins-base1.0-dev \
+          libgstreamer1.0-dev \
+          libgstrtspserver-1.0-dev \
           libjack-jackd2-0 \
           libmms0 \
           libmpg123-0 \
@@ -42,16 +53,7 @@ jobs:
           libwebrtc-audio-processing1 \
           pulseaudio \
           pulseaudio-utils \
-          webp \
-    - name: Setup environment
-      run: |
-        curl -L https://servo-deps-2.s3.amazonaws.com/gstreamer/gstreamer-1.16-x86_64-linux-gnu.20190515.tar.gz | tar xz
-        sed -i "s;prefix=/opt/gst;prefix=$PWD/gst;g" $PWD/gst/lib/pkgconfig/*.pc
-        echo "PKG_CONFIG_PATH=$PWD/gst/lib/pkgconfig" >>$GITHUB_ENV
-        echo "GST_PLUGIN_SYSTEM_PATH=$PWD/gst/lib/gstreamer-1.0" >>$GITHUB_ENV
-        echo "GST_PLUGIN_SCANNER=$PWD/gst/libexec/gstreamer-1.0/gst-plugin-scanner" >>$GITHUB_ENV
-        echo "PATH=$PATH:$PWD/gst/bin" >>$GITHUB_ENV
-        echo "LD_LIBRARY_PATH=$PWD/gst/lib:$LD_LIBRARY_PATH" >>$GITHUB_ENV
+          webp
     - name: Install rust
       uses: actions-rs/toolchain@v1
       with:
