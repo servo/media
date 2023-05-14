@@ -1,4 +1,4 @@
-use media_stream::GStreamerMediaStream;
+use crate::media_stream::GStreamerMediaStream;
 use servo_media_audio::block::{Block, FRAMES_PER_BLOCK_USIZE};
 use servo_media_audio::AudioStreamReader;
 use servo_media_streams::registry::{get_stream, MediaStreamId};
@@ -6,7 +6,7 @@ use std::sync::mpsc::{channel, Receiver};
 
 use byte_slice_cast::*;
 use gst::prelude::*;
-use gst::{Caps, Fraction};
+use gst::Fraction;
 use gst_audio::AUDIO_FORMAT_F32;
 
 pub struct GStreamerAudioStreamReader {
@@ -29,34 +29,35 @@ impl GStreamerAudioStreamReader {
         let time_per_block = Fraction::new(FRAMES_PER_BLOCK_USIZE as i32, sample_rate as i32);
 
         // XXXManishearth this is only necessary because of an upstream
-        // gstreamer bug
-        let capsfilter0 = gst::ElementFactory::make("capsfilter", None)
+        // gstreamer bug. https://github.com/servo/media/pull/362#issuecomment-647947034
+        let caps = gst_audio::AudioCapsBuilder::new()
+            .layout(gst_audio::AudioLayout::Interleaved)
+            .build();
+        let capsfilter0 = gst::ElementFactory::make("capsfilter")
+            .property("caps", caps)
+            .build()
             .map_err(|_| "capsfilter creation failed".to_owned())?;
-        let caps = Caps::new_simple("audio/x-raw", &[("layout", &"interleaved")]);
-        capsfilter0.set_property("caps", &caps).unwrap();
 
-        let split = gst::ElementFactory::make("audiobuffersplit", None)
+        let split = gst::ElementFactory::make("audiobuffersplit")
+            .property("output-buffer-duration", time_per_block)
+            .build()
             .map_err(|_| "audiobuffersplit creation failed".to_owned())?;
-        split
-            .set_property("output-buffer-duration", &time_per_block)
-            .map_err(|_| "setting duration failed".to_owned())?;
-        let convert = gst::ElementFactory::make("audioconvert", None)
+        let convert = gst::ElementFactory::make("audioconvert")
+            .build()
             .map_err(|_| "audioconvert creation failed".to_owned())?;
-        let capsfilter = gst::ElementFactory::make("capsfilter", None)
+        let caps = gst_audio::AudioCapsBuilder::new()
+            .layout(gst_audio::AudioLayout::NonInterleaved)
+            .format(AUDIO_FORMAT_F32)
+            .rate(sample_rate as i32)
+            .build();
+        let capsfilter = gst::ElementFactory::make("capsfilter")
+            .property("caps", caps)
+            .build()
             .map_err(|_| "capsfilter creation failed".to_owned())?;
-        let caps = Caps::new_simple(
-            "audio/x-raw",
-            &[
-                ("layout", &"non-interleaved"),
-                ("format", &AUDIO_FORMAT_F32.to_string()),
-                ("rate", &(sample_rate as i32)),
-            ],
-        );
-        capsfilter.set_property("caps", &caps).unwrap();
-        let sink = gst::ElementFactory::make("appsink", None)
+        let sink = gst::ElementFactory::make("appsink")
+            .property("sync", false)
+            .build()
             .map_err(|_| "appsink creation failed".to_owned())?;
-        sink.set_property("sync", &false.to_value())
-            .expect("appsink doesn't handle expected 'sync' property");
 
         let appsink = sink.clone().dynamic_cast::<gst_app::AppSink>().unwrap();
 
@@ -69,10 +70,10 @@ impl GStreamerAudioStreamReader {
             e.sync_state_with_parent().map_err(|e| e.to_string())?;
         }
         appsink.set_callbacks(
-            gst_app::AppSinkCallbacks::new()
+            gst_app::AppSinkCallbacks::builder()
                 .new_sample(move |appsink| {
                     let sample = appsink.pull_sample().map_err(|_| gst::FlowError::Eos)?;
-                    let buffer = sample.get_buffer_owned().ok_or(gst::FlowError::Error)?;
+                    let buffer = sample.buffer_owned().ok_or(gst::FlowError::Error)?;
 
                     let buffer = buffer
                         .into_mapped_buffer_readable()

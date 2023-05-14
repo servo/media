@@ -1,4 +1,4 @@
-use gst;
+use lazy_static::lazy_static;
 use std::collections::HashSet;
 use std::str::FromStr;
 
@@ -38,28 +38,24 @@ impl GStreamerRegistryScanner {
     }
 
     fn initialize(&mut self) {
-        let audio_decoder_factories = gst::ElementFactory::list_get_elements(
-            gst_ffi::GST_ELEMENT_FACTORY_TYPE_DECODER
-                | gst_ffi::GST_ELEMENT_FACTORY_TYPE_MEDIA_AUDIO,
+        let audio_decoder_factories = gst::ElementFactory::factories_with_type(
+            gst::ElementFactoryType::DECODER | gst::ElementFactoryType::MEDIA_AUDIO,
             gst::Rank::Marginal,
         );
-        let audio_parser_factories = gst::ElementFactory::list_get_elements(
-            gst_ffi::GST_ELEMENT_FACTORY_TYPE_PARSER
-                | gst_ffi::GST_ELEMENT_FACTORY_TYPE_MEDIA_AUDIO,
+        let audio_parser_factories = gst::ElementFactory::factories_with_type(
+            gst::ElementFactoryType::PARSER | gst::ElementFactoryType::MEDIA_AUDIO,
             gst::Rank::None,
         );
-        let video_decoder_factories = gst::ElementFactory::list_get_elements(
-            gst_ffi::GST_ELEMENT_FACTORY_TYPE_DECODER
-                | gst_ffi::GST_ELEMENT_FACTORY_TYPE_MEDIA_VIDEO,
+        let video_decoder_factories = gst::ElementFactory::factories_with_type(
+            gst::ElementFactoryType::DECODER | gst::ElementFactoryType::MEDIA_VIDEO,
             gst::Rank::Marginal,
         );
-        let video_parser_factories = gst::ElementFactory::list_get_elements(
-            gst_ffi::GST_ELEMENT_FACTORY_TYPE_PARSER
-                | gst_ffi::GST_ELEMENT_FACTORY_TYPE_MEDIA_VIDEO,
+        let video_parser_factories = gst::ElementFactory::factories_with_type(
+            gst::ElementFactoryType::PARSER | gst::ElementFactoryType::MEDIA_VIDEO,
             gst::Rank::Marginal,
         );
-        let demux_factories = gst::ElementFactory::list_get_elements(
-            gst_ffi::GST_ELEMENT_FACTORY_TYPE_DEMUXER,
+        let demux_factories = gst::ElementFactory::factories_with_type(
+            gst::ElementFactoryType::DEMUXER,
             gst::Rank::Marginal,
         );
 
@@ -249,12 +245,18 @@ impl GStreamerRegistryScanner {
     }
 }
 
-fn has_element_for_media_type(factories: &Vec<gst::ElementFactory>, media_type: &str) -> bool {
+fn has_element_for_media_type(
+    factories: &glib::List<gst::ElementFactory>,
+    media_type: &str,
+) -> bool {
     match gst::caps::Caps::from_str(media_type) {
         Ok(caps) => {
-            let matching_factories =
-                gst::ElementFactory::list_filter(&factories, &caps, gst::PadDirection::Sink, false);
-            matching_factories.len() > 0
+            for factory in factories {
+                if factory.can_sink_all_caps(&caps) {
+                    return true;
+                }
+            }
+            false
         }
         _ => false,
     }

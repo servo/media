@@ -1,49 +1,15 @@
-use glib::{ObjectExt, ToSendValue, Value};
-use gst_webrtc::WebRTCDataChannelState;
+use glib::{ObjectExt, ToSendValue};
+use gst_webrtc::{WebRTCDataChannel, WebRTCDataChannelState};
 use servo_media_webrtc::thread::InternalEvent;
 use servo_media_webrtc::WebRtcController as WebRtcThread;
 use servo_media_webrtc::{
     DataChannelEvent, DataChannelId, DataChannelInit, DataChannelMessage, DataChannelState,
-    WebRtcError, WebRtcResult,
+    WebRtcError,
 };
 use std::sync::Mutex;
 
-// XXX Most of this code will be outdated once
-//     https://gitlab.freedesktop.org/gstreamer/gst-plugins-bad/-/issues/1168
-//     is fixed.
-
-#[derive(Clone)]
-struct DataChannel(glib::Object);
-
-impl DataChannel {
-    pub fn send(&self, message: &DataChannelMessage) -> WebRtcResult {
-        match message {
-            DataChannelMessage::Text(message) => {
-                self.0.emit("send-string", &[&Value::from(&message)])
-            }
-            DataChannelMessage::Binary(message) => {
-                let bytes = glib::Bytes::from(message);
-                self.0.emit("send-data", &[&Value::from(&bytes)])
-            }
-        }
-        .map(|_| ())
-        .map_err(|e| WebRtcError::Backend(e.to_string()))
-    }
-
-    pub fn close(&self) -> WebRtcResult {
-        self.0
-            .emit("close", &[])
-            .map(|_| ())
-            .map_err(|e| WebRtcError::Backend(e.to_string()))
-    }
-}
-
-// The datachannel object is thread-safe
-unsafe impl Send for DataChannel {}
-unsafe impl Sync for DataChannel {}
-
 pub struct GStreamerWebRtcDataChannel {
-    channel: DataChannel,
+    channel: WebRTCDataChannel,
     id: DataChannelId,
     thread: WebRtcThread,
 }
@@ -57,9 +23,9 @@ impl GStreamerWebRtcDataChannel {
     ) -> Result<Self, String> {
         let label = &init.label;
         let mut init_struct = gst::Structure::builder("options")
-            .field("ordered", &init.ordered)
+            .field("ordered", init.ordered)
             .field("protocol", &init.protocol)
-            .field("negotiated", &init.negotiated)
+            .field("negotiated", init.negotiated)
             .build();
 
         if let Some(max_packet_life_time) = init.max_packet_life_time {
@@ -78,156 +44,120 @@ impl GStreamerWebRtcDataChannel {
         }
 
         let channel = webrtc
-            .emit("create-data-channel", &[&label, &init_struct])
-            .map_err(|e| e.to_string())?;
-        let channel = channel
-            .expect("Invalid datachannel")
-            .get::<glib::Object>()
-            .map_err(|e| e.to_string())?
-            .expect("Invalid datachannel");
+            .emit_by_name::<WebRTCDataChannel>("create-data-channel", &[&label, &init_struct]);
 
         GStreamerWebRtcDataChannel::from(servo_channel_id, channel, thread)
     }
 
     pub fn from(
         id: &DataChannelId,
-        channel: glib::Object,
+        channel: WebRTCDataChannel,
         thread: &WebRtcThread,
     ) -> Result<Self, String> {
-        let id_ = id.clone();
+        let id_ = *id;
         let thread_ = Mutex::new(thread.clone());
-        channel
-            .connect("on-open", false, move |_| {
-                thread_
-                    .lock()
-                    .unwrap()
-                    .internal_event(InternalEvent::OnDataChannelEvent(
-                        id_,
-                        DataChannelEvent::Open,
-                    ));
-                None
-            })
-            .map_err(|e| e.to_string())?;
+        channel.connect_on_open(move |_| {
+            thread_
+                .lock()
+                .unwrap()
+                .internal_event(InternalEvent::OnDataChannelEvent(
+                    id_,
+                    DataChannelEvent::Open,
+                ));
+        });
 
-        let id_ = id.clone();
+        let id_ = *id;
         let thread_ = Mutex::new(thread.clone());
-        channel
-            .connect("on-close", false, move |_| {
-                thread_
-                    .lock()
-                    .unwrap()
-                    .internal_event(InternalEvent::OnDataChannelEvent(
-                        id_,
-                        DataChannelEvent::Close,
-                    ));
-                None
-            })
-            .map_err(|e| e.to_string())?;
+        channel.connect_on_close(move |_| {
+            thread_
+                .lock()
+                .unwrap()
+                .internal_event(InternalEvent::OnDataChannelEvent(
+                    id_,
+                    DataChannelEvent::Close,
+                ));
+        });
 
-        let id_ = id.clone();
+        let id_ = *id;
         let thread_ = Mutex::new(thread.clone());
-        channel
-            .connect("on-error", false, move |error| {
-                if let Some(error) = error[0]
-                    .get::<glib::error::Error>()
-                    .expect("Invalid GError")
-                {
-                    thread_
-                        .lock()
-                        .unwrap()
-                        .internal_event(InternalEvent::OnDataChannelEvent(
-                            id_,
-                            DataChannelEvent::Error(WebRtcError::Backend(error.to_string())),
-                        ));
-                }
-                None
-            })
-            .map_err(|e| e.to_string())?;
+        channel.connect_on_error(move |_, error| {
+            thread_
+                .lock()
+                .unwrap()
+                .internal_event(InternalEvent::OnDataChannelEvent(
+                    id_,
+                    DataChannelEvent::Error(WebRtcError::Backend(error.to_string())),
+                ));
+        });
 
-        let id_ = id.clone();
+        let id_ = *id;
         let thread_ = Mutex::new(thread.clone());
-        channel
-            .connect("on-message-string", false, move |message| {
-                if let Some(message) = message[1]
-                    .get::<String>()
-                    .expect("Invalid data channel message")
-                {
-                    thread_
-                        .lock()
-                        .unwrap()
-                        .internal_event(InternalEvent::OnDataChannelEvent(
-                            id_,
-                            DataChannelEvent::OnMessage(DataChannelMessage::Text(message)),
-                        ));
-                }
-                None
-            })
-            .map_err(|e| e.to_string())?;
+        channel.connect_on_message_string(move |_, message| {
+            let Some(message) = message.map(|s| s.to_owned()) else {
+                return;
+            };
+            thread_
+                .lock()
+                .unwrap()
+                .internal_event(InternalEvent::OnDataChannelEvent(
+                    id_,
+                    DataChannelEvent::OnMessage(DataChannelMessage::Text(message)),
+                ));
+        });
 
-        let id_ = id.clone();
+        let id_ = *id;
         let thread_ = Mutex::new(thread.clone());
-        channel
-            .connect("on-message-data", false, move |message| {
-                if let Some(message) = message[1]
-                    .get::<glib::Bytes>()
-                    .expect("Invalid data channel message")
-                {
-                    thread_
-                        .lock()
-                        .unwrap()
-                        .internal_event(InternalEvent::OnDataChannelEvent(
-                            id_,
-                            DataChannelEvent::OnMessage(DataChannelMessage::Binary(
-                                message.to_vec(),
-                            )),
-                        ));
-                }
-                None
-            })
-            .map_err(|e| e.to_string())?;
+        channel.connect_on_message_data(move |_, message| {
+            let Some(message) = message.map(|b| b.to_owned()) else {
+                return;
+            };
+            thread_
+                .lock()
+                .unwrap()
+                .internal_event(InternalEvent::OnDataChannelEvent(
+                    id_,
+                    DataChannelEvent::OnMessage(DataChannelMessage::Binary(message.to_vec())),
+                ));
+        });
 
-        let id_ = id.clone();
+        let id_ = *id;
         let thread_ = Mutex::new(thread.clone());
-        channel
-            .connect("notify::ready-state", false, move |state| {
-                if let Ok(data_channel) = state[0].get::<glib::Object>() {
-                    if let Ok(ready_state) = data_channel.unwrap().get_property("ready-state") {
-                        if let Ok(ready_state) = ready_state.get::<WebRTCDataChannelState>() {
-                            let ready_state = match ready_state.unwrap() {
-                                WebRTCDataChannelState::New => DataChannelState::New,
-                                WebRTCDataChannelState::Connecting => DataChannelState::Connecting,
-                                WebRTCDataChannelState::Open => DataChannelState::Open,
-                                WebRTCDataChannelState::Closing => DataChannelState::Closing,
-                                WebRTCDataChannelState::Closed => DataChannelState::Closed,
-                                WebRTCDataChannelState::__Unknown(state) => {
-                                    DataChannelState::__Unknown(state)
-                                }
-                            };
-                            thread_.lock().unwrap().internal_event(
-                                InternalEvent::OnDataChannelEvent(
-                                    id_,
-                                    DataChannelEvent::StateChange(ready_state),
-                                ),
-                            );
-                        }
-                    }
-                }
-                None
-            })
-            .map_err(|e| e.to_string())?;
+        channel.connect_ready_state_notify(move |channel| {
+            let ready_state = channel.ready_state();
+            let ready_state = match ready_state {
+                WebRTCDataChannelState::Connecting => DataChannelState::Connecting,
+                WebRTCDataChannelState::Open => DataChannelState::Open,
+                WebRTCDataChannelState::Closing => DataChannelState::Closing,
+                WebRTCDataChannelState::Closed => DataChannelState::Closed,
+                WebRTCDataChannelState::__Unknown(state) => DataChannelState::__Unknown(state),
+                _ => return,
+            };
+            thread_
+                .lock()
+                .unwrap()
+                .internal_event(InternalEvent::OnDataChannelEvent(
+                    id_,
+                    DataChannelEvent::StateChange(ready_state),
+                ));
+        });
 
         Ok(Self {
-            id: id.clone(),
-            thread: thread.clone(),
-            channel: DataChannel(channel),
+            id: *id,
+            thread: thread.to_owned(),
+            channel,
         })
     }
 
-    pub fn send(&self, message: &DataChannelMessage) -> WebRtcResult {
-        self.channel.send(message)
+    pub fn send(&self, message: &DataChannelMessage) {
+        match message {
+            DataChannelMessage::Text(text) => self.channel.send_string(Some(text)),
+            DataChannelMessage::Binary(data) => self
+                .channel
+                .send_data(Some(&glib::Bytes::from(data.as_slice()))),
+        }
     }
 
-    pub fn close(&self) -> WebRtcResult {
+    pub fn close(&self) {
         self.channel.close()
     }
 }
