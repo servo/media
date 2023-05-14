@@ -2,30 +2,48 @@
 name = "servo-media-gstreamer-render-unix"
 version = "0.1.0"
 authors = ["The Servo Project Developers"]
+edition = "2021"
 
 [features]
-gl-egl = ["gstreamer-gl/egl"]
-gl-x11 = ["gstreamer-gl/x11"]
-gl-wayland = ["gstreamer-gl/wayland"]
+gl-egl = ["gstreamer-gl-egl"]
+gl-x11 = ["gstreamer-gl-x11"]
+gl-wayland = ["gstreamer-gl-wayland"]
 
 [lib]
 name = "servo_media_gstreamer_render_unix"
 path = "lib.rs"
 
 [dependencies.glib]
-version = "0.9"
+version = "0.17"
 
-[dependencies.gstreamer]
-version = "0.15"
+[dependencies.gst]
+package = "gstreamer"
+version = "0.20"
 
-[dependencies.gstreamer-gl]
-version = "0.15"
+[dependencies.gst-gl]
+package = "gstreamer-gl"
+version = "0.20"
 
-[dependencies.gstreamer-video]
-version = "0.15"
+[dependencies.gstreamer-gl-egl]
+version = "0.20"
+optional = true
 
-[dependencies.servo-media-player]
+[dependencies.gstreamer-gl-x11]
+version = "0.20"
+optional = true
+
+[dependencies.gstreamer-gl-wayland]
+version = "0.20"
+optional = true
+
+[dependencies.gst-video]
+package = "gstreamer-video"
+version = "0.20"
+
+[dependencies.sm-player]
+package = "servo-media-player"
 path = "../../../player"
 
-[dependencies.servo-media-gstreamer-render]
+[dependencies.sm-gst-render]
+package = "servo-media-gstreamer-render"
 path = "../render"

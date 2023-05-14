@@ -1,7 +1,4 @@
 use glib::prelude::*;
-use gst;
-use gst_app;
-use gst_video;
 
 use std::sync::Arc;
 
@@ -112,8 +109,8 @@ impl GStreamerRender {
         if let Some(render) = self.render.as_ref() {
             render.build_frame(sample)
         } else {
-            let buffer = sample.get_buffer_owned().ok_or_else(|| ())?;
-            let caps = sample.get_caps().ok_or_else(|| ())?;
+            let buffer = sample.buffer_owned().ok_or(())?;
+            let caps = sample.caps().ok_or(())?;
             let info = gst_video::VideoInfo::from_caps(caps).map_err(|_| ())?;
 
             let frame =
@@ -131,27 +128,24 @@ impl GStreamerRender {
         &self,
         pipeline: &gst::Element,
     ) -> Result<gst_app::AppSink, PlayerError> {
-        let appsink = gst::ElementFactory::make("appsink", None)
-            .map_err(|_| PlayerError::Backend("appsink creation failed".to_owned()))?;
+        let appsink = gst::ElementFactory::make("appsink")
+            .build()
+            .map_err(|_| PlayerError::Backend("appsink creation failed".to_owned()))?
+            .downcast::<gst_app::AppSink>()
+            .unwrap();
 
         if let Some(render) = self.render.as_ref() {
-            render.build_video_sink(&appsink, pipeline)?
+            render.build_video_sink(appsink.upcast_ref(), pipeline)?
         } else {
             let caps = gst::Caps::builder("video/x-raw")
-                .field("format", &gst_video::VideoFormat::Bgra.to_string())
-                .field("pixel-aspect-ratio", &gst::Fraction::from((1, 1)))
+                .field("format", gst_video::VideoFormat::Bgra.to_str())
+                .field("pixel-aspect-ratio", gst::Fraction::from((1, 1)))
                 .build();
 
-            appsink
-                .set_property("caps", &caps)
-                .expect("appsink doesn't have expected 'caps' property");
-
-            pipeline
-                .set_property("video-sink", &appsink)
-                .expect("playbin doesn't have expected 'video-sink' property");
+            appsink.set_caps(Some(&caps));
+            pipeline.set_property("video-sink", &appsink);
         };
 
-        let appsink = appsink.dynamic_cast::<gst_app::AppSink>().unwrap();
         Ok(appsink)
     }
 }

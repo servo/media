@@ -1,12 +1,7 @@
-use glib;
-use glib::subclass;
+use glib::once_cell::sync::Lazy;
 use glib::subclass::prelude::*;
-use glib::translate::*;
-use gst;
 use gst::prelude::*;
 use gst::subclass::prelude::*;
-use gst_app;
-use gst_base::prelude::*;
 use std::convert::TryFrom;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
@@ -32,19 +27,10 @@ mod imp {
         };
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, Default)]
     struct Position {
         offset: u64,
         requested_offset: u64,
-    }
-
-    impl Default for Position {
-        fn default() -> Self {
-            Position {
-                offset: 0,
-                requested_offset: 0,
-            }
-        }
     }
 
     // The actual data structure that stores our values. This is not accessible
@@ -68,7 +54,7 @@ mod imp {
                 return;
             }
 
-            if self.appsrc.get_size() == -1 {
+            if self.appsrc.size() == -1 {
                 self.appsrc.set_size(size);
             }
         }
@@ -81,7 +67,7 @@ mod imp {
             } else {
                 self.seeking.store(true, Ordering::Relaxed);
                 pos.requested_offset = offset;
-                gst_debug!(
+                gst::debug!(
                     self.cat,
                     obj: parent,
                     "seeking to offset: {}",
@@ -96,7 +82,7 @@ mod imp {
             self.seeking.store(false, Ordering::Relaxed);
 
             if let Some(size) = self.size.lock().unwrap().take() {
-                if self.appsrc.get_size() == -1 {
+                if self.appsrc.size() == -1 {
                     self.appsrc.set_size(size);
                 }
             }
@@ -112,7 +98,7 @@ mod imp {
             data: Vec<u8>,
         ) -> Result<gst::FlowSuccess, gst::FlowError> {
             if self.seeking.load(Ordering::Relaxed) {
-                gst_debug!(self.cat, obj: parent, "seek in progress, ignored data");
+                gst::debug!(self.cat, obj: parent, "seek in progress, ignored data");
                 return Ok(gst::FlowSuccess::Ok);
             }
 
@@ -128,13 +114,13 @@ mod imp {
 
             pos.offset += length;
 
-            gst_trace!(self.cat, obj: parent, "offset: {}", pos.offset);
+            gst::trace!(self.cat, obj: parent, "offset: {}", pos.offset);
 
             // set the stream size (in bytes) to current offset if
             // size is lesser than it
-            let _ = u64::try_from(self.appsrc.get_size()).and_then(|size| {
+            let _ = u64::try_from(self.appsrc.size()).and_then(|size| {
                 if pos.offset > size {
-                    gst_debug!(
+                    gst::debug!(
                         self.cat,
                         obj: parent,
                         "Updating internal size from {} to {}",
@@ -151,10 +137,10 @@ mod imp {
             // size basesrc suggest. It is important not to push
             // buffers that are too large, otherwise incorrect
             // buffering messages can be sent from the pipeline
-            let block_size: u64 = self.appsrc.get_blocksize().into();
+            let block_size = 4096;
             let num_blocks = ((length - data_offset) as f64 / block_size as f64).ceil() as u64;
 
-            gst_log!(
+            gst::log!(
                 self.cat,
                 obj: parent,
                 "Splitting the received vec into {} blocks",
@@ -180,12 +166,12 @@ mod imp {
                 }
 
                 if self.seeking.load(Ordering::Relaxed) {
-                    gst_trace!(self.cat, obj: parent, "stopping buffer appends due to seek");
+                    gst::trace!(self.cat, obj: parent, "stopping buffer appends due to seek");
                     ret = Ok(gst::FlowSuccess::Ok);
                     break;
                 }
 
-                gst_trace!(self.cat, obj: parent, "Pushing buffer {:?}", buffer);
+                gst::trace!(self.cat, obj: parent, "Pushing buffer {:?}", buffer);
 
                 ret = self.appsrc.push_buffer(buffer);
                 match ret {
@@ -203,13 +189,8 @@ mod imp {
         inner_appsrc_proxy!(end_of_stream, Result<gst::FlowSuccess, gst::FlowError>);
         inner_appsrc_proxy!(set_callbacks, callbacks, gst_app::AppSrcCallbacks, ());
 
-        fn query(
-            &self,
-            pad: &gst::GhostPad,
-            parent: &gst::Element,
-            query: &mut gst::QueryRef,
-        ) -> bool {
-            gst_log!(self.cat, obj: pad, "Handling query {:?}", query);
+        fn query(&self, pad: &gst::GhostPad, query: &mut gst::QueryRef) -> bool {
+            gst::log!(self.cat, obj: pad, "Handling query {:?}", query);
 
             // In order to make buffering/downloading work as we want, apart from
             // setting the appropriate flags on the player playbin,
@@ -225,52 +206,51 @@ mod imp {
             // For 2. we need to make servosrc handle the scheduling properties query
             // to report that it "is bandwidth limited".
             let ret = match query.view_mut() {
-                gst::QueryView::Scheduling(ref mut q) => {
+                gst::QueryViewMut::Scheduling(ref mut q) => {
                     let flags =
                         gst::SchedulingFlags::SEQUENTIAL | gst::SchedulingFlags::BANDWIDTH_LIMITED;
                     q.set(flags, 1, -1, 0);
                     q.add_scheduling_modes(&[gst::PadMode::Push]);
                     true
                 }
-                _ => pad.query_default(Some(parent), query),
+                _ => gst::Pad::query_default(pad, Some(&*self.obj()), query),
             };
 
             if ret {
-                gst_log!(self.cat, obj: pad, "Handled query {:?}", query);
+                gst::log!(self.cat, obj: pad, "Handled query {:?}", query);
             } else {
-                gst_info!(self.cat, obj: pad, "Didn't handle query {:?}", query);
+                gst::info!(self.cat, obj: pad, "Didn't handle query {:?}", query);
             }
             ret
         }
     }
 
     // Basic declaration of our type for the GObject type system
+    #[glib::object_subclass]
     impl ObjectSubclass for ServoSrc {
         const NAME: &'static str = "ServoSrc";
+        type Type = super::ServoSrc;
         type ParentType = gst::Bin;
-        type Instance = gst::subclass::ElementInstanceStruct<Self>;
-        type Class = subclass::simple::ClassStruct<Self>;
-
-        glib_object_subclass!();
+        type Interfaces = (gst::URIHandler,);
 
         // Called once at the very beginning of instantiation of each instance and
         // creates the data structure that contains all our state
-        fn new_with_class(klass: &subclass::simple::ClassStruct<Self>) -> Self {
-            let app_src = gst::ElementFactory::make("appsrc", None)
+        fn with_class(klass: &Self::Class) -> Self {
+            let app_src = gst::ElementFactory::make("appsrc")
+                .build()
                 .map(|elem| elem.downcast::<gst_app::AppSrc>().unwrap())
                 .expect("Could not create appsrc element");
 
-            let pad_templ = klass.get_pad_template("src").unwrap();
-            let ghost_pad =
-                gst::GhostPad::new_no_target_from_template(Some("src"), &pad_templ).unwrap();
-
-            ghost_pad.set_query_function(|pad, parent, query| {
-                ServoSrc::catch_panic_pad_function(
-                    parent,
-                    || false,
-                    |servosrc, element| servosrc.query(pad, element, query),
-                )
-            });
+            let pad_templ = klass.pad_template("src").unwrap();
+            let ghost_pad = gst::GhostPad::builder_with_template(&pad_templ, Some("src"))
+                .query_function(|pad, parent, query| {
+                    ServoSrc::catch_panic_pad_function(
+                        parent,
+                        || false,
+                        |servosrc| servosrc.query(pad, query),
+                    )
+                })
+                .build();
 
             Self {
                 cat: gst::DebugCategory::new(
@@ -285,34 +265,6 @@ mod imp {
                 size: Mutex::new(None),
             }
         }
-
-        // Adds interface implementations in the class
-        fn type_init(type_: &mut subclass::InitializingType<Self>) {
-            type_.add_interface::<gst::URIHandler>();
-        }
-
-        // Called exactly once before the first instantiation of an instance. This
-        // sets up any type-specific things, in this specific case it installs the
-        // properties so that GObject knows about their existence and they can be
-        // used on instances of our type
-        fn class_init(klass: &mut subclass::simple::ClassStruct<Self>) {
-            klass.set_metadata(
-                "Servo Media Source",
-                "Source/Audio/Video",
-                "Feed player with media data",
-                "Servo developers",
-            );
-
-            let caps = gst::Caps::new_any();
-            let src_pad_template = gst::PadTemplate::new(
-                "src",
-                gst::PadDirection::Src,
-                gst::PadPresence::Always,
-                &caps,
-            )
-            .unwrap();
-            klass.add_pad_template(src_pad_template);
-        }
     }
 
     // The ObjectImpl trait provides the setters/getters for GObject properties.
@@ -322,48 +274,83 @@ mod imp {
     // This maps between the GObject properties and our internal storage of the
     // corresponding values of the properties.
     impl ObjectImpl for ServoSrc {
-        glib_object_impl!();
-
         // Called right after construction of a new instance
-        fn constructed(&self, obj: &glib::Object) {
+        fn constructed(&self) {
             // Call the parent class' ::constructed() implementation first
-            self.parent_constructed(obj);
+            self.parent_constructed();
 
-            let bin = obj.downcast_ref::<gst::Bin>().unwrap();
-            bin.add(&self.appsrc)
+            self.obj()
+                .add(&self.appsrc)
                 .expect("Could not add appsrc element to bin");
 
-            let target_pad = self.appsrc.get_static_pad("src");
+            let target_pad = self.appsrc.static_pad("src");
             self.srcpad.set_target(target_pad.as_ref()).unwrap();
 
-            let element = obj.downcast_ref::<gst::Element>().unwrap();
-            element
+            self.obj()
                 .add_pad(&self.srcpad)
                 .expect("Could not add source pad to bin");
 
             self.appsrc.set_caps(None::<&gst::Caps>);
             self.appsrc.set_max_bytes(MAX_SRC_QUEUE_SIZE);
-            self.appsrc.set_property_block(false);
-            self.appsrc.set_property_format(gst::Format::Bytes);
+            self.appsrc.set_block(false);
+            self.appsrc.set_format(gst::Format::Bytes);
             self.appsrc
                 .set_stream_type(gst_app::AppStreamType::Seekable);
 
-            ::set_element_flags(element, gst::ElementFlags::SOURCE);
+            self.obj().set_element_flags(gst::ElementFlags::SOURCE);
         }
     }
 
+    impl GstObjectImpl for ServoSrc {}
+
     // Implementation of gst::Element virtual methods
-    impl ElementImpl for ServoSrc {}
+    impl ElementImpl for ServoSrc {
+        fn metadata() -> Option<&'static gst::subclass::ElementMetadata> {
+            static ELEMENT_METADATA: Lazy<gst::subclass::ElementMetadata> = Lazy::new(|| {
+                gst::subclass::ElementMetadata::new(
+                    "Servo Media Source",
+                    "Source/Audio/Video",
+                    "Feed player with media data",
+                    "Servo developers",
+                )
+            });
+
+            Some(&*ELEMENT_METADATA)
+        }
+
+        fn pad_templates() -> &'static [gst::PadTemplate] {
+            static PAD_TEMPLATES: Lazy<Vec<gst::PadTemplate>> = Lazy::new(|| {
+                let caps = gst::Caps::new_any();
+                let src_pad_template = gst::PadTemplate::new(
+                    "src",
+                    gst::PadDirection::Src,
+                    gst::PadPresence::Always,
+                    &caps,
+                )
+                .unwrap();
+
+                vec![src_pad_template]
+            });
+
+            PAD_TEMPLATES.as_ref()
+        }
+    }
 
     // Implementation of gst::Bin virtual methods
     impl BinImpl for ServoSrc {}
 
     impl URIHandlerImpl for ServoSrc {
-        fn get_uri(&self, _element: &gst::URIHandler) -> Option<String> {
+        const URI_TYPE: gst::URIType = gst::URIType::Src;
+
+        fn protocols() -> &'static [&'static str] {
+            &["servosrc"]
+        }
+
+        fn uri(&self) -> Option<String> {
             Some("servosrc://".to_string())
         }
 
-        fn set_uri(&self, _element: &gst::URIHandler, uri: &str) -> Result<(), glib::Error> {
+        fn set_uri(&self, uri: &str) -> Result<(), glib::Error> {
             if let Ok(uri) = Url::parse(uri) {
                 if uri.scheme() == "servosrc" {
                     return Ok(());
@@ -374,65 +361,43 @@ mod imp {
                 format!("Invalid URI '{:?}'", uri,).as_str(),
             ))
         }
-
-        fn get_uri_type() -> gst::URIType {
-            gst::URIType::Src
-        }
-
-        fn get_protocols() -> Vec<String> {
-            vec!["servosrc".into()]
-        }
     }
 }
 
 // Public part of the ServoSrc type. This behaves like a normal
 // GObject binding
-glib_wrapper! {
-    pub struct ServoSrc(Object<gst::subclass::ElementInstanceStruct<imp::ServoSrc>,
-                        subclass::simple::ClassStruct<imp::ServoSrc>, ServoSrcClass>)
+glib::wrapper! {
+    pub struct ServoSrc(ObjectSubclass<imp::ServoSrc>)
         @extends gst::Bin, gst::Element, gst::Object, @implements gst::URIHandler;
-
-    match fn {
-        get_type => || imp::ServoSrc::get_type().to_glib(),
-    }
 }
 
 unsafe impl Send for ServoSrc {}
 unsafe impl Sync for ServoSrc {}
 
-macro_rules! inner_servosrc_proxy {
-    ($fn_name:ident, $return_type:ty) => {
-        pub fn $fn_name(&self) -> $return_type {
-            imp::ServoSrc::from_instance(self).$fn_name()
-        }
-    };
-
-    ($fn_name:ident, $arg1:ident, $arg1_type:ty, $return_type:ty) => {
-        pub fn $fn_name(&self, $arg1: $arg1_type) -> $return_type {
-            imp::ServoSrc::from_instance(self).$fn_name($arg1)
-        }
-    };
-}
-
 impl ServoSrc {
     pub fn set_size(&self, size: i64) {
-        imp::ServoSrc::from_instance(self).set_size(size)
+        self.imp().set_size(size);
     }
 
     pub fn set_seek_offset(&self, offset: u64) -> bool {
-        imp::ServoSrc::from_instance(self).set_seek_offset(self, offset)
+        self.imp().set_seek_offset(self, offset)
     }
 
     pub fn set_seek_done(&self) {
-        imp::ServoSrc::from_instance(self).set_seek_done();
+        self.imp().set_seek_done();
     }
 
     pub fn push_buffer(&self, data: Vec<u8>) -> Result<gst::FlowSuccess, gst::FlowError> {
-        imp::ServoSrc::from_instance(self).push_buffer(self, data)
+        self.imp().push_buffer(self, data)
     }
 
-    inner_servosrc_proxy!(end_of_stream, Result<gst::FlowSuccess, gst::FlowError>);
-    inner_servosrc_proxy!(set_callbacks, callbacks, gst_app::AppSrcCallbacks, ());
+    pub fn push_end_of_stream(&self) -> Result<gst::FlowSuccess, gst::FlowError> {
+        self.imp().end_of_stream()
+    }
+
+    pub fn set_callbacks(&self, callbacks: gst_app::AppSrcCallbacks) {
+        self.imp().set_callbacks(callbacks)
+    }
 }
 
 // Registers the type for our element, and then registers in GStreamer

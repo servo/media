@@ -12,9 +12,6 @@
 //! of this trait, so the player could setup a proper GStreamer
 //! pipeline, and handle the produced buffers.
 //!
-extern crate gstreamer as gst;
-
-extern crate servo_media_player as sm_player;
 
 pub trait Render {
     /// Returns `True` if the render implementation uses any version

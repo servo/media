@@ -1,5 +1,6 @@
 use crate::media_stream::GStreamerMediaStream;
 use gst;
+use gst::caps::NoFeature;
 use gst::prelude::*;
 use servo_media_streams::capture::*;
 use servo_media_streams::registry::MediaStreamId;
@@ -8,37 +9,34 @@ use std::i32;
 
 trait AddToCaps {
     type Bound;
-    fn add_to_caps<'a>(
+    fn add_to_caps(
         &self,
         name: &str,
         min: Self::Bound,
         max: Self::Bound,
-        builder: gst::caps::Builder<'a>,
-    ) -> Option<gst::caps::Builder<'a>>;
+        builder: gst::caps::Builder<NoFeature>,
+    ) -> Option<gst::caps::Builder<NoFeature>>;
 }
 
 impl AddToCaps for Constrain<u32> {
     type Bound = u32;
-    fn add_to_caps<'a>(
+    fn add_to_caps(
         &self,
         name: &str,
         min: u32,
         max: u32,
-        builder: gst::caps::Builder<'a>,
-    ) -> Option<gst::caps::Builder<'a>> {
+        builder: gst::caps::Builder<NoFeature>,
+    ) -> Option<gst::caps::Builder<NoFeature>> {
         match self {
             Constrain::Value(v) => Some(builder.field(name, v)),
             Constrain::Range(r) => {
                 let min = into_i32(r.min.unwrap_or(min));
                 let max = into_i32(r.max.unwrap_or(max));
                 let range = gst::IntRange::<i32>::new(min, max);
-                if let Some(ideal) = r.ideal {
-                    let ideal = into_i32(ideal);
-                    let array = gst::List::new(&[&ideal, &range]);
-                    Some(builder.field(name, &array))
-                } else {
-                    Some(builder.field(name, &range))
-                }
+
+                // TODO: Include the ideal caps value in the caps, needs a refactor
+                //       of the AddToCaps trait
+                Some(builder.field(name, range))
             }
         }
     }
@@ -59,28 +57,23 @@ impl AddToCaps for Constrain<f64> {
         name: &str,
         min: i32,
         max: i32,
-        builder: gst::caps::Builder<'a>,
-    ) -> Option<gst::caps::Builder<'a>> {
+        builder: gst::caps::Builder<NoFeature>,
+    ) -> Option<gst::caps::Builder<NoFeature>> {
         match self {
-            Constrain::Value(v) => {
-                Some(builder.field("name", &gst::Fraction::approximate_f64(*v)?))
-            }
+            Constrain::Value(v) => Some(builder.field("name", gst::Fraction::approximate_f64(*v)?)),
             Constrain::Range(r) => {
                 let min = r
                     .min
-                    .and_then(|v| gst::Fraction::approximate_f64(v))
+                    .and_then(gst::Fraction::approximate_f64)
                     .unwrap_or(gst::Fraction::new(min, 1));
                 let max = r
                     .max
-                    .and_then(|v| gst::Fraction::approximate_f64(v))
+                    .and_then(gst::Fraction::approximate_f64)
                     .unwrap_or(gst::Fraction::new(max, 1));
                 let range = gst::FractionRange::new(min, max);
-                if let Some(ideal) = r.ideal.and_then(|v| gst::Fraction::approximate_f64(v)) {
-                    let array = gst::List::new(&[&ideal, &range]);
-                    Some(builder.field(name, &array))
-                } else {
-                    Some(builder.field(name, &range))
-                }
+                // TODO: Include the ideal caps value in the caps, needs a refactor
+                //       of the AddToCaps trait
+                Some(builder.field(name, range))
             }
         }
     }
@@ -130,11 +123,11 @@ impl GstMediaDevices {
         };
         let caps = into_caps(constraints, format)?;
         let f = self.monitor.add_filter(Some(filter), Some(&caps));
-        let devices = self.monitor.get_devices();
+        let devices = self.monitor.devices();
         if let Some(f) = f {
             let _ = self.monitor.remove_filter(f);
         }
-        if let Some(d) = devices.get(0) {
+        if let Some(d) = devices.front() {
             let element = d.create_element(None).ok()?;
             Some(GstMediaTrack { element })
         } else {

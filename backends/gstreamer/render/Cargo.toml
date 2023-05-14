@@ -7,11 +7,14 @@ authors = ["The Servo Project Developers"]
 name = "servo_media_gstreamer_render"
 path = "lib.rs"
 
-[dependencies.gstreamer]
-version = "0.15"
+[dependencies.gst]
+package = "gstreamer"
+version = "0.20"
 
-[dependencies.gstreamer-video]
-version = "0.15"
+[dependencies.gst-video]
+package = "gstreamer-video"
+version = "0.20"
 
-[dependencies.servo-media-player]
+[dependencies.sm-player]
+package = "servo-media-player"
 path = "../../../player"
