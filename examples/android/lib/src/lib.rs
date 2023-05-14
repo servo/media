@@ -114,6 +114,7 @@ pub mod android {
 
 #[test]
 fn it_works() {
+    use std::ffi::CString;
     let backend_id = unsafe { CString::from_raw(servo_media_backend_id()) };
     assert_eq!(backend_id.to_str().unwrap(), "GStreamer");
 }

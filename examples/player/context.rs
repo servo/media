@@ -25,8 +25,6 @@ impl PlayerContextGlutin {
         }
 
         let (gl_context, native_display, gl_api) = {
-            use glutin::os::ContextTraitExt;
-
             let context = windowed_context.context();
             let raw_handle = unsafe { context.raw_handle() };
             let api = windowed_context.get_api();

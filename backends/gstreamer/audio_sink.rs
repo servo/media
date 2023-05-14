@@ -30,9 +30,11 @@ impl GStreamerAudioSink {
         }
         gst::init().map_err(|_| AudioSinkError::Backend("GStreamer init failed".to_owned()))?;
 
-        let appsrc = gst::ElementFactory::make("appsrc", None)
+        let appsrc = gst::ElementFactory::make("appsrc")
+            .build()
             .map_err(|_| AudioSinkError::Backend("appsrc creation failed".to_owned()))?;
         let appsrc = appsrc.downcast::<AppSrc>().unwrap();
+
         Ok(Self {
             pipeline: gst::Pipeline::new(None),
             appsrc: Arc::new(appsrc),
@@ -45,7 +47,7 @@ impl GStreamerAudioSink {
 
 impl GStreamerAudioSink {
     fn set_audio_info(&self, sample_rate: f32, channels: u8) -> Result<(), AudioSinkError> {
-        let audio_info = gst_audio::AudioInfo::new(
+        let audio_info = gst_audio::AudioInfo::builder(
             gst_audio::AUDIO_FORMAT_F32,
             sample_rate as u32,
             channels.into(),
@@ -78,7 +80,7 @@ impl AudioSink for GStreamerAudioSink {
     ) -> Result<(), AudioSinkError> {
         self.sample_rate.set(sample_rate);
         self.set_audio_info(sample_rate, 2)?;
-        self.appsrc.set_property_format(gst::Format::Time);
+        self.appsrc.set_format(gst::Format::Time);
 
         // Allow only a single chunk.
         self.appsrc.set_max_bytes(1);
@@ -92,16 +94,19 @@ impl AudioSink for GStreamerAudioSink {
                         .send(AudioRenderThreadMsg::SinkNeedData)
                         .unwrap();
                 };
-                appsrc.set_callbacks(AppSrcCallbacks::new().need_data(need_data).build());
+                appsrc.set_callbacks(AppSrcCallbacks::builder().need_data(need_data).build());
             })
             .unwrap();
 
         let appsrc = self.appsrc.as_ref().clone().upcast();
-        let resample = gst::ElementFactory::make("audioresample", None)
+        let resample = gst::ElementFactory::make("audioresample")
+            .build()
             .map_err(|_| AudioSinkError::Backend("audioresample creation failed".to_owned()))?;
-        let convert = gst::ElementFactory::make("audioconvert", None)
+        let convert = gst::ElementFactory::make("audioconvert")
+            .build()
             .map_err(|_| AudioSinkError::Backend("audioconvert creation failed".to_owned()))?;
-        let sink = gst::ElementFactory::make("autoaudiosink", None)
+        let sink = gst::ElementFactory::make("autoaudiosink")
+            .build()
             .map_err(|_| AudioSinkError::Backend("autoaudiosink creation failed".to_owned()))?;
         self.pipeline
             .add_many(&[&appsrc, &resample, &convert, &sink])
@@ -120,12 +125,13 @@ impl AudioSink for GStreamerAudioSink {
     ) -> Result<(), AudioSinkError> {
         self.sample_rate.set(sample_rate);
         self.set_audio_info(sample_rate, channels)?;
-        self.appsrc.set_property_format(gst::Format::Time);
+        self.appsrc.set_format(gst::Format::Time);
 
         // Do not set max bytes or callback, we will push as needed
 
         let appsrc = self.appsrc.as_ref().clone().upcast();
-        let convert = gst::ElementFactory::make("audioconvert", None)
+        let convert = gst::ElementFactory::make("audioconvert")
+            .build()
             .map_err(|_| AudioSinkError::Backend("audioconvert creation failed".to_owned()))?;
         let sink = socket
             .as_any()
@@ -158,7 +164,7 @@ impl AudioSink for GStreamerAudioSink {
     }
 
     fn has_enough_data(&self) -> bool {
-        self.appsrc.get_current_level_bytes() >= self.appsrc.get_max_bytes()
+        self.appsrc.current_level_bytes() >= self.appsrc.max_bytes()
     }
 
     fn push_data(&self, mut chunk: Chunk) -> Result<(), AudioSinkError> {
@@ -171,8 +177,8 @@ impl AudioSink for GStreamerAudioSink {
         let audio_info = audio_info.as_ref().unwrap();
         let channels = audio_info.channels();
         let bpf = audio_info.bpf() as usize;
-        assert!(bpf == 4 * channels as usize);
-        let n_samples = FRAMES_PER_BLOCK.0 as u64;
+        assert_eq!(bpf, 4 * channels as usize);
+        let n_samples = FRAMES_PER_BLOCK.0;
         let buf_size = (n_samples as usize) * (bpf);
         let mut buffer = gst::Buffer::with_size(buf_size).unwrap();
         {
@@ -181,15 +187,17 @@ impl AudioSink for GStreamerAudioSink {
             // Calculate the current timestamp (PTS) and the next one,
             // and calculate the duration from the difference instead of
             // simply the number of samples to prevent rounding errors
-            let pts = sample_offset
-                .mul_div_floor(gst::SECOND_VAL, sample_rate)
-                .unwrap()
-                .into();
-            let next_pts: gst::ClockTime = (sample_offset + n_samples)
-                .mul_div_floor(gst::SECOND_VAL, sample_rate)
-                .unwrap()
-                .into();
-            buffer.set_pts(pts);
+            let pts = gst::ClockTime::from_nseconds(
+                sample_offset
+                    .mul_div_floor(gst::ClockTime::SECOND.nseconds(), sample_rate)
+                    .unwrap(),
+            );
+            let next_pts: gst::ClockTime = gst::ClockTime::from_nseconds(
+                (sample_offset + n_samples)
+                    .mul_div_floor(gst::ClockTime::SECOND.nseconds(), sample_rate)
+                    .unwrap(),
+            );
+            buffer.set_pts(Some(pts));
             buffer.set_duration(next_pts - pts);
 
             // sometimes nothing reaches the output
