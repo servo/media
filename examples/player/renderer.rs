@@ -2,9 +2,12 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+use euclid::{Size2D, UnknownUnit};
 use servo_media::player::video;
 use std::mem;
 use std::sync::{Arc, Mutex};
+use webrender_api::units::*;
+use webrender_api::*;
 
 #[derive(PartialEq)]
 enum FrameStatus {
@@ -37,11 +40,11 @@ impl FrameHolder {
         };
     }
 
-    fn get(&self) -> (u32, euclid::Size2D<i32>, usize) {
+    fn get(&self) -> (u32, Size2D<i32, UnknownUnit>, usize) {
         if self.0 == FrameStatus::Locked {
             (
                 self.1.get_texture_id(),
-                euclid::Size2D::new(self.1.get_width(), self.1.get_height()),
+                Size2D::new(self.1.get_width(), self.1.get_height()),
                 0,
             )
         } else {
@@ -51,17 +54,19 @@ impl FrameHolder {
 }
 
 pub struct MediaFrameRenderer {
-    webrender_api: webrender_api::RenderApi,
-    current_frame: Option<(webrender_api::ImageKey, i32, i32)>,
-    old_frame: Option<webrender_api::ImageKey>,
-    very_old_frame: Option<webrender_api::ImageKey>,
+    webrender_api: RenderApi,
+    webrender_document: DocumentId,
+    current_frame: Option<(ImageKey, i32, i32)>,
+    old_frame: Option<ImageKey>,
+    very_old_frame: Option<ImageKey>,
     current_frame_holder: Option<FrameHolder>,
 }
 
 impl MediaFrameRenderer {
-    pub fn new(webrender_api_sender: webrender_api::RenderApiSender) -> Self {
+    pub fn new(webrender_api_sender: RenderApiSender, webrender_document: DocumentId) -> Self {
         Self {
             webrender_api: webrender_api_sender.create_api(),
+            webrender_document,
             current_frame: None,
             old_frame: None,
             very_old_frame: None,
@@ -69,11 +74,11 @@ impl MediaFrameRenderer {
         }
     }
 
-    pub fn current_frame(&self) -> Option<(webrender_api::ImageKey, i32, i32)> {
+    pub fn current_frame(&self) -> Option<(ImageKey, i32, i32)> {
         self.current_frame
     }
 
-    fn lock(&mut self) -> (u32, euclid::Size2D<i32>, usize) {
+    fn lock(&mut self) -> (u32, Size2D<i32, UnknownUnit>, usize) {
         self.current_frame_holder
             .as_mut()
             .map(|holder| {
@@ -92,18 +97,17 @@ impl MediaFrameRenderer {
 
 impl video::VideoFrameRenderer for MediaFrameRenderer {
     fn render(&mut self, frame: video::VideoFrame) {
-        let mut transaction = webrender_api::Transaction::new();
+        let mut transaction = Transaction::new();
 
         if let Some(old_image_key) = mem::replace(&mut self.very_old_frame, self.old_frame.take()) {
             transaction.delete_image(old_image_key);
         }
 
-        let descriptor = webrender_api::ImageDescriptor::new(
+        let descriptor = ImageDescriptor::new(
             frame.get_width(),
             frame.get_height(),
-            webrender_api::ImageFormat::BGRA8,
-            false,
-            false,
+            ImageFormat::BGRA8,
+            ImageDescriptorFlags::empty(),
         );
 
         match self.current_frame {
@@ -114,8 +118,8 @@ impl video::VideoFrameRenderer for MediaFrameRenderer {
                     transaction.update_image(
                         *image_key,
                         descriptor,
-                        webrender_api::ImageData::Raw(frame.get_data()),
-                        &webrender_api::DirtyRect::All,
+                        ImageData::Raw(frame.get_data()),
+                        &DirtyRect::All,
                     );
                 } else {
                     self.current_frame_holder
@@ -139,22 +143,22 @@ impl video::VideoFrameRenderer for MediaFrameRenderer {
 
                 let image_data = if frame.is_gl_texture() {
                     let texture_target = if frame.is_external_oes() {
-                        webrender_api::TextureTarget::External
+                        TextureTarget::External
                     } else {
-                        webrender_api::TextureTarget::Default
+                        TextureTarget::Default
                     };
 
                     self.current_frame_holder
                         .get_or_insert_with(|| FrameHolder::new(frame.clone()))
                         .set(frame);
 
-                    webrender_api::ImageData::External(webrender_api::ExternalImageData {
-                        id: webrender_api::ExternalImageId(0),
+                    webrender_api::ImageData::External(ExternalImageData {
+                        id: ExternalImageId(0),
                         channel_index: 0,
-                        image_type: webrender_api::ExternalImageType::TextureHandle(texture_target),
+                        image_type: ExternalImageType::TextureHandle(texture_target),
                     })
                 } else {
-                    webrender_api::ImageData::Raw(frame.get_data())
+                    ImageData::Raw(frame.get_data())
                 };
                 transaction.add_image(new_image_key, descriptor, image_data, None);
             }
@@ -164,27 +168,27 @@ impl video::VideoFrameRenderer for MediaFrameRenderer {
 
                 let image_data = if frame.is_gl_texture() {
                     let texture_target = if frame.is_external_oes() {
-                        webrender_api::TextureTarget::External
+                        TextureTarget::External
                     } else {
-                        webrender_api::TextureTarget::Default
+                        TextureTarget::Default
                     };
 
                     self.current_frame_holder = Some(FrameHolder::new(frame));
 
-                    webrender_api::ImageData::External(webrender_api::ExternalImageData {
-                        id: webrender_api::ExternalImageId(0),
+                    webrender_api::ImageData::External(ExternalImageData {
+                        id: ExternalImageId(0),
                         channel_index: 0,
-                        image_type: webrender_api::ExternalImageType::TextureHandle(texture_target),
+                        image_type: ExternalImageType::TextureHandle(texture_target),
                     })
                 } else {
-                    webrender_api::ImageData::Raw(frame.get_data())
+                    ImageData::Raw(frame.get_data())
                 };
                 transaction.add_image(image_key, descriptor, image_data, None);
             }
         }
 
         self.webrender_api
-            .update_resources(transaction.resource_updates);
+            .send_transaction(self.webrender_document, transaction);
     }
 }
 
@@ -198,21 +202,21 @@ impl MediaFrameHandler {
     }
 }
 
-impl webrender::ExternalImageHandler for MediaFrameHandler {
+impl ExternalImageHandler for MediaFrameHandler {
     fn lock(
         &mut self,
-        _key: webrender_api::ExternalImageId,
+        _key: ExternalImageId,
         _channel_index: u8,
-        _rendering: webrender_api::ImageRendering,
-    ) -> webrender::ExternalImage {
+        _rendering: ImageRendering,
+    ) -> ExternalImage {
         let (texture_id, size, _) = self.renderer.lock().unwrap().lock();
-        webrender::ExternalImage {
-            uv: webrender_api::TexelRect::new(0., 0., size.width as f32, size.height as f32),
-            source: webrender::ExternalImageSource::NativeTexture(texture_id),
+        ExternalImage {
+            uv: TexelRect::new(0., 0., size.width as f32, size.height as f32),
+            source: ExternalImageSource::NativeTexture(texture_id),
         }
     }
 
-    fn unlock(&mut self, _key: webrender_api::ExternalImageId, _channel_index: u8) {
+    fn unlock(&mut self, _key: ExternalImageId, _channel_index: u8) {
         self.renderer.lock().unwrap().unlock()
     }
 }

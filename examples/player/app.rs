@@ -2,6 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+use euclid::Scale;
 use failure::Error;
 use ipc_channel::ipc::{self, IpcReceiver};
 use servo_media::player;
@@ -11,6 +12,11 @@ use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
+use webrender::Renderer;
+use webrender::*;
+use webrender_api::units::*;
+use webrender_api::DocumentId;
+use webrender_api::*;
 
 #[derive(Debug, Fail)]
 #[fail(display = "WebRender Error: {}", _0)]
@@ -42,8 +48,8 @@ impl Notifier {
     }
 }
 
-impl webrender_api::RenderNotifier for Notifier {
-    fn clone(&self) -> Box<dyn webrender_api::RenderNotifier> {
+impl RenderNotifier for Notifier {
+    fn clone(&self) -> Box<dyn RenderNotifier> {
         Box::new(Notifier {
             events_proxy: self.events_proxy.clone(),
         })
@@ -56,7 +62,7 @@ impl webrender_api::RenderNotifier for Notifier {
 
     fn new_frame_ready(
         &self,
-        _: webrender_api::DocumentId,
+        _: DocumentId,
         _scrolled: bool,
         _composite_needed: bool,
         _render_time: Option<u64>,
@@ -101,8 +107,9 @@ pub struct Options {
 pub struct App {
     events_loop: glutin::EventsLoop,
     windowed_context: glutin::WindowedContext<glutin::PossiblyCurrent>,
-    webrender: webrender::Renderer,
-    webrender_api: webrender_api::RenderApi,
+    webrender: Renderer,
+    webrender_api: RenderApi,
+    webrender_document: DocumentId,
     player: Arc<Mutex<dyn player::Player>>,
     file: File,
     player_event_receiver: IpcReceiver<player::PlayerEvent>,
@@ -143,25 +150,37 @@ impl App {
         println!("OpenGL version {}", gl.get_string(gleam::gl::VERSION));
 
         // WebRender
-        let mut debug_flags = webrender::DebugFlags::empty();
-        debug_flags.set(webrender::DebugFlags::PROFILER_DBG, opts.wr_stats);
+        let mut debug_flags = DebugFlags::empty();
+        debug_flags.set(DebugFlags::PROFILER_DBG, opts.wr_stats);
 
-        let (mut webrender, webrender_api_sender) = webrender::Renderer::new(
+        let device_pixel_ratio = windowed_context.window().get_hidpi_factor() as f32;
+        let device_size = {
+            let size = windowed_context
+                .window()
+                .get_inner_size()
+                .unwrap()
+                .to_physical(device_pixel_ratio as f64);
+            DeviceIntSize::new(size.width as i32, size.height as i32)
+        };
+
+        let (mut webrender, webrender_api_sender) = Renderer::new(
             gl,
             Box::new(Notifier::new(events_loop.create_proxy())),
-            webrender::RendererOptions {
+            RendererOptions {
                 resource_override_path: None,
-                precache_flags: webrender::ShaderPrecacheFlags::empty(),
+                precache_flags: ShaderPrecacheFlags::empty(),
                 device_pixel_ratio: windowed_context.window().get_hidpi_factor() as _,
-                clear_color: Some(webrender_api::ColorF::BLACK),
+                clear_color: Some(ColorF::BLACK),
                 debug_flags,
                 ..Default::default()
             },
             None,
+            device_size,
         )
         .map_err(|err| WRError(format!("{:?}", err)))?;
 
         let webrender_api = webrender_api_sender.create_api();
+        let webrender_document = webrender_api.add_document(device_size, 0);
 
         // player
         let (player_event_sender, player_event_receiver) = ipc::channel::<player::PlayerEvent>()?;
@@ -171,6 +190,7 @@ impl App {
         let frame_renderer = if !opts.no_video {
             Some(Arc::new(Mutex::new(MediaFrameRenderer::new(
                 webrender_api_sender,
+                webrender_document,
             ))))
         } else {
             None
@@ -206,6 +226,7 @@ impl App {
             windowed_context,
             webrender,
             webrender_api,
+            webrender_document,
             player,
             file,
             player_event_receiver,
@@ -235,24 +256,23 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
     let mut framebuffer_size = {
         let glutin::dpi::PhysicalSize { width, height } =
             window_size.to_physical(device_pixel_ratio as f64);
-        webrender_api::DeviceIntSize::new(width as i32, height as i32)
+        DeviceIntSize::new(width as i32, height as i32)
     };
-    let webrender_document = app.webrender_api.add_document(framebuffer_size, 0);
 
-    let epoch = webrender_api::Epoch(0);
-    let webrender_pipeline = webrender_api::PipelineId(0, 0);
-    let layout_size =
-        framebuffer_size.to_f32() / euclid::TypedScale::new(device_pixel_ratio as f32);
+    let epoch = Epoch(0);
+    let webrender_pipeline = PipelineId(0, 0);
+    let dpr_scale: Scale<f32, LayoutPixel, DevicePixel> = Scale::new(device_pixel_ratio as f32);
+    let layout_size = framebuffer_size.to_f32() / dpr_scale;
 
     // first frame ?
     {
-        let mut transaction = webrender_api::Transaction::new();
-        let builder = webrender_api::DisplayListBuilder::new(webrender_pipeline, layout_size);
+        let mut transaction = Transaction::new();
+        let builder = DisplayListBuilder::new(webrender_pipeline, layout_size);
         transaction.set_display_list(epoch, None, layout_size, builder.finalize(), true);
         transaction.set_root_pipeline(webrender_pipeline);
         transaction.generate_frame();
         app.webrender_api
-            .send_transaction(webrender_document, transaction);
+            .send_transaction(app.webrender_document, transaction);
     }
 
     // file reader
@@ -279,8 +299,7 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
                     let size = logical_size.to_physical(device_pixel_ratio);
                     windowed_context.resize(size);
 
-                    framebuffer_size =
-                        webrender_api::DeviceIntSize::new(size.width as i32, size.height as i32);
+                    framebuffer_size = DeviceIntSize::new(size.width as i32, size.height as i32);
                 }
                 glutin::WindowEvent::KeyboardInput {
                     input:
@@ -423,30 +442,25 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
         }
 
         if frameupdated {
-            let mut builder =
-                webrender_api::DisplayListBuilder::new(webrender_pipeline, layout_size);
-            let mut transaction = webrender_api::Transaction::new();
+            let mut builder = DisplayListBuilder::new(webrender_pipeline, layout_size);
+            let mut transaction = Transaction::new();
 
             {
                 app.frame_renderer.as_ref().and_then(|renderer| {
                     renderer.lock().unwrap().current_frame().and_then(|frame| {
-                        let content_bounds = webrender_api::LayoutRect::new(
-                            webrender_api::LayoutPoint::zero(),
-                            webrender_api::LayoutSize::new(frame.1 as f32, frame.2 as f32),
+                        let content_bounds = LayoutRect::new(
+                            LayoutPoint::zero(),
+                            LayoutSize::new(frame.1 as f32, frame.2 as f32),
                         );
-                        let info = webrender_api::LayoutPrimitiveInfo::new(content_bounds);
-                        let root_space_and_clip =
-                            webrender_api::SpaceAndClipInfo::root_scroll(webrender_pipeline);
+                        let root_space_and_clip = SpaceAndClipInfo::root_scroll(webrender_pipeline);
 
                         builder.push_image(
-                            &info,
-                            &root_space_and_clip,
-                            info.rect.size,
-                            webrender_api::LayoutSize::zero(),
-                            webrender_api::ImageRendering::Auto,
-                            webrender_api::AlphaType::PremultipliedAlpha,
+                            &CommonItemProperties::new(content_bounds, root_space_and_clip),
+                            content_bounds,
+                            ImageRendering::Auto,
+                            AlphaType::PremultipliedAlpha,
                             frame.0.clone(),
-                            webrender_api::ColorF::WHITE,
+                            ColorF::WHITE,
                         );
 
                         Some(frame)
@@ -457,7 +471,7 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
             transaction.set_display_list(epoch, None, layout_size, builder.finalize(), true);
             transaction.generate_frame();
             app.webrender_api
-                .send_transaction(webrender_document, transaction);
+                .send_transaction(app.webrender_document, transaction);
 
             frameupdated = false;
         }
