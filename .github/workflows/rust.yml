@@ -1,6 +1,12 @@
-name: Rust
+name: CI
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  merge_group:
+    types: [checks_requested]
 
 env:
   CARGO_TERM_COLOR: always
@@ -67,12 +73,9 @@ jobs:
         gst-inspect-1.0 | grep Total
     - name: Build
       run: cargo build
-    - name: Examples
-      run: |
-        ls examples/*.rs | xargs -I{} basename  {} .rs  | grep -v params_connect | RUST_BACKTRACE=1 GST_DEBUG=3 xargs -I{} cargo ex {} --all-features
 
   build_result:
-    name: homu build finished
+    name: Result
     runs-on: ubuntu-latest
     needs: ["Build"]
     steps:
