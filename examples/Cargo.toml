@@ -20,7 +20,7 @@ servo-media = { path = "../servo-media" }
 webrender = { git = "https://github.com/servo/webrender", optional = true }
 webrender_api = { git = "https://github.com/servo/webrender", optional = true }
 websocket = { version = "0.22", optional = true }
-ipc-channel = { version = "0.16", optional = true }
+ipc-channel = { version = "0.17", optional = true }
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 winit = { version = "0.19", optional = true }
