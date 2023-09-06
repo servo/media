@@ -3,87 +3,36 @@ name = "servo-media-gstreamer"
 version = "0.1.0"
 authors = ["The Servo Project Developers"]
 
-[build-dependencies]
-regex = "1.0"
-zip = "0.3.1"
-lazy_static = "1.0"
-
 [lib]
 name = "servo_media_gstreamer"
 path = "lib.rs"
 
 [dependencies]
 boxfnonce = "0.1.0"
-mime = "0.3.13"
+byte-slice-cast = "0.2"
+glib = "0.9"
+glib-sys = "0.9"
+gstreamer = "0.15"
+gstreamer-app = "0.15"
+gstreamer-audio = "0.15"
+gstreamer-base = "0.15"
+gstreamer-sys = "0.8"
+gstreamer-player = "0.15"
+gstreamer-sdp = "0.15"
+gstreamer-video = "0.15"
+gstreamer-webrtc = { version = "0.15", features = ["v1_16"] }
+ipc-channel = "0.17"
+lazy_static = "1.2.0"
 log = "0.4"
-
-[dependencies.byte-slice-cast]
-version = "0.2"
-
-[dependencies.glib]
-version = "0.9"
-
-[dependencies.glib-sys]
-version = "0.9"
-
-[dependencies.gstreamer-sys]
-version = "0.8"
-features = ["v1_8"]
-
-[dependencies.gstreamer]
-version = "0.15"
-
-[dependencies.gstreamer-app]
-version = "0.15"
-
-[dependencies.gstreamer-audio]
-version = "0.15"
-
-[dependencies.gstreamer-base]
-version = "0.15"
-
-[dependencies.gstreamer-player]
-version = "0.15"
-
-[dependencies.gstreamer-sdp]
-version = "0.15"
-
-[dependencies.gstreamer-webrtc]
-version = "0.15"
-features = ["v1_16"]
-
-[dependencies.gstreamer-video]
-version = "0.15"
-
-[dependencies.ipc-channel]
-version = "0.17"
-
-[dependencies.lazy_static]
-version = "1.2.0"
-
-[dependencies.servo-media]
-path = "../../servo-media"
-
-[dependencies.servo-media-audio]
-path = "../../audio"
-
-[dependencies.servo-media-player]
-path = "../../player"
-
-[dependencies.url]
-version = "2.0"
-
-[dependencies.servo-media-streams]
-path = "../../streams"
-
-[dependencies.servo-media-traits]
-path = "../../traits"
-
-[dependencies.servo-media-webrtc]
-path = "../../webrtc"
-
-[dependencies.servo-media-gstreamer-render]
-path = "render"
+mime = "0.3.13"
+servo-media = { path = "../../servo-media" }
+servo-media-audio = { path = "../../audio" }
+servo-media-gstreamer-render = { path = "render" }
+servo-media-player = { path = "../../player" }
+servo-media-streams = { path = "../../streams" }
+servo-media-traits = { path = "../../traits" }
+servo-media-webrtc = { path = "../../webrtc" }
+url = "2.0"
 
 [target.'cfg(any(target_os = "linux", target_os = "dragonfly", target_os = "freebsd", target_os = "netbsd", target_os = "openbsd"))'.dependencies]
 servo-media-gstreamer-render-unix = { path = "render-unix", features = ["gl-egl", "gl-x11"] }
