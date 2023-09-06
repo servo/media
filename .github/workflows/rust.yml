@@ -10,6 +10,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  GST_PLUGIN_FEATURE_RANK: pulsesink:NONE,alsasink:NONE,jacksink:NONE,fakesink:MAX
 
 jobs:
   Build:
