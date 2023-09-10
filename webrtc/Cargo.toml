@@ -10,7 +10,7 @@ path = "lib.rs"
 boxfnonce = "0.1.0"
 lazy_static = "1.0"
 log = "0.4.6"
-uuid = { version = "0.8", features = ["v4"] }
+uuid = { version = "1.4", features = ["v4"] }
 
 [dependencies.servo-media-streams]
 path = "../streams"
