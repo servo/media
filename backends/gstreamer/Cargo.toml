@@ -13,15 +13,15 @@ boxfnonce = "0.1.0"
 byte-slice-cast = "0.2"
 glib = "0.17"
 glib-sys = "0.17"
-gstreamer = "0.20"
-gstreamer-app = "0.20"
-gstreamer-audio = "0.20"
-gstreamer-base = "0.20"
+gst = { package = "gstreamer", version = "0.20" }
+gst-app = { package = "gstreamer-app", version = "0.20" }
+gst-audio = { package = "gstreamer-audio", version = "0.20" }
+gst-video = { package = "gstreamer-video", version = "0.20" }
+gst-base = { package = "gstreamer-base", version = "0.20" }
+gst-player = { package = "gstreamer-player", version = "0.20" }
+gst-webrtc = { package = "gstreamer-webrtc", version = "0.20", features = ["v1_18"] }
+gst-sdp = { package = "gstreamer-sdp", version = "0.20" }
 gstreamer-sys = "0.20"
-gstreamer-player = "0.20"
-gstreamer-sdp = "0.20"
-gstreamer-video = "0.20"
-gstreamer-webrtc = { version = "0.20", features = ["v1_18"] }
 ipc-channel = { workspace = true }
 lazy_static = "1.2.0"
 log = "0.4"
