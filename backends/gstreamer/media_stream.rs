@@ -1,7 +1,7 @@
 use super::BACKEND_BASE_TIME;
+use glib::once_cell::sync::Lazy;
 use gst;
 use gst::prelude::*;
-use glib::once_cell::sync::Lazy;
 use servo_media_streams::registry::{
     get_stream, register_stream, unregister_stream, MediaStreamId,
 };
@@ -134,10 +134,17 @@ impl GStreamerMediaStream {
             MediaStreamType::Video => {
                 let vp8enc = gst::ElementFactory::make("vp8enc")
                     .property("deadline", 1i64)
+                    .property("error-resilient", "default")
+                    .property("cpu-used", -16i32)
+                    .property("lag-in-frames", 0i32)
                     .build()
                     .unwrap();
 
-                let rtpvp8pay = gst::ElementFactory::make("rtpvp8pay").build().unwrap();
+                let rtpvp8pay = gst::ElementFactory::make("rtpvp8pay")
+                    .property("picture-id-mode", "15-bit")
+                    .property("mtu", 1200u32)
+                    .build()
+                    .unwrap();
                 let queue2 = gst::ElementFactory::make("queue").build().unwrap();
 
                 pipeline
@@ -153,7 +160,10 @@ impl GStreamerMediaStream {
             }
             MediaStreamType::Audio => {
                 let opusenc = gst::ElementFactory::make("opusenc").build().unwrap();
-                let rtpopuspay = gst::ElementFactory::make("rtpopuspay").build().unwrap();
+                let rtpopuspay = gst::ElementFactory::make("rtpopuspay")
+                    .property("mtu", 1200u32)
+                    .build()
+                    .unwrap();
                 let queue3 = gst::ElementFactory::make("queue").build().unwrap();
                 pipeline
                     .add_many(&[&opusenc, &rtpopuspay, &queue3, &capsfilter])
