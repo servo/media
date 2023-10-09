@@ -4,7 +4,6 @@ use glib::subclass::prelude::*;
 use gst::prelude::*;
 use gst::subclass::prelude::*;
 use gst_base::UniqueFlowCombiner;
-use lazy_static::lazy_static;
 use servo_media_streams::{MediaStream, MediaStreamType};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -14,26 +13,25 @@ use url::Url;
 mod imp {
     use super::*;
 
-    lazy_static! {
-        static ref AUDIO_SRC_PAD_TEMPLATE: gst::PadTemplate = {
-            gst::PadTemplate::new(
-                "audio_src",
-                gst::PadDirection::Src,
-                gst::PadPresence::Sometimes,
-                &RTP_CAPS_OPUS,
-            )
-            .expect("Could not create audio src pad template")
-        };
-        static ref VIDEO_SRC_PAD_TEMPLATE: gst::PadTemplate = {
-            gst::PadTemplate::new(
-                "video_src",
-                gst::PadDirection::Src,
-                gst::PadPresence::Sometimes,
-                &RTP_CAPS_VP8,
-            )
-            .expect("Could not create video src pad template")
-        };
-    }
+    static AUDIO_SRC_PAD_TEMPLATE: Lazy<gst::PadTemplate> = Lazy::new(|| {
+        gst::PadTemplate::new(
+            "audio_src",
+            gst::PadDirection::Src,
+            gst::PadPresence::Sometimes,
+            &RTP_CAPS_OPUS,
+        )
+        .expect("Could not create audio src pad template")
+    });
+
+    static VIDEO_SRC_PAD_TEMPLATE: Lazy<gst::PadTemplate> = Lazy::new(|| {
+        gst::PadTemplate::new(
+            "video_src",
+            gst::PadDirection::Src,
+            gst::PadPresence::Sometimes,
+            &RTP_CAPS_VP8,
+        )
+        .expect("Could not create video src pad template")
+    });
 
     pub struct ServoMediaStreamSrc {
         cat: gst::DebugCategory,

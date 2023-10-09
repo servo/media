@@ -15,7 +15,7 @@ pub mod webrtc;
 use device_monitor::GStreamerDeviceMonitor;
 use gst::prelude::*;
 use ipc_channel::ipc::IpcSender;
-use lazy_static::lazy_static;
+use glib::once_cell::sync::Lazy;
 use log::warn;
 use media_stream::GStreamerMediaStream;
 use mime::Mime;
@@ -43,9 +43,9 @@ use std::sync::{Arc, Mutex, Weak};
 use std::thread;
 use std::vec::Vec;
 
-lazy_static! {
-    static ref BACKEND_BASE_TIME: gst::ClockTime = gst::SystemClock::obtain().time().unwrap();
-}
+static BACKEND_BASE_TIME: Lazy<gst::ClockTime> = Lazy::new(|| {
+    gst::SystemClock::obtain().time().unwrap()
+});
 
 pub struct GStreamerBackend {
     capture_mocking: AtomicBool,
