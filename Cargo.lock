@@ -2529,7 +2529,6 @@ dependencies = [
  "gstreamer-video",
  "gstreamer-webrtc",
  "ipc-channel",
- "lazy_static",
  "log 0.4.20",
  "mime 0.3.17",
  "once_cell",

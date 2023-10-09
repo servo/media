@@ -1,7 +1,7 @@
 use super::BACKEND_BASE_TIME;
 use gst;
 use gst::prelude::*;
-use lazy_static::lazy_static;
+use glib::once_cell::sync::Lazy;
 use servo_media_streams::registry::{
     get_stream, register_stream, unregister_stream, MediaStreamId,
 };
@@ -9,20 +9,19 @@ use servo_media_streams::{MediaOutput, MediaSocket, MediaStream, MediaStreamType
 use std::any::Any;
 use std::sync::{Arc, Mutex};
 
-lazy_static! {
-    pub static ref RTP_CAPS_OPUS: gst::Caps = {
-        gst::Caps::builder("application/x-rtp")
-            .field("media", "audio")
-            .field("encoding-name", "OPUS")
-            .build()
-    };
-    pub static ref RTP_CAPS_VP8: gst::Caps = {
-        gst::Caps::builder("application/x-rtp")
-            .field("media", "video")
-            .field("encoding-name", "VP8")
-            .build()
-    };
-}
+pub static RTP_CAPS_OPUS: Lazy<gst::Caps> = Lazy::new(|| {
+    gst::Caps::builder("application/x-rtp")
+        .field("media", "audio")
+        .field("encoding-name", "OPUS")
+        .build()
+});
+
+pub static RTP_CAPS_VP8: Lazy<gst::Caps> = Lazy::new(|| {
+    gst::Caps::builder("application/x-rtp")
+        .field("media", "video")
+        .field("encoding-name", "VP8")
+        .build()
+});
 
 pub struct GStreamerMediaStream {
     id: Option<MediaStreamId>,

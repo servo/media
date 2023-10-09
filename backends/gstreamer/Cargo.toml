@@ -22,7 +22,6 @@ gst-player = { package = "gstreamer-player", version = "0.20" }
 gst-webrtc = { package = "gstreamer-webrtc", version = "0.20", features = ["v1_18"] }
 gst-sdp = { package = "gstreamer-sdp", version = "0.20" }
 gstreamer-sys = "0.20"
-gstreamer-webrtc = { version = "0.20", features = ["v1_18"] }
 ipc-channel = { workspace = true }
 lazy_static = "1.2.0"
 log = "0.4"
