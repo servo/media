@@ -13,9 +13,9 @@ mod source;
 pub mod webrtc;
 
 use device_monitor::GStreamerDeviceMonitor;
+use glib::once_cell::sync::Lazy;
 use gst::prelude::*;
 use ipc_channel::ipc::IpcSender;
-use glib::once_cell::sync::Lazy;
 use log::warn;
 use media_stream::GStreamerMediaStream;
 use mime::Mime;
@@ -44,9 +44,8 @@ use std::sync::{Arc, Mutex, Weak};
 use std::thread;
 use std::vec::Vec;
 
-static BACKEND_BASE_TIME: Lazy<gst::ClockTime> = Lazy::new(|| {
-    gst::SystemClock::obtain().time().unwrap()
-});
+static BACKEND_BASE_TIME: Lazy<gst::ClockTime> =
+    Lazy::new(|| gst::SystemClock::obtain().time().unwrap());
 
 static BACKEND_THREAD: OnceCell<bool> = OnceCell::new();
 
