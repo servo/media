@@ -644,7 +644,7 @@ pub fn construct(
     thread: WebRtcThread,
 ) -> Result<GStreamerWebRtcController, WebRtcError> {
     let main_loop = glib::MainLoop::new(None, false);
-    let pipeline = gst::Pipeline::new(Some("webrtc main"));
+    let pipeline = gst::Pipeline::with_name("webrtc main");
     pipeline.set_start_time(gst::ClockTime::NONE);
     pipeline.set_base_time(*BACKEND_BASE_TIME);
     pipeline.use_clock(Some(&gst::SystemClock::obtain()));

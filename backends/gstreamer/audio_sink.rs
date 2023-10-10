@@ -36,7 +36,7 @@ impl GStreamerAudioSink {
         let appsrc = appsrc.downcast::<AppSrc>().unwrap();
 
         Ok(Self {
-            pipeline: gst::Pipeline::new(None),
+            pipeline: gst::Pipeline::new(),
             appsrc: Arc::new(appsrc),
             sample_rate: Cell::new(DEFAULT_SAMPLE_RATE),
             audio_info: RefCell::new(None),
