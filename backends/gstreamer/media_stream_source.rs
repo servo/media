@@ -148,7 +148,8 @@ mod imp {
                 pad_template: &gst::PadTemplate,
                 flow_combiner: Arc<Mutex<UniqueFlowCombiner>>,
             ) -> gst::GhostPad {
-                gst::GhostPad::builder_with_template(pad_template, Some(name))
+                gst::GhostPad::builder_from_template(pad_template)
+                    .name(name)
                     .chain_function({
                         move |pad, parent, buffer| {
                             let chain_result = gst::ProxyPad::chain_default(pad, parent, buffer);

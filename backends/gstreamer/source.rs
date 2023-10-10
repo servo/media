@@ -242,7 +242,7 @@ mod imp {
                 .expect("Could not create appsrc element");
 
             let pad_templ = klass.pad_template("src").unwrap();
-            let ghost_pad = gst::GhostPad::builder_with_template(&pad_templ, Some("src"))
+            let ghost_pad = gst::GhostPad::builder_from_template(&pad_templ).name("src")
                 .query_function(|pad, parent, query| {
                     ServoSrc::catch_panic_pad_function(
                         parent,

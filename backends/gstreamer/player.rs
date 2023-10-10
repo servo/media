@@ -424,7 +424,7 @@ impl GStreamerPlayer {
             // player store the downloaded media in a local temporary file for
             // faster playback of already-downloaded chunks.
             let flags = pipeline.property_value("flags");
-            let flags_class = match glib::FlagsClass::new(flags.type_()) {
+            let flags_class = match glib::FlagsClass::with_type(flags.type_()) {
                 Some(flags) => flags,
                 None => {
                     return Err(PlayerError::Backend(

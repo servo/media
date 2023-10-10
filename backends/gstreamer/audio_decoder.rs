@@ -32,7 +32,7 @@ impl AudioDecoder for GStreamerAudioDecoder {
         callbacks: AudioDecoderCallbacks,
         options: Option<AudioDecoderOptions>,
     ) {
-        let pipeline = gst::Pipeline::new(None);
+        let pipeline = gst::Pipeline::new();
         let callbacks = Arc::new(callbacks);
 
         let appsrc = match gst::ElementFactory::make("appsrc").build() {

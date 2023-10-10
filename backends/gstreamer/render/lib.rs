@@ -20,8 +20,8 @@ pub trait Render {
 
     /// Returns the Player's `Frame` to be consumed by the API user.
     ///
-    /// The implementator of this method will map the `sample`'s
-    /// buffer to the rendering appropiate structure. In the case of
+    /// The implementation of this method will map the `sample`'s
+    /// buffer to the rendering appropriate structure. In the case of
     /// OpenGL-based renders, the `Frame`, instead of the raw data,
     /// will transfer the texture ID.
     ///
