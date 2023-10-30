@@ -21,7 +21,7 @@ gstreamer-player = "0.15"
 gstreamer-sdp = "0.15"
 gstreamer-video = "0.15"
 gstreamer-webrtc = { version = "0.15", features = ["v1_16"] }
-ipc-channel = "0.17"
+ipc-channel = { workspace = true }
 lazy_static = "1.2.0"
 log = "0.4"
 mime = "0.3.13"
