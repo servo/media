@@ -15,6 +15,9 @@ members = [
   "webrtc"
 ]
 
+[workspace.dependencies]
+ipc-channel = "0.18"
+
 [patch."https://github.com/servo/webrender"]
 webrender = { git = "https://github.com/jdm/webrender", branch = "crash-backtrace" }
 webrender_api = { git = "https://github.com/jdm/webrender", branch = "crash-backtrace" }
