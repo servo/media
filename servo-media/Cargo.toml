@@ -7,6 +7,9 @@ authors = ["Manish Goregaokar <manishsmail@gmail.com>"]
 name = "servo_media"
 path = "lib.rs"
 
+[dependencies]
+once_cell = "1.18.0"
+
 [dependencies.servo-media-audio]
 path = "../audio"
 

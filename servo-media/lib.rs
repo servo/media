@@ -4,10 +4,13 @@ pub extern crate servo_media_streams as streams;
 pub extern crate servo_media_traits as traits;
 pub extern crate servo_media_webrtc as webrtc;
 
+extern crate once_cell;
+
 pub use traits::*;
 
 use std::ops::Deref;
-use std::sync::{Arc, Mutex, Once};
+use std::sync::{Arc, Mutex};
+use std::thread;
 
 use audio::context::{AudioContext, AudioContextOptions};
 use player::audio::AudioRenderer;
@@ -21,10 +24,11 @@ use streams::registry::MediaStreamId;
 use streams::{MediaOutput, MediaSocket, MediaStreamType};
 use webrtc::{WebRtcController, WebRtcSignaller};
 
+use once_cell::sync::OnceCell;
+
 pub struct ServoMedia(Box<dyn Backend>);
 
-static INITIALIZER: Once = Once::new();
-static mut INSTANCE: *mut Mutex<Option<Arc<ServoMedia>>> = std::ptr::null_mut();
+static INSTANCE: OnceCell<Arc<ServoMedia>> = OnceCell::new();
 
 pub trait BackendInit {
     fn init() -> Box<dyn Backend>;
@@ -89,29 +93,18 @@ pub enum SupportsMediaType {
 
 impl ServoMedia {
     pub fn init<B: BackendInit>() {
-        INITIALIZER.call_once(|| unsafe {
-            let instance = Arc::new(ServoMedia(B::init()));
-            INSTANCE = Box::into_raw(Box::new(Mutex::new(Some(instance))));
-        })
+        thread::spawn(|| INSTANCE.get_or_init(|| Arc::new(ServoMedia(B::init()))));
     }
 
-    pub fn init_with_backend(backend: Box<dyn Backend>) {
-        INITIALIZER.call_once(|| unsafe {
-            let instance = Arc::new(ServoMedia(backend));
-            INSTANCE = Box::into_raw(Box::new(Mutex::new(Some(instance))));
-        })
+    pub fn init_with_backend<F>(backend_factory: F)
+    where
+        F: Fn() -> Box<dyn Backend> + Send + 'static,
+    {
+        thread::spawn(move || INSTANCE.get_or_init(|| Arc::new(ServoMedia(backend_factory()))));
     }
 
     pub fn get() -> Result<Arc<ServoMedia>, ()> {
-        if INITIALIZER.is_completed() {
-            let instance = unsafe { &*INSTANCE }.lock().unwrap();
-            match *instance {
-                Some(ref instance) => Ok(instance.clone()),
-                None => Err(()),
-            }
-        } else {
-            Err(())
-        }
+        Ok(INSTANCE.wait().clone())
     }
 }
 
