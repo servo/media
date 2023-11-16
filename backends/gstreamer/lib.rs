@@ -66,8 +66,12 @@ impl GStreamerBackend {
         plugins: &[&'static str],
     ) -> Result<Box<dyn Backend>, ErrorLoadingPlugins> {
 
+        // from GStreamer 1.19.1 to 1.22.7 glib's MainLoop is required
         BACKEND_THREAD.get_or_init(|| {
-            thread::spawn(|| glib::MainLoop::new(None, false).run());
+            let (major, minor, micro, _) = gst::version();
+            if  (major, minor, micro) >= (1, 19, 1) && (major, minor, micro) <= (1, 22, 7) {
+                thread::spawn(|| glib::MainLoop::new(None, false).run());
+            }
             true
         });
 
