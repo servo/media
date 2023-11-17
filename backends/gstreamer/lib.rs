@@ -19,6 +19,7 @@ use ipc_channel::ipc::IpcSender;
 use log::warn;
 use media_stream::GStreamerMediaStream;
 use mime::Mime;
+use once_cell::sync::OnceCell;
 use registry_scanner::GSTREAMER_REGISTRY_SCANNER;
 use servo_media::{Backend, BackendInit, SupportsMediaType};
 use servo_media_audio::context::{AudioContext, AudioContextOptions};
@@ -43,6 +44,8 @@ use std::sync::{Arc, Mutex, Weak};
 use std::thread;
 use std::vec::Vec;
 
+static BACKEND_THREAD: OnceCell<bool> = OnceCell::new();
+
 static BACKEND_BASE_TIME: Lazy<gst::ClockTime> =
     Lazy::new(|| gst::SystemClock::obtain().time().unwrap());
 
@@ -62,6 +65,12 @@ impl GStreamerBackend {
         plugin_dir: PathBuf,
         plugins: &[&'static str],
     ) -> Result<Box<dyn Backend>, ErrorLoadingPlugins> {
+
+        BACKEND_THREAD.get_or_init(|| {
+            thread::spawn(|| glib::MainLoop::new(None, false).run());
+            true
+        });
+
         gst::init().unwrap();
 
         let mut errors = vec![];

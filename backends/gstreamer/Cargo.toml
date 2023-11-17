@@ -26,6 +26,7 @@ ipc-channel = { workspace = true }
 lazy_static = "1.2.0"
 log = "0.4"
 mime = "0.3.13"
+once_cell = "1.18.0"
 servo-media = { path = "../../servo-media" }
 servo-media-audio = { path = "../../audio" }
 servo-media-gstreamer-render = { path = "render" }
