@@ -21,6 +21,7 @@ extern crate ipc_channel;
 extern crate lazy_static;
 #[macro_use]
 extern crate log;
+extern crate once_cell;
 
 extern crate servo_media;
 extern crate servo_media_audio;
@@ -50,6 +51,7 @@ use gst::ClockExt;
 use ipc_channel::ipc::IpcSender;
 use media_stream::GStreamerMediaStream;
 use mime::Mime;
+use once_cell::sync::OnceCell;
 use registry_scanner::GSTREAMER_REGISTRY_SCANNER;
 use servo_media::{Backend, BackendInit, SupportsMediaType};
 use servo_media_audio::context::{AudioContext, AudioContextOptions};
@@ -78,6 +80,8 @@ lazy_static! {
     static ref BACKEND_BASE_TIME: gst::ClockTime = gst::SystemClock::obtain().get_time();
 }
 
+static BACKEND_THREAD: OnceCell<bool> = OnceCell::new();
+
 pub struct GStreamerBackend {
     capture_mocking: AtomicBool,
     instances: Arc<Mutex<HashMap<ClientContextId, Vec<(usize, Weak<Mutex<dyn MediaInstance>>)>>>>,
@@ -95,6 +99,22 @@ impl GStreamerBackend {
         plugins: &[&'static str],
     ) -> Result<Box<dyn Backend>, ErrorLoadingPlugins> {
         gst::init().unwrap();
+
+        // GStreamer between 1.19.1 and 1.22.7 will not send messages like "end of stream"
+        // to GstPlayer unless there is a GLib main loop running somewhere. We should remove
+        // this workaround when we raise of required version of GStreamer.
+        // See https://github.com/servo/media/pull/393.
+        let needs_background_glib_main_loop = {
+            let (major, minor, micro, _) = gst::version();
+            (major, minor, micro) >= (1, 19, 1) && (major, minor, micro) <= (1, 22, 7)
+        };
+
+        if needs_background_glib_main_loop {
+            BACKEND_THREAD.get_or_init(|| {
+                thread::spawn(|| glib::MainLoop::new(None, false).run());
+                true
+            });
+        }
 
         let mut errors = vec![];
         for plugin in plugins {
