@@ -12,9 +12,6 @@
 //! of this trait, so the player could setup a proper GStreamer
 //! pipeline, and handle the produced buffers.
 //!
-extern crate gstreamer as gst;
-
-extern crate servo_media_player as sm_player;
 
 pub trait Render {
     /// Returns `True` if the render implementation uses any version
@@ -23,8 +20,8 @@ pub trait Render {
 
     /// Returns the Player's `Frame` to be consumed by the API user.
     ///
-    /// The implementator of this method will map the `sample`'s
-    /// buffer to the rendering appropiate structure. In the case of
+    /// The implementation of this method will map the `sample`'s
+    /// buffer to the rendering appropriate structure. In the case of
     /// OpenGL-based renders, the `Frame`, instead of the raw data,
     /// will transfer the texture ID.
     ///

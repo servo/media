@@ -2,6 +2,7 @@
 name = "servo-media-gstreamer"
 version = "0.1.0"
 authors = ["The Servo Project Developers"]
+edition = "2021"
 
 [lib]
 name = "servo_media_gstreamer"
@@ -10,17 +11,17 @@ path = "lib.rs"
 [dependencies]
 boxfnonce = "0.1.0"
 byte-slice-cast = "0.2"
-glib = "0.9"
-glib-sys = "0.9"
-gstreamer = "0.15"
-gstreamer-app = "0.15"
-gstreamer-audio = "0.15"
-gstreamer-base = "0.15"
-gstreamer-sys = "0.8"
-gstreamer-player = "0.15"
-gstreamer-sdp = "0.15"
-gstreamer-video = "0.15"
-gstreamer-webrtc = { version = "0.15", features = ["v1_16"] }
+glib = "0.18"
+glib-sys = "0.18"
+gst = { package = "gstreamer", version = "0.21" }
+gst-app = { package = "gstreamer-app", version = "0.21" }
+gst-audio = { package = "gstreamer-audio", version = "0.21" }
+gst-video = { package = "gstreamer-video", version = "0.21" }
+gst-base = { package = "gstreamer-base", version = "0.21" }
+gst-player = { package = "gstreamer-player", version = "0.21" }
+gst-webrtc = { package = "gstreamer-webrtc", version = "0.21", features = ["v1_18"] }
+gst-sdp = { package = "gstreamer-sdp", version = "0.21" }
+gstreamer-sys = "0.21"
 ipc-channel = { workspace = true }
 lazy_static = "1.2.0"
 log = "0.4"

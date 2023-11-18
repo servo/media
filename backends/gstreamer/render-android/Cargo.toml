@@ -2,26 +2,17 @@
 name = "servo-media-gstreamer-render-android"
 version = "0.1.0"
 authors = ["The Servo Project Developers"]
+edition = "2021"
 
 [lib]
 name = "servo_media_gstreamer_render_android"
 path = "lib.rs"
 
-[dependencies.glib]
-version = "0.9"
-
-[dependencies.gstreamer]
-version = "0.15"
-
-[dependencies.gstreamer-gl]
-version = "0.15"
-features = ["egl"]
-
-[dependencies.gstreamer-video]
-version = "0.15"
-
-[dependencies.servo-media-player]
-path = "../../../player"
-
-[dependencies.servo-media-gstreamer-render]
-path = "../render"
+[dependencies]
+glib = "0.18"
+gst = { package = "gstreamer", version = "0.21" }
+gst-gl = { package = "gstreamer-gl", version = "0.21" }
+gstreamer-gl-egl = { package = "gstreamer-gl-egl", version = "0.21" }
+gst-video = { package = "gstreamer-video", version = "0.21" }
+sm-player = { package = "servo-media-player", path = "../../../player" }
+sm-gst-render = { package = "servo-media-gstreamer-render", path = "../render" }

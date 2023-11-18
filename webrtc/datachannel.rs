@@ -12,7 +12,6 @@ pub enum DataChannelMessage {
 
 #[derive(Debug)]
 pub enum DataChannelState {
-    New,
     Connecting,
     Open,
     Closing,
