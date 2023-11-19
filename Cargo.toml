@@ -17,6 +17,21 @@ members = [
 ]
 
 [workspace.dependencies]
+glib = "0.18"
+glib-sys = "0.18"
+gst = { package = "gstreamer", version = "0.21" }
+gst-app = { package = "gstreamer-app", version = "0.21" }
+gst-audio = { package = "gstreamer-audio", version = "0.21" }
+gst-base = { package = "gstreamer-base", version = "0.21" }
+gst-gl = { package = "gstreamer-gl", version = "0.21" }
+gst-player = { package = "gstreamer-player", version = "0.21" }
+gst-sdp = { package = "gstreamer-sdp", version = "0.21" }
+gst-video = { package = "gstreamer-video", version = "0.21" }
+gst-webrtc = { package = "gstreamer-webrtc", version = "0.21", features = ["v1_18"] }
+gstreamer-gl-egl = { version = "0.21" }
+gstreamer-gl-wayland = { version = "0.21" }
+gstreamer-gl-x11 = { version = "0.21" }
+gstreamer-sys = "0.21"
 ipc-channel = "0.18"
 
 [patch."https://github.com/servo/webrender"]

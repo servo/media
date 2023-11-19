@@ -9,10 +9,10 @@ name = "servo_media_gstreamer_render_android"
 path = "lib.rs"
 
 [dependencies]
-glib = "0.18"
-gst = { package = "gstreamer", version = "0.21" }
-gst-gl = { package = "gstreamer-gl", version = "0.21" }
-gstreamer-gl-egl = { package = "gstreamer-gl-egl", version = "0.21" }
-gst-video = { package = "gstreamer-video", version = "0.21" }
+glib = { workspace = true }
+gst = { workspace = true }
+gst-gl = { workspace = true }
+gstreamer-gl-egl = { workspace = true }
+gst-video = { workspace = true }
 sm-player = { package = "servo-media-player", path = "../../../player" }
 sm-gst-render = { package = "servo-media-gstreamer-render", path = "../render" }
