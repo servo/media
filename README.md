@@ -1,6 +1,6 @@
 # Servo Media
 
-[![Build Status](https://travis-ci.org/servo/media.svg?branch=master)](https://travis-ci.org/servo/media)
+[![Build Status](https://github.com/servo/media/actions/workflows/rust.yml/badge.svg)](https://github.com/servo/media/actions)
 
 The `servo-media` crate contains the backend implementation to support all [Servo](https://github.com/servo/servo) multimedia related functionality. This is:
   - the [HTMLMediaElement](https://html.spec.whatwg.org/multipage/media.html#htmlmediaelement) and the `<audio>` and `<video>` elements.
