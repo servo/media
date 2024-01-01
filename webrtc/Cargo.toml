@@ -2,6 +2,7 @@
 name = "servo-media-webrtc"
 version = "0.1.0"
 authors = ["Josh Matthews <josh@joshmatthews.net>"]
+license = "MPL-2.0"
 
 [lib]
 path = "lib.rs"
