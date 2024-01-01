@@ -14,7 +14,7 @@ euclid = "0.22"
 log = "0.4"
 serde_derive = "1.0.66"
 serde = "1.0.66"
-servo_media_derive = { path = "../servo-media-derive" }
+servo-media-derive = { path = "../servo-media-derive" }
 servo-media-player = { path = "../player" }
 servo-media-traits = { path = "../traits" }
 servo-media-streams = { path = "../streams" }
