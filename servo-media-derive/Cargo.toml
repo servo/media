@@ -1,5 +1,5 @@
 [package]
-name = "servo_media_derive"
+name = "servo-media-derive"
 version = "0.1.0"
 authors = ["Fernando Jiménez Moreno <ferjmoreno@gmail.com>"]
 
