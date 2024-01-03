@@ -192,7 +192,7 @@ impl Render for RenderAndroid {
             .name("servo-media-vsink")
             .property("sink", &appsink)
             .build()
-            .map_err(|_| PlayerError::Backend("glupload creation failed".to_owned()))?;
+            .map_err(|error| PlayerError::Backend(format!("glupload creation failed: {error:?}")))?;
 
         pipeline.set_property("video-sink", &vsinkbin);
 

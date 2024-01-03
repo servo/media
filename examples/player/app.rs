@@ -185,7 +185,7 @@ impl App {
         // player
         let (player_event_sender, player_event_receiver) = ipc::channel::<player::PlayerEvent>()?;
         let servo_media =
-            ServoMedia::get().map_err(|_| MiscError("Failed to get media backend"))?;
+            ServoMedia::get().map_err(|error| MiscError(format!("Failed to get media backend: {error:?}").as_str()))?;
 
         let frame_renderer = if !opts.no_video {
             Some(Arc::new(Mutex::new(MediaFrameRenderer::new(
@@ -219,7 +219,7 @@ impl App {
             .lock()
             .unwrap()
             .set_input_size(metadata.len())
-            .map_err(|_| MiscError("Failed to set media input size"))?;
+            .map_err(|error| MiscError(format!("Failed to set media input size: {error:?}").as_str()))?;
 
         Ok(App {
             events_loop,
@@ -283,7 +283,7 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
         .lock()
         .unwrap()
         .play()
-        .map_err(|_| MiscError("Failed to start player"))?;
+        .map_err(|error| MiscError(format!("Failed to start player: {error:?}").as_str()))?;
 
     let mut running = true;
     let mut input_eos = false;
@@ -338,7 +338,7 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
                     .lock()
                     .unwrap()
                     .stop()
-                    .map_err(|_| MiscError("Failed to stop player"))?;
+                    .map_err(|error| MiscError(format!("Failed to stop player: {error:?}").as_str()))?;
                 input_eos = true;
             }
             PlayerCmd::Pause => {
@@ -346,14 +346,14 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
                     .lock()
                     .unwrap()
                     .pause()
-                    .map_err(|_| MiscError("Failed to pause player"))?;
+                    .map_err(|error| MiscError(format!("Failed to pause player: {error:?}").as_str()))?;
             }
             PlayerCmd::Play => {
                 player
                     .lock()
                     .unwrap()
                     .play()
-                    .map_err(|_| MiscError("Failed to start player"))?;
+                    .map_err(|error| MiscError(format!("Failed to start player: {error:?}").as_str()))?;
             }
             PlayerCmd::Seek(time) => {
                 let time = playerstate.pos + time;
@@ -365,7 +365,7 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
                     .lock()
                     .unwrap()
                     .seek(time)
-                    .map_err(|_| MiscError("Failed to seek"))?;
+                    .map_err(|error| MiscError(format!("Failed to seek: {error:?}").as_str()))?;
             }
             PlayerCmd::Mute => {
                 playerstate.mute = !playerstate.mute;
@@ -373,7 +373,7 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
                     .lock()
                     .unwrap()
                     .mute(playerstate.mute)
-                    .map_err(|_| MiscError("Failed to mute player"))?;
+                    .map_err(|error| MiscError(format!("Failed to mute player: {error:?}").as_str()))?;
             }
             _ => (),
         }
@@ -419,7 +419,7 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
                                     input_eos = true;
                                     Ok(())
                                 })
-                                .map_err(|_| SMError("Error at setting EOS".to_string()))?;
+                                .map_err(|error| SMError(format!("Error at setting EOS: {error:?}")))?;
                         } else {
                             player
                                 .lock()

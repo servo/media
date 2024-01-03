@@ -130,7 +130,7 @@ impl GStreamerRender {
     ) -> Result<gst_app::AppSink, PlayerError> {
         let appsink = gst::ElementFactory::make("appsink")
             .build()
-            .map_err(|_| PlayerError::Backend("appsink creation failed".to_owned()))?
+            .map_err(|error| PlayerError::Backend(format!("appsink creation failed: {error:?}")))?
             .downcast::<gst_app::AppSink>()
             .unwrap();
 

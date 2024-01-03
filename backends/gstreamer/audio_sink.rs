@@ -28,11 +28,11 @@ impl GStreamerAudioSink {
         if let Some(category) = gst::DebugCategory::get("openslessink") {
             category.set_threshold(gst::DebugLevel::Trace);
         }
-        gst::init().map_err(|_| AudioSinkError::Backend("GStreamer init failed".to_owned()))?;
+        gst::init().map_err(|error| AudioSinkError::Backend(format!("GStreamer init failed: {error:?}")))?;
 
         let appsrc = gst::ElementFactory::make("appsrc")
             .build()
-            .map_err(|_| AudioSinkError::Backend("appsrc creation failed".to_owned()))?;
+            .map_err(|error| AudioSinkError::Backend(format!("appsrc creation failed: {error:?}")))?;
         let appsrc = appsrc.downcast::<AppSrc>().unwrap();
 
         Ok(Self {
@@ -53,7 +53,7 @@ impl GStreamerAudioSink {
             channels.into(),
         )
         .build()
-        .map_err(|_| AudioSinkError::Backend("AudioInfo failed".to_owned()))?;
+        .map_err(|error| AudioSinkError::Backend(format!("AudioInfo failed: {error:?}")))?;
         self.appsrc.set_caps(audio_info.to_caps().ok().as_ref());
         *self.audio_info.borrow_mut() = Some(audio_info);
         Ok(())
@@ -101,18 +101,18 @@ impl AudioSink for GStreamerAudioSink {
         let appsrc = self.appsrc.as_ref().clone().upcast();
         let resample = gst::ElementFactory::make("audioresample")
             .build()
-            .map_err(|_| AudioSinkError::Backend("audioresample creation failed".to_owned()))?;
+            .map_err(|error| AudioSinkError::Backend(format!("audioresample creation failed: {error:?}")))?;
         let convert = gst::ElementFactory::make("audioconvert")
             .build()
-            .map_err(|_| AudioSinkError::Backend("audioconvert creation failed".to_owned()))?;
+            .map_err(|error| AudioSinkError::Backend(format!("audioconvert creation failed: {error:?}")))?;
         let sink = gst::ElementFactory::make("autoaudiosink")
             .build()
-            .map_err(|_| AudioSinkError::Backend("autoaudiosink creation failed".to_owned()))?;
+            .map_err(|error| AudioSinkError::Backend(format!("autoaudiosink creation failed: {error:?}")))?;
         self.pipeline
             .add_many(&[&appsrc, &resample, &convert, &sink])
-            .map_err(|e| AudioSinkError::Backend(e.to_string()))?;
+            .map_err(|error| AudioSinkError::Backend(error.to_string()))?;
         gst::Element::link_many(&[&appsrc, &resample, &convert, &sink])
-            .map_err(|e| AudioSinkError::Backend(e.to_string()))?;
+            .map_err(|error| AudioSinkError::Backend(error.to_string()))?;
 
         Ok(())
     }
@@ -132,7 +132,7 @@ impl AudioSink for GStreamerAudioSink {
         let appsrc = self.appsrc.as_ref().clone().upcast();
         let convert = gst::ElementFactory::make("audioconvert")
             .build()
-            .map_err(|_| AudioSinkError::Backend("audioconvert creation failed".to_owned()))?;
+            .map_err(|error| AudioSinkError::Backend(format!("audioconvert creation failed: {error:?}")))?;
         let sink = socket
             .as_any()
             .downcast_ref::<GstreamerMediaSocket>()
@@ -142,9 +142,9 @@ impl AudioSink for GStreamerAudioSink {
 
         self.pipeline
             .add_many(&[&appsrc, &convert, &sink])
-            .map_err(|e| AudioSinkError::Backend(e.to_string()))?;
+            .map_err(|error| AudioSinkError::Backend(error.to_string()))?;
         gst::Element::link_many(&[&appsrc, &convert, &sink])
-            .map_err(|e| AudioSinkError::Backend(e.to_string()))?;
+            .map_err(|error| AudioSinkError::Backend(error.to_string()))?;
 
         Ok(())
     }
