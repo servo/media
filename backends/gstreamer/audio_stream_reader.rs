@@ -36,15 +36,15 @@ impl GStreamerAudioStreamReader {
         let capsfilter0 = gst::ElementFactory::make("capsfilter")
             .property("caps", caps)
             .build()
-            .map_err(|_| "capsfilter creation failed".to_owned())?;
+            .map_err(|error| format!("capsfilter creation failed: {error:?}"))?;
 
         let split = gst::ElementFactory::make("audiobuffersplit")
             .property("output-buffer-duration", time_per_block)
             .build()
-            .map_err(|_| "audiobuffersplit creation failed".to_owned())?;
+            .map_err(|error| format!("audiobuffersplit creation failed: {error:?}"))?;
         let convert = gst::ElementFactory::make("audioconvert")
             .build()
-            .map_err(|_| "audioconvert creation failed".to_owned())?;
+            .map_err(|error| format!("audioconvert creation failed: {error:?}"))?;
         let caps = gst_audio::AudioCapsBuilder::new()
             .layout(gst_audio::AudioLayout::NonInterleaved)
             .format(AUDIO_FORMAT_F32)
@@ -53,19 +53,19 @@ impl GStreamerAudioStreamReader {
         let capsfilter = gst::ElementFactory::make("capsfilter")
             .property("caps", caps)
             .build()
-            .map_err(|_| "capsfilter creation failed".to_owned())?;
+            .map_err(|error| format!("capsfilter creation failed: {error:?}"))?;
         let sink = gst::ElementFactory::make("appsink")
             .property("sync", false)
             .build()
-            .map_err(|_| "appsink creation failed".to_owned())?;
+            .map_err(|error| format!("appsink creation failed: {error:?}"))?;
 
         let appsink = sink.clone().dynamic_cast::<gst_app::AppSink>().unwrap();
 
         let elements = [&element, &capsfilter0, &split, &convert, &capsfilter, &sink];
         pipeline
             .add_many(&elements[1..])
-            .map_err(|_| "pipeline adding failed".to_owned())?;
-        gst::Element::link_many(&elements).map_err(|_| "element linking failed".to_owned())?;
+            .map_err(|error| format!("pipeline adding failed: {error:?}"))?;
+        gst::Element::link_many(&elements).map_err(|error| format!("element linking failed: {error:?}"))?;
         for e in &elements {
             e.sync_state_with_parent().map_err(|e| e.to_string())?;
         }

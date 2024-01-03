@@ -461,7 +461,7 @@ impl GStreamerPlayer {
         if let Some(ref audio_renderer) = self.audio_renderer {
             let audio_sink = gst::ElementFactory::make("appsink")
                 .build()
-                .map_err(|_| PlayerError::Backend("appsink creation failed".to_owned()))?;
+                .map_err(|error| PlayerError::Backend(format!("appsink creation failed: {error:?}")))?;
 
             pipeline.set_property("audio-sink", &audio_sink);
 
@@ -506,14 +506,14 @@ impl GStreamerPlayer {
         // https://github.com/servo/servo/issues/22010#issuecomment-432599657
         let uri = match self.stream_type {
             StreamType::Stream => {
-                register_servo_media_stream_src().map_err(|_| {
-                    PlayerError::Backend("servomediastreamsrc registration error".to_owned())
+                register_servo_media_stream_src().map_err(|error| {
+                    PlayerError::Backend(format!("servomediastreamsrc registration error: {error:?}"))
                 })?;
                 "mediastream://".to_value()
             }
             StreamType::Seekable => {
                 register_servo_src()
-                    .map_err(|_| PlayerError::Backend("servosrc registration error".to_owned()))?;
+                    .map_err(|error| PlayerError::Backend(format!("servosrc registration error: {error:?}")))?;
                 "servosrc://".to_value()
             }
         };

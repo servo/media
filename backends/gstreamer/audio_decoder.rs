@@ -146,26 +146,26 @@ impl AudioDecoder for GStreamerAudioDecoder {
             let insert_deinterleave = || -> Result<(), AudioDecoderError> {
                 let convert = gst::ElementFactory::make("audioconvert")
                     .build()
-                    .map_err(|_| {
-                        AudioDecoderError::Backend("audioconvert creation failed".to_owned())
+                    .map_err(|error| {
+                        AudioDecoderError::Backend(format!("audioconvert creation failed: {error:?}"))
                     })?;
                 let resample =
                     gst::ElementFactory::make("audioresample")
                         .build()
-                        .map_err(|_| {
-                            AudioDecoderError::Backend("audioresample creation failed".to_owned())
+                        .map_err(|error| {
+                            AudioDecoderError::Backend(format!("audioresample creation failed: {error:?}"))
                         })?;
                 let filter = gst::ElementFactory::make("capsfilter")
                     .build()
-                    .map_err(|_| {
-                        AudioDecoderError::Backend("capsfilter creation failed".to_owned())
+                    .map_err(|error| {
+                        AudioDecoderError::Backend(format!("capsfilter creation failed: {error:?}"))
                     })?;
                 let deinterleave = gst::ElementFactory::make("deinterleave")
                     .name("deinterleave")
                     .property("keep-positions", true)
                     .build()
-                    .map_err(|_| {
-                        AudioDecoderError::Backend("deinterleave creation failed".to_owned())
+                    .map_err(|error| {
+                        AudioDecoderError::Backend(format!("deinterleave creation failed: {error:?}"))
                     })?;
 
                 let pipeline_ = pipeline.downgrade();
@@ -187,11 +187,11 @@ impl AudioDecoder for GStreamerAudioDecoder {
                         }
                     };
                     let insert_sink = || -> Result<(), AudioDecoderError> {
-                        let queue = gst::ElementFactory::make("queue").build().map_err(|_| {
-                            AudioDecoderError::Backend("queue creation failed".to_owned())
+                        let queue = gst::ElementFactory::make("queue").build().map_err(|error| {
+                            AudioDecoderError::Backend(format!("queue creation failed: {error:?}"))
                         })?;
-                        let sink = gst::ElementFactory::make("appsink").build().map_err(|_| {
-                            AudioDecoderError::Backend("appsink creation failed".to_owned())
+                        let sink = gst::ElementFactory::make("appsink").build().map_err(|error| {
+                            AudioDecoderError::Backend(format!("appsink creation failed: {error:?}"))
                         })?;
                         let appsink = sink.clone().dynamic_cast::<gst_app::AppSink>().unwrap();
                         sink.set_property("sync", false);
@@ -278,10 +278,10 @@ impl AudioDecoder for GStreamerAudioDecoder {
                 }
                 let audio_info = audio_info_builder
                     .build()
-                    .map_err(|_| AudioDecoderError::Backend("AudioInfo failed".to_owned()))?;
+                    .map_err(|error| AudioDecoderError::Backend(format!("AudioInfo failed: {error:?}")))?;
                 let caps = audio_info
                     .to_caps()
-                    .map_err(|_| AudioDecoderError::Backend("AudioInfo failed".to_owned()))?;
+                    .map_err(|error| AudioDecoderError::Backend(format!("AudioInfo failed: {error:?}")))?;
                 filter.set_property("caps", caps);
 
                 let elements = &[&convert, &resample, &filter, &deinterleave];

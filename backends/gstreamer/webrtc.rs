@@ -651,7 +651,7 @@ pub fn construct(
     let webrtc = gst::ElementFactory::make("webrtcbin")
         .name("sendrecv")
         .build()
-        .map_err(|_| "webrtcbin element not found")?;
+        .map_err(|error| format!("webrtcbin element not found: {error:?}"))?;
     let mut controller = GStreamerWebRtcController {
         webrtc,
         pipeline,

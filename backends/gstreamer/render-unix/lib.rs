@@ -218,7 +218,7 @@ impl Render for RenderUnix {
         let vsinkbin = gst::ElementFactory::make("glsinkbin")
             .name("servo-media-vsink")
             .build()
-            .map_err(|_| PlayerError::Backend("glupload creation failed".to_owned()))?;
+            .map_err(|error| PlayerError::Backend(format!("glupload creation failed: {error:?}")))?;
 
         let caps = gst::Caps::builder("video/x-raw")
             .features([gst_gl::CAPS_FEATURE_MEMORY_GL_MEMORY])
