@@ -1,4 +1,3 @@
-extern crate boxfnonce;
 extern crate ipc_channel;
 extern crate servo_media;
 extern crate servo_media_audio;
@@ -7,7 +6,6 @@ extern crate servo_media_streams;
 extern crate servo_media_traits;
 extern crate servo_media_webrtc;
 
-use boxfnonce::SendBoxFnOnce;
 use ipc_channel::ipc::IpcSender;
 use servo_media::{Backend, BackendInit, SupportsMediaType};
 use servo_media_audio::block::{Block, Chunk};
@@ -288,24 +286,24 @@ impl WebRtcControllerBackend for DummyWebRtcController {
     fn set_remote_description(
         &mut self,
         _: SessionDescription,
-        _: SendBoxFnOnce<'static, ()>,
+        _: Box<dyn FnOnce() + Send + 'static>,
     ) -> WebRtcResult {
         Ok(())
     }
     fn set_local_description(
         &mut self,
         _: SessionDescription,
-        _: SendBoxFnOnce<'static, ()>,
+        _: Box<dyn FnOnce() + Send + 'static>,
     ) -> WebRtcResult {
         Ok(())
     }
     fn add_ice_candidate(&mut self, _: IceCandidate) -> WebRtcResult {
         Ok(())
     }
-    fn create_offer(&mut self, _: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebRtcResult {
+    fn create_offer(&mut self, _: Box<dyn FnOnce(SessionDescription) + Send + 'static>) -> WebRtcResult {
         Ok(())
     }
-    fn create_answer(&mut self, _: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebRtcResult {
+    fn create_answer(&mut self, _: Box<dyn FnOnce(SessionDescription) + Send + 'static>) -> WebRtcResult {
         Ok(())
     }
     fn add_stream(&mut self, _: &MediaStreamId) -> WebRtcResult {

@@ -10,7 +10,6 @@ name = "servo_media_gstreamer"
 path = "lib.rs"
 
 [dependencies]
-boxfnonce = "0.1.0"
 byte-slice-cast = "0.2"
 glib = "0.18"
 glib-sys = "0.18"

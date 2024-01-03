@@ -187,10 +187,9 @@ impl WebRtcSignaller for Signaller {
         let c2 = controller.clone();
         let s2 = self.clone();
         controller.create_offer(
-            (move |offer: SessionDescription| {
-                c2.set_local_description(offer.clone(), (move || s2.send_sdp(offer)).into())
+            Box::new(move |offer: SessionDescription| {
+                c2.set_local_description(offer.clone(), Box::new(move || s2.send_sdp(offer)))
             })
-            .into(),
         );
     }
 
@@ -300,25 +299,23 @@ fn receive_loop(
                                 };
                                 let controller = state.webrtc.as_ref().unwrap();
                                 if state.peer_id.is_some() {
-                                    controller.set_remote_description(desc, (|| {}).into());
+                                    controller.set_remote_description(desc, Box::new(|| {}));
                                 } else {
                                     let c2 = controller.clone();
                                     let c3 = controller.clone();
                                     let s2 = state.signaller.clone().unwrap();
                                     controller.set_remote_description(
                                         desc,
-                                        (move || {
+                                        Box::new(move || {
                                             c3.create_answer(
-                                                (move |answer: SessionDescription| {
+                                                Box::new(move |answer: SessionDescription| {
                                                     c2.set_local_description(
                                                         answer.clone(),
-                                                        (move || s2.send_sdp(answer)).into(),
+                                                        Box::new(move || s2.send_sdp(answer)),
                                                     )
                                                 })
-                                                .into(),
                                             )
                                         })
-                                        .into(),
                                     );
                                 }
                             }

@@ -92,7 +92,7 @@ fn impl_audio_scheduled_source_node(ast: &syn::DeriveInput) -> proc_macro2::Toke
                     return;
                 }
                 if let Some(cb) = self.onended_callback.take() {
-                    cb.0.call()
+                    cb.0()
                 }
             }
 

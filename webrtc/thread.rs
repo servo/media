@@ -3,8 +3,6 @@ use std::thread;
 
 use log::error;
 
-use boxfnonce::SendBoxFnOnce;
-
 use crate::datachannel::{DataChannelEvent, DataChannelId, DataChannelInit, DataChannelMessage};
 use crate::{
     BundlePolicy, DescriptionType, IceCandidate, MediaStreamId, SdpType, SessionDescription,
@@ -43,12 +41,12 @@ impl WebRtcController {
             .sender
             .send(RtcThreadEvent::ConfigureStun(stun_server, policy));
     }
-    pub fn set_remote_description(&self, desc: SessionDescription, cb: SendBoxFnOnce<'static, ()>) {
+    pub fn set_remote_description(&self, desc: SessionDescription, cb: Box<dyn FnOnce() + Send + 'static>) {
         let _ = self
             .sender
             .send(RtcThreadEvent::SetRemoteDescription(desc, cb));
     }
-    pub fn set_local_description(&self, desc: SessionDescription, cb: SendBoxFnOnce<'static, ()>) {
+    pub fn set_local_description(&self, desc: SessionDescription, cb: Box<dyn FnOnce() + Send + 'static>) {
         let _ = self
             .sender
             .send(RtcThreadEvent::SetLocalDescription(desc, cb));
@@ -56,10 +54,10 @@ impl WebRtcController {
     pub fn add_ice_candidate(&self, candidate: IceCandidate) {
         let _ = self.sender.send(RtcThreadEvent::AddIceCandidate(candidate));
     }
-    pub fn create_offer(&self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) {
+    pub fn create_offer(&self, cb: Box<dyn FnOnce(SessionDescription,) + Send + 'static>) {
         let _ = self.sender.send(RtcThreadEvent::CreateOffer(cb));
     }
-    pub fn create_answer(&self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) {
+    pub fn create_answer(&self, cb: Box<dyn FnOnce(SessionDescription,) + Send + 'static>) {
         let _ = self.sender.send(RtcThreadEvent::CreateAnswer(cb));
     }
     pub fn add_stream(&self, stream: &MediaStreamId) {
@@ -93,11 +91,11 @@ impl WebRtcController {
 
 pub enum RtcThreadEvent {
     ConfigureStun(String, BundlePolicy),
-    SetRemoteDescription(SessionDescription, SendBoxFnOnce<'static, ()>),
-    SetLocalDescription(SessionDescription, SendBoxFnOnce<'static, ()>),
+    SetRemoteDescription(SessionDescription, Box<dyn FnOnce() + Send + 'static>),
+    SetLocalDescription(SessionDescription, Box<dyn FnOnce() + Send + 'static>),
     AddIceCandidate(IceCandidate),
-    CreateOffer(SendBoxFnOnce<'static, (SessionDescription,)>),
-    CreateAnswer(SendBoxFnOnce<'static, (SessionDescription,)>),
+    CreateOffer(Box<dyn FnOnce(SessionDescription,) + Send + 'static>),
+    CreateAnswer(Box<dyn FnOnce(SessionDescription,) + Send + 'static>),
     AddStream(MediaStreamId),
     CreateDataChannel(DataChannelInit, Sender<Option<DataChannelId>>),
     CloseDataChannel(DataChannelId),
@@ -117,7 +115,7 @@ pub enum InternalEvent {
     OnAddStream(MediaStreamId, MediaStreamType),
     OnDataChannelEvent(DataChannelId, DataChannelEvent),
     DescriptionAdded(
-        SendBoxFnOnce<'static, ()>,
+        Box<dyn FnOnce() + Send + 'static>,
         DescriptionType,
         SdpType,
         /* remote offer generation */ u32,

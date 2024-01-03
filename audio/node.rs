@@ -1,6 +1,5 @@
 use biquad_filter_node::{BiquadFilterNodeMessage, BiquadFilterNodeOptions};
 use block::{Block, Chunk, Tick};
-use boxfnonce::SendBoxFnOnce;
 use buffer_source_node::{AudioBufferSourceNodeMessage, AudioBufferSourceNodeOptions};
 use channel_node::ChannelNodeOptions;
 use constant_source_node::ConstantSourceNodeOptions;
@@ -204,11 +203,11 @@ pub enum AudioNodeMessage {
     WaveShaperNode(WaveShaperNodeMessage),
 }
 
-pub struct OnEndedCallback(pub SendBoxFnOnce<'static, ()>);
+pub struct OnEndedCallback(pub Box<dyn FnOnce() + Send + 'static>);
 
 impl OnEndedCallback {
     pub fn new<F: FnOnce() + Send + 'static>(callback: F) -> Self {
-        OnEndedCallback(SendBoxFnOnce::new(callback))
+        OnEndedCallback(Box::new(callback))
     }
 }
 
