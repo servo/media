@@ -8,7 +8,6 @@ license = "MPL-2.0"
 path = "lib.rs"
 
 [dependencies]
-boxfnonce = "0.1.0"
 lazy_static = "1.0"
 log = "0.4.6"
 uuid = { version = "1.4", features = ["v4"] }

@@ -1,7 +1,6 @@
 use super::BACKEND_BASE_TIME;
 use crate::datachannel::GStreamerWebRtcDataChannel;
 use crate::media_stream::GStreamerMediaStream;
-use boxfnonce::SendBoxFnOnce;
 use glib;
 use glib::prelude::*;
 use gst;
@@ -97,7 +96,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
     fn set_remote_description(
         &mut self,
         desc: SessionDescription,
-        cb: SendBoxFnOnce<'static, ()>,
+        cb: Box<dyn FnOnce() + Send + 'static>,
     ) -> WebRtcResult {
         self.set_description(desc, DescriptionType::Remote, cb)
     }
@@ -105,12 +104,12 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
     fn set_local_description(
         &mut self,
         desc: SessionDescription,
-        cb: SendBoxFnOnce<'static, ()>,
+        cb: Box<dyn FnOnce() + Send + 'static>,
     ) -> WebRtcResult {
         self.set_description(desc, DescriptionType::Local, cb)
     }
 
-    fn create_offer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebRtcResult {
+    fn create_offer(&mut self, cb: Box<dyn FnOnce(SessionDescription) + Send + 'static>) -> WebRtcResult {
         self.flush_pending_streams(true)?;
         self.pipeline.set_state(gst::State::Playing)?;
         let promise = gst::Promise::with_change_func(move |res| {
@@ -123,7 +122,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         Ok(())
     }
 
-    fn create_answer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebRtcResult {
+    fn create_answer(&mut self, cb: Box<dyn FnOnce(SessionDescription) + Send + 'static>) -> WebRtcResult {
         let promise = gst::Promise::with_change_func(move |res| {
             res.map(|s| on_offer_or_answer_created(SdpType::Answer, s.unwrap(), cb))
                 .unwrap();
@@ -260,7 +259,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                     self.flush_pending_streams(false)?;
                 }
                 self.pipeline.set_state(gst::State::Playing)?;
-                cb.call();
+                cb();
             }
             InternalEvent::UpdateSignalingState => {
                 use gst_webrtc::WebRTCSignalingState::*;
@@ -339,7 +338,7 @@ impl GStreamerWebRtcController {
         &mut self,
         desc: SessionDescription,
         description_type: DescriptionType,
-        cb: SendBoxFnOnce<'static, ()>,
+        cb: Box<dyn FnOnce() + Send + 'static>,
     ) -> WebRtcResult {
         let ty = match desc.type_ {
             SdpType::Answer => gst_webrtc::WebRTCSDPType::Answer,
@@ -676,7 +675,7 @@ pub fn construct(
 fn on_offer_or_answer_created(
     ty: SdpType,
     reply: &gst::StructureRef,
-    cb: SendBoxFnOnce<'static, (SessionDescription,)>,
+    cb: Box<dyn FnOnce(SessionDescription) + Send + 'static>,
 ) {
     debug_assert!(ty == SdpType::Offer || ty == SdpType::Answer);
     let reply = reply
@@ -698,7 +697,7 @@ fn on_offer_or_answer_created(
         type_,
     };
 
-    cb.call(desc);
+    cb(desc);
 }
 
 fn on_incoming_stream(pipe: &gst::Pipeline, thread: Arc<Mutex<WebRtcThread>>, pad: &gst::Pad) {

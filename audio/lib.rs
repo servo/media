@@ -6,7 +6,6 @@ extern crate servo_media_derive;
 
 extern crate servo_media_player as player;
 
-extern crate boxfnonce;
 extern crate byte_slice_cast;
 extern crate euclid;
 extern crate log;

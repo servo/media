@@ -1,4 +1,3 @@
-extern crate boxfnonce;
 extern crate log;
 extern crate servo_media_streams;
 extern crate uuid;
@@ -8,8 +7,6 @@ use servo_media_streams::MediaStreamType;
 
 use std::fmt::Display;
 use std::str::FromStr;
-
-use boxfnonce::SendBoxFnOnce;
 
 pub mod datachannel;
 pub mod thread;
@@ -40,16 +37,16 @@ pub trait WebRtcControllerBackend: Send {
     fn set_remote_description(
         &mut self,
         _: SessionDescription,
-        cb: SendBoxFnOnce<'static, ()>,
+        cb: Box<dyn FnOnce() + Send + 'static>,
     ) -> WebRtcResult;
     fn set_local_description(
         &mut self,
         _: SessionDescription,
-        cb: SendBoxFnOnce<'static, ()>,
+        cb: Box<dyn FnOnce() + Send + 'static>,
     ) -> WebRtcResult;
     fn add_ice_candidate(&mut self, candidate: IceCandidate) -> WebRtcResult;
-    fn create_offer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebRtcResult;
-    fn create_answer(&mut self, cb: SendBoxFnOnce<'static, (SessionDescription,)>) -> WebRtcResult;
+    fn create_offer(&mut self, cb: Box<dyn FnOnce(SessionDescription,) + Send + 'static>) -> WebRtcResult;
+    fn create_answer(&mut self, cb: Box<dyn FnOnce(SessionDescription,) + Send + 'static>) -> WebRtcResult;
     fn add_stream(&mut self, stream: &MediaStreamId) -> WebRtcResult;
 
     fn create_data_channel(&mut self, init: &DataChannelInit) -> WebRtcDataChannelResult;

@@ -9,7 +9,6 @@ name = "servo_media_dummy"
 path = "lib.rs"
 
 [dependencies]
-boxfnonce = "0.1.0"
 ipc-channel = { workspace = true }
 servo-media = { path = "../../servo-media" }
 servo-media-audio = { path = "../../audio" }

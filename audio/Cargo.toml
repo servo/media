@@ -9,7 +9,6 @@ name = "servo_media_audio"
 path = "lib.rs"
 
 [dependencies]
-boxfnonce = "0.1"
 euclid = "0.22"
 log = "0.4"
 serde_derive = "1.0.66"
