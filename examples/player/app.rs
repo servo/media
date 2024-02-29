@@ -28,7 +28,7 @@ struct SMError(std::string::String);
 
 #[derive(Debug, Fail)]
 #[fail(display = "Error: {}", _0)]
-struct MiscError(&'static str);
+struct MiscError(std::string::String);
 
 #[path = "renderer.rs"]
 mod renderer;
@@ -185,7 +185,7 @@ impl App {
         // player
         let (player_event_sender, player_event_receiver) = ipc::channel::<player::PlayerEvent>()?;
         let servo_media =
-            ServoMedia::get().map_err(|error| MiscError(format!("Failed to get media backend: {error:?}").as_str()))?;
+            ServoMedia::get().map_err(|error| MiscError(format!("Failed to get media backend: {error:?}")))?;
 
         let frame_renderer = if !opts.no_video {
             Some(Arc::new(Mutex::new(MediaFrameRenderer::new(
@@ -219,7 +219,7 @@ impl App {
             .lock()
             .unwrap()
             .set_input_size(metadata.len())
-            .map_err(|error| MiscError(format!("Failed to set media input size: {error:?}").as_str()))?;
+            .map_err(|error| MiscError(format!("Failed to set media input size: {error:?}")))?;
 
         Ok(App {
             events_loop,
@@ -252,7 +252,7 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
     let window_size = windowed_context
         .window()
         .get_inner_size()
-        .ok_or_else(|| MiscError("Failed to get window inner size"))?;
+        .ok_or_else(|| MiscError("Failed to get window inner size".to_owned()))?;
     let mut framebuffer_size = {
         let glutin::dpi::PhysicalSize { width, height } =
             window_size.to_physical(device_pixel_ratio as f64);
@@ -283,7 +283,7 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
         .lock()
         .unwrap()
         .play()
-        .map_err(|error| MiscError(format!("Failed to start player: {error:?}").as_str()))?;
+        .map_err(|error| MiscError(format!("Failed to start player: {error:?}")))?;
 
     let mut running = true;
     let mut input_eos = false;
@@ -338,7 +338,7 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
                     .lock()
                     .unwrap()
                     .stop()
-                    .map_err(|error| MiscError(format!("Failed to stop player: {error:?}").as_str()))?;
+                    .map_err(|error| MiscError(format!("Failed to stop player: {error:?}")))?;
                 input_eos = true;
             }
             PlayerCmd::Pause => {
@@ -346,14 +346,14 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
                     .lock()
                     .unwrap()
                     .pause()
-                    .map_err(|error| MiscError(format!("Failed to pause player: {error:?}").as_str()))?;
+                    .map_err(|error| MiscError(format!("Failed to pause player: {error:?}")))?;
             }
             PlayerCmd::Play => {
                 player
                     .lock()
                     .unwrap()
                     .play()
-                    .map_err(|error| MiscError(format!("Failed to start player: {error:?}").as_str()))?;
+                    .map_err(|error| MiscError(format!("Failed to start player: {error:?}")))?;
             }
             PlayerCmd::Seek(time) => {
                 let time = playerstate.pos + time;
@@ -365,7 +365,7 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
                     .lock()
                     .unwrap()
                     .seek(time)
-                    .map_err(|error| MiscError(format!("Failed to seek: {error:?}").as_str()))?;
+                    .map_err(|error| MiscError(format!("Failed to seek: {error:?}")))?;
             }
             PlayerCmd::Mute => {
                 playerstate.mute = !playerstate.mute;
@@ -373,7 +373,7 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
                     .lock()
                     .unwrap()
                     .mute(playerstate.mute)
-                    .map_err(|error| MiscError(format!("Failed to mute player: {error:?}").as_str()))?;
+                    .map_err(|error| MiscError(format!("Failed to mute player: {error:?}")))?;
             }
             _ => (),
         }
