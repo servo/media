@@ -405,5 +405,5 @@ impl ServoSrc {
 // under the name "servosrc" for being able to instantiate it via e.g.
 // gst::ElementFactory::make().
 pub fn register_servo_src() -> Result<(), glib::BoolError> {
-    gst::Element::register(None, "servosrc", gst::Rank::None, ServoSrc::static_type())
+    gst::Element::register(None, "servosrc", gst::Rank::NONE, ServoSrc::static_type())
 }

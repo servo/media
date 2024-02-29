@@ -38,23 +38,23 @@ impl GStreamerRegistryScanner {
     fn initialize(&mut self) {
         let audio_decoder_factories = gst::ElementFactory::factories_with_type(
             gst::ElementFactoryType::DECODER | gst::ElementFactoryType::MEDIA_AUDIO,
-            gst::Rank::Marginal,
+            gst::Rank::MARGINAL,
         );
         let audio_parser_factories = gst::ElementFactory::factories_with_type(
             gst::ElementFactoryType::PARSER | gst::ElementFactoryType::MEDIA_AUDIO,
-            gst::Rank::None,
+            gst::Rank::NONE,
         );
         let video_decoder_factories = gst::ElementFactory::factories_with_type(
             gst::ElementFactoryType::DECODER | gst::ElementFactoryType::MEDIA_VIDEO,
-            gst::Rank::Marginal,
+            gst::Rank::MARGINAL,
         );
         let video_parser_factories = gst::ElementFactory::factories_with_type(
             gst::ElementFactoryType::PARSER | gst::ElementFactoryType::MEDIA_VIDEO,
-            gst::Rank::Marginal,
+            gst::Rank::MARGINAL,
         );
         let demux_factories = gst::ElementFactory::factories_with_type(
             gst::ElementFactoryType::DEMUXER,
-            gst::Rank::Marginal,
+            gst::Rank::MARGINAL,
         );
 
         if has_element_for_media_type(&audio_decoder_factories, "audio/mpeg, mpegversion=(int)4") {
