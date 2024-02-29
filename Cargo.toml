@@ -13,28 +13,29 @@ members = [
   "servo-media",
   "servo-media-derive",
   "streams",
-  "webrtc"
+  "webrtc",
 ]
 
 [workspace.dependencies]
-glib = "0.18"
-glib-sys = "0.18"
-gst = { package = "gstreamer", version = "0.21" }
-gst-app = { package = "gstreamer-app", version = "0.21" }
-gst-audio = { package = "gstreamer-audio", version = "0.21" }
-gst-base = { package = "gstreamer-base", version = "0.21" }
-gst-gl = { package = "gstreamer-gl", version = "0.21" }
-gst-player = { package = "gstreamer-player", version = "0.21" }
-gst-sdp = { package = "gstreamer-sdp", version = "0.21" }
-gst-video = { package = "gstreamer-video", version = "0.21" }
-gst-webrtc = { package = "gstreamer-webrtc", version = "0.21", features = ["v1_18"] }
-gstreamer-gl-egl = { version = "0.21" }
-gstreamer-gl-wayland = { version = "0.21" }
-gstreamer-gl-x11 = { version = "0.21" }
-gstreamer-sys = "0.21"
+glib = "0.19"
+glib-sys = "0.19"
+gst = { package = "gstreamer", version = "0.22" }
+gst-app = { package = "gstreamer-app", version = "0.22" }
+gst-audio = { package = "gstreamer-audio", version = "0.22" }
+gst-base = { package = "gstreamer-base", version = "0.22" }
+gst-gl = { package = "gstreamer-gl", version = "0.22" }
+gst-player = { package = "gstreamer-player", version = "0.22" }
+gst-sdp = { package = "gstreamer-sdp", version = "0.22" }
+gst-video = { package = "gstreamer-video", version = "0.22" }
+gst-webrtc = { package = "gstreamer-webrtc", version = "0.22", features = [
+  "v1_18",
+] }
+gstreamer-gl-egl = { version = "0.22" }
+gstreamer-gl-wayland = { version = "0.22" }
+gstreamer-gl-x11 = { version = "0.22" }
+gstreamer-sys = "0.22"
 ipc-channel = "0.18"
 
 [patch."https://github.com/servo/webrender"]
 webrender = { git = "https://github.com/jdm/webrender", branch = "crash-backtrace" }
 webrender_api = { git = "https://github.com/jdm/webrender", branch = "crash-backtrace" }
-
