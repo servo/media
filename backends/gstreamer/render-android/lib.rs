@@ -15,14 +15,14 @@ use std::sync::{Arc, Mutex};
 
 struct GStreamerBuffer {
     is_external_oes: bool,
-    frame: gst_video::VideoFrame<gst_video::video_frame::Readable>,
+    frame: gst_gl::GLVideoFrame<gst_gl::gl_video_frame::Readable>,
 }
 
 impl Buffer for GStreamerBuffer {
     fn to_vec(&self) -> Result<VideoFrameData, ()> {
         // packed formats are guaranteed to be in a single plane
         if self.frame.format() == gst_video::VideoFormat::Rgba {
-            let tex_id = self.frame.texture_id(0).ok_or_else(|| ())?;
+            let tex_id = self.frame.texture_id(0).map_err(|_| ())?;
             Ok(if self.is_external_oes {
                 VideoFrameData::OESTexture(tex_id)
             } else {
@@ -146,7 +146,7 @@ impl Render for RenderAndroid {
         }
 
         let frame =
-            gst_video::VideoFrame::from_buffer_readable_gl(buffer, &info).or_else(|_| Err(()))?;
+            gst_gl::GLVideoFrame::from_buffer_readable(buffer, &info).or_else(|_| Err(()))?;
 
         if self.gst_context.lock().unwrap().is_some() {
             if let Some(sync_meta) = frame.buffer().meta::<gst_gl::GLSyncMeta>() {
@@ -192,7 +192,9 @@ impl Render for RenderAndroid {
             .name("servo-media-vsink")
             .property("sink", &appsink)
             .build()
-            .map_err(|error| PlayerError::Backend(format!("glupload creation failed: {error:?}")))?;
+            .map_err(|error| {
+                PlayerError::Backend(format!("glupload creation failed: {error:?}"))
+            })?;
 
         pipeline.set_property("video-sink", &vsinkbin);
 
