@@ -1,4 +1,4 @@
-use glib::once_cell::sync::Lazy;
+use once_cell::sync::Lazy;
 use std::collections::HashSet;
 use std::str::FromStr;
 

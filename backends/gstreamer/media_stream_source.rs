@@ -1,9 +1,9 @@
 use crate::media_stream::{GStreamerMediaStream, RTP_CAPS_OPUS, RTP_CAPS_VP8};
-use glib::once_cell::sync::Lazy;
 use glib::subclass::prelude::*;
 use gst::prelude::*;
 use gst::subclass::prelude::*;
 use gst_base::UniqueFlowCombiner;
+use once_cell::sync::Lazy;
 use servo_media_streams::{MediaStream, MediaStreamType};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};

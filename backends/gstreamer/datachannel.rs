@@ -1,4 +1,5 @@
-use glib::{ObjectExt, ToSendValue};
+use glib::object::ObjectExt;
+use glib::value::ToSendValue;
 use gst_webrtc::{WebRTCDataChannel, WebRTCDataChannelState};
 use servo_media_webrtc::thread::InternalEvent;
 use servo_media_webrtc::WebRtcController as WebRtcThread;
