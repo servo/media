@@ -13,13 +13,12 @@ mod source;
 pub mod webrtc;
 
 use device_monitor::GStreamerDeviceMonitor;
-use glib::once_cell::sync::Lazy;
 use gst::prelude::*;
 use ipc_channel::ipc::IpcSender;
 use log::warn;
 use media_stream::GStreamerMediaStream;
 use mime::Mime;
-use once_cell::sync::OnceCell;
+use once_cell::sync::{Lazy, OnceCell};
 use registry_scanner::GSTREAMER_REGISTRY_SCANNER;
 use servo_media::{Backend, BackendInit, SupportsMediaType};
 use servo_media_audio::context::{AudioContext, AudioContextOptions};

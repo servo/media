@@ -11,8 +11,8 @@ path = "lib.rs"
 
 [dependencies]
 byte-slice-cast = "0.2"
-glib = "0.18"
-glib-sys = "0.18"
+glib = { workspace = true }
+glib-sys = { workspace = true }
 gst = { workspace = true }
 gst-app = { workspace = true }
 gst-audio = { workspace = true }
@@ -37,7 +37,10 @@ servo-media-webrtc = { path = "../../webrtc" }
 url = "2.0"
 
 [target.'cfg(any(target_os = "linux", target_os = "dragonfly", target_os = "freebsd", target_os = "netbsd", target_os = "openbsd"))'.dependencies]
-servo-media-gstreamer-render-unix = { path = "render-unix", features = ["gl-egl", "gl-x11"] }
+servo-media-gstreamer-render-unix = { path = "render-unix", features = [
+    "gl-egl",
+    "gl-x11",
+] }
 
 [target.'cfg(target_os = "android")'.dependencies]
 servo-media-gstreamer-render-android = { path = "render-android" }

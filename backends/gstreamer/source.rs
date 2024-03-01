@@ -1,7 +1,7 @@
-use glib::once_cell::sync::Lazy;
 use glib::subclass::prelude::*;
 use gst::prelude::*;
 use gst::subclass::prelude::*;
+use once_cell::sync::Lazy;
 use std::convert::TryFrom;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
@@ -242,7 +242,7 @@ mod imp {
                 .expect("Could not create appsrc element");
 
             let pad_templ = klass.pad_template("src").unwrap();
-            let ghost_pad = gst::GhostPad::builder_from_template(&pad_templ).name("src")
+            let ghost_pad = gst::GhostPad::builder_from_template(&pad_templ)
                 .query_function(|pad, parent, query| {
                     ServoSrc::catch_panic_pad_function(
                         parent,
@@ -404,5 +404,5 @@ impl ServoSrc {
 // under the name "servosrc" for being able to instantiate it via e.g.
 // gst::ElementFactory::make().
 pub fn register_servo_src() -> Result<(), glib::BoolError> {
-    gst::Element::register(None, "servosrc", gst::Rank::None, ServoSrc::static_type())
+    gst::Element::register(None, "servosrc", gst::Rank::NONE, ServoSrc::static_type())
 }

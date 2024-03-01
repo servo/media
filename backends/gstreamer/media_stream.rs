@@ -1,7 +1,7 @@
 use super::BACKEND_BASE_TIME;
-use glib::once_cell::sync::Lazy;
 use gst;
 use gst::prelude::*;
+use once_cell::sync::Lazy;
 use servo_media_streams::registry::{
     get_stream, register_stream, unregister_stream, MediaStreamId,
 };

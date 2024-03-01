@@ -15,12 +15,12 @@ name = "servo_media_gstreamer_render_unix"
 path = "lib.rs"
 
 [dependencies]
-glib = "0.18"
+glib = { workspace = true }
 gst = { workspace = true }
 gst-gl = { workspace = true }
 gstreamer-gl-egl = { workspace = true, optional = true }
 gstreamer-gl-x11 = { workspace = true, optional = true }
 gstreamer-gl-wayland = { workspace = true, optional = true }
-gst-video = { package = "gstreamer-video", version = "0.21" }
+gst-video = { workspace = true }
 sm-player = { package = "servo-media-player", path = "../../../player" }
 sm-gst-render = { package = "servo-media-gstreamer-render", path = "../render" }

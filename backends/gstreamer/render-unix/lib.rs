@@ -18,14 +18,14 @@ use std::sync::{Arc, Mutex};
 
 struct GStreamerBuffer {
     is_external_oes: bool,
-    frame: gst_video::VideoFrame<gst_video::video_frame::Readable>,
+    frame: gst_gl::GLVideoFrame<gst_gl::gl_video_frame::Readable>,
 }
 
 impl Buffer for GStreamerBuffer {
     fn to_vec(&self) -> Result<VideoFrameData, ()> {
         // packed formats are guaranteed to be in a single plane
         if self.frame.format() == gst_video::VideoFormat::Rgba {
-            let tex_id = self.frame.texture_id(0).ok_or(())?;
+            let tex_id = self.frame.texture_id(0).map_err(|_| ())?;
             Ok(if self.is_external_oes {
                 VideoFrameData::OESTexture(tex_id)
             } else {
@@ -191,8 +191,7 @@ impl Render for RenderUnix {
             .is_some();
 
         let info = gst_video::VideoInfo::from_caps(caps).map_err(|_| ())?;
-        let frame =
-            gst_video::VideoFrame::from_buffer_readable_gl(buffer, &info).map_err(|_| ())?;
+        let frame = gst_gl::GLVideoFrame::from_buffer_readable(buffer, &info).map_err(|_| ())?;
 
         VideoFrame::new(
             info.width() as i32,
@@ -218,7 +217,9 @@ impl Render for RenderUnix {
         let vsinkbin = gst::ElementFactory::make("glsinkbin")
             .name("servo-media-vsink")
             .build()
-            .map_err(|error| PlayerError::Backend(format!("glupload creation failed: {error:?}")))?;
+            .map_err(|error| {
+                PlayerError::Backend(format!("glupload creation failed: {error:?}"))
+            })?;
 
         let caps = gst::Caps::builder("video/x-raw")
             .features([gst_gl::CAPS_FEATURE_MEMORY_GL_MEMORY])
