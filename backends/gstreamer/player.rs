@@ -618,27 +618,37 @@ impl GStreamerPlayer {
             }
         });
 
-        self.video_renderer.clone().map(|video_renderer| {
-            let render = self.render.clone();
-            let observer = self.observer.clone();
+        if let Some(video_renderer) = self.video_renderer.clone() {
+            let render_sample = {
+                let render = self.render.clone();
+                let observer = self.observer.clone();
+                move |sample: gst::Sample| {
+                    let frame = render
+                        .lock()
+                        .unwrap()
+                        .get_frame_from_sample(sample)
+                        .map_err(|_| gst::FlowError::Error)?;
+                    video_renderer.lock().unwrap().render(frame);
+                    notify!(observer, PlayerEvent::VideoFrameUpdated);
+                    Ok(gst::FlowSuccess::Ok)
+                }
+            };
+
             // Set video_sink callbacks.
             inner.lock().unwrap().video_sink.set_callbacks(
                 gst_app::AppSinkCallbacks::builder()
-                    .new_preroll(|_| Ok(gst::FlowSuccess::Ok))
+                    .new_preroll({
+                        let render_sample = render_sample.clone();
+                        move |video_sink| {
+                            render_sample(video_sink.pull_preroll().map_err(|_| gst::FlowError::Eos)?)
+                        }
+                    })
                     .new_sample(move |video_sink| {
-                        let sample = video_sink.pull_sample().map_err(|_| gst::FlowError::Eos)?;
-                        let frame = render
-                            .lock()
-                            .unwrap()
-                            .get_frame_from_sample(sample)
-                            .map_err(|_| gst::FlowError::Error)?;
-                        video_renderer.lock().unwrap().render(frame);
-                        notify!(observer, PlayerEvent::VideoFrameUpdated);
-                        Ok(gst::FlowSuccess::Ok)
+                        render_sample(video_sink.pull_sample().map_err(|_| gst::FlowError::Eos)?)
                     })
                     .build(),
             );
-        });
+        };
 
         let (receiver, error_handler_id) = {
             let inner_clone = inner.clone();
