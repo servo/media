@@ -619,6 +619,8 @@ impl GStreamerPlayer {
         });
 
         if let Some(video_renderer) = self.video_renderer.clone() {
+            // Creates a closure that renders a frame using the video_renderer
+            // Used in the preroll and sample callbacks
             let render_sample = {
                 let render = self.render.clone();
                 let observer = self.observer.clone();
