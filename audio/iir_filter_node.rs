@@ -115,7 +115,7 @@ impl IIRFilterNode {
         let filter = IIRFilter::new(options.feedforward.clone(), options.feedback.clone());
 
         Self {
-            filters: vec![filter; channel_info.count as usize],
+            filters: vec![filter; channel_info.computed_number_of_channels() as usize],
             channel_info,
         }
     }
