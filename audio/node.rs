@@ -10,6 +10,7 @@ use oscillator_node::{OscillatorNodeMessage, OscillatorNodeOptions};
 use panner_node::{PannerNodeMessage, PannerNodeOptions};
 use param::{Param, ParamRate, ParamType, UserAutomationEvent};
 use servo_media_streams::{MediaSocket, MediaStreamId};
+use std::cmp::min;
 use std::sync::mpsc::Sender;
 use stereo_panner::StereoPannerOptions;
 use wave_shaper_node::{WaveShaperNodeMessage, WaveShaperNodeOptions};
@@ -100,6 +101,7 @@ pub struct ChannelInfo {
     pub count: u8,
     pub mode: ChannelCountMode,
     pub interpretation: ChannelInterpretation,
+    pub context_channel_count: u8,
 }
 
 impl Default for ChannelInfo {
@@ -108,6 +110,18 @@ impl Default for ChannelInfo {
             count: 2,
             mode: ChannelCountMode::Max,
             interpretation: ChannelInterpretation::Speakers,
+            context_channel_count: 2,
+        }
+    }
+}
+
+impl ChannelInfo {
+    /// <https://webaudio.github.io/web-audio-api/#computednumberofchannels>
+    pub fn computed_number_of_channels(&self) -> u8 {
+        match self.mode {
+            ChannelCountMode::Max => self.context_channel_count,
+            ChannelCountMode::ClampedMax => min(self.count, self.context_channel_count),
+            ChannelCountMode::Explicit => self.count,
         }
     }
 }
