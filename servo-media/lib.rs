@@ -6,6 +6,7 @@ pub extern crate servo_media_webrtc as webrtc;
 
 extern crate once_cell;
 
+use audio::sink::AudioSinkError;
 pub use traits::*;
 
 use std::ops::Deref;
@@ -57,7 +58,7 @@ pub trait Backend: Send + Sync {
         &self,
         id: &ClientContextId,
         options: AudioContextOptions,
-    ) -> Arc<Mutex<AudioContext>>;
+    ) -> Result<Arc<Mutex<AudioContext>>, AudioSinkError>;
     fn create_webrtc(&self, signaller: Box<dyn WebRtcSignaller>) -> WebRtcController;
     fn can_play_type(&self, media_type: &str) -> SupportsMediaType;
     fn set_capture_mocking(&self, _mock: bool) {}

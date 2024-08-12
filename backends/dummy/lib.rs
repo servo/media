@@ -94,12 +94,12 @@ impl Backend for DummyBackend {
         &self,
         _id: &ClientContextId,
         options: AudioContextOptions,
-    ) -> Arc<Mutex<AudioContext>> {
+    ) -> Result<Arc<Mutex<AudioContext>>, AudioSinkError> {
         let (sender, _) = mpsc::channel();
         let sender = Arc::new(Mutex::new(sender));
-        Arc::new(Mutex::new(
+        Ok(Arc::new(Mutex::new(
             AudioContext::new::<Self>(0, &ClientContextId::build(1, 1), sender, options).unwrap(),
-        ))
+        )))
     }
 
     fn create_webrtc(&self, signaller: Box<dyn WebRtcSignaller>) -> WebRtcController {
