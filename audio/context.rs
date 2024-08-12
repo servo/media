@@ -10,6 +10,8 @@ use std::sync::{Arc, Mutex};
 use std::thread::Builder;
 use AudioBackend;
 
+use crate::sink::AudioSinkError;
+
 /// Describes the state of the audio context on the control thread.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ProcessingState {
@@ -130,7 +132,7 @@ impl AudioContext {
         client_context_id: &ClientContextId,
         backend_chan: Arc<Mutex<Sender<BackendMsg>>>,
         options: AudioContextOptions,
-    ) -> Self {
+    ) -> Result<Self, AudioSinkError> {
         let (sample_rate, channels) = match options {
             AudioContextOptions::RealTimeAudioContext(ref options) => (options.sample_rate, 2),
             AudioContextOptions::OfflineAudioContext(ref options) => {
@@ -143,13 +145,24 @@ impl AudioContext {
         let graph = AudioGraph::new(channels);
         let dest_node = graph.dest_id();
         let listener = graph.listener_id();
+
+        let (result_sender, result_receiver) = mpsc::channel();
         Builder::new()
             .name("AudioRenderThread".to_owned())
             .spawn(move || {
-                AudioRenderThread::start::<B>(receiver, sender_, sample_rate, graph, options);
+                let result =
+                    AudioRenderThread::start::<B>(receiver, sender_, sample_rate, graph, options);
+                result_sender.send(result).unwrap();
             })
-            .unwrap();
-        Self {
+            .expect("Failed to spawn AudioRenderThread");
+
+        let thread_result: Result<(), AudioSinkError> = result_receiver.recv().unwrap();
+
+        if let Err(e) = thread_result {
+            return Err(e);
+        }
+
+        Ok(Self {
             id,
             client_context_id: *client_context_id,
             backend_chan,
@@ -159,7 +172,7 @@ impl AudioContext {
             dest_node,
             listener,
             make_decoder: Arc::new(|| B::make_decoder()),
-        }
+        })
     }
 
     pub fn state(&self) -> ProcessingState {
