@@ -156,11 +156,14 @@ impl AudioContext {
             })
             .expect("Failed to spawn AudioRenderThread");
 
-        let thread_result: Result<(), AudioSinkError> = result_receiver.recv().unwrap();
+        let thread_result = result_receiver.try_recv();
 
-        if let Err(e) = thread_result {
-            return Err(e);
-        }
+        let inner_result = match thread_result {
+            Ok(inner) => inner,
+            Err(_) => return Err(AudioSinkError::StateChangeFailed),
+        };
+
+        inner_result.map_err(|e| e.into())?;
 
         Ok(Self {
             id,
