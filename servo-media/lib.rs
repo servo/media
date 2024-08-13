@@ -6,14 +6,16 @@ pub extern crate servo_media_webrtc as webrtc;
 
 extern crate once_cell;
 
-use audio::sink::AudioSinkError;
 pub use traits::*;
 
 use std::ops::Deref;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-use audio::context::{AudioContext, AudioContextOptions};
+use audio::{
+    context::{AudioContext, AudioContextOptions},
+    sink::AudioSinkError,
+};
 use player::audio::AudioRenderer;
 use player::context::PlayerGLContext;
 use player::ipc_channel::ipc::IpcSender;

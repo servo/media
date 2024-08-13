@@ -152,7 +152,7 @@ impl AudioContext {
             .spawn(move || {
                 let result =
                     AudioRenderThread::start::<B>(receiver, sender_, sample_rate, graph, options);
-                result_sender.send(result).unwrap();
+                let _ = result_sender.send(result);
             })
             .expect("Failed to spawn AudioRenderThread");
 
