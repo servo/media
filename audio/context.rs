@@ -146,21 +146,26 @@ impl AudioContext {
         let dest_node = graph.dest_id();
         let listener = graph.listener_id();
 
-        let (result_sender, result_receiver) = mpsc::channel();
+        let (init_sender, init_receiver) = mpsc::channel();
         Builder::new()
             .name("AudioRenderThread".to_owned())
             .spawn(move || {
-                let result =
-                    AudioRenderThread::start::<B>(receiver, sender_, sample_rate, graph, options);
-                let _ = result_sender.send(result);
+                AudioRenderThread::start::<B>(
+                    receiver,
+                    sender_,
+                    sample_rate,
+                    graph,
+                    options,
+                    init_sender,
+                )
             })
             .expect("Failed to spawn AudioRenderThread");
 
-        let thread_result = result_receiver
+        let init_thread_result = init_receiver
             .recv()
             .expect("Failed to receive result from AudioRenderThread");
 
-        if let Err(e) = thread_result {
+        if let Err(e) = init_thread_result {
             return Err(e);
         }
 
