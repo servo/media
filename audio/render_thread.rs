@@ -160,10 +160,21 @@ impl AudioRenderThread {
         sample_rate: f32,
         graph: AudioGraph,
         options: AudioContextOptions,
+        init_sender: Sender<Result<(), AudioSinkError>>,
     ) {
-        let mut thread = Self::prepare_thread::<B>(sender.clone(), sample_rate, graph, options)
-            .expect("Could not start audio render thread");
-        thread.event_loop(event_queue)
+        let mut thread =
+            match Self::prepare_thread::<B>(sender.clone(), sample_rate, graph, options) {
+                Ok(thread) => {
+                    let _ = init_sender.send(Ok(()));
+                    thread
+                }
+                Err(e) => {
+                    let _ = init_sender.send(Err(e));
+                    return;
+                }
+            };
+
+        thread.event_loop(event_queue);
     }
 
     make_render_thread_state_change!(resume, Running, play);

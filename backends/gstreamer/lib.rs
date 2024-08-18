@@ -184,18 +184,18 @@ impl Backend for GStreamerBackend {
         &self,
         client_context_id: &ClientContextId,
         options: AudioContextOptions,
-    ) -> Arc<Mutex<AudioContext>> {
+    ) -> Result<Arc<Mutex<AudioContext>>, AudioSinkError> {
         let id = self.next_instance_id.fetch_add(1, Ordering::Relaxed);
-        let context = Arc::new(Mutex::new(AudioContext::new::<Self>(
-            id,
-            client_context_id,
-            self.backend_chan.clone(),
-            options,
-        )));
+        let audio_context =
+            AudioContext::new::<Self>(id, client_context_id, self.backend_chan.clone(), options)?;
+
+        let audio_context = Arc::new(Mutex::new(audio_context));
+
         let mut instances = self.instances.lock().unwrap();
         let entry = instances.entry(*client_context_id).or_insert(Vec::new());
-        entry.push((id, Arc::downgrade(&context).clone()));
-        context
+        entry.push((id, Arc::downgrade(&audio_context).clone()));
+
+        Ok(audio_context)
     }
 
     fn create_webrtc(&self, signaller: Box<dyn WebRtcSignaller>) -> WebRtcController {

@@ -94,15 +94,15 @@ impl Backend for DummyBackend {
         &self,
         _id: &ClientContextId,
         options: AudioContextOptions,
-    ) -> Arc<Mutex<AudioContext>> {
+    ) -> Result<Arc<Mutex<AudioContext>>, AudioSinkError> {
         let (sender, _) = mpsc::channel();
         let sender = Arc::new(Mutex::new(sender));
-        Arc::new(Mutex::new(AudioContext::new::<Self>(
+        Ok(Arc::new(Mutex::new(AudioContext::new::<Self>(
             0,
             &ClientContextId::build(1, 1),
             sender,
             options,
-        )))
+        )?)))
     }
 
     fn create_webrtc(&self, signaller: Box<dyn WebRtcSignaller>) -> WebRtcController {
@@ -300,10 +300,16 @@ impl WebRtcControllerBackend for DummyWebRtcController {
     fn add_ice_candidate(&mut self, _: IceCandidate) -> WebRtcResult {
         Ok(())
     }
-    fn create_offer(&mut self, _: Box<dyn FnOnce(SessionDescription) + Send + 'static>) -> WebRtcResult {
+    fn create_offer(
+        &mut self,
+        _: Box<dyn FnOnce(SessionDescription) + Send + 'static>,
+    ) -> WebRtcResult {
         Ok(())
     }
-    fn create_answer(&mut self, _: Box<dyn FnOnce(SessionDescription) + Send + 'static>) -> WebRtcResult {
+    fn create_answer(
+        &mut self,
+        _: Box<dyn FnOnce(SessionDescription) + Send + 'static>,
+    ) -> WebRtcResult {
         Ok(())
     }
     fn add_stream(&mut self, _: &MediaStreamId) -> WebRtcResult {

@@ -12,7 +12,10 @@ use std::ops::Deref;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-use audio::context::{AudioContext, AudioContextOptions};
+use audio::{
+    context::{AudioContext, AudioContextOptions},
+    sink::AudioSinkError,
+};
 use player::audio::AudioRenderer;
 use player::context::PlayerGLContext;
 use player::ipc_channel::ipc::IpcSender;
@@ -57,7 +60,7 @@ pub trait Backend: Send + Sync {
         &self,
         id: &ClientContextId,
         options: AudioContextOptions,
-    ) -> Arc<Mutex<AudioContext>>;
+    ) -> Result<Arc<Mutex<AudioContext>>, AudioSinkError>;
     fn create_webrtc(&self, signaller: Box<dyn WebRtcSignaller>) -> WebRtcController;
     fn can_play_type(&self, media_type: &str) -> SupportsMediaType;
     fn set_capture_mocking(&self, _mock: bool) {}
