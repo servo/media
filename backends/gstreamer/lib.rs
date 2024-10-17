@@ -110,10 +110,11 @@ impl GStreamerBackend {
             .spawn(move || {
                 match recvr.recv().unwrap() {
                     BackendMsg::Shutdown(context_id, instance_id) => {
-                        if let Some(vec) = instances_.lock().unwrap().get_mut(&context_id) {
+                        let mut instances_ = instances_.lock().unwrap();
+                        if let Some(vec) = instances_.get_mut(&context_id) {
                             vec.retain(|m| m.0 != instance_id);
                             if vec.is_empty() {
-                                instances_.lock().unwrap().remove(&context_id);
+                                instances_.remove(&context_id);
                             }
                         }
                     }
