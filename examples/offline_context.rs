@@ -18,7 +18,9 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     options.length = 1024 * FRAMES_PER_BLOCK_USIZE;
     let sample_rate = options.sample_rate;
     let options = AudioContextOptions::OfflineAudioContext(options);
-    let context = servo_media.create_audio_context(&ClientContextId::build(1, 1), options);
+    let context = servo_media
+        .create_audio_context(&ClientContextId::build(1, 1), options)
+        .unwrap();
     let context = context.lock().unwrap();
     let processed_audio = Arc::new(Mutex::new(Vec::new()));
     let processed_audio_ = processed_audio.clone();
@@ -47,8 +49,9 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     // Close offline context.
     let _ = context.close();
     // Create audio context to play the processed audio.
-    let context =
-        servo_media.create_audio_context(&ClientContextId::build(1, 2), Default::default());
+    let context = servo_media
+        .create_audio_context(&ClientContextId::build(1, 2), Default::default())
+        .unwrap();
     let context = context.lock().unwrap();
     let buffer_source = context.create_node(
         AudioNodeInit::AudioBufferSourceNode(Default::default()),

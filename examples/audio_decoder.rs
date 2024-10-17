@@ -17,10 +17,12 @@ use std::{thread, time};
 fn run_example(servo_media: Arc<ServoMedia>) {
     let options = <RealTimeAudioContextOptions>::default();
     let sample_rate = options.sample_rate;
-    let context = servo_media.create_audio_context(
-        &ClientContextId::build(1, 1),
-        AudioContextOptions::RealTimeAudioContext(options),
-    );
+    let context = servo_media
+        .create_audio_context(
+            &ClientContextId::build(1, 1),
+            AudioContextOptions::RealTimeAudioContext(options),
+        )
+        .unwrap();
     let context = context.lock().unwrap();
     let args: Vec<_> = env::args().collect();
     let default = "./examples/resources/viper_cut.ogg";

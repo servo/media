@@ -15,6 +15,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let context = servo_media.create_audio_context(&id, Default::default());
 
     {
+        let context = context.unwrap();
         let context = context.lock().unwrap();
         let curve = vec![1., 0., 0., 0.75, 0.5];
 

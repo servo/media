@@ -11,7 +11,9 @@ use std::{thread, time};
 
 fn run_example(servo_media: Arc<ServoMedia>) {
     let id = ClientContextId::build(1, 1);
-    let context = servo_media.create_audio_context(&id, Default::default());
+    let context = servo_media
+        .create_audio_context(&id, Default::default())
+        .unwrap();
 
     {
         let context = context.lock().unwrap();
