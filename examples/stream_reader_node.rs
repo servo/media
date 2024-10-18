@@ -10,7 +10,8 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let context =
         servo_media.create_audio_context(&ClientContextId::build(1, 1), Default::default());
     let input = servo_media.create_audiostream();
-    let context = context.unwrap().lock().unwrap();
+    let context = context.unwrap();
+    let context = context.lock().unwrap();
     let dest = context.dest_node();
     let osc1 = context.create_node(
         AudioNodeInit::MediaStreamSourceNode(input),
