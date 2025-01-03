@@ -57,6 +57,7 @@ pub struct GStreamerBackend {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct ErrorLoadingPlugins(Vec<&'static str>);
 
 impl GStreamerBackend {
