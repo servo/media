@@ -154,7 +154,7 @@ impl PlayerInner {
         self.rate = rate;
         if let Some(ref metadata) = self.last_metadata {
             if !metadata.is_seekable {
-                gst::warning!(self.cat, obj: &self.player,
+                gst::warning!(self.cat, obj = &self.player,
                              "Player must be seekable in order to set the playback rate");
                 return Err(PlayerError::NonSeekableStream);
             }
@@ -203,7 +203,7 @@ impl PlayerInner {
         if let Some(ref metadata) = self.last_metadata {
             if let Some(ref duration) = metadata.duration {
                 if duration < &time::Duration::new(time as u64, 0) {
-                    gst::warning!(self.cat, obj: &self.player, "Trying to seek out of range");
+                    gst::warning!(self.cat, obj = &self.player, "Trying to seek out of range");
                     return Err(PlayerError::SeekOutOfRange);
                 }
             }
@@ -590,7 +590,7 @@ impl GStreamerPlayer {
                     if metadata.is_seekable {
                         inner.player.set_rate(inner.rate);
                     }
-                    gst::info!(inner.cat, obj: &inner.player, "Metadata updated: {:?}", metadata);
+                    gst::info!(inner.cat, obj = &inner.player, "Metadata updated: {:?}", metadata);
                     notify!(observer, PlayerEvent::MetadataUpdated(metadata));
                 }
             }
@@ -612,7 +612,7 @@ impl GStreamerPlayer {
                 updated_metadata = Some(metadata.clone());
             }
             if let Some(updated_metadata) = updated_metadata {
-                gst::info!(inner.cat, obj: &inner.player, "Duration updated: {:?}",
+                gst::info!(inner.cat, obj = &inner.player, "Duration updated: {:?}",
                               updated_metadata);
                 notify!(observer, PlayerEvent::MetadataUpdated(updated_metadata));
             }
