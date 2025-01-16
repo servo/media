@@ -1,7 +1,7 @@
-use block::{Block, Chunk, Tick, FRAMES_PER_BLOCK};
-use node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, BlockInfo, OnEndedCallback};
-use node::{AudioNodeType, ChannelInfo, ShouldPlay};
-use param::{Param, ParamType};
+use crate::block::{Block, Chunk, Tick, FRAMES_PER_BLOCK};
+use crate::node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, BlockInfo, OnEndedCallback};
+use crate::node::{AudioNodeType, ChannelInfo, ShouldPlay};
+use crate::param::{Param, ParamType};
 
 /// Control messages directed to AudioBufferSourceNodes.
 #[derive(Debug, Clone)]

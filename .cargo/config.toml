@@ -1,0 +1,2 @@
+[alias]
+ex = "run -p examples --bin"

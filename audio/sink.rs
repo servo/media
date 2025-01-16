@@ -1,5 +1,5 @@
-use block::Chunk;
-use render_thread::AudioRenderThreadMsg;
+use crate::block::Chunk;
+use crate::render_thread::AudioRenderThreadMsg;
 use servo_media_streams::MediaSocket;
 use std::sync::mpsc::Sender;
 

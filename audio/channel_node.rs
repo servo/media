@@ -1,8 +1,8 @@
-use block::FRAMES_PER_BLOCK_USIZE;
-use block::{Block, Chunk};
-use node::AudioNodeType;
-use node::BlockInfo;
-use node::{AudioNodeEngine, ChannelCountMode, ChannelInfo, ChannelInterpretation};
+use crate::block::FRAMES_PER_BLOCK_USIZE;
+use crate::block::{Block, Chunk};
+use crate::node::AudioNodeType;
+use crate::node::BlockInfo;
+use crate::node::{AudioNodeEngine, ChannelCountMode, ChannelInfo, ChannelInterpretation};
 
 #[derive(Copy, Clone, Debug)]
 pub struct ChannelNodeOptions {

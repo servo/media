@@ -1,8 +1,8 @@
-use block::{Block, Chunk, Tick, FRAMES_PER_BLOCK};
+use crate::block::{Block, Chunk, Tick, FRAMES_PER_BLOCK};
 use euclid::default::Vector3D;
-use node::{AudioNodeEngine, AudioNodeMessage, BlockInfo};
-use node::{AudioNodeType, ChannelInfo};
-use param::{Param, ParamDir, ParamType};
+use crate::node::{AudioNodeEngine, AudioNodeMessage, BlockInfo};
+use crate::node::{AudioNodeType, ChannelInfo};
+use crate::param::{Param, ParamDir, ParamType};
 use std::f32::consts::PI;
 
 // .normalize(), but it takes into account zero vectors
