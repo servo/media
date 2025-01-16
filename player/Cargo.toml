@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Fernando Jiménez Moreno <ferjmoreno@gmail.com>",
            "Víctor Manuel Jáquez Leal <vjaquez@igalia.com>"]
 license = "MPL-2.0"
+edition = "2021"
 
 [lib]
 name = "servo_media_player"
