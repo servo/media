@@ -1,7 +1,7 @@
-use block::{Chunk, Tick, FRAMES_PER_BLOCK};
-use node::{AudioNodeEngine, BlockInfo};
-use node::{AudioNodeType, ChannelInfo};
-use param::{Param, ParamType};
+use crate::block::{Chunk, Tick, FRAMES_PER_BLOCK};
+use crate::node::{AudioNodeEngine, BlockInfo};
+use crate::node::{AudioNodeType, ChannelInfo};
+use crate::param::{Param, ParamType};
 use std::f32::consts::PI;
 
 #[derive(Copy, Clone, Debug)]

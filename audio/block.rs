@@ -1,7 +1,7 @@
 use byte_slice_cast::*;
 use euclid::default::Vector3D;
-use graph::{PortIndex, PortKind};
-use node::ChannelInterpretation;
+use crate::graph::{PortIndex, PortKind};
+use crate::node::ChannelInterpretation;
 use smallvec::SmallVec;
 use std::f32::consts::SQRT_2;
 use std::mem;

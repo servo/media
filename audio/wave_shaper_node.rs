@@ -1,5 +1,5 @@
-use block::{Chunk, FRAMES_PER_BLOCK_USIZE};
-use node::{AudioNodeEngine, AudioNodeType, BlockInfo, ChannelInfo};
+use crate::block::{Chunk, FRAMES_PER_BLOCK_USIZE};
+use crate::node::{AudioNodeEngine, AudioNodeType, BlockInfo, ChannelInfo};
 use speexdsp_resampler::State as SpeexResamplerState;
 
 #[derive(Clone, Debug, PartialEq)]

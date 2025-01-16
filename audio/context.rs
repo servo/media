@@ -1,14 +1,14 @@
-use decoder::{AudioDecoder, AudioDecoderCallbacks, AudioDecoderOptions};
-use graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
-use node::{AudioNodeInit, AudioNodeMessage, ChannelInfo};
-use render_thread::AudioRenderThread;
-use render_thread::AudioRenderThreadMsg;
+use crate::decoder::{AudioDecoder, AudioDecoderCallbacks, AudioDecoderOptions};
+use crate::graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
+use crate::node::{AudioNodeInit, AudioNodeMessage, ChannelInfo};
+use crate::render_thread::AudioRenderThread;
+use crate::render_thread::AudioRenderThreadMsg;
 use servo_media_traits::{BackendMsg, ClientContextId, MediaInstance};
 use std::cell::Cell;
 use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread::Builder;
-use AudioBackend;
+use crate::AudioBackend;
 
 use crate::sink::AudioSinkError;
 

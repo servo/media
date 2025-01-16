@@ -1,6 +1,6 @@
-use block::Chunk;
+use crate::block::Chunk;
 use log::warn;
-use node::{AudioNodeEngine, AudioNodeType, BlockInfo, ChannelInfo};
+use crate::node::{AudioNodeEngine, AudioNodeType, BlockInfo, ChannelInfo};
 use num_complex::Complex64;
 use std::collections::VecDeque;
 use std::sync::Arc;

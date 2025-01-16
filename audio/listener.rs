@@ -1,7 +1,7 @@
-use block::{Block, Chunk};
-use node::{AudioNodeEngine, BlockInfo};
-use node::{AudioNodeType, ChannelInfo};
-use param::{Param, ParamDir, ParamType};
+use crate::block::{Block, Chunk};
+use crate::node::{AudioNodeEngine, BlockInfo};
+use crate::node::{AudioNodeType, ChannelInfo};
+use crate::param::{Param, ParamDir, ParamType};
 
 /// AudioListeners are fake nodes; from the user's point of view they're
 /// a non-node entity with zero inputs and outputs, but with AudioParams

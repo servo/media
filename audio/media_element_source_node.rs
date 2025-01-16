@@ -1,5 +1,5 @@
-use block::{Block, Chunk, FRAMES_PER_BLOCK};
-use node::{AudioNodeEngine, AudioNodeType, BlockInfo, ChannelInfo};
+use crate::block::{Block, Chunk, FRAMES_PER_BLOCK};
+use crate::node::{AudioNodeEngine, AudioNodeType, BlockInfo, ChannelInfo};
 use player::audio::AudioRenderer;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;

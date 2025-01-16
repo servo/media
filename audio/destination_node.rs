@@ -1,6 +1,5 @@
-use block::Chunk;
-use node::{AudioNodeEngine, BlockInfo};
-use node::{AudioNodeType, ChannelCountMode, ChannelInfo};
+use crate::block::Chunk;
+use crate::node::{AudioNodeEngine, AudioNodeType, BlockInfo, ChannelCountMode, ChannelInfo};
 
 #[derive(AudioNodeCommon)]
 pub(crate) struct DestinationNode {

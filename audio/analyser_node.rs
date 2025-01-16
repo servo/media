@@ -1,7 +1,7 @@
-use block::{Block, Chunk, FRAMES_PER_BLOCK_USIZE};
-use node::AudioNodeEngine;
-use node::BlockInfo;
-use node::{AudioNodeType, ChannelInfo, ChannelInterpretation};
+use crate::block::{Block, Chunk, FRAMES_PER_BLOCK_USIZE};
+use crate::node::AudioNodeEngine;
+use crate::node::BlockInfo;
+use crate::node::{AudioNodeType, ChannelInfo, ChannelInterpretation};
 use std::cmp;
 use std::f32::consts::PI;
 

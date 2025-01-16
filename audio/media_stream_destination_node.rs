@@ -1,8 +1,8 @@
-use block::Chunk;
-use node::{AudioNodeEngine, BlockInfo};
-use node::{AudioNodeType, ChannelInfo};
+use crate::block::Chunk;
+use crate::node::{AudioNodeEngine, BlockInfo};
+use crate::node::{AudioNodeType, ChannelInfo};
 use servo_media_streams::MediaSocket;
-use sink::AudioSink;
+use crate::sink::AudioSink;
 
 #[derive(AudioNodeCommon)]
 pub(crate) struct MediaStreamDestinationNode {
