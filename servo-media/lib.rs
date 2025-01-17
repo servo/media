@@ -106,8 +106,8 @@ impl ServoMedia {
         thread::spawn(move || INSTANCE.get_or_init(|| Arc::new(ServoMedia(backend_factory()))));
     }
 
-    pub fn get() -> Result<Arc<ServoMedia>, ()> {
-        Ok(INSTANCE.wait().clone())
+    pub fn get() -> Arc<ServoMedia> {
+        INSTANCE.wait().clone()
     }
 }
 
