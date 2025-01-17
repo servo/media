@@ -184,8 +184,7 @@ impl App {
 
         // player
         let (player_event_sender, player_event_receiver) = ipc::channel::<player::PlayerEvent>()?;
-        let servo_media =
-            ServoMedia::get().map_err(|error| MiscError(format!("Failed to get media backend: {error:?}")))?;
+        let servo_media = ServoMedia::get();
 
         let frame_renderer = if !opts.no_video {
             Some(Arc::new(Mutex::new(MediaFrameRenderer::new(

@@ -6,5 +6,5 @@ use servo_media_dummy::DummyBackend;
 
 fn main() {
     ServoMedia::init::<DummyBackend>();
-    ServoMedia::get().expect("couldn't create a dummy backend?");
+    ServoMedia::get();
 }
