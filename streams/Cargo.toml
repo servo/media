@@ -10,5 +10,4 @@ name = "servo_media_streams"
 path = "lib.rs"
 
 [dependencies]
-lazy_static = "1.0"
 uuid = { version = "1.4", features = ["v4"] }
