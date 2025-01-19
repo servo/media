@@ -73,7 +73,6 @@ impl GStreamerBackend {
         // See https://github.com/servo/media/pull/393.
         let needs_background_glib_main_loop = {
             let (major, minor, micro, _) = gst::version();
-            println!("glib version {major} {minor} {micro}");
             (major, minor, micro) >= (1, 19, 1) && (major, minor, micro) <= (1, 22, 7)
         };
 
