@@ -9,8 +9,7 @@ edition = "2021"
 path = "lib.rs"
 
 [dependencies]
-lazy_static = "1.0"
-log = "0.4.6"
+log = "0.4"
 uuid = { version = "1.4", features = ["v4"] }
 
 [dependencies.servo-media-streams]

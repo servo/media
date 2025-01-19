@@ -23,7 +23,6 @@ gst-webrtc = { workspace = true }
 gst-sdp = { workspace = true }
 gstreamer-sys = { workspace = true }
 ipc-channel = { workspace = true }
-lazy_static = "1.2.0"
 log = "0.4"
 mime = "0.3.13"
 once_cell = "1.18.0"

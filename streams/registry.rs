@@ -1,12 +1,13 @@
 use super::MediaStream;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, LazyLock, Mutex};
 use uuid::Uuid;
 
-lazy_static! {
-    static ref MEDIA_STREAMS_REGISTRY: Mutex<HashMap<MediaStreamId, Arc<Mutex<dyn MediaStream>>>> =
-        Mutex::new(HashMap::new());
-}
+type RegisteredMediaStream = Arc<Mutex<dyn MediaStream>>;
+
+static MEDIA_STREAMS_REGISTRY: LazyLock<Mutex<HashMap<MediaStreamId, RegisteredMediaStream>>> = LazyLock::new(|| {
+    Mutex::new(HashMap::new())
+});
 
 #[derive(Clone, Copy, Hash, Eq, PartialEq)]
 pub struct MediaStreamId(Uuid);

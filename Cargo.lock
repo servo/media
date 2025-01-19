@@ -2545,7 +2545,6 @@ dependencies = [
  "gstreamer-video",
  "gstreamer-webrtc",
  "ipc-channel",
- "lazy_static",
  "log 0.4.17",
  "mime 0.3.17",
  "once_cell",
@@ -2613,7 +2612,6 @@ dependencies = [
 name = "servo-media-streams"
 version = "0.1.0"
 dependencies = [
- "lazy_static",
  "uuid",
 ]
 
@@ -2625,7 +2623,6 @@ version = "0.1.0"
 name = "servo-media-webrtc"
 version = "0.1.0"
 dependencies = [
- "lazy_static",
  "log 0.4.17",
  "servo-media-streams",
  "uuid",
