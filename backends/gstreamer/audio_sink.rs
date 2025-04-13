@@ -90,9 +90,11 @@ impl AudioSink for GStreamerAudioSink {
             .name("GstAppSrcCallbacks".to_owned())
             .spawn(move || {
                 let need_data = move |_: &AppSrc, _: u32| {
-                    graph_thread_channel
+                    if let Err(e) = graph_thread_channel
                         .send(AudioRenderThreadMsg::SinkNeedData)
-                        .unwrap();
+                    {
+                        log::warn!("Error sending need data event: {:?}", e);
+                    }
                 };
                 appsrc.set_callbacks(AppSrcCallbacks::builder().need_data(need_data).build());
             })
