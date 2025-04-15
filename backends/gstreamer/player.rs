@@ -798,6 +798,23 @@ impl Player for GStreamerPlayer {
     inner_player_proxy!(set_volume, value, f64);
     inner_player_proxy!(buffered, Vec<Range<f64>>);
 
+    fn seekable(&self) -> Result<Vec<Range<f64>>, PlayerError> {
+        self.setup()?;
+        let inner = self.inner.borrow();
+        let mut inner = inner.as_ref().unwrap().lock().unwrap();
+        // if the servosrc is seekable, we should return the duration of the media
+        if let Some(metadata) = inner.last_metadata.as_ref() {
+            if metadata.is_seekable {
+                return Ok(vec![Range {
+                    start: 0.0,
+                    end: metadata.duration.unwrap().as_secs_f64(),
+                }]);
+            }
+        }
+        // if the servosrc is not seekable, we should return the buffered range
+        inner.buffered()
+    }
+
     fn render_use_gl(&self) -> bool {
         self.render.lock().unwrap().is_gl()
     }
