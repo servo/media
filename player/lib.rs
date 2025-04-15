@@ -94,6 +94,7 @@ pub trait Player: Send + MediaInstance {
     fn pause(&self) -> Result<(), PlayerError>;
     fn stop(&self) -> Result<(), PlayerError>;
     fn seek(&self, time: f64) -> Result<(), PlayerError>;
+    fn seekable(&self) -> Result<Vec<Range<f64>>, PlayerError>;
     fn set_mute(&self, val: bool) -> Result<(), PlayerError>;
     fn set_volume(&self, value: f64) -> Result<(), PlayerError>;
     fn set_input_size(&self, size: u64) -> Result<(), PlayerError>;

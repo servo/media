@@ -184,6 +184,9 @@ impl Player for DummyPlayer {
     fn buffered(&self) -> Result<Vec<Range<f64>>, PlayerError> {
         Ok(vec![])
     }
+    fn seekable(&self) -> Result<Vec<Range<f64>>, PlayerError> {
+        Ok(vec![])
+    }
 
     fn set_stream(&self, _: &MediaStreamId, _: bool) -> Result<(), PlayerError> {
         Ok(())
