@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-22.04]
-        rust: [nightly]
+        rust: [stable]
         target: ["default"]
     steps:
     - uses: actions/checkout@v2

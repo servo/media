@@ -9,9 +9,9 @@ euclid = { version = "0.22", optional = true }
 failure = { version = "0.1", optional = true }
 failure_derive = { version = "0.1", optional = true }
 gleam = { version = "0.12.2", optional = true }
-rand = { version = "0.5.0", optional = true }
+rand = { version = "0.9.0", optional = true }
 time = { version = "0.1.40", optional = true }
-serde = {version = "1.0", optional = true }
+serde = { version = "1.0", optional = true }
 serde_derive = { version = "1.0", optional = true }
 serde_json = { version = "1.0", optional = true }
 servo-media-dummy = { path = "../backends/dummy" }
@@ -30,10 +30,20 @@ clap = { version = "2.33", default-features = false, optional = true }
 
 [features]
 default = []
-gui = [ "euclid", "clap", "failure", "failure_derive", "gleam", "glutin", "webrender", "webrender_api", "winit" ]
-player = [ "ipc-channel" ]
-noise = [ "rand" ]
-webrtc = [ "rand", "serde", "serde_derive", "serde_json", "websocket" ]
+gui = [
+  "euclid",
+  "clap",
+  "failure",
+  "failure_derive",
+  "gleam",
+  "glutin",
+  "webrender",
+  "webrender_api",
+  "winit",
+]
+player = ["ipc-channel"]
+noise = ["rand"]
+webrtc = ["rand", "serde", "serde_derive", "serde_json", "websocket"]
 
 [[bin]]
 name = "dummy"
@@ -94,17 +104,17 @@ path = "play.rs"
 [[bin]]
 name = "play_noise"
 path = "play_noise.rs"
-required-features = [ "noise" ]
+required-features = ["noise"]
 
 [[bin]]
 name = "player"
 path = "player/main.rs"
-required-features = [ "player", "gui" ]
+required-features = ["player", "gui"]
 
 [[bin]]
 name = "play_media_stream"
 path = "play_media_stream.rs"
-required-features = [ "player" ]
+required-features = ["player"]
 
 [[bin]]
 name = "stream_reader_node"
@@ -117,12 +127,12 @@ path = "stream_dest_node.rs"
 [[bin]]
 name = "simple_player"
 path = "simple_player.rs"
-required-features = [ "player" ]
+required-features = ["player"]
 
 [[bin]]
 name = "muted_player"
 path = "muted_player.rs"
-required-features = [ "player" ]
+required-features = ["player"]
 
 [[bin]]
 name = "oscillator"
@@ -139,7 +149,7 @@ path = "constant_source.rs"
 [[bin]]
 name = "simple_webrtc"
 path = "simple_webrtc.rs"
-required-features = [ "webrtc" ]
+required-features = ["webrtc"]
 
 [[bin]]
 name = "set_value_curve"
@@ -160,4 +170,4 @@ path = "iir_filter.rs"
 [[bin]]
 name = "media_element_source_node"
 path = "media_element_source_node.rs"
-required-features = [ "player" ]
+required-features = ["player"]
