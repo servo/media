@@ -805,10 +805,12 @@ impl Player for GStreamerPlayer {
         // if the servosrc is seekable, we should return the duration of the media
         if let Some(metadata) = inner.last_metadata.as_ref() {
             if metadata.is_seekable {
-                return Ok(vec![Range {
-                    start: 0.0,
-                    end: metadata.duration.unwrap().as_secs_f64(),
-                }]);
+                if let Some(duration) = metadata.duration {
+                    return Ok(vec![Range {
+                        start: 0.0,
+                        end: duration.as_secs_f64(),
+                    }]);
+                }
             }
         }
         // if the servosrc is not seekable, we should return the buffered range
