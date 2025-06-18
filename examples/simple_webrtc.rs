@@ -376,7 +376,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let (send_msg_tx, send_msg_rx) = mpsc::channel::<OwnedMessage>();
     let send_loop = send_loop(sender, send_msg_rx);
 
-    let our_id = rand::thread_rng().gen_range(10, 10_000);
+    let our_id = rand::thread_rng().gen_range(10..10_000);
     println!("Registering id {} with server", our_id);
     send_msg_tx
         .send(OwnedMessage::Text(format!("HELLO {}", our_id)))
