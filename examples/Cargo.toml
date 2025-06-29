@@ -5,6 +5,7 @@ license = "MPL-2.0"
 edition = "2021"
 
 [dependencies]
+env_logger = "*"
 euclid = { version = "0.22", optional = true }
 failure = { version = "0.1", optional = true }
 failure_derive = { version = "0.1", optional = true }
@@ -20,12 +21,12 @@ servo-media-gstreamer = { path = "../backends/gstreamer" }
 servo-media = { path = "../servo-media" }
 webrender = { git = "https://github.com/servo/webrender", optional = true }
 webrender_api = { git = "https://github.com/servo/webrender", optional = true }
-websocket = { version = "0.22", optional = true }
+websocket = { version = "0.27", optional = true }
 ipc-channel = { workspace = true, optional = true }
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
-winit = { version = "0.19", optional = true }
-glutin = { version = "0.21", optional = true }
+winit = { version = "0.26", optional = true }
+glutin = { version = "0.26", optional = true }
 clap = { version = "2.33", default-features = false, optional = true }
 
 [features]

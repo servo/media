@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-use glutin::os::ContextTraitExt;
+use glutin::platform::ContextTraitExt;
 use servo_media::player::context::*;
 
 pub struct PlayerContextGlutin {
