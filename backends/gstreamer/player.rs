@@ -9,8 +9,8 @@ use glib::prelude::*;
 use gst;
 use gst::prelude::*;
 use gst_app;
-use gst_player;
-use gst_player::prelude::*;
+use gst_play;
+use gst_play::prelude::*;
 use ipc_channel::ipc::{channel, IpcReceiver, IpcSender};
 use servo_media_player::audio::AudioRenderer;
 use servo_media_player::context::PlayerGLContext;
@@ -31,7 +31,7 @@ use std::u64;
 
 const MAX_BUFFER_SIZE: i32 = 500 * 1024 * 1024;
 
-fn metadata_from_media_info(media_info: &gst_player::PlayerMediaInfo) -> Result<Metadata, ()> {
+fn metadata_from_media_info(media_info: &gst_play::PlayMediaInfo) -> Result<Metadata, ()> {
     let dur = media_info.duration();
     let duration = if let Some(dur) = dur {
         let mut nanos = dur.nseconds();
@@ -111,7 +111,8 @@ enum PlayerSource {
 }
 
 struct PlayerInner {
-    player: gst_player::Player,
+    player: gst_play::Play,
+    signal_adapter: gst_play::PlaySignalAdapter,
     source: Option<PlayerSource>,
     video_sink: gst_app::AppSink,
     input_size: u64,
@@ -317,12 +318,6 @@ macro_rules! notify(
     };
 );
 
-macro_rules! player(
-    ($inner:expr) => {
-        $inner.lock().unwrap().player
-    }
-);
-
 struct SeekChannel {
     sender: SeekLock,
     recv: IpcReceiver<SeekLockMsg>,
@@ -406,7 +401,7 @@ impl GStreamerPlayer {
 
         // Check that we actually have the elements that we
         // need to make this work.
-        for element in vec!["playbin", "queue"].iter() {
+        for element in vec!["playbin3", "decodebin3", "queue"].iter() {
             if gst::ElementFactory::find(element).is_none() {
                 return Err(PlayerError::Backend(format!(
                     "Missing dependency: {}",
@@ -415,7 +410,8 @@ impl GStreamerPlayer {
             }
         }
 
-        let player = gst_player::Player::default();
+        let player = gst_play::Play::default();
+        let signal_adapter = gst_play::PlaySignalAdapter::new_sync_emit(&player);
         let pipeline = player.pipeline();
 
         // FIXME(#282): The progressive downloading breaks playback on Windows and Android.
@@ -526,6 +522,7 @@ impl GStreamerPlayer {
 
         *self.inner.borrow_mut() = Some(Arc::new(Mutex::new(PlayerInner {
             player,
+            signal_adapter: signal_adapter.clone(),
             source: None,
             video_sink,
             input_size: 0,
@@ -540,24 +537,24 @@ impl GStreamerPlayer {
         let inner = inner.as_ref().unwrap();
         let observer = self.observer.clone();
         // Handle `end-of-stream` signal.
-        player!(inner).connect_end_of_stream(move |_| {
+        signal_adapter.connect_end_of_stream(move |_| {
             notify!(observer, PlayerEvent::EndOfStream);
         });
 
         let observer = self.observer.clone();
         // Handle `error` signal
-        player!(inner).connect_error(move |_, error| {
+        signal_adapter.connect_error(move |_self, error, _details| {
             notify!(observer, PlayerEvent::Error(error.to_string()));
         });
 
         let observer = self.observer.clone();
         // Handle `state-changed` signal.
-        player!(inner).connect_state_changed(move |_, player_state| {
+        signal_adapter.connect_state_changed(move |_, player_state| {
             let state = match player_state {
-                gst_player::PlayerState::Buffering => Some(PlaybackState::Buffering),
-                gst_player::PlayerState::Stopped => Some(PlaybackState::Stopped),
-                gst_player::PlayerState::Paused => Some(PlaybackState::Paused),
-                gst_player::PlayerState::Playing => Some(PlaybackState::Playing),
+                gst_play::PlayState::Buffering => Some(PlaybackState::Buffering),
+                gst_play::PlayState::Stopped => Some(PlaybackState::Stopped),
+                gst_play::PlayState::Paused => Some(PlaybackState::Paused),
+                gst_play::PlayState::Playing => Some(PlaybackState::Playing),
                 _ => None,
             };
             if let Some(v) = state {
@@ -567,7 +564,7 @@ impl GStreamerPlayer {
 
         let observer = self.observer.clone();
         // Handle `position-update` signal.
-        player!(inner).connect_position_updated(move |_, position| {
+        signal_adapter.connect_position_updated(move |_, position| {
             if let Some(seconds) = position.map(|p| p.seconds()) {
                 notify!(observer, PlayerEvent::PositionChanged(seconds));
             }
@@ -575,14 +572,14 @@ impl GStreamerPlayer {
 
         let observer = self.observer.clone();
         // Handle `seek-done` signal.
-        player!(inner).connect_seek_done(move |_, position| {
+        signal_adapter.connect_seek_done(move |_, position| {
             notify!(observer, PlayerEvent::SeekDone(position.seconds()));
         });
 
         // Handle `media-info-updated` signal.
         let inner_clone = inner.clone();
         let observer = self.observer.clone();
-        player!(inner).connect_media_info_updated(move |_, info| {
+        signal_adapter.connect_media_info_updated(move |_, info| {
             let mut inner = inner_clone.lock().unwrap();
             if let Ok(metadata) = metadata_from_media_info(info) {
                 if inner.last_metadata.as_ref() != Some(&metadata) {
@@ -599,7 +596,7 @@ impl GStreamerPlayer {
         // Handle `duration-changed` signal.
         let inner_clone = inner.clone();
         let observer = self.observer.clone();
-        player!(inner).connect_duration_changed(move |_, duration| {
+        signal_adapter.connect_duration_changed(move |_, duration| {
             let mut inner = inner_clone.lock().unwrap();
             let duration = duration.map(|duration| {
                 let nanos = duration.nseconds();
@@ -749,9 +746,9 @@ impl GStreamerPlayer {
                 None
             });
 
-            let error_handler_id = inner.player.connect_error(move |player, error| {
+            let error_handler_id = signal_adapter.connect_error(move |signal_adapter, error, _details| {
                 notify!(sender_clone, Err(PlayerError::Backend(error.to_string())));
-                player.stop();
+                signal_adapter.play().stop();
             });
 
             let _ = inner.pause();

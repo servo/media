@@ -18,7 +18,7 @@ gst-app = { workspace = true }
 gst-audio = { workspace = true }
 gst-video = { workspace = true }
 gst-base = { workspace = true }
-gst-player = { workspace = true }
+gst-play = { workspace = true }
 gst-webrtc = { workspace = true }
 gst-sdp = { workspace = true }
 gstreamer-sys = { workspace = true }
