@@ -24,7 +24,7 @@ gst-app = { package = "gstreamer-app", version = "0.23" }
 gst-audio = { package = "gstreamer-audio", version = "0.23" }
 gst-base = { package = "gstreamer-base", version = "0.23" }
 gst-gl = { package = "gstreamer-gl", version = "0.23" }
-gst-player = { package = "gstreamer-player", version = "0.23" }
+gst-play = { package = "gstreamer-play", version = "0.23" }
 gst-sdp = { package = "gstreamer-sdp", version = "0.23" }
 gst-video = { package = "gstreamer-video", version = "0.23" }
 gst-webrtc = { package = "gstreamer-webrtc", version = "0.23", features = [

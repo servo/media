@@ -1203,23 +1203,23 @@ dependencies = [
 ]
 
 [[package]]
-name = "gstreamer-player"
-version = "0.23.4"
+name = "gstreamer-play"
+version = "0.23.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4af92b099d827dcf5c4b0cb9be00c44a679fd63e498a890e1ac1d5d9aae1aa3e"
+checksum = "6ef455584b832e9fdc76f7952b9432eaee2fd287157b03cf2bc0e83f1b41619c"
 dependencies = [
  "glib",
  "gstreamer",
- "gstreamer-player-sys",
+ "gstreamer-play-sys",
  "gstreamer-video",
  "libc",
 ]
 
 [[package]]
-name = "gstreamer-player-sys"
-version = "0.23.4"
+name = "gstreamer-play-sys"
+version = "0.23.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87cc2b24b59ffbba4aad7585262f0efef7be3e5859f4fa00377fbecb34d7c355"
+checksum = "b01c1c4f09cb6709c7da2532b3fcbc14da9006d508baee606328080e46f491f5"
 dependencies = [
  "glib-sys",
  "gobject-sys",
@@ -2542,7 +2542,7 @@ dependencies = [
  "gstreamer-app",
  "gstreamer-audio",
  "gstreamer-base",
- "gstreamer-player",
+ "gstreamer-play",
  "gstreamer-sdp",
  "gstreamer-sys",
  "gstreamer-video",
