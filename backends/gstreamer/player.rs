@@ -314,7 +314,7 @@ impl PlayerInner {
 
 macro_rules! notify(
     ($observer:expr, $event:expr) => {
-        $observer.lock().unwrap().send($event).unwrap()
+        $observer.lock().unwrap().send($event)
     };
 );
 
@@ -538,13 +538,13 @@ impl GStreamerPlayer {
         let observer = self.observer.clone();
         // Handle `end-of-stream` signal.
         signal_adapter.connect_end_of_stream(move |_| {
-            notify!(observer, PlayerEvent::EndOfStream);
+            let _ = notify!(observer, PlayerEvent::EndOfStream);
         });
 
         let observer = self.observer.clone();
         // Handle `error` signal
         signal_adapter.connect_error(move |_self, error, _details| {
-            notify!(observer, PlayerEvent::Error(error.to_string()));
+            let _ = notify!(observer, PlayerEvent::Error(error.to_string()));
         });
 
         let observer = self.observer.clone();
@@ -558,7 +558,7 @@ impl GStreamerPlayer {
                 _ => None,
             };
             if let Some(v) = state {
-                notify!(observer, PlayerEvent::StateChanged(v));
+                let _ = notify!(observer, PlayerEvent::StateChanged(v));
             }
         });
 
@@ -566,14 +566,14 @@ impl GStreamerPlayer {
         // Handle `position-update` signal.
         signal_adapter.connect_position_updated(move |_, position| {
             if let Some(seconds) = position.map(|p| p.seconds()) {
-                notify!(observer, PlayerEvent::PositionChanged(seconds));
+                let _ = notify!(observer, PlayerEvent::PositionChanged(seconds));
             }
         });
 
         let observer = self.observer.clone();
         // Handle `seek-done` signal.
         signal_adapter.connect_seek_done(move |_, position| {
-            notify!(observer, PlayerEvent::SeekDone(position.seconds()));
+            let _ = notify!(observer, PlayerEvent::SeekDone(position.seconds()));
         });
 
         // Handle `media-info-updated` signal.
@@ -588,7 +588,7 @@ impl GStreamerPlayer {
                         inner.player.set_rate(inner.rate);
                     }
                     gst::info!(inner.cat, obj = &inner.player, "Metadata updated: {:?}", metadata);
-                    notify!(observer, PlayerEvent::MetadataUpdated(metadata));
+                    let _ = notify!(observer, PlayerEvent::MetadataUpdated(metadata));
                 }
             }
         });
@@ -611,7 +611,7 @@ impl GStreamerPlayer {
             if let Some(updated_metadata) = updated_metadata {
                 gst::info!(inner.cat, obj = &inner.player, "Duration updated: {:?}",
                               updated_metadata);
-                notify!(observer, PlayerEvent::MetadataUpdated(updated_metadata));
+                let _ = notify!(observer, PlayerEvent::MetadataUpdated(updated_metadata));
             }
         });
 
@@ -628,7 +628,7 @@ impl GStreamerPlayer {
                         .get_frame_from_sample(sample)
                         .map_err(|_| gst::FlowError::Error)?;
                     video_renderer.lock().unwrap().render(frame);
-                    notify!(observer, PlayerEvent::VideoFrameUpdated);
+                    let _ = notify!(observer, PlayerEvent::VideoFrameUpdated);
                     Ok(gst::FlowSuccess::Ok)
                 }
             };
@@ -696,15 +696,15 @@ impl GStreamerPlayer {
                                     });
 
                                     enough_data_.store(false, Ordering::Relaxed);
-                                    notify!(observer_, PlayerEvent::NeedData);
+                                    let _ = notify!(observer_, PlayerEvent::NeedData);
                                 })
                                 .enough_data(move |_| {
                                     enough_data__.store(true, Ordering::Relaxed);
-                                    notify!(observer__, PlayerEvent::EnoughData);
+                                    let _ = notify!(observer__, PlayerEvent::EnoughData);
                                 })
                                 .seek_data(move |_, offset| {
                                     let (ret, ack_channel) = if servosrc_.set_seek_offset(offset) {
-                                        notify!(
+                                        let _ = notify!(
                                             observer___,
                                             PlayerEvent::SeekData(
                                                 offset,
@@ -735,7 +735,7 @@ impl GStreamerPlayer {
                             .expect("Source element is expected to be a ServoMediaStreamSrc!");
                         let sender_clone = sender.clone();
                         is_ready_clone.call_once(|| {
-                            notify!(sender_clone, Ok(()));
+                            let _ = notify!(sender_clone, Ok(()));
                         });
                         PlayerSource::Stream(media_stream_src)
                     }
@@ -747,7 +747,7 @@ impl GStreamerPlayer {
             });
 
             let error_handler_id = signal_adapter.connect_error(move |signal_adapter, error, _details| {
-                notify!(sender_clone, Err(PlayerError::Backend(error.to_string())));
+                let _ = notify!(sender_clone, Err(PlayerError::Backend(error.to_string())));
                 signal_adapter.play().stop();
             });
 
