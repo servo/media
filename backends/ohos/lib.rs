@@ -58,7 +58,7 @@ impl BackendInit for OhosBackend {
         let instances_ = instances.clone();
         let (backend_chan, recvr) = mpsc::channel();
         thread::Builder::new()
-            .name("GStreamerBackend ShutdownThread".to_owned())
+            .name("OhosBackend ShutdownThread".to_owned())
             .spawn(move || {
                 match recvr.recv().unwrap() {
                     BackendMsg::Shutdown(context_id, instance_id) => {
