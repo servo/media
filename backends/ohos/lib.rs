@@ -61,14 +61,15 @@ impl BackendInit for OhosBackend {
             .name("OhosBackend ShutdownThread".to_owned())
             .spawn(move || {
                 match recvr.recv().unwrap() {
-                    BackendMsg::Shutdown(context_id, instance_id) => {
-                        let mut instances_ = instances_.lock().unwrap();
-                        if let Some(vec) = instances_.get_mut(&context_id) {
-                            vec.retain(|m| m.0 != instance_id);
+                    BackendMsg::Shutdown { context, id, tx_ack } => {
+                        let mut map = instances_.lock().unwrap();
+                        if let Some(vec) = map.get_mut(&context) {
+                            vec.retain(|m| m.0 != id);
                             if vec.is_empty() {
-                                instances_.remove(&context_id);
+                                map.remove(&context);
                             }
                         }
+                        let _ = tx_ack.send(());
                     }
                 };
             })

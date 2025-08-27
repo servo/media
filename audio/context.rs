@@ -312,11 +312,19 @@ impl Drop for AudioContext {
     fn drop(&mut self) {
         let (tx, _) = mpsc::channel();
         let _ = self.sender.send(AudioRenderThreadMsg::Close(tx));
+
+        // Ask the backend to unregister this instance and wait for ACK
+        let (tx_ack, rx_ack) = mpsc::channel();
         let _ = self
             .backend_chan
             .lock()
             .unwrap()
-            .send(BackendMsg::Shutdown(self.client_context_id, self.id));
+            .send(BackendMsg::Shutdown {
+                context: self.client_context_id,
+                id: self.id,
+                tx_ack,
+            });
+        let _ = rx_ack.recv();
     }
 }
 

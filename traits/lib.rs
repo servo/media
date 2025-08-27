@@ -3,7 +3,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 use std::num::NonZeroU32;
-
+use std::sync::mpsc::Sender;
 /// An ID for clients to track instances of Players and AudioContexts belonging to the same tab and mute them simultaneously.
 /// Current tuple implementation matches one of Servo's BrowsingContextId.
 #[derive(PartialEq, Eq, Hash, Debug, Clone, Copy)]
@@ -27,5 +27,9 @@ pub trait MediaInstance: Send {
 pub enum BackendMsg {
     /// Message to notify about a media instance shutdown.
     /// The given `usize` is the media instance ID.
-    Shutdown(ClientContextId, usize),
+    Shutdown {
+        context: ClientContextId,
+        id: usize,
+        tx_ack: Sender<()>,
+    },
 }
