@@ -861,10 +861,16 @@ impl MediaInstance for GStreamerPlayer {
 impl Drop for GStreamerPlayer {
     fn drop(&mut self) {
         let _ = self.stop();
+        let (tx_ack, rx_ack) = mpsc::channel();
         let _ = self
             .backend_chan
             .lock()
             .unwrap()
-            .send(BackendMsg::Shutdown(self.context_id, self.id));
+            .send(BackendMsg::Shutdown {
+                context: self.context_id,
+                id: self.id,
+                tx_ack,
+            });
+        let _ = rx_ack.recv();
     }
 }

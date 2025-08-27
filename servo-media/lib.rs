@@ -37,6 +37,10 @@ pub trait BackendInit {
     fn init() -> Box<dyn Backend>;
 }
 
+pub trait BackendDeInit {
+    fn deinit(&self) {}
+}
+
 pub trait Backend: Send + Sync {
     fn create_player(
         &self,

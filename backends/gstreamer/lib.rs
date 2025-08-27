@@ -20,7 +20,7 @@ use media_stream::GStreamerMediaStream;
 use mime::Mime;
 use once_cell::sync::{Lazy, OnceCell};
 use registry_scanner::GSTREAMER_REGISTRY_SCANNER;
-use servo_media::{Backend, BackendInit, SupportsMediaType};
+use servo_media::{Backend, BackendInit, BackendDeInit, SupportsMediaType};
 use servo_media_audio::context::{AudioContext, AudioContextOptions};
 use servo_media_audio::decoder::AudioDecoder;
 use servo_media_audio::sink::AudioSinkError;
@@ -110,14 +110,20 @@ impl GStreamerBackend {
             .name("GStreamerBackend ShutdownThread".to_owned())
             .spawn(move || {
                 match recvr.recv().unwrap() {
-                    BackendMsg::Shutdown(context_id, instance_id) => {
+                    BackendMsg::Shutdown {
+                        context,
+                        id,
+                        tx_ack,
+                    } => {
                         let mut instances_ = instances_.lock().unwrap();
-                        if let Some(vec) = instances_.get_mut(&context_id) {
-                            vec.retain(|m| m.0 != instance_id);
+                        if let Some(vec) = instances_.get_mut(&context) {
+                            vec.retain(|m| m.0 != id);
                             if vec.is_empty() {
-                                instances_.remove(&context_id);
+                                instances_.remove(&context);
                             }
                         }
+                        // tell caller we are done removing this instance
+                        let _ = tx_ack.send(());
                     }
                 };
             })
@@ -326,5 +332,30 @@ impl WebRtcBackend for GStreamerBackend {
 impl BackendInit for GStreamerBackend {
     fn init() -> Box<dyn Backend> {
         Self::init_with_plugins(PathBuf::new(), &[]).unwrap()
+    }
+}
+
+impl BackendDeInit for GStreamerBackend {
+    fn deinit(&self) {
+        let to_shutdown: Vec<(ClientContextId, usize)> = {
+            let map = self.instances.lock().unwrap();
+            map.iter()
+                .flat_map(|(ctx, v)| v.iter().map(move |(id, _)| (*ctx, *id)))
+                .collect()
+        };
+
+        for (ctx, id) in to_shutdown {
+            let (tx_ack, rx_ack) = mpsc::channel();
+            let _ = self
+                .backend_chan
+                .lock()
+                .unwrap()
+                .send(BackendMsg::Shutdown {
+                    context: ctx,
+                    id,
+                    tx_ack,
+                });
+            let _ = rx_ack.recv();
+        }
     }
 }
