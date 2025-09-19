@@ -4,6 +4,7 @@ members = [
   "audio",
   "backends/auto",
   "backends/dummy",
+  "backends/ffmpeg",
   "backends/gstreamer",
   "backends/gstreamer/render",
   "backends/gstreamer/render-unix",
