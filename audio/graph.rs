@@ -499,7 +499,7 @@ impl AudioGraph {
     }
 
     /// Obtain a mutable reference to a node
-    pub(crate) fn node_mut(&self, ix: NodeId) -> RefMut<Box<dyn AudioNodeEngine>> {
+    pub(crate) fn node_mut(&self, ix: NodeId) -> RefMut<'_, Box<dyn AudioNodeEngine>> {
         self.graph[ix.0].node.borrow_mut()
     }
 }

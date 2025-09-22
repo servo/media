@@ -122,7 +122,7 @@ pub struct AudioContext {
     /// representing the final destination for all audio.
     dest_node: NodeId,
     listener: NodeId,
-    make_decoder: Arc<(dyn Fn() -> Box<dyn AudioDecoder> + Sync + Send)>,
+    make_decoder: Arc<dyn Fn() -> Box<dyn AudioDecoder> + Sync + Send>,
 }
 
 impl AudioContext {
