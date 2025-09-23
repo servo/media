@@ -204,7 +204,7 @@ impl Block {
         self.channels
     }
 
-    pub fn iter(&mut self) -> FrameIterator {
+    pub fn iter(&mut self) -> FrameIterator<'_> {
         FrameIterator::new(self)
     }
 
