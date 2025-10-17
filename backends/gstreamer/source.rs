@@ -210,7 +210,7 @@ mod imp {
                     let flags =
                         gst::SchedulingFlags::SEQUENTIAL | gst::SchedulingFlags::BANDWIDTH_LIMITED;
                     q.set(flags, 1, -1, 0);
-                    q.add_scheduling_modes(&[gst::PadMode::Push]);
+                    q.add_scheduling_modes([gst::PadMode::Push]);
                     true
                 }
                 _ => gst::Pad::query_default(pad, Some(&*self.obj()), query),

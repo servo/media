@@ -247,7 +247,7 @@ impl PlayerInner {
                 let mut buffering = gst::query::Buffering::new(gst::Format::Percent);
                 if pipeline.query(&mut buffering) {
                     let ranges = buffering.ranges();
-                    for (start, end) in &ranges {
+                    for (start, end) in ranges {
                         let start = (if let gst::GenericFormattedValue::Percent(start) = start {
                             start.unwrap()
                         } else {

@@ -20,7 +20,7 @@ use media_stream::GStreamerMediaStream;
 use mime::Mime;
 use once_cell::sync::{Lazy, OnceCell};
 use registry_scanner::GSTREAMER_REGISTRY_SCANNER;
-use servo_media::{Backend, BackendInit, BackendDeInit, SupportsMediaType};
+use servo_media::{Backend, BackendDeInit, BackendInit, SupportsMediaType};
 use servo_media_audio::context::{AudioContext, AudioContextOptions};
 use servo_media_audio::decoder::AudioDecoder;
 use servo_media_audio::sink::AudioSinkError;
@@ -43,8 +43,7 @@ use std::sync::{Arc, Mutex, Weak};
 use std::thread;
 use std::vec::Vec;
 
-static BACKEND_BASE_TIME: Lazy<gst::ClockTime> =
-    Lazy::new(|| gst::SystemClock::obtain().time().unwrap());
+static BACKEND_BASE_TIME: Lazy<gst::ClockTime> = Lazy::new(|| gst::SystemClock::obtain().time());
 
 static BACKEND_THREAD: OnceCell<bool> = OnceCell::new();
 
