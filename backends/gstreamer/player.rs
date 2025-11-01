@@ -478,7 +478,7 @@ impl GStreamerPlayer {
                         let positions = audio_info.positions().ok_or(gst::FlowError::Error)?;
 
                         let Some(audio_renderer) = weak_audio_renderer.upgrade() else {
-                            return Err(gst::FlowError::Error);
+                            return Err(gst::FlowError::Flushing);
                         };
 
                         for position in positions.iter() {
