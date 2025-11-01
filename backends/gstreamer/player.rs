@@ -641,7 +641,7 @@ impl GStreamerPlayer {
                     if let Some(video_renderer) = weak_video_renderer.upgrade() {
                         video_renderer.lock().unwrap().render(frame);
                     } else {
-                        return Err(gst::FlowError::Error);
+                        return Err(gst::FlowError::Flushing);
                     };
 
                     let _ = notify!(observer, PlayerEvent::VideoFrameUpdated);
