@@ -462,7 +462,9 @@ impl GStreamerPlayer {
             pipeline.set_property("audio-sink", &audio_sink);
 
             let audio_sink = audio_sink.dynamic_cast::<gst_app::AppSink>().unwrap();
-            let audio_renderer_ = audio_renderer.clone();
+
+            let weak_audio_renderer = Arc::downgrade(&audio_renderer);
+
             audio_sink.set_callbacks(
                 gst_app::AppSinkCallbacks::builder()
                     .new_preroll(|_| Ok(gst::FlowSuccess::Ok))
@@ -474,6 +476,11 @@ impl GStreamerPlayer {
                             .and_then(|caps| gst_audio::AudioInfo::from_caps(caps).ok())
                             .ok_or(gst::FlowError::Error)?;
                         let positions = audio_info.positions().ok_or(gst::FlowError::Error)?;
+
+                        let Some(audio_renderer) = weak_audio_renderer.upgrade() else {
+                            return Err(gst::FlowError::Flushing);
+                        };
+
                         for position in positions.iter() {
                             let buffer = buffer.clone();
                             let map = if let Ok(map) = buffer.into_mapped_buffer_readable() {
@@ -483,7 +490,8 @@ impl GStreamerPlayer {
                             };
                             let chunk = Box::new(GStreamerAudioChunk(map));
                             let channel = position.to_mask() as u32;
-                            audio_renderer_.lock().unwrap().render(chunk, channel);
+
+                            audio_renderer.lock().unwrap().render(chunk, channel);
                         }
                         Ok(gst::FlowSuccess::Ok)
                     })
@@ -621,13 +629,21 @@ impl GStreamerPlayer {
             let render_sample = {
                 let render = self.render.clone();
                 let observer = self.observer.clone();
+                let weak_video_renderer = Arc::downgrade(&video_renderer);
+
                 move |sample: gst::Sample| {
                     let frame = render
                         .lock()
                         .unwrap()
                         .get_frame_from_sample(sample)
                         .map_err(|_| gst::FlowError::Error)?;
-                    video_renderer.lock().unwrap().render(frame);
+
+                    if let Some(video_renderer) = weak_video_renderer.upgrade() {
+                        video_renderer.lock().unwrap().render(frame);
+                    } else {
+                        return Err(gst::FlowError::Flushing);
+                    };
+
                     let _ = notify!(observer, PlayerEvent::VideoFrameUpdated);
                     Ok(gst::FlowSuccess::Ok)
                 }
