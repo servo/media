@@ -16,9 +16,9 @@ pub enum AudioDecoderError {
 
 pub struct AudioDecoderCallbacks {
     pub eos: Mutex<Option<Box<dyn FnOnce() + Send + 'static>>>,
-    pub error: Mutex<Option<Box<dyn FnOnce(AudioDecoderError,) + Send + 'static>>>,
+    pub error: Mutex<Option<Box<dyn FnOnce(AudioDecoderError) + Send + 'static>>>,
     pub progress: Option<Box<dyn Fn(Box<dyn AsRef<[f32]>>, u32) + Send + Sync + 'static>>,
-    pub ready: Mutex<Option<Box<dyn FnOnce(u32,) + Send + 'static>>>,
+    pub ready: Mutex<Option<Box<dyn FnOnce(u32) + Send + 'static>>>,
 }
 
 impl AudioDecoderCallbacks {
@@ -65,9 +65,9 @@ impl AudioDecoderCallbacks {
 
 pub struct AudioDecoderCallbacksBuilder {
     eos: Option<Box<dyn FnOnce() + Send + 'static>>,
-    error: Option<Box<dyn FnOnce(AudioDecoderError,) + Send + 'static>>,
+    error: Option<Box<dyn FnOnce(AudioDecoderError) + Send + 'static>>,
     progress: Option<Box<dyn Fn(Box<dyn AsRef<[f32]>>, u32) + Send + Sync + 'static>>,
-    ready: Option<Box<dyn FnOnce(u32,) + Send + 'static>>,
+    ready: Option<Box<dyn FnOnce(u32) + Send + 'static>>,
 }
 
 impl AudioDecoderCallbacksBuilder {

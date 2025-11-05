@@ -255,7 +255,7 @@ fn has_element_for_media_type(
                 }
             }
             false
-        }
+        },
         _ => false,
     }
 }

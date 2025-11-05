@@ -16,12 +16,12 @@ use crate::node::{BlockInfo, ChannelInfo};
 use crate::offline_sink::OfflineAudioSink;
 use crate::oscillator_node::OscillatorNode;
 use crate::panner_node::PannerNode;
-use servo_media_streams::{MediaSocket, MediaStreamId};
 use crate::sink::{AudioSink, AudioSinkError};
-use std::sync::mpsc::{Receiver, Sender};
 use crate::stereo_panner::StereoPannerNode;
 use crate::wave_shaper_node::WaveShaperNode;
 use crate::{AudioBackend, AudioStreamReader};
+use servo_media_streams::{MediaSocket, MediaStreamId};
+use std::sync::mpsc::{Receiver, Sender};
 
 pub enum AudioRenderThreadMsg {
     CreateNode(AudioNodeInit, Sender<NodeId>, ChannelInfo),
@@ -167,11 +167,11 @@ impl AudioRenderThread {
                 Ok(thread) => {
                     let _ = init_sender.send(Ok(()));
                     thread
-                }
+                },
                 Err(e) => {
                     let _ = init_sender.send(Err(e));
                     return;
-                }
+                },
             };
 
         thread.event_loop(event_queue);
@@ -188,29 +188,29 @@ impl AudioRenderThread {
             AudioNodeInit::AnalyserNode(sender) => Box::new(AnalyserNode::new(sender, ch)),
             AudioNodeInit::AudioBufferSourceNode(options) => {
                 Box::new(AudioBufferSourceNode::new(options, ch))
-            }
+            },
             AudioNodeInit::BiquadFilterNode(options) => {
                 Box::new(BiquadFilterNode::new(options, ch, self.sample_rate))
-            }
+            },
             AudioNodeInit::GainNode(options) => Box::new(GainNode::new(options, ch)),
             AudioNodeInit::StereoPannerNode(options) => {
                 Box::new(StereoPannerNode::new(options, ch))
-            }
+            },
             AudioNodeInit::PannerNode(options) => {
                 needs_listener = true;
                 Box::new(PannerNode::new(options, ch))
-            }
+            },
             AudioNodeInit::MediaStreamSourceNode(id) => {
                 let reader = (self.reader_factory)(id, self.sample_rate);
                 Box::new(MediaStreamSourceNode::new(reader, ch))
-            }
+            },
             AudioNodeInit::OscillatorNode(options) => Box::new(OscillatorNode::new(options, ch)),
             AudioNodeInit::ChannelMergerNode(options) => {
                 Box::new(ChannelMergerNode::new(options, ch))
-            }
+            },
             AudioNodeInit::ConstantSourceNode(options) => {
                 Box::new(ConstantSourceNode::new(options, ch))
-            }
+            },
             AudioNodeInit::MediaStreamDestinationNode(socket) => {
                 is_dest = true;
                 Box::new(MediaStreamDestinationNode::new(
@@ -219,7 +219,7 @@ impl AudioRenderThread {
                     (self.sink_factory)().unwrap(),
                     ch,
                 ))
-            }
+            },
             AudioNodeInit::ChannelSplitterNode => Box::new(ChannelSplitterNode::new(ch)),
             AudioNodeInit::WaveShaperNode(options) => Box::new(WaveShaperNode::new(options, ch)),
             AudioNodeInit::MediaElementSourceNode => Box::new(MediaElementSourceNode::new(ch)),
@@ -265,52 +265,52 @@ impl AudioRenderThread {
             match msg {
                 AudioRenderThreadMsg::CreateNode(node_type, tx, ch) => {
                     let _ = tx.send(context.create_node(node_type, ch));
-                }
+                },
                 AudioRenderThreadMsg::ConnectPorts(output, input) => {
                     context.connect_ports(output, input);
-                }
+                },
                 AudioRenderThreadMsg::Resume(tx) => {
                     let _ = tx.send(context.resume());
-                }
+                },
                 AudioRenderThreadMsg::Suspend(tx) => {
                     let _ = tx.send(context.suspend());
-                }
+                },
                 AudioRenderThreadMsg::Close(tx) => {
                     let _ = tx.send(context.suspend());
                     break_loop = true;
-                }
+                },
                 AudioRenderThreadMsg::GetCurrentTime(response) => {
                     response.send(context.current_time).unwrap()
-                }
+                },
                 AudioRenderThreadMsg::MessageNode(id, msg) => {
                     context.graph.node_mut(id).message(msg, sample_rate)
-                }
+                },
                 AudioRenderThreadMsg::SinkNeedData => {
                     // Do nothing. This will simply unblock the thread so we
                     // can restart the non-blocking event loop.
-                }
+                },
                 AudioRenderThreadMsg::DisconnectAllFrom(id) => {
                     context.graph.disconnect_all_from(id)
-                }
+                },
                 AudioRenderThreadMsg::DisconnectOutput(out) => context.graph.disconnect_output(out),
                 AudioRenderThreadMsg::DisconnectBetween(from, to) => {
                     context.graph.disconnect_between(from, to)
-                }
+                },
                 AudioRenderThreadMsg::DisconnectTo(from, to) => {
                     context.graph.disconnect_to(from, to)
-                }
+                },
                 AudioRenderThreadMsg::DisconnectOutputBetween(from, to) => {
                     context.graph.disconnect_output_between(from, to)
-                }
+                },
                 AudioRenderThreadMsg::DisconnectOutputBetweenTo(from, to) => {
                     context.graph.disconnect_output_between_to(from, to)
-                }
+                },
                 AudioRenderThreadMsg::SetSinkEosCallback(callback) => {
                     context.sink.set_eos_callback(callback);
-                }
+                },
                 AudioRenderThreadMsg::SetMute(val) => {
                     context.set_mute(val);
-                }
+                },
             };
 
             break_loop

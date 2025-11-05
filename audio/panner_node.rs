@@ -1,8 +1,8 @@
 use crate::block::{Block, Chunk, Tick, FRAMES_PER_BLOCK};
-use euclid::default::Vector3D;
 use crate::node::{AudioNodeEngine, AudioNodeMessage, BlockInfo};
 use crate::node::{AudioNodeType, ChannelInfo};
 use crate::param::{Param, ParamDir, ParamType};
+use euclid::default::Vector3D;
 use std::f32::consts::PI;
 
 // .normalize(), but it takes into account zero vectors
@@ -399,7 +399,7 @@ impl AudioNodeEngine for PannerNode {
                         log::warn!("HRTF requested but not supported");
                     }
                     self.panning_model = p;
-                }
+                },
                 PannerNodeMessage::SetDistanceModel(d) => self.distance_model = d,
                 PannerNodeMessage::SetRefDistance(val) => self.ref_distance = val,
                 PannerNodeMessage::SetMaxDistance(val) => self.max_distance = val,

@@ -59,15 +59,15 @@ fn metadata_from_media_info(media_info: &gst_play::PlayMediaInfo) -> Result<Meta
                     .unwrap_or_else(|| glib::GString::from(""))
                     .to_string();
                 audio_tracks.push(codec);
-            }
+            },
             "video" => {
                 let codec = stream_info
                     .codec()
                     .unwrap_or_else(|| glib::GString::from(""))
                     .to_string();
                 video_tracks.push(codec);
-            }
-            _ => {}
+            },
+            _ => {},
         }
     }
 
@@ -138,7 +138,7 @@ impl PlayerInner {
                         -1 // live source
                     });
                 }
-            }
+            },
             _ => (),
         }
         Ok(())
@@ -155,8 +155,11 @@ impl PlayerInner {
         self.rate = rate;
         if let Some(ref metadata) = self.last_metadata {
             if !metadata.is_seekable {
-                gst::warning!(self.cat, obj = &self.player,
-                             "Player must be seekable in order to set the playback rate");
+                gst::warning!(
+                    self.cat,
+                    obj = &self.player,
+                    "Player must be seekable in order to set the playback rate"
+                );
                 return Err(PlayerError::NonSeekableStream);
             }
             self.player.set_rate(rate);
@@ -192,7 +195,7 @@ impl PlayerInner {
                 } else {
                     Ok(())
                 }
-            }
+            },
             _ => Ok(()),
         }
     }
@@ -426,7 +429,7 @@ impl GStreamerPlayer {
                     return Err(PlayerError::Backend(
                         "FlagsClass creation failed".to_owned(),
                     ));
-                }
+                },
             };
             let flags_class = match flags_class.builder_with_value(flags) {
                 Some(class) => class,
@@ -434,7 +437,7 @@ impl GStreamerPlayer {
                     return Err(PlayerError::Backend(
                         "FlagsClass creation failed".to_owned(),
                     ));
-                }
+                },
             };
             let Some(flags) = flags_class.set_by_nick("download").build() else {
                 return Err(PlayerError::Backend(
@@ -457,7 +460,9 @@ impl GStreamerPlayer {
         if let Some(ref audio_renderer) = self.audio_renderer {
             let audio_sink = gst::ElementFactory::make("appsink")
                 .build()
-                .map_err(|error| PlayerError::Backend(format!("appsink creation failed: {error:?}")))?;
+                .map_err(|error| {
+                    PlayerError::Backend(format!("appsink creation failed: {error:?}"))
+                })?;
 
             pipeline.set_property("audio-sink", &audio_sink);
 
@@ -511,15 +516,18 @@ impl GStreamerPlayer {
         let uri = match self.stream_type {
             StreamType::Stream => {
                 register_servo_media_stream_src().map_err(|error| {
-                    PlayerError::Backend(format!("servomediastreamsrc registration error: {error:?}"))
+                    PlayerError::Backend(format!(
+                        "servomediastreamsrc registration error: {error:?}"
+                    ))
                 })?;
                 "mediastream://".to_value()
-            }
+            },
             StreamType::Seekable => {
-                register_servo_src()
-                    .map_err(|error| PlayerError::Backend(format!("servosrc registration error: {error:?}")))?;
+                register_servo_src().map_err(|error| {
+                    PlayerError::Backend(format!("servosrc registration error: {error:?}"))
+                })?;
                 "servosrc://".to_value()
-            }
+            },
         };
         player.set_property("uri", &uri);
 
@@ -595,7 +603,12 @@ impl GStreamerPlayer {
                     if metadata.is_seekable {
                         inner.player.set_rate(inner.rate);
                     }
-                    gst::info!(inner.cat, obj = &inner.player, "Metadata updated: {:?}", metadata);
+                    gst::info!(
+                        inner.cat,
+                        obj = &inner.player,
+                        "Metadata updated: {:?}",
+                        metadata
+                    );
                     let _ = notify!(observer, PlayerEvent::MetadataUpdated(metadata));
                 }
             }
@@ -617,8 +630,12 @@ impl GStreamerPlayer {
                 updated_metadata = Some(metadata.clone());
             }
             if let Some(updated_metadata) = updated_metadata {
-                gst::info!(inner.cat, obj = &inner.player, "Duration updated: {:?}",
-                              updated_metadata);
+                gst::info!(
+                    inner.cat,
+                    obj = &inner.player,
+                    "Duration updated: {:?}",
+                    updated_metadata
+                );
                 let _ = notify!(observer, PlayerEvent::MetadataUpdated(updated_metadata));
             }
         });
@@ -655,7 +672,9 @@ impl GStreamerPlayer {
                     .new_preroll({
                         let render_sample = render_sample.clone();
                         move |video_sink| {
-                            render_sample(video_sink.pull_preroll().map_err(|_| gst::FlowError::Eos)?)
+                            render_sample(
+                                video_sink.pull_preroll().map_err(|_| gst::FlowError::Eos)?,
+                            )
                         }
                     })
                     .new_sample(move |video_sink| {
@@ -744,7 +763,7 @@ impl GStreamerPlayer {
                         );
 
                         PlayerSource::Seekable(servosrc)
-                    }
+                    },
                     StreamType::Stream => {
                         let media_stream_src = source
                             .dynamic_cast::<ServoMediaStreamSrc>()
@@ -754,7 +773,7 @@ impl GStreamerPlayer {
                             let _ = notify!(sender_clone, Ok(()));
                         });
                         PlayerSource::Stream(media_stream_src)
-                    }
+                    },
                 };
 
                 inner.set_src(source);
@@ -762,10 +781,11 @@ impl GStreamerPlayer {
                 None
             });
 
-            let error_handler_id = signal_adapter.connect_error(move |signal_adapter, error, _details| {
-                let _ = notify!(sender_clone, Err(PlayerError::Backend(error.to_string())));
-                signal_adapter.play().stop();
-            });
+            let error_handler_id =
+                signal_adapter.connect_error(move |signal_adapter, error, _details| {
+                    let _ = notify!(sender_clone, Err(PlayerError::Backend(error.to_string())));
+                    signal_adapter.play().stop();
+                });
 
             let _ = inner.pause();
 

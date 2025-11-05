@@ -41,12 +41,20 @@ impl WebRtcController {
             .sender
             .send(RtcThreadEvent::ConfigureStun(stun_server, policy));
     }
-    pub fn set_remote_description(&self, desc: SessionDescription, cb: Box<dyn FnOnce() + Send + 'static>) {
+    pub fn set_remote_description(
+        &self,
+        desc: SessionDescription,
+        cb: Box<dyn FnOnce() + Send + 'static>,
+    ) {
         let _ = self
             .sender
             .send(RtcThreadEvent::SetRemoteDescription(desc, cb));
     }
-    pub fn set_local_description(&self, desc: SessionDescription, cb: Box<dyn FnOnce() + Send + 'static>) {
+    pub fn set_local_description(
+        &self,
+        desc: SessionDescription,
+        cb: Box<dyn FnOnce() + Send + 'static>,
+    ) {
         let _ = self
             .sender
             .send(RtcThreadEvent::SetLocalDescription(desc, cb));
@@ -54,10 +62,10 @@ impl WebRtcController {
     pub fn add_ice_candidate(&self, candidate: IceCandidate) {
         let _ = self.sender.send(RtcThreadEvent::AddIceCandidate(candidate));
     }
-    pub fn create_offer(&self, cb: Box<dyn FnOnce(SessionDescription,) + Send + 'static>) {
+    pub fn create_offer(&self, cb: Box<dyn FnOnce(SessionDescription) + Send + 'static>) {
         let _ = self.sender.send(RtcThreadEvent::CreateOffer(cb));
     }
-    pub fn create_answer(&self, cb: Box<dyn FnOnce(SessionDescription,) + Send + 'static>) {
+    pub fn create_answer(&self, cb: Box<dyn FnOnce(SessionDescription) + Send + 'static>) {
         let _ = self.sender.send(RtcThreadEvent::CreateAnswer(cb));
     }
     pub fn add_stream(&self, stream: &MediaStreamId) {
@@ -94,8 +102,8 @@ pub enum RtcThreadEvent {
     SetRemoteDescription(SessionDescription, Box<dyn FnOnce() + Send + 'static>),
     SetLocalDescription(SessionDescription, Box<dyn FnOnce() + Send + 'static>),
     AddIceCandidate(IceCandidate),
-    CreateOffer(Box<dyn FnOnce(SessionDescription,) + Send + 'static>),
-    CreateAnswer(Box<dyn FnOnce(SessionDescription,) + Send + 'static>),
+    CreateOffer(Box<dyn FnOnce(SessionDescription) + Send + 'static>),
+    CreateAnswer(Box<dyn FnOnce(SessionDescription) + Send + 'static>),
     AddStream(MediaStreamId),
     CreateDataChannel(DataChannelInit, Sender<Option<DataChannelId>>),
     CloseDataChannel(DataChannelId),
@@ -133,7 +141,7 @@ pub fn handle_rtc_event(
         RtcThreadEvent::ConfigureStun(server, policy) => controller.configure(&server, policy),
         RtcThreadEvent::SetRemoteDescription(desc, cb) => {
             controller.set_remote_description(desc, cb)
-        }
+        },
         RtcThreadEvent::SetLocalDescription(desc, cb) => controller.set_local_description(desc, cb),
         RtcThreadEvent::AddIceCandidate(candidate) => controller.add_ice_candidate(candidate),
         RtcThreadEvent::CreateOffer(cb) => controller.create_offer(cb),
@@ -152,12 +160,12 @@ pub fn handle_rtc_event(
         RtcThreadEvent::CloseDataChannel(id) => controller.close_data_channel(&id),
         RtcThreadEvent::SendDataChannelMessage(id, message) => {
             controller.send_data_channel_message(&id, &message)
-        }
+        },
         RtcThreadEvent::InternalEvent(e) => controller.internal_event(e),
         RtcThreadEvent::Quit => {
             controller.quit();
             return false;
-        }
+        },
     };
     if let Err(e) = result {
         error!("WebRTC backend encountered error: {:?}", e);

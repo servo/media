@@ -76,7 +76,7 @@ impl RenderUnix {
                         unsafe { gstreamer_gl_egl::GLDisplayEGL::with_egl_display(display_native) }
                             .map(|display| display.upcast())
                             .ok()
-                    }
+                    },
                     #[cfg(feature = "gl-wayland")]
                     NativeDisplay::Wayland(display_native) => unsafe {
                         gstreamer_gl_wayland::GLDisplayWayland::with_display(display_native)
@@ -92,7 +92,7 @@ impl RenderUnix {
                     gst_gl::GLPlatform::EGL,
                     gl_api,
                 )
-            }
+            },
             GlContext::Glx(context) => {
                 let display = match display_native {
                     #[cfg(feature = "gl-x11")]
@@ -100,7 +100,7 @@ impl RenderUnix {
                         unsafe { gstreamer_gl_x11::GLDisplayX11::with_display(display_native) }
                             .map(|display| display.upcast())
                             .ok()
-                    }
+                    },
                     _ => None,
                 };
 
@@ -110,7 +110,7 @@ impl RenderUnix {
                     gst_gl::GLPlatform::GLX,
                     gl_api,
                 )
-            }
+            },
             GlContext::Unknown => (None, None),
         };
 
@@ -256,7 +256,7 @@ impl Render for RenderUnix {
                             el.set_context(&ctxt);
                         }
                     }
-                }
+                },
                 _ => (),
             }
 
@@ -273,7 +273,7 @@ impl Render for RenderUnix {
                     if "glupload" == element.factory().unwrap().name() {
                         break Some(element);
                     }
-                }
+                },
                 Err(gst::IteratorError::Resync) => iter.resync(),
                 _ => break None,
             }

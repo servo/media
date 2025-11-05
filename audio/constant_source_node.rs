@@ -54,7 +54,7 @@ impl AudioNodeEngine for ConstantSourceNode {
         let (start_at, stop_at) = match self.should_play_at(info.frame) {
             ShouldPlay::No => {
                 return inputs;
-            }
+            },
             ShouldPlay::Between(start, end) => (start, end),
         };
 

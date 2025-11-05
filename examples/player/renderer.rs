@@ -130,7 +130,7 @@ impl video::VideoFrameRenderer for MediaFrameRenderer {
                 if let Some(old_image_key) = self.old_frame.take() {
                     transaction.delete_image(old_image_key);
                 }
-            }
+            },
             Some((ref mut image_key, ref mut width, ref mut height)) => {
                 self.old_frame = Some(*image_key);
 
@@ -161,7 +161,7 @@ impl video::VideoFrameRenderer for MediaFrameRenderer {
                     ImageData::Raw(frame.get_data())
                 };
                 transaction.add_image(new_image_key, descriptor, image_data, None);
-            }
+            },
             None => {
                 let image_key = self.webrender_api.generate_image_key();
                 self.current_frame = Some((image_key, frame.get_width(), frame.get_height()));
@@ -184,7 +184,7 @@ impl video::VideoFrameRenderer for MediaFrameRenderer {
                     ImageData::Raw(frame.get_data())
                 };
                 transaction.add_image(image_key, descriptor, image_data, None);
-            }
+            },
         }
 
         self.webrender_api

@@ -1,8 +1,8 @@
 use crate::block::{Chunk, Tick};
 use crate::node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, BlockInfo, OnEndedCallback};
 use crate::node::{AudioNodeType, ChannelInfo, ShouldPlay};
-use num_traits::cast::NumCast;
 use crate::param::{Param, ParamType};
+use num_traits::cast::NumCast;
 
 #[derive(Clone, Debug)]
 pub struct PeriodicWaveOptions {
@@ -78,7 +78,7 @@ impl OscillatorNode {
         match message {
             OscillatorNodeMessage::SetOscillatorType(o) => {
                 self.oscillator_type = o;
-            }
+            },
         }
     }
 }
@@ -97,7 +97,7 @@ impl AudioNodeEngine for OscillatorNode {
         let (start_at, stop_at) = match self.should_play_at(info.frame) {
             ShouldPlay::No => {
                 return inputs;
-            }
+            },
             ShouldPlay::Between(start, end) => (start, end),
         };
 
@@ -131,7 +131,7 @@ impl AudioNodeEngine for OscillatorNode {
                 match self.oscillator_type {
                     OscillatorType::Sine => {
                         value = vol * f32::sin(NumCast::from(self.phase).unwrap());
-                    }
+                    },
 
                     OscillatorType::Square => {
                         if self.phase >= PI && self.phase < two_pi {
@@ -139,11 +139,11 @@ impl AudioNodeEngine for OscillatorNode {
                         } else if self.phase > 0.0 && self.phase < PI {
                             value = vol * (-1.0);
                         }
-                    }
+                    },
 
                     OscillatorType::Sawtooth => {
                         value = vol * ((self.phase as f64) / (PI)) as f32;
-                    }
+                    },
 
                     OscillatorType::Triangle => {
                         if self.phase >= 0. && self.phase < PI / 2. {
@@ -158,9 +158,9 @@ impl AudioNodeEngine for OscillatorNode {
                         } else if self.phase >= 3. * PI / 2. && self.phase < 2. * PI {
                             value = vol * (-2.0) * ((self.phase as f64) / (PI)) as f32;
                         }
-                    }
+                    },
 
-                    OscillatorType::Custom => {}
+                    OscillatorType::Custom => {},
                 }
 
                 frame.mutate_with(|sample, _| *sample = value);

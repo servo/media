@@ -45,8 +45,14 @@ pub trait WebRtcControllerBackend: Send {
         cb: Box<dyn FnOnce() + Send + 'static>,
     ) -> WebRtcResult;
     fn add_ice_candidate(&mut self, candidate: IceCandidate) -> WebRtcResult;
-    fn create_offer(&mut self, cb: Box<dyn FnOnce(SessionDescription,) + Send + 'static>) -> WebRtcResult;
-    fn create_answer(&mut self, cb: Box<dyn FnOnce(SessionDescription,) + Send + 'static>) -> WebRtcResult;
+    fn create_offer(
+        &mut self,
+        cb: Box<dyn FnOnce(SessionDescription) + Send + 'static>,
+    ) -> WebRtcResult;
+    fn create_answer(
+        &mut self,
+        cb: Box<dyn FnOnce(SessionDescription) + Send + 'static>,
+    ) -> WebRtcResult;
     fn add_stream(&mut self, stream: &MediaStreamId) -> WebRtcResult;
 
     fn create_data_channel(&mut self, init: &DataChannelInit) -> WebRtcDataChannelResult;

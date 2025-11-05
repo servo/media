@@ -166,7 +166,11 @@ mod imp {
                 }
 
                 if self.seeking.load(Ordering::Relaxed) {
-                    gst::trace!(self.cat, obj = parent, "stopping buffer appends due to seek");
+                    gst::trace!(
+                        self.cat,
+                        obj = parent,
+                        "stopping buffer appends due to seek"
+                    );
                     ret = Ok(gst::FlowSuccess::Ok);
                     break;
                 }
@@ -178,7 +182,7 @@ mod imp {
                     Ok(_) => (),
                     Err(gst::FlowError::Eos) | Err(gst::FlowError::Flushing) => {
                         ret = Ok(gst::FlowSuccess::Ok)
-                    }
+                    },
                     Err(_) => break,
                 }
             }
@@ -212,7 +216,7 @@ mod imp {
                     q.set(flags, 1, -1, 0);
                     q.add_scheduling_modes([gst::PadMode::Push]);
                     true
-                }
+                },
                 _ => gst::Pad::query_default(pad, Some(&*self.obj()), query),
             };
 

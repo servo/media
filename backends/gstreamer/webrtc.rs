@@ -109,7 +109,10 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         self.set_description(desc, DescriptionType::Local, cb)
     }
 
-    fn create_offer(&mut self, cb: Box<dyn FnOnce(SessionDescription) + Send + 'static>) -> WebRtcResult {
+    fn create_offer(
+        &mut self,
+        cb: Box<dyn FnOnce(SessionDescription) + Send + 'static>,
+    ) -> WebRtcResult {
         self.flush_pending_streams(true)?;
         self.pipeline.set_state(gst::State::Playing)?;
         let promise = gst::Promise::with_change_func(move |res| {
@@ -122,7 +125,10 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         Ok(())
     }
 
-    fn create_answer(&mut self, cb: Box<dyn FnOnce(SessionDescription) + Send + 'static>) -> WebRtcResult {
+    fn create_answer(
+        &mut self,
+        cb: Box<dyn FnOnce(SessionDescription) + Send + 'static>,
+    ) -> WebRtcResult {
         let promise = gst::Promise::with_change_func(move |res| {
             res.map(|s| on_offer_or_answer_created(SdpType::Answer, s.unwrap(), cb))
                 .unwrap();
@@ -166,7 +172,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                 DataChannelEventTarget::Created(ref channel) => {
                     channel.close();
                     Ok(())
-                }
+                },
                 DataChannelEventTarget::Buffered(_) => data_channels
                     .remove(id)
                     .ok_or(WebRtcError::Backend("Unknown data channel".to_owned()))
@@ -186,7 +192,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                 DataChannelEventTarget::Created(ref channel) => {
                     channel.send(message);
                     Ok(())
-                }
+                },
                 _ => Ok(()),
             },
             None => Err(WebRtcError::Backend("Unknown data channel".to_owned())),
@@ -213,39 +219,39 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                 } else {
                     self.signaller.on_negotiation_needed(&self.thread);
                 }
-            }
+            },
             InternalEvent::OnIceCandidate(candidate) => {
                 self.signaller.on_ice_candidate(&self.thread, candidate);
-            }
+            },
             InternalEvent::OnAddStream(stream, ty) => {
                 self.pipeline.set_state(gst::State::Playing)?;
                 self.signaller.on_add_stream(&stream, ty);
-            }
+            },
             InternalEvent::OnDataChannelEvent(channel_id, event) => {
                 let mut data_channels = self.data_channels.lock().unwrap();
                 match data_channels.get_mut(&channel_id) {
                     None => {
                         data_channels
                             .insert(channel_id, DataChannelEventTarget::Buffered(vec![event]));
-                    }
+                    },
                     Some(ref mut channel) => match channel {
                         DataChannelEventTarget::Buffered(ref mut events) => {
                             events.push(event);
                             return Ok(());
-                        }
+                        },
                         DataChannelEventTarget::Created(_) => {
                             match event {
                                 DataChannelEvent::Close => {
                                     data_channels.remove(&channel_id);
-                                }
-                                _ => {}
+                                },
+                                _ => {},
                             }
                             self.signaller
                                 .on_data_channel_event(channel_id, event, &self.thread);
-                        }
+                        },
                     },
                 }
-            }
+            },
             InternalEvent::DescriptionAdded(cb, description_type, ty, remote_offer_generation) => {
                 if description_type == DescriptionType::Remote
                     && ty == SdpType::Offer
@@ -260,7 +266,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                 }
                 self.pipeline.set_state(gst::State::Playing)?;
                 cb();
-            }
+            },
             InternalEvent::UpdateSignalingState => {
                 use gst_webrtc::WebRTCSignalingState::*;
                 let val = self
@@ -278,10 +284,10 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                             "unknown signaling state: {:?}",
                             i
                         )))
-                    }
+                    },
                 };
                 self.signaller.update_signaling_state(state);
-            }
+            },
             InternalEvent::UpdateGatheringState => {
                 use gst_webrtc::WebRTCICEGatheringState::*;
                 let val = self
@@ -296,10 +302,10 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                             "unknown gathering state: {:?}",
                             i
                         )))
-                    }
+                    },
                 };
                 self.signaller.update_gathering_state(state);
-            }
+            },
             InternalEvent::UpdateIceConnectionState => {
                 use gst_webrtc::WebRTCICEConnectionState::*;
                 let val = self
@@ -318,10 +324,10 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                             "unknown ICE connection state: {:?}",
                             i
                         )))
-                    }
+                    },
                 };
                 self.signaller.update_ice_connection_state(state);
-            }
+            },
         }
         Ok(())
     }
@@ -604,13 +610,13 @@ impl GStreamerWebRtcController {
                                         for event in events.drain(0..) {
                                             match event {
                                                 DataChannelEvent::Close => closed_channel = true,
-                                                _ => {}
+                                                _ => {},
                                             }
                                             thread_.internal_event(
                                                 InternalEvent::OnDataChannelEvent(id, event),
                                             );
                                         }
-                                    }
+                                    },
                                     _ => debug_assert!(
                                         false,
                                         "Trying to register a data channel with an existing ID"
@@ -625,10 +631,10 @@ impl GStreamerWebRtcController {
                                 return None;
                             }
                         }
-                    }
+                    },
                     Err(error) => {
                         warn!("Could not create data channel {:?}", error);
-                    }
+                    },
                 }
                 None
             });

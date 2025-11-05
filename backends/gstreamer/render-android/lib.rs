@@ -72,7 +72,7 @@ impl RenderAndroid {
                         unsafe { gstreamer_gl_egl::GLDisplayEGL::with_egl_display(display_native) }
                             .and_then(|display| Ok(display.upcast()))
                             .ok()
-                    }
+                    },
                     _ => None,
                 };
 
@@ -89,7 +89,7 @@ impl RenderAndroid {
                 } else {
                     (None, None)
                 }
-            }
+            },
             _ => (None, None),
         };
 
@@ -222,7 +222,7 @@ impl Render for RenderAndroid {
                             el.set_context(&ctxt);
                         }
                     }
-                }
+                },
                 _ => (),
             }
 
@@ -239,7 +239,7 @@ impl Render for RenderAndroid {
                     if Some(true) == element.factory().map(|f| f.name() == "glupload") {
                         break Some(element);
                     }
-                }
+                },
                 Err(gst::IteratorError::Resync) => iter.resync(),
                 _ => break None,
             }

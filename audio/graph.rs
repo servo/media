@@ -389,13 +389,13 @@ impl AudioGraph {
                         match connection.input_idx {
                             PortIndex::Port(idx) => {
                                 blocks[idx as usize].push(block);
-                            }
+                            },
                             PortIndex::Param(param) => {
                                 // param inputs are downmixed to mono
                                 // https://webaudio.github.io/web-audio-api/#dom-audionode-connect-destinationparam-output
                                 block.mix(1, ChannelInterpretation::Speakers);
                                 curr.get_param(param).add_block(block)
-                            }
+                            },
                             PortIndex::Listener(_) => curr.set_listenerdata(block),
                         }
                     }
@@ -412,12 +412,12 @@ impl AudioGraph {
                         match mode {
                             ChannelCountMode::Explicit => {
                                 chunk.blocks[i].mix(count, interpretation);
-                            }
+                            },
                             ChannelCountMode::ClampedMax => {
                                 if chunk.blocks[i].chan_count() > count {
                                     chunk.blocks[i].mix(count, interpretation);
                                 }
-                            }
+                            },
                             // It's one channel, it maxes itself
                             ChannelCountMode::Max => (),
                         }
@@ -433,7 +433,7 @@ impl AudioGraph {
                                     max = cmp::min(max, count);
                                 }
                                 max
-                            }
+                            },
                         };
                         let block = blocks.into_iter().fold(Block::default(), |acc, mut block| {
                             block.mix(mix_count, interpretation);

@@ -9,11 +9,11 @@ use crate::media_element_source_node::MediaElementSourceNodeMessage;
 use crate::oscillator_node::{OscillatorNodeMessage, OscillatorNodeOptions};
 use crate::panner_node::{PannerNodeMessage, PannerNodeOptions};
 use crate::param::{Param, ParamRate, ParamType, UserAutomationEvent};
+use crate::stereo_panner::StereoPannerOptions;
+use crate::wave_shaper_node::{WaveShaperNodeMessage, WaveShaperNodeOptions};
 use servo_media_streams::{MediaSocket, MediaStreamId};
 use std::cmp::min;
 use std::sync::mpsc::Sender;
-use crate::stereo_panner::StereoPannerOptions;
-use crate::wave_shaper_node::{WaveShaperNodeMessage, WaveShaperNodeOptions};
 
 /// Information required to construct an audio node
 pub enum AudioNodeInit {
@@ -142,13 +142,13 @@ pub(crate) trait AudioNodeEngine: Send + AudioNodeCommon {
         match msg {
             AudioNodeMessage::GetParamValue(id, tx) => {
                 let _ = tx.send(self.get_param(id).value());
-            }
+            },
             AudioNodeMessage::SetChannelCount(c) => self.set_channel_count(c),
             AudioNodeMessage::SetChannelMode(c) => self.set_channel_count_mode(c),
             AudioNodeMessage::SetChannelInterpretation(c) => self.set_channel_interpretation(c),
             AudioNodeMessage::SetParam(id, event) => {
                 self.get_param(id).insert_event(event.to_event(sample_rate))
-            }
+            },
             AudioNodeMessage::SetParamRate(id, rate) => self.get_param(id).set_rate(rate),
             _ => self.message_specific(msg, sample_rate),
         }
