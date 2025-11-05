@@ -10,6 +10,7 @@ pub mod metadata;
 pub mod video;
 
 use ipc_channel::ipc::{self, IpcSender};
+use servo_media_mse::MediaSource;
 use servo_media_traits::MediaInstance;
 use std::ops::Range;
 use streams::registry::MediaStreamId;
@@ -87,6 +88,8 @@ pub enum StreamType {
     Stream,
     /// The stream is seekable.
     Seekable,
+    /// The stream is user controlled
+    MSE,
 }
 
 pub trait Player: Send + MediaInstance {
@@ -117,4 +120,8 @@ pub trait Player: Send + MediaInstance {
     fn render_use_gl(&self) -> bool;
     fn set_audio_track(&self, stream_index: i32, enabled: bool) -> Result<(), PlayerError>;
     fn set_video_track(&self, stream_index: i32, enabled: bool) -> Result<(), PlayerError>;
+
+    fn connect_media_source(&self, source: &dyn MediaSource) -> Result<(), PlayerError> {
+        Err(PlayerError::SetStreamFailed)
+    }
 }

@@ -20,3 +20,6 @@ path = "../streams"
 
 [dependencies.servo-media-traits]
 path = "../traits"
+
+[dependencies.servo-media-mse]
+path = "../mse"
