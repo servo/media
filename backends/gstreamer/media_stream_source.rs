@@ -90,7 +90,7 @@ mod imp {
                         &self.audio_srcpad,
                         self.has_video_stream.load(Ordering::Relaxed),
                     )
-                }
+                },
                 MediaStreamType::Video => {
                     self.has_video_stream.store(true, Ordering::Relaxed);
                     (
@@ -98,7 +98,7 @@ mod imp {
                         &self.video_srcpad,
                         self.has_audio_stream.load(Ordering::Relaxed),
                     )
-                }
+                },
             };
             proxysrc.set_property("proxysink", sink);
 

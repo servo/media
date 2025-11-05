@@ -3,12 +3,12 @@ use crate::graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
 use crate::node::{AudioNodeInit, AudioNodeMessage, ChannelInfo};
 use crate::render_thread::AudioRenderThread;
 use crate::render_thread::AudioRenderThreadMsg;
+use crate::AudioBackend;
 use servo_media_traits::{BackendMsg, ClientContextId, MediaInstance};
 use std::cell::Cell;
 use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread::Builder;
-use crate::AudioBackend;
 
 use crate::sink::AudioSinkError;
 
@@ -137,7 +137,7 @@ impl AudioContext {
             AudioContextOptions::RealTimeAudioContext(ref options) => (options.sample_rate, 2),
             AudioContextOptions::OfflineAudioContext(ref options) => {
                 (options.sample_rate, options.channels)
-            }
+            },
         };
 
         let (sender, receiver) = mpsc::channel();

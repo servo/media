@@ -1,7 +1,7 @@
 use crate::block::{Chunk, FRAMES_PER_BLOCK_USIZE};
 use crate::render_thread::AudioRenderThreadMsg;
-use servo_media_streams::MediaSocket;
 use crate::sink::{AudioSink, AudioSinkError};
+use servo_media_streams::MediaSocket;
 use std::cell::{Cell, RefCell};
 use std::sync::mpsc::Sender;
 

@@ -37,7 +37,7 @@ impl MediaElementSourceNode {
         match message {
             MediaElementSourceNodeMessage::GetAudioRenderer(sender) => {
                 let _ = sender.send(self.renderer.clone());
-            }
+            },
         }
     }
 }
@@ -123,7 +123,7 @@ impl AudioRenderer for MediaElementSourceNodeRenderer {
                 let len = buffers.len();
                 buffers.resize(len + 1, Vec::new());
                 *entry.insert(buffers.len())
-            }
+            },
         };
         self.buffers.lock().unwrap()[(channel - 1) as usize].extend_from_slice((*sample).as_ref());
     }

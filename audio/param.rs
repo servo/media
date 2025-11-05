@@ -306,30 +306,30 @@ impl UserAutomationEvent {
             UserAutomationEvent::SetValue(val) => AutomationEvent::SetValue(val),
             UserAutomationEvent::SetValueAtTime(val, time) => {
                 AutomationEvent::SetValueAtTime(val, Tick::from_time(time, rate))
-            }
+            },
             UserAutomationEvent::RampToValueAtTime(kind, val, time) => {
                 AutomationEvent::RampToValueAtTime(kind, val, Tick::from_time(time, rate))
-            }
+            },
             UserAutomationEvent::SetValueCurveAtTime(values, start, duration) => {
                 AutomationEvent::SetValueCurveAtTime(
                     values,
                     Tick::from_time(start, rate),
                     Tick::from_time(duration, rate),
                 )
-            }
+            },
             UserAutomationEvent::SetTargetAtTime(val, start, tau) => {
                 AutomationEvent::SetTargetAtTime(
                     val,
                     Tick::from_time(start, rate),
                     tau * rate as f64,
                 )
-            }
+            },
             UserAutomationEvent::CancelScheduledValues(t) => {
                 AutomationEvent::CancelScheduledValues(Tick::from_time(t, rate))
-            }
+            },
             UserAutomationEvent::CancelAndHoldAtTime(t) => {
                 AutomationEvent::CancelAndHoldAtTime(Tick::from_time(t, rate))
-            }
+            },
         }
     }
 }
@@ -346,7 +346,7 @@ impl AutomationEvent {
             AutomationEvent::CancelScheduledValues(tick) => tick,
             AutomationEvent::SetValue(..) => {
                 unreachable!("SetValue should never appear in the timeline")
-            }
+            },
         }
     }
 
@@ -359,7 +359,7 @@ impl AutomationEvent {
             AutomationEvent::CancelAndHoldAtTime(t) => Some(t),
             AutomationEvent::CancelScheduledValues(..) | AutomationEvent::SetValue(..) => {
                 unreachable!("CancelScheduledValues/SetValue should never appear in the timeline")
-            }
+            },
         }
     }
 
@@ -372,7 +372,7 @@ impl AutomationEvent {
             AutomationEvent::CancelAndHoldAtTime(t) => Some(t),
             AutomationEvent::CancelScheduledValues(..) | AutomationEvent::SetValue(..) => {
                 unreachable!("CancelScheduledValues/SetValue should never appear in the timeline")
-            }
+            },
         }
     }
 
@@ -412,14 +412,14 @@ impl AutomationEvent {
                 } else {
                     false
                 }
-            }
+            },
             AutomationEvent::RampToValueAtTime(kind, val, time) => {
                 let progress =
                     (current_tick - event_start_time).0 as f32 / (time - event_start_time).0 as f32;
                 match kind {
                     RampKind::Linear => {
                         *value = event_start_value + (val - event_start_value) * progress;
-                    }
+                    },
                     RampKind::Exponential => {
                         let ratio = val / event_start_value;
                         if event_start_value == 0. || ratio < 0. {
@@ -431,15 +431,15 @@ impl AutomationEvent {
                         } else {
                             *value = event_start_value * (ratio).powf(progress);
                         }
-                    }
+                    },
                 }
                 true
-            }
+            },
             AutomationEvent::SetTargetAtTime(val, start, tau) => {
                 let exp = -((current_tick - start) / tau);
                 *value = val + (event_start_value - val) * exp.exp() as f32;
                 true
-            }
+            },
             AutomationEvent::SetValueCurveAtTime(ref values, start, duration) => {
                 let progress = ((((current_tick.0 as f32) - (start.0 as f32)) as f32)
                     / (duration.0 as f32)) as f32;
@@ -455,11 +455,11 @@ impl AutomationEvent {
                     *value = values[(n - 1.) as usize];
                 }
                 true
-            }
+            },
             AutomationEvent::CancelAndHoldAtTime(..) => false,
             AutomationEvent::CancelScheduledValues(..) | AutomationEvent::SetValue(..) => {
                 unreachable!("CancelScheduledValues/SetValue should never appear in the timeline")
-            }
+            },
         }
     }
 }

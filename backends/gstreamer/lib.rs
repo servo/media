@@ -123,7 +123,7 @@ impl GStreamerBackend {
                         }
                         // tell caller we are done removing this instance
                         let _ = tx_ack.send(());
-                    }
+                    },
                 };
             })
             .unwrap();
@@ -155,7 +155,7 @@ impl GStreamerBackend {
             }),
             None => {
                 warn!("Trying to exec media action on an unknown client context");
-            }
+            },
         }
     }
 }

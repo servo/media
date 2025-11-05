@@ -37,7 +37,7 @@ impl AddToCaps for Constrain<u32> {
                 // TODO: Include the ideal caps value in the caps, needs a refactor
                 //       of the AddToCaps trait
                 Some(builder.field(name, range))
-            }
+            },
         }
     }
 }
@@ -74,7 +74,7 @@ impl AddToCaps for Constrain<f64> {
                 // TODO: Include the ideal caps value in the caps, needs a refactor
                 //       of the AddToCaps trait
                 Some(builder.field(name, range))
-            }
+            },
         }
     }
 }

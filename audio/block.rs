@@ -1,7 +1,7 @@
-use byte_slice_cast::*;
-use euclid::default::Vector3D;
 use crate::graph::{PortIndex, PortKind};
 use crate::node::ChannelInterpretation;
+use byte_slice_cast::*;
+use euclid::default::Vector3D;
 use smallvec::SmallVec;
 use std::f32::consts::SQRT_2;
 use std::mem;
@@ -279,13 +279,13 @@ impl Block {
                 (1, 2) => {
                     // output.{L, R} = input
                     self.repeat(2);
-                }
+                },
                 (1, 4) => {
                     // output.{L, R} = input
                     self.repeat(2);
                     // output.{SL, SR} = 0
                     self.resize_silence(4);
-                }
+                },
                 (1, 6) => {
                     let mut v = Vec::with_capacity(channels as usize * FRAMES_PER_BLOCK_USIZE);
                     // output.{L, R} = 0
@@ -295,7 +295,7 @@ impl Block {
                     self.buffer = v;
                     // output.{LFE, SL, SR} = 0
                     self.resize_silence(6);
-                }
+                },
 
                 // stereo
                 (2, 4) | (2, 6) => {
@@ -303,7 +303,7 @@ impl Block {
                     // (5.1) output.{C, LFE} = 0
                     // output.{SL, SR} = 0
                     self.resize_silence(channels);
-                }
+                },
 
                 // quad
                 (4, 6) => {
@@ -321,7 +321,7 @@ impl Block {
                     v.extend(&self.buffer[2 * FRAMES_PER_BLOCK_USIZE..]);
                     self.buffer = v;
                     self.channels = channels;
-                }
+                },
 
                 // Downmixing
                 // https://webaudio.github.io/web-audio-api/#down-mix
@@ -338,7 +338,7 @@ impl Block {
                     self.buffer = v;
                     self.channels = 1;
                     self.repeat = false;
-                }
+                },
                 (4, 1) => {
                     let mut v = Vec::with_capacity(FRAMES_PER_BLOCK_USIZE);
                     for frame in 0..FRAMES_PER_BLOCK_USIZE {
@@ -353,7 +353,7 @@ impl Block {
                     self.buffer = v;
                     self.channels = 1;
                     self.repeat = false;
-                }
+                },
                 (6, 1) => {
                     let mut v = Vec::with_capacity(FRAMES_PER_BLOCK_USIZE);
                     for frame in 0..FRAMES_PER_BLOCK_USIZE {
@@ -374,7 +374,7 @@ impl Block {
                     self.buffer = v;
                     self.channels = 1;
                     self.repeat = false;
-                }
+                },
 
                 // stereo
                 (4, 2) => {
@@ -391,7 +391,7 @@ impl Block {
                     self.buffer = v;
                     self.channels = 2;
                     self.repeat = false;
-                }
+                },
                 (6, 2) => {
                     let mut v = Vec::with_capacity(2 * FRAMES_PER_BLOCK_USIZE);
                     v.resize(2 * FRAMES_PER_BLOCK_USIZE, 0.);
@@ -408,7 +408,7 @@ impl Block {
                     self.buffer = v;
                     self.channels = 2;
                     self.repeat = false;
-                }
+                },
 
                 // quad
                 (6, 4) => {
@@ -429,13 +429,13 @@ impl Block {
                     self.buffer = v;
                     self.channels = 4;
                     self.repeat = false;
-                }
+                },
 
                 // If it's not a known kind of speaker configuration, treat as
                 // discrete
                 _ => {
                     self.mix(channels, ChannelInterpretation::Discrete);
-                }
+                },
             }
             debug_assert!(self.channels == channels);
         }

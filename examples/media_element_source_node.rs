@@ -34,8 +34,9 @@ impl PlayerGLContext for PlayerContextDummy {
 }
 
 fn run_example(servo_media: Arc<ServoMedia>) {
-    let context =
-        servo_media.create_audio_context(&ClientContextId::build(1, 1), Default::default()).unwrap();
+    let context = servo_media
+        .create_audio_context(&ClientContextId::build(1, 1), Default::default())
+        .unwrap();
     let context = context.lock().unwrap();
     let listener = context.listener();
 
@@ -110,7 +111,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
                     Ok(0) => {
                         println!("Finished pushing data");
                         break;
-                    }
+                    },
                     Ok(size) => player
                         .lock()
                         .unwrap()
@@ -119,7 +120,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
                     Err(e) => {
                         eprintln!("Error: {}", e);
                         break;
-                    }
+                    },
                 }
             }
         };
@@ -283,24 +284,24 @@ fn run_example(servo_media: Arc<ServoMedia>) {
             PlayerEvent::EndOfStream => {
                 println!("\nEOF");
                 break;
-            }
+            },
             PlayerEvent::Error(ref s) => {
                 println!("\nError {:?}", s);
                 break;
-            }
+            },
             PlayerEvent::MetadataUpdated(ref m) => {
                 println!("\nMetadata updated! {:?}", m);
-            }
+            },
             PlayerEvent::StateChanged(ref s) => {
                 println!("\nPlayer state changed to {:?}", s);
-            }
-            PlayerEvent::VideoFrameUpdated => {}
+            },
+            PlayerEvent::VideoFrameUpdated => {},
             PlayerEvent::PositionChanged(_) => println!("."),
             PlayerEvent::SeekData(p, seek_lock) => {
                 println!("\nSeek requested to position {:?}", p);
                 seek_sender.send(p).unwrap();
                 seek_lock.unlock(true);
-            }
+            },
             PlayerEvent::SeekDone(p) => println!("\nSeeked to {:?}", p),
             PlayerEvent::NeedData => println!("\nNeedData"),
             PlayerEvent::EnoughData => println!("\nEnoughData"),

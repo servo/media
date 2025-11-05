@@ -49,34 +49,34 @@ fn run_example(servo_media: Arc<ServoMedia>) {
             PlayerEvent::EndOfStream => {
                 println!("\nEOF");
                 break;
-            }
+            },
             PlayerEvent::Error(ref s) => {
                 println!("\nError: {:?}", s);
                 break;
-            }
+            },
             PlayerEvent::MetadataUpdated(ref m) => {
                 println!("\nMetadata updated! {:?}", m);
-            }
+            },
             PlayerEvent::StateChanged(ref s) => {
                 println!("\nPlayer state changed to {:?}", s);
-            }
+            },
             PlayerEvent::VideoFrameUpdated => eprint!("."),
             PlayerEvent::PositionChanged(p) => {
                 if p == 4 {
                     break;
                 }
                 println!("Position changed {:?}", p)
-            }
+            },
             PlayerEvent::SeekData(_, _) => {
                 println!("\nERROR: Should not receive SeekData for streams")
-            }
+            },
             PlayerEvent::SeekDone(_) => {
                 println!("\nERROR: Should not receive SeekDone for streams")
-            }
+            },
             PlayerEvent::NeedData => println!("\nERROR: Should not receive NeedData for streams"),
             PlayerEvent::EnoughData => {
                 println!("\nERROR: Should not receive EnoughData for streams")
-            }
+            },
         }
     }
 }

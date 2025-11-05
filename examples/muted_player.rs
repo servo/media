@@ -73,7 +73,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
             Ok(0) => {
                 println!("Finished pushing data");
                 break;
-            }
+            },
             Ok(size) => player
                 .lock()
                 .unwrap()
@@ -82,7 +82,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
             Err(e) => {
                 eprintln!("Error: {}", e);
                 break;
-            }
+            },
         }
     }
 
@@ -94,17 +94,17 @@ fn run_example(servo_media: Arc<ServoMedia>) {
             PlayerEvent::EndOfStream => {
                 println!("\nEOF");
                 break;
-            }
+            },
             PlayerEvent::Error(ref s) => {
                 println!("\nError {:?}", s);
                 break;
-            }
+            },
             PlayerEvent::MetadataUpdated(ref m) => {
                 println!("\nMetadata updated! {:?}", m);
-            }
+            },
             PlayerEvent::StateChanged(ref s) => {
                 println!("\nPlayer state changed to {:?}", s);
-            }
+            },
             PlayerEvent::VideoFrameUpdated => eprint!("."),
             PlayerEvent::PositionChanged(p) => {
                 if p == 2 && !muted {
@@ -116,9 +116,9 @@ fn run_example(servo_media: Arc<ServoMedia>) {
                     servo_media.mute(&context_id, false);
                     muted = false;
                 }
-            }
-            PlayerEvent::SeekData(_, _) => {}
-            PlayerEvent::SeekDone(_) => {}
+            },
+            PlayerEvent::SeekData(_, _) => {},
+            PlayerEvent::SeekDone(_) => {},
             PlayerEvent::NeedData => println!("\nNeedData"),
             PlayerEvent::EnoughData => println!("\nEnoughData"),
         }

@@ -5,9 +5,8 @@ use uuid::Uuid;
 
 type RegisteredMediaStream = Arc<Mutex<dyn MediaStream>>;
 
-static MEDIA_STREAMS_REGISTRY: LazyLock<Mutex<HashMap<MediaStreamId, RegisteredMediaStream>>> = LazyLock::new(|| {
-    Mutex::new(HashMap::new())
-});
+static MEDIA_STREAMS_REGISTRY: LazyLock<Mutex<HashMap<MediaStreamId, RegisteredMediaStream>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
 
 #[derive(Clone, Copy, Hash, Eq, PartialEq)]
 pub struct MediaStreamId(Uuid);

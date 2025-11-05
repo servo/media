@@ -121,21 +121,21 @@ impl AudioBufferSourceNode {
         match message {
             AudioBufferSourceNodeMessage::SetBuffer(buffer) => {
                 self.buffer = buffer;
-            }
+            },
             // XXX(collares): To fully support dynamically updating loop bounds,
             // Must truncate self.buffer_pos if it is now outside the loop.
             AudioBufferSourceNodeMessage::SetLoopEnabled(loop_enabled) => {
                 self.loop_enabled = loop_enabled
-            }
+            },
             AudioBufferSourceNodeMessage::SetLoopEnd(loop_end) => self.loop_end = Some(loop_end),
             AudioBufferSourceNodeMessage::SetLoopStart(loop_start) => {
                 self.loop_start = Some(loop_start)
-            }
+            },
             AudioBufferSourceNodeMessage::SetStartParams(when, offset, duration) => {
                 self.start_when = when;
                 self.start_offset = offset;
                 self.start_duration = duration;
-            }
+            },
         }
     }
 }
@@ -161,7 +161,7 @@ impl AudioNodeEngine for AudioBufferSourceNode {
             ShouldPlay::No => {
                 inputs.blocks.push(Default::default());
                 return inputs;
-            }
+            },
             ShouldPlay::Between(start, end) => (start.0 as usize, end.0 as usize),
         };
 
@@ -398,7 +398,7 @@ impl AudioBuffer {
             Some(next_sample) => {
                 ((1. - offset) * (self.buffers[chan as usize][prev] as f64)
                     + offset * (*next_sample as f64)) as f32
-            }
+            },
             _ => {
                 // linear extrapolation of two prev samples if there are two
                 if prev > 0 {
@@ -408,7 +408,7 @@ impl AudioBuffer {
                 } else {
                     self.buffers[chan as usize][prev]
                 }
-            }
+            },
         }
     }
 

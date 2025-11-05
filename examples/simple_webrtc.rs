@@ -68,7 +68,7 @@ fn send_loop(
             Err(err) => {
                 println!("Send loop error {:?}", err);
                 return;
-            }
+            },
         };
 
         if let OwnedMessage::Close(_) = msg {
@@ -186,11 +186,9 @@ impl WebRtcSignaller for Signaller {
         }
         let c2 = controller.clone();
         let s2 = self.clone();
-        controller.create_offer(
-            Box::new(move |offer: SessionDescription| {
-                c2.set_local_description(offer.clone(), Box::new(move || s2.send_sdp(offer)))
-            })
-        );
+        controller.create_offer(Box::new(move |offer: SessionDescription| {
+            c2.set_local_description(offer.clone(), Box::new(move || s2.send_sdp(offer)))
+        }));
     }
 
     fn on_add_stream(&self, stream: &registry::MediaStreamId, _: MediaStreamType) {
@@ -204,26 +202,26 @@ impl WebRtcSignaller for Signaller {
         controller: &WebRtcController,
     ) {
         match event {
-            DataChannelEvent::NewChannel => {}
+            DataChannelEvent::NewChannel => {},
             DataChannelEvent::Open => {
                 println!("Channel opened {:?}", id);
                 controller.send_data_channel_message(
                     &id,
                     DataChannelMessage::Text("Hello from servo-media".to_owned()),
                 );
-            }
+            },
             DataChannelEvent::Close => {
                 println!("Channel closed {:?}", id);
-            }
+            },
             DataChannelEvent::OnMessage(message) => {
                 println!("Channel message {:?}", message);
-            }
+            },
             DataChannelEvent::Error(error) => {
                 println!("Channel error {:?}", error);
-            }
+            },
             DataChannelEvent::StateChange(state) => {
                 println!("Channel state change to {:?}", state);
-            }
+            },
         }
     }
 }
@@ -263,21 +261,21 @@ fn receive_loop(
                     println!("Receive Loop error: {:?}", e);
                     let _ = send_msg_tx.send(OwnedMessage::Close(None));
                     return;
-                }
+                },
             };
 
             match message {
                 OwnedMessage::Close(_) => {
                     let _ = send_msg_tx.send(OwnedMessage::Close(None));
                     return;
-                }
+                },
 
                 OwnedMessage::Ping(data) => {
                     if let Err(e) = send_msg_tx.send(OwnedMessage::Pong(data)) {
                         println!("Receive Loop error: {:?}", e);
                         return;
                     }
-                }
+                },
 
                 OwnedMessage::Text(msg) => match &*msg {
                     "HELLO" => state.handle_hello(),
@@ -286,7 +284,7 @@ fn receive_loop(
 
                     x if x.starts_with("ERROR") => {
                         eprintln!("Got error message! {}", msg);
-                    }
+                    },
 
                     _ => {
                         let json_msg: JsonMsg = serde_json::from_str(&msg).unwrap();
@@ -307,18 +305,18 @@ fn receive_loop(
                                     controller.set_remote_description(
                                         desc,
                                         Box::new(move || {
-                                            c3.create_answer(
-                                                Box::new(move |answer: SessionDescription| {
+                                            c3.create_answer(Box::new(
+                                                move |answer: SessionDescription| {
                                                     c2.set_local_description(
                                                         answer.clone(),
                                                         Box::new(move || s2.send_sdp(answer)),
                                                     )
-                                                })
-                                            )
-                                        })
+                                                },
+                                            ))
+                                        }),
                                     );
                                 }
-                            }
+                            },
                             JsonMsg::Ice {
                                 sdp_mline_index,
                                 candidate,
@@ -333,14 +331,14 @@ fn receive_loop(
                                     .unwrap()
                                     .add_ice_candidate(candidate)
                                     .into()
-                            }
+                            },
                         };
-                    }
+                    },
                 },
 
                 _ => {
                     println!("Unmatched message type: {:?}", message);
-                }
+                },
             }
         }
     })
@@ -369,7 +367,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         Err(err) => {
             println!("Failed to connect to {} with error: {:?}", server, err);
             panic!("uh oh");
-        }
+        },
     };
     let (receiver, sender) = client.split().unwrap();
 

@@ -90,7 +90,7 @@ impl WaveShaperNode {
                 }
                 self.curve_set = new_curve.is_some();
                 self.curve = new_curve;
-            }
+            },
         }
     }
 }

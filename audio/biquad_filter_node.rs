@@ -182,7 +182,7 @@ impl BiquadFilterNode {
                     self.constant_z_transform(0.);
                     return;
                 }
-            }
+            },
             FilterType::HighPass => {
                 if normalized == 1. {
                     self.constant_z_transform(0.);
@@ -191,7 +191,7 @@ impl BiquadFilterNode {
                     self.constant_z_transform(1.);
                     return;
                 }
-            }
+            },
             FilterType::LowShelf => {
                 if normalized == 1. {
                     self.constant_z_transform(a * a);
@@ -200,7 +200,7 @@ impl BiquadFilterNode {
                     self.constant_z_transform(1.);
                     return;
                 }
-            }
+            },
             FilterType::HighShelf => {
                 if normalized == 1. {
                     self.constant_z_transform(1.);
@@ -209,7 +209,7 @@ impl BiquadFilterNode {
                     self.constant_z_transform(a * a);
                     return;
                 }
-            }
+            },
             FilterType::Peaking => {
                 if normalized == 0. || normalized == 1. {
                     self.constant_z_transform(1.);
@@ -218,7 +218,7 @@ impl BiquadFilterNode {
                     self.constant_z_transform(a * a);
                     return;
                 }
-            }
+            },
             FilterType::AllPass => {
                 if normalized == 0. || normalized == 1. {
                     self.constant_z_transform(1.);
@@ -227,7 +227,7 @@ impl BiquadFilterNode {
                     self.constant_z_transform(-1.);
                     return;
                 }
-            }
+            },
             FilterType::Notch => {
                 if normalized == 0. || normalized == 1. {
                     self.constant_z_transform(1.);
@@ -236,7 +236,7 @@ impl BiquadFilterNode {
                     self.constant_z_transform(0.);
                     return;
                 }
-            }
+            },
             FilterType::BandPass => {
                 if normalized == 0. || normalized == 1. {
                     self.constant_z_transform(0.);
@@ -245,7 +245,7 @@ impl BiquadFilterNode {
                     self.constant_z_transform(1.);
                     return;
                 }
-            }
+            },
         }
 
         let omega0 = 2. * PI * normalized;
@@ -266,7 +266,7 @@ impl BiquadFilterNode {
                 a0 = 1. + alpha_q_db;
                 self.a1 = -2. * cos_omega;
                 self.a2 = 1. - alpha_q_db;
-            }
+            },
             FilterType::HighPass => {
                 self.b0 = (1. + cos_omega) / 2.;
                 self.b1 = -(1. + cos_omega);
@@ -274,7 +274,7 @@ impl BiquadFilterNode {
                 a0 = 1. + alpha_q_db;
                 self.a1 = -2. * cos_omega;
                 self.a2 = 1. - alpha_q_db;
-            }
+            },
             FilterType::BandPass => {
                 self.b0 = alpha_q;
                 self.b1 = 0.;
@@ -282,7 +282,7 @@ impl BiquadFilterNode {
                 a0 = 1. + alpha_q;
                 self.a1 = -2. * cos_omega;
                 self.a2 = 1. - alpha_q;
-            }
+            },
             FilterType::Notch => {
                 self.b0 = 1.;
                 self.b1 = -2. * cos_omega;
@@ -290,7 +290,7 @@ impl BiquadFilterNode {
                 a0 = 1. + alpha_q;
                 self.a1 = -2. * cos_omega;
                 self.a2 = 1. - alpha_q;
-            }
+            },
             FilterType::AllPass => {
                 self.b0 = 1. - alpha_q;
                 self.b1 = -2. * cos_omega;
@@ -298,7 +298,7 @@ impl BiquadFilterNode {
                 a0 = 1. + alpha_q;
                 self.a1 = -2. * cos_omega;
                 self.a2 = 1. - alpha_q;
-            }
+            },
             FilterType::Peaking => {
                 self.b0 = 1. + alpha_q * a;
                 self.b1 = -2. * cos_omega;
@@ -306,7 +306,7 @@ impl BiquadFilterNode {
                 a0 = 1. + alpha_q / a;
                 self.a1 = -2. * cos_omega;
                 self.a2 = 1. - alpha_q / a;
-            }
+            },
             FilterType::LowShelf => {
                 let alpha_rt_a = 2. * alpha_s * a.sqrt();
                 self.b0 = a * ((a + 1.) - (a - 1.) * cos_omega + alpha_rt_a);
@@ -315,7 +315,7 @@ impl BiquadFilterNode {
                 a0 = (a + 1.) + (a - 1.) * cos_omega + alpha_rt_a;
                 self.a1 = -2. * ((a - 1.) + (a + 1.) * cos_omega);
                 self.a2 = (a + 1.) + (a - 1.) * cos_omega - alpha_rt_a;
-            }
+            },
             FilterType::HighShelf => {
                 let alpha_rt_a = 2. * alpha_s * a.sqrt();
                 self.b0 = a * ((a + 1.) + (a - 1.) * cos_omega + alpha_rt_a);
@@ -324,7 +324,7 @@ impl BiquadFilterNode {
                 a0 = (a + 1.) - (a - 1.) * cos_omega + alpha_rt_a;
                 self.a1 = 2. * ((a - 1.) - (a + 1.) * cos_omega);
                 self.a2 = (a + 1.) - (a - 1.) * cos_omega - alpha_rt_a;
-            }
+            },
         }
         self.b0 = self.b0 / a0;
         self.b1 = self.b1 / a0;
@@ -404,7 +404,7 @@ impl AudioNodeEngine for BiquadFilterNode {
                 BiquadFilterNodeMessage::SetFilterType(f) => {
                     self.filter = f;
                     self.update_coefficients(sample_rate);
-                }
+                },
             },
             _ => (),
         }

@@ -157,7 +157,7 @@ impl GStreamerMediaStream {
                 queue2.sync_state_with_parent().unwrap();
                 capsfilter.sync_state_with_parent().unwrap();
                 capsfilter
-            }
+            },
             MediaStreamType::Audio => {
                 let opusenc = gst::ElementFactory::make("opusenc").build().unwrap();
                 let rtpopuspay = gst::ElementFactory::make("rtpopuspay")
@@ -174,7 +174,7 @@ impl GStreamerMediaStream {
                 rtpopuspay.sync_state_with_parent().unwrap();
                 queue3.sync_state_with_parent().unwrap();
                 capsfilter
-            }
+            },
         }
     }
 
