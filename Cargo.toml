@@ -9,6 +9,7 @@ members = [
   "backends/gstreamer/render-unix",
   "examples",
   "examples/android/lib",
+  "mse",
   "player",
   "servo-media",
   "servo-media-derive",
@@ -19,11 +20,12 @@ members = [
 [workspace.dependencies]
 glib = "0.21"
 glib-sys = "0.21"
-gst = { package = "gstreamer", version = "0.24" }
+gst = { package = "gstreamer", version = "0.24", features = ["v1_26"] }
 gst-app = { package = "gstreamer-app", version = "0.24" }
 gst-audio = { package = "gstreamer-audio", version = "0.24" }
 gst-base = { package = "gstreamer-base", version = "0.24" }
 gst-gl = { package = "gstreamer-gl", version = "0.24" }
+gst-mse = { package = "gstreamer-mse", version = "0.24" }
 gst-play = { package = "gstreamer-play", version = "0.24" }
 gst-sdp = { package = "gstreamer-sdp", version = "0.24" }
 gst-video = { package = "gstreamer-video", version = "0.24" }

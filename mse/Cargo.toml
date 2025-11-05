@@ -1,0 +1,10 @@
+[package]
+name = "servo-media-mse"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "servo_media_mse"
+path = "lib.rs"
+
+[dependencies]

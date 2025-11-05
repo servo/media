@@ -1,4 +1,5 @@
 pub extern crate servo_media_audio as audio;
+pub extern crate servo_media_mse as mse;
 pub extern crate servo_media_player as player;
 pub extern crate servo_media_streams as streams;
 pub extern crate servo_media_traits as traits;
@@ -27,6 +28,7 @@ use streams::registry::MediaStreamId;
 use streams::{MediaOutput, MediaSocket, MediaStreamType};
 use webrtc::{WebRtcController, WebRtcSignaller};
 
+use mse::MediaSource;
 use once_cell::sync::OnceCell;
 
 pub struct ServoMedia(Box<dyn Backend>);
@@ -89,6 +91,11 @@ pub trait Backend: Send + Sync {
     fn resume(&self, _id: &ClientContextId) {}
 
     fn get_device_monitor(&self) -> Box<dyn MediaDeviceMonitor>;
+
+    /// MSE
+    fn create_mse_source(&self) -> Option<Box<dyn MediaSource>> {
+        None
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
