@@ -155,8 +155,11 @@ impl PlayerInner {
         self.rate = rate;
         if let Some(ref metadata) = self.last_metadata {
             if !metadata.is_seekable {
-                gst::warning!(self.cat, obj = &self.player,
-                             "Player must be seekable in order to set the playback rate");
+                gst::warning!(
+                    self.cat,
+                    obj = &self.player,
+                    "Player must be seekable in order to set the playback rate"
+                );
                 return Err(PlayerError::NonSeekableStream);
             }
             self.player.set_rate(rate);
@@ -457,7 +460,9 @@ impl GStreamerPlayer {
         if let Some(ref audio_renderer) = self.audio_renderer {
             let audio_sink = gst::ElementFactory::make("appsink")
                 .build()
-                .map_err(|error| PlayerError::Backend(format!("appsink creation failed: {error:?}")))?;
+                .map_err(|error| {
+                    PlayerError::Backend(format!("appsink creation failed: {error:?}"))
+                })?;
 
             pipeline.set_property("audio-sink", &audio_sink);
 
@@ -511,13 +516,16 @@ impl GStreamerPlayer {
         let uri = match self.stream_type {
             StreamType::Stream => {
                 register_servo_media_stream_src().map_err(|error| {
-                    PlayerError::Backend(format!("servomediastreamsrc registration error: {error:?}"))
+                    PlayerError::Backend(format!(
+                        "servomediastreamsrc registration error: {error:?}"
+                    ))
                 })?;
                 "mediastream://".to_value()
             }
             StreamType::Seekable => {
-                register_servo_src()
-                    .map_err(|error| PlayerError::Backend(format!("servosrc registration error: {error:?}")))?;
+                register_servo_src().map_err(|error| {
+                    PlayerError::Backend(format!("servosrc registration error: {error:?}"))
+                })?;
                 "servosrc://".to_value()
             }
         };
@@ -543,6 +551,9 @@ impl GStreamerPlayer {
 
         let inner = self.inner.borrow();
         let inner = inner.as_ref().unwrap();
+
+        let weak_inner = Arc::downgrade(inner);
+
         let observer = self.observer.clone();
         // Handle `end-of-stream` signal.
         signal_adapter.connect_end_of_stream(move |_| {
@@ -585,41 +596,71 @@ impl GStreamerPlayer {
         });
 
         // Handle `media-info-updated` signal.
-        let inner_clone = inner.clone();
-        let observer = self.observer.clone();
-        signal_adapter.connect_media_info_updated(move |_, info| {
-            let mut inner = inner_clone.lock().unwrap();
-            if let Ok(metadata) = metadata_from_media_info(info) {
+        signal_adapter.connect_media_info_updated({
+            let observer = self.observer.clone();
+            let weak_inner = weak_inner.clone();
+
+            move |_, info| {
+                let Ok(metadata) = metadata_from_media_info(info) else {
+                    return;
+                };
+
+                let Some(strong_inner) = weak_inner.upgrade() else {
+                    return;
+                };
+
+                let mut inner = strong_inner.lock().unwrap();
+
                 if inner.last_metadata.as_ref() != Some(&metadata) {
                     inner.last_metadata = Some(metadata.clone());
+
                     if metadata.is_seekable {
                         inner.player.set_rate(inner.rate);
                     }
-                    gst::info!(inner.cat, obj = &inner.player, "Metadata updated: {:?}", metadata);
+
+                    gst::info!(
+                        inner.cat,
+                        obj = &inner.player,
+                        "Metadata updated: {:?}",
+                        metadata
+                    );
+
                     let _ = notify!(observer, PlayerEvent::MetadataUpdated(metadata));
                 }
             }
         });
 
         // Handle `duration-changed` signal.
-        let inner_clone = inner.clone();
-        let observer = self.observer.clone();
-        signal_adapter.connect_duration_changed(move |_, duration| {
-            let mut inner = inner_clone.lock().unwrap();
-            let duration = duration.map(|duration| {
-                let nanos = duration.nseconds();
-                let seconds = duration.seconds();
-                time::Duration::new(seconds, (nanos % 1_000_000_000) as u32)
-            });
-            let mut updated_metadata = None;
-            if let Some(ref mut metadata) = inner.last_metadata {
-                metadata.duration = duration;
-                updated_metadata = Some(metadata.clone());
-            }
-            if let Some(updated_metadata) = updated_metadata {
-                gst::info!(inner.cat, obj = &inner.player, "Duration updated: {:?}",
-                              updated_metadata);
-                let _ = notify!(observer, PlayerEvent::MetadataUpdated(updated_metadata));
+        signal_adapter.connect_duration_changed({
+            let observer = self.observer.clone();
+            let weak_inner = weak_inner.clone();
+
+            move |_, duration| {
+                let duration = duration.map(|duration| {
+                    let nanos = duration.nseconds();
+                    let seconds = duration.seconds();
+                    time::Duration::new(seconds, (nanos % 1_000_000_000) as u32)
+                });
+
+                let Some(strong_inner) = weak_inner.upgrade() else {
+                    return;
+                };
+
+                let mut inner = strong_inner.lock().unwrap();
+
+                if let Some(metadata) = inner.last_metadata.as_mut().map(|metadata| {
+                    metadata.duration = duration;
+                    metadata.clone()
+                }) {
+                    gst::info!(
+                        inner.cat,
+                        obj = &inner.player,
+                        "Duration updated: {:?}",
+                        metadata.duration
+                    );
+
+                    let _ = notify!(observer, PlayerEvent::MetadataUpdated(metadata));
+                }
             }
         });
 
@@ -655,7 +696,9 @@ impl GStreamerPlayer {
                     .new_preroll({
                         let render_sample = render_sample.clone();
                         move |video_sink| {
-                            render_sample(video_sink.pull_preroll().map_err(|_| gst::FlowError::Eos)?)
+                            render_sample(
+                                video_sink.pull_preroll().map_err(|_| gst::FlowError::Eos)?,
+                            )
                         }
                     })
                     .new_sample(move |video_sink| {
@@ -666,106 +709,140 @@ impl GStreamerPlayer {
         };
 
         let (receiver, error_handler_id) = {
-            let inner_clone = inner.clone();
-            let mut inner = inner.lock().unwrap();
-            let pipeline = inner.player.pipeline();
-
             let (sender, receiver) = mpsc::channel();
 
             let sender = Arc::new(Mutex::new(sender));
-            let sender_clone = sender.clone();
-            let is_ready_clone = self.is_ready.clone();
-            let observer = self.observer.clone();
-            pipeline.connect("source-setup", false, move |args| {
-                let source = args[1].get::<gst::Element>().unwrap();
 
-                let mut inner = inner_clone.lock().unwrap();
-                let source = match inner.stream_type {
-                    StreamType::Seekable => {
-                        let servosrc = source
-                            .dynamic_cast::<ServoSrc>()
-                            .expect("Source element is expected to be a ServoSrc!");
+            let mut inner = inner.lock().unwrap();
 
-                        if inner.input_size > 0 {
-                            servosrc.set_size(inner.input_size as i64);
-                        }
+            inner.player.pipeline().connect("source-setup", false, {
+                let is_ready = self.is_ready.clone();
+                let observer = self.observer.clone();
+                let sender = sender.clone();
+                let weak_inner = weak_inner.clone();
 
-                        let sender_clone = sender.clone();
-                        let is_ready = is_ready_clone.clone();
-                        let observer_ = observer.clone();
-                        let observer__ = observer.clone();
-                        let observer___ = observer.clone();
-                        let servosrc_ = servosrc.clone();
-                        let enough_data_ = inner.enough_data.clone();
-                        let enough_data__ = inner.enough_data.clone();
-                        let seek_channel = Arc::new(Mutex::new(SeekChannel::new()));
-                        servosrc.set_callbacks(
-                            gst_app::AppSrcCallbacks::builder()
-                                .need_data(move |_, _| {
+                move |args| {
+                    let source = args[1].get::<gst::Element>().unwrap();
+
+                    let Some(strong_inner) = weak_inner.upgrade() else {
+                        return None;
+                    };
+
+                    let mut inner = strong_inner.lock().unwrap();
+
+                    let source = match inner.stream_type {
+                        StreamType::Seekable => {
+                            let servosrc = source
+                                .dynamic_cast::<ServoSrc>()
+                                .expect("Source element is expected to be a ServoSrc!");
+
+                            if inner.input_size > 0 {
+                                servosrc.set_size(inner.input_size as i64);
+                            }
+
+                            let need_data_fn = {
+                                let enough_data = inner.enough_data.clone();
+                                let is_ready = is_ready.clone();
+                                let observer = observer.clone();
+                                let sender = sender.clone();
+
+                                move || {
                                     // We block the caller of the setup method until we get
                                     // the first need-data signal, so we ensure that we
                                     // don't miss any data between the moment the client
                                     // calls setup and the player is actually ready to
                                     // get any data.
                                     is_ready.call_once(|| {
-                                        let _ = sender_clone.lock().unwrap().send(Ok(()));
+                                        let _ = sender.lock().unwrap().send(Ok(()));
                                     });
 
-                                    enough_data_.store(false, Ordering::Relaxed);
-                                    let _ = notify!(observer_, PlayerEvent::NeedData);
-                                })
-                                .enough_data(move |_| {
-                                    enough_data__.store(true, Ordering::Relaxed);
-                                    let _ = notify!(observer__, PlayerEvent::EnoughData);
-                                })
-                                .seek_data(move |_, offset| {
-                                    let (ret, ack_channel) = if servosrc_.set_seek_offset(offset) {
+                                    enough_data.store(false, Ordering::Relaxed);
+                                    let _ = notify!(observer, PlayerEvent::NeedData);
+                                }
+                            };
+
+                            let enough_data_fn = {
+                                let enough_data = inner.enough_data.clone();
+                                let observer = observer.clone();
+
+                                move || {
+                                    enough_data.store(true, Ordering::Relaxed);
+                                    let _ = notify!(observer, PlayerEvent::EnoughData);
+                                }
+                            };
+
+                            let seek_data_fn = {
+                                let observer = observer.clone();
+                                let weak_servosrc = servosrc.downgrade();
+
+                                move |offset| {
+                                    let Some(strong_servosrc) = weak_servosrc.upgrade() else {
+                                        return false;
+                                    };
+
+                                    let (status, ack_channel) = if strong_servosrc
+                                        .set_seek_offset(offset)
+                                    {
+                                        let seek_channel = Arc::new(Mutex::new(SeekChannel::new()));
+
                                         let _ = notify!(
-                                            observer___,
+                                            observer,
                                             PlayerEvent::SeekData(
                                                 offset,
                                                 seek_channel.lock().unwrap().sender()
                                             )
                                         );
-                                        let (ret, ack_channel) =
+                                        let (status, ack_channel) =
                                             seek_channel.lock().unwrap()._await();
-                                        (ret, Some(ack_channel))
+                                        (status, Some(ack_channel))
                                     } else {
                                         (true, None)
                                     };
 
-                                    servosrc_.set_seek_done();
+                                    strong_servosrc.set_seek_done();
+
                                     if let Some(ack_channel) = ack_channel {
                                         ack_channel.send(()).unwrap();
                                     }
-                                    ret
-                                })
-                                .build(),
-                        );
 
-                        PlayerSource::Seekable(servosrc)
-                    }
-                    StreamType::Stream => {
-                        let media_stream_src = source
-                            .dynamic_cast::<ServoMediaStreamSrc>()
-                            .expect("Source element is expected to be a ServoMediaStreamSrc!");
-                        let sender_clone = sender.clone();
-                        is_ready_clone.call_once(|| {
-                            let _ = notify!(sender_clone, Ok(()));
-                        });
-                        PlayerSource::Stream(media_stream_src)
-                    }
-                };
+                                    status
+                                }
+                            };
 
-                inner.set_src(source);
+                            servosrc.set_callbacks(
+                                gst_app::AppSrcCallbacks::builder()
+                                    .need_data(move |_, _| need_data_fn())
+                                    .enough_data(move |_| enough_data_fn())
+                                    .seek_data(move |_, offset| seek_data_fn(offset))
+                                    .build(),
+                            );
 
-                None
+                            PlayerSource::Seekable(servosrc)
+                        },
+                        StreamType::Stream => {
+                            let media_stream_src = source
+                                .dynamic_cast::<ServoMediaStreamSrc>()
+                                .expect("Source element is expected to be a ServoMediaStreamSrc!");
+
+                            is_ready.call_once(|| {
+                                let _ = sender.lock().unwrap().send(Ok(()));
+                            });
+
+                            PlayerSource::Stream(media_stream_src)
+                        }
+                    };
+
+                    inner.set_src(source);
+
+                    None
+                }
             });
 
-            let error_handler_id = signal_adapter.connect_error(move |signal_adapter, error, _details| {
-                let _ = notify!(sender_clone, Err(PlayerError::Backend(error.to_string())));
-                signal_adapter.play().stop();
-            });
+            let error_handler_id =
+                signal_adapter.connect_error(move |signal_adapter, error, _details| {
+                    let _ = notify!(sender, Err(PlayerError::Backend(error.to_string())));
+                    signal_adapter.play().stop();
+                });
 
             let _ = inner.pause();
 
