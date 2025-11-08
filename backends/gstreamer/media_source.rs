@@ -4,6 +4,7 @@ use gst::ClockTime;
 use gst_mse::{MediaSource as GstMediaSource, MediaSourceEOSError};
 use servo_media_mse::{EosError, MediaSource, ReadyState, SourceBuffer, SourceBufferList};
 
+#[repr(transparent)]
 pub struct GStreamerMediaSource {
     inner: GstMediaSource,
 }
@@ -18,14 +19,15 @@ impl GStreamerMediaSource {
     pub(crate) fn inner(&self) -> &GstMediaSource {
         &self.inner
     }
+
+    pub(crate) fn from_ref(inner: &GstMediaSource) -> &Self {
+        unsafe { &*(inner as *const GstMediaSource as *const GStreamerMediaSource) }
+    }
 }
 
 impl MediaSource for GStreamerMediaSource {
     fn add_source_buffer(&self, ty: &str) -> Box<dyn SourceBuffer> {
-        let buffer = self
-            .inner
-            .add_source_buffer(ty)
-            .unwrap();
+        let buffer = self.inner.add_source_buffer(ty).unwrap();
         let buffer = GStreamerSourceBuffer::from(buffer);
         Box::new(buffer)
     }
@@ -92,21 +94,21 @@ impl MediaSource for GStreamerMediaSource {
         }
     }
 
-    fn on_source_open(&self, f: Box<dyn Fn() + Send + Sync>) {
-        self.inner.connect_on_source_open(move |_s| {
-            f();
+    fn on_source_open(&self, f: Box<dyn Fn(&dyn MediaSource) + Send + Sync>) {
+        self.inner.connect_on_source_open(move |s| {
+            f(Self::from_ref(s));
         });
     }
 
-    fn on_source_ended(&self, f: Box<dyn Fn() + Send + Sync>) {
-        self.inner.connect_on_source_ended(move |_s| {
-            f();
+    fn on_source_ended(&self, f: Box<dyn Fn(&dyn MediaSource) + Send + Sync>) {
+        self.inner.connect_on_source_ended(move |s| {
+            f(Self::from_ref(s));
         });
     }
 
-    fn on_source_close(&self, f: Box<dyn Fn() + Send + Sync>) {
-        self.inner.connect_on_source_close(move |_s| {
-            f();
+    fn on_source_close(&self, f: Box<dyn Fn(&dyn MediaSource) + Send + Sync>) {
+        self.inner.connect_on_source_close(move |s| {
+            f(Self::from_ref(s));
         });
     }
 

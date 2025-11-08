@@ -61,9 +61,9 @@ pub trait MediaSource: Send {
     fn end_of_stream(&self, error: Option<EosError>);
     fn ready_state(&self) -> ReadyState;
 
-    fn on_source_open(&self, f: Box<dyn Fn() + Send + Sync>);
-    fn on_source_ended(&self, f: Box<dyn Fn() + Send + Sync>);
-    fn on_source_close(&self, f: Box<dyn Fn() + Send + Sync>);
+    fn on_source_open(&self, f: Box<dyn Fn(&dyn MediaSource) + Send + Sync>);
+    fn on_source_ended(&self, f: Box<dyn Fn(&dyn MediaSource) + Send + Sync>);
+    fn on_source_close(&self, f: Box<dyn Fn(&dyn MediaSource) + Send + Sync>);
 
     fn as_any(&self) -> &dyn Any;
 }
