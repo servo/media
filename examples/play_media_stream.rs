@@ -62,7 +62,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
             },
             PlayerEvent::VideoFrameUpdated => eprint!("."),
             PlayerEvent::PositionChanged(p) => {
-                if p == 4 {
+                if p as u64 == 4 {
                     break;
                 }
                 println!("Position changed {:?}", p)

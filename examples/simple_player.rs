@@ -141,7 +141,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
             PlayerEvent::VideoFrameUpdated => eprint!("."),
             PlayerEvent::PositionChanged(p) => {
                 let player = player.lock().unwrap();
-                if p == 4 && !seek_requested {
+                if p as u64 == 4 && !seek_requested {
                     println!("\nPosition changed to 4sec, seeking back to 0sec");
                     if let Err(e) = player.seek(0.) {
                         eprintln!("{:?}", e);

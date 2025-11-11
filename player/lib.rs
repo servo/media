@@ -69,15 +69,15 @@ pub enum PlayerEvent {
     /// The internal player queue is running out of data. The client should start
     /// pushing more data.
     NeedData,
-    PositionChanged(u64),
-    /// The player needs the data to perform a seek to the given offset.
+    PositionChanged(f64),
+    /// The player needs the data to perform a seek to the given offset in bytes.
     /// The next push_data should get the buffers from the new offset.
     /// The player will be blocked until the user unlocks it through
     /// the given SeekLock instance.
     /// This event is only received for seekable stream types.
     SeekData(u64, SeekLock),
-    /// The player has performed a seek to the given offset.
-    SeekDone(u64),
+    /// The player has performed a seek to the given time offset in seconds.
+    SeekDone(f64),
     StateChanged(PlaybackState),
 }
 
