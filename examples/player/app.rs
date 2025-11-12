@@ -437,7 +437,7 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
                     }
                 },
                 player::PlayerEvent::VideoFrameUpdated => frameupdated = true,
-                player::PlayerEvent::PositionChanged(pos) => playerstate.pos = pos as f64,
+                player::PlayerEvent::PositionChanged(pos) => playerstate.pos = pos,
                 _ => (),
             }
         }

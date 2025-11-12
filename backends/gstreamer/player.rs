@@ -581,7 +581,7 @@ impl GStreamerPlayer {
         let observer = self.observer.clone();
         // Handle `position-update` signal.
         signal_adapter.connect_position_updated(move |_, position| {
-            if let Some(seconds) = position.map(|p| p.seconds()) {
+            if let Some(seconds) = position.map(|p| p.seconds_f64()) {
                 let _ = notify!(observer, PlayerEvent::PositionChanged(seconds));
             }
         });
@@ -589,7 +589,7 @@ impl GStreamerPlayer {
         let observer = self.observer.clone();
         // Handle `seek-done` signal.
         signal_adapter.connect_seek_done(move |_, position| {
-            let _ = notify!(observer, PlayerEvent::SeekDone(position.seconds()));
+            let _ = notify!(observer, PlayerEvent::SeekDone(position.seconds_f64()));
         });
 
         // Handle `media-info-updated` signal.

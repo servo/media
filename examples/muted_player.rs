@@ -107,11 +107,11 @@ fn run_example(servo_media: Arc<ServoMedia>) {
             },
             PlayerEvent::VideoFrameUpdated => eprint!("."),
             PlayerEvent::PositionChanged(p) => {
-                if p == 2 && !muted {
+                if p as u64 == 2 && !muted {
                     println!("\nPosition is at 2sec, muting, 1 second of silence incoming");
                     servo_media.mute(&context_id, true);
                     muted = true;
-                } else if p == 3 && muted {
+                } else if p as u64 == 3 && muted {
                     println!("\nPosition is at 3sec, unmuting");
                     servo_media.mute(&context_id, false);
                     muted = false;
