@@ -74,6 +74,9 @@ while let Ok(event) = receiver.recv() {
         PlayerEvent::MetadataUpdated(ref m) => {
             println!("\nMetadata updated! {:?}", m);
         }
+        PlayerEvent::DurationChanged(d) => {
+            println!("\nDuration changed! {:?}", d);
+        },
         PlayerEvent::StateChanged(ref s) => {
             println!("\nPlayer state changed to {:?}", s);
         }

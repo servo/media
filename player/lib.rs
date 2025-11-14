@@ -1,3 +1,6 @@
+use std::ops::Range;
+use std::time::Duration;
+
 pub extern crate ipc_channel;
 #[macro_use]
 extern crate serde_derive;
@@ -11,7 +14,6 @@ pub mod video;
 
 use ipc_channel::ipc::{self, IpcSender};
 use servo_media_traits::MediaInstance;
-use std::ops::Range;
 use streams::registry::MediaStreamId;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -66,6 +68,8 @@ pub enum PlayerEvent {
     Error(String),
     VideoFrameUpdated,
     MetadataUpdated(metadata::Metadata),
+    // The `None` value means the duration is unknown, in which case this is likely a live stream.
+    DurationChanged(Option<Duration>),
     /// The internal player queue is running out of data. The client should start
     /// pushing more data.
     NeedData,
