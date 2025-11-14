@@ -383,12 +383,14 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
                 player::PlayerEvent::EndOfStream => running = false,
                 player::PlayerEvent::Error(ref s) => Err(SMError(format!("{:?}", s)))?,
                 player::PlayerEvent::MetadataUpdated(metadata) => {
-                    println!("{:?}", metadata);
-                    if let Some(duration) = metadata.duration {
-                        playerstate.duration = duration.as_secs() as f64;
-                    } else {
-                        playerstate.duration = std::f64::INFINITY;
-                    }
+                    println!("Metadata updated to {:?}", metadata);
+                    playerstate.duration =
+                        duration.map_or(std::f64::INFINITY, |duration| duration.as_secs_f64());
+                },
+                PlayerEvent::DurationChanged(duration) => {
+                    println!("Duration changed to {:?}", duration);
+                    playerstate.duration =
+                        duration.map_or(std::f64::INFINITY, |duration| duration.as_secs_f64());
                 },
                 player::PlayerEvent::StateChanged(state) => {
                     println!("Player state changed to {:?}", state);

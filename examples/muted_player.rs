@@ -102,6 +102,9 @@ fn run_example(servo_media: Arc<ServoMedia>) {
             PlayerEvent::MetadataUpdated(ref m) => {
                 println!("\nMetadata updated! {:?}", m);
             },
+            PlayerEvent::DurationChanged(d) => {
+                println!("\nDuration changed! {:?}", d);
+            },
             PlayerEvent::StateChanged(ref s) => {
                 println!("\nPlayer state changed to {:?}", s);
             },

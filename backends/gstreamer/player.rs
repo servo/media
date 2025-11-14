@@ -618,25 +618,25 @@ impl GStreamerPlayer {
         let inner_clone = inner.clone();
         let observer = self.observer.clone();
         signal_adapter.connect_duration_changed(move |_, duration| {
-            let mut inner = inner_clone.lock().unwrap();
             let duration = duration.map(|duration| {
-                let nanos = duration.nseconds();
-                let seconds = duration.seconds();
-                time::Duration::new(seconds, (nanos % 1_000_000_000) as u32)
+                time::Duration::new(
+                    duration.seconds(),
+                    (duration.nseconds() % 1_000_000_000) as u32,
+                )
             });
-            let mut updated_metadata = None;
+
+            let mut inner = inner_clone.lock().unwrap();
             if let Some(ref mut metadata) = inner.last_metadata {
-                metadata.duration = duration;
-                updated_metadata = Some(metadata.clone());
-            }
-            if let Some(updated_metadata) = updated_metadata {
-                gst::info!(
-                    inner.cat,
-                    obj = &inner.player,
-                    "Duration updated: {:?}",
-                    updated_metadata
-                );
-                let _ = notify!(observer, PlayerEvent::MetadataUpdated(updated_metadata));
+                if metadata.duration != duration {
+                    metadata.duration = duration;
+                    gst::info!(
+                        inner.cat,
+                        obj = &inner.player,
+                        "Duration changed: {:?}",
+                        duration
+                    );
+                    let _ = notify!(observer, PlayerEvent::DurationChanged(duration));
+                }
             }
         });
 
