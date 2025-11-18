@@ -100,7 +100,7 @@ fn metadata_from_media_info(media_info: &gst_play::PlayMediaInfo) -> Result<Meta
 pub struct GStreamerAudioChunk(gst::buffer::MappedBuffer<gst::buffer::Readable>);
 impl AsRef<[f32]> for GStreamerAudioChunk {
     fn as_ref(&self) -> &[f32] {
-        self.0.as_ref().as_slice_of::<f32>().unwrap()
+        self.0.as_ref().as_slice_of::<f32>().unwrap_or_default()
     }
 }
 
