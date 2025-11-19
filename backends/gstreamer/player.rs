@@ -150,20 +150,17 @@ impl PlayerInner {
     }
 
     pub fn set_rate(&mut self, rate: f64) -> Result<(), PlayerError> {
-        // This method may be called before the player setup is done, so we safe the rate value
-        // and set it once the player is ready and after getting the media info
-        self.rate = rate;
-        if let Some(ref metadata) = self.last_metadata {
-            if !metadata.is_seekable {
-                gst::warning!(
-                    self.cat,
-                    obj = &self.player,
-                    "Player must be seekable in order to set the playback rate"
-                );
-                return Err(PlayerError::NonSeekableStream);
-            }
-            self.player.set_rate(rate);
+        if self.stream_type != StreamType::Seekable {
+            return Err(PlayerError::NonSeekableStream);
         }
+
+        if self.rate == rate {
+            return Ok(());
+        }
+
+        self.rate = rate;
+
+        self.player.set_rate(rate);
         Ok(())
     }
 
@@ -596,21 +593,30 @@ impl GStreamerPlayer {
         let inner_clone = inner.clone();
         let observer = self.observer.clone();
         signal_adapter.connect_media_info_updated(move |_, info| {
+            let Ok(metadata) = metadata_from_media_info(info) else {
+                return;
+            };
+
             let mut inner = inner_clone.lock().unwrap();
-            if let Ok(metadata) = metadata_from_media_info(info) {
-                if inner.last_metadata.as_ref() != Some(&metadata) {
-                    inner.last_metadata = Some(metadata.clone());
-                    if metadata.is_seekable {
-                        inner.player.set_rate(inner.rate);
-                    }
-                    gst::info!(
-                        inner.cat,
-                        obj = &inner.player,
-                        "Metadata updated: {:?}",
-                        metadata
-                    );
-                    let _ = notify!(observer, PlayerEvent::MetadataUpdated(metadata));
+
+            if inner.last_metadata.as_ref() != Some(&metadata) {
+                // TODO: The workaround to generate one more player `paused`
+                // state changed event.
+                // <https://github.com/servo/servo/issues/40740>
+                if inner.last_metadata.is_none() && metadata.is_seekable {
+                    inner
+                        .player
+                        .seek(inner.player.position().unwrap_or_default());
                 }
+
+                inner.last_metadata = Some(metadata.clone());
+                gst::info!(
+                    inner.cat,
+                    obj = &inner.player,
+                    "Metadata updated: {:?}",
+                    metadata
+                );
+                let _ = notify!(observer, PlayerEvent::MetadataUpdated(metadata));
             }
         });
 
