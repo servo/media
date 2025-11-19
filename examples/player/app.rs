@@ -153,12 +153,8 @@ impl App {
         let mut debug_flags = DebugFlags::empty();
         debug_flags.set(DebugFlags::PROFILER_DBG, opts.wr_stats);
 
-        //let device_pixel_ratio = windowed_context.window().scale_factor() as f32;
         let device_size = {
-            let size = windowed_context
-                .window()
-                .inner_size();
-                //.to_physical(device_pixel_ratio as f64);
+            let size = windowed_context.window().inner_size();
             DeviceIntSize::new(size.width as i32, size.height as i32)
         };
 
@@ -247,13 +243,8 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
     let player = &mut app.player;
 
     let device_pixel_ratio = windowed_context.window().scale_factor();
-    let window_size = windowed_context
-        .window()
-        .inner_size();
-        //.ok_or_else(|| MiscError("Failed to get window inner size".to_owned()))?;
+    let window_size = windowed_context.window().inner_size();
     let mut framebuffer_size = {
-        /*let glutin::dpi::PhysicalSize { width, height } =
-            window_size.to_physical(device_pixel_ratio as f64);*/
         DeviceIntSize::new(window_size.width as i32, window_size.height as i32)
     };
 
@@ -273,39 +264,30 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
             .send_transaction(app.webrender_document, transaction);
     }
 
-    // file reader
-/*    let mut buf_reader = BufReader::new(file);
-    let mut buffer = [0; 16384];*/
-
     player
         .lock()
         .unwrap()
         .play()
-            .map_err(|error| MiscError(format!("Failed to start player: {error:?}")))?;
+        .map_err(|error| MiscError(format!("Failed to start player: {error:?}")))?;
 
-    //let mut running = true;
     let mut input_eos = false;
     let mut playercmd = PlayerCmd::None;
     let mut frameupdated = false;
     let mut playerstate: State = Default::default();
 
-    //while running {
     app.events_loop.run(move |event, _, control_flow| {
         let player = &mut app.player;
-        //let events_loop = &mut app.events_loop;
         let windowed_context = &mut app.windowed_context;
-    let webrender = &mut app.webrender;
-    let receiver = &mut app.player_event_receiver;
-    let file = &mut app.file;
-    let mut buf_reader = BufReader::new(file);
-    let mut buffer = [0; 16384];
+        let webrender = &mut app.webrender;
+        let receiver = &mut app.player_event_receiver;
+        let file = &mut app.file;
+        let mut buf_reader = BufReader::new(file);
+        let mut buffer = [0; 16384];
 
-        //events_loop.poll_events(|event| match event {
         match event {
             glutin::event::Event::WindowEvent { event, .. } => match event {
                 glutin::event::WindowEvent::CloseRequested => playercmd = PlayerCmd::Stop,
                 glutin::event::WindowEvent::Resized(size) => {
-                    //let size = logical_size.to_physical(device_pixel_ratio);
                     windowed_context.resize(size);
 
                     framebuffer_size = DeviceIntSize::new(size.width as i32, size.height as i32);
@@ -318,23 +300,23 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
                             ..
                         },
                     ..
-                } => match key {
-                    glutin::event::VirtualKeyCode::Escape | glutin::event::VirtualKeyCode::Q => {
-                        playercmd = PlayerCmd::Stop
-                    },
-                    glutin::event::VirtualKeyCode::Right => playercmd = PlayerCmd::Seek(10.),
-                    glutin::event::VirtualKeyCode::Left => playercmd = PlayerCmd::Seek(-10.),
-                    glutin::event::VirtualKeyCode::Space => {
-                        playercmd = match playerstate.state {
-                            player::PlaybackState::Paused => PlayerCmd::Play,
-                            player::PlaybackState::Playing | player::PlaybackState::Buffering => {
-                                PlayerCmd::Pause
-                            },
-                            _ => PlayerCmd::None,
-                        };
-                    },
-                    glutin::event::VirtualKeyCode::M => playercmd = PlayerCmd::Mute,
-                    _ => (),
+                } => {
+                    match key {
+                        glutin::event::VirtualKeyCode::Escape
+                        | glutin::event::VirtualKeyCode::Q => playercmd = PlayerCmd::Stop,
+                        glutin::event::VirtualKeyCode::Right => playercmd = PlayerCmd::Seek(10.),
+                        glutin::event::VirtualKeyCode::Left => playercmd = PlayerCmd::Seek(-10.),
+                        glutin::event::VirtualKeyCode::Space => {
+                            playercmd = match playerstate.state {
+                                player::PlaybackState::Paused => PlayerCmd::Play,
+                                player::PlaybackState::Playing
+                                | player::PlaybackState::Buffering => PlayerCmd::Pause,
+                                _ => PlayerCmd::None,
+                            };
+                        },
+                        glutin::event::VirtualKeyCode::M => playercmd = PlayerCmd::Mute,
+                        _ => (),
+                    }
                 },
                 _ => (), //println!("glutin event: {:?}", event),
             },
@@ -347,7 +329,8 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
                     .lock()
                     .unwrap()
                     .stop()
-                    .map_err(|error| MiscError(format!("Failed to stop player: {error:?}"))).unwrap();
+                    .map_err(|error| MiscError(format!("Failed to stop player: {error:?}")))
+                    .unwrap();
                 input_eos = true;
             },
             PlayerCmd::Pause => {
@@ -355,14 +338,16 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
                     .lock()
                     .unwrap()
                     .pause()
-                    .map_err(|error| MiscError(format!("Failed to pause player: {error:?}"))).unwrap();
+                    .map_err(|error| MiscError(format!("Failed to pause player: {error:?}")))
+                    .unwrap();
             },
             PlayerCmd::Play => {
                 player
                     .lock()
                     .unwrap()
                     .play()
-                    .map_err(|error| MiscError(format!("Failed to start player: {error:?}"))).unwrap();
+                    .map_err(|error| MiscError(format!("Failed to start player: {error:?}")))
+                    .unwrap();
             },
             PlayerCmd::Seek(time) => {
                 let time = playerstate.pos + time;
@@ -374,7 +359,8 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
                     .lock()
                     .unwrap()
                     .seek(time)
-                    .map_err(|error| MiscError(format!("Failed to seek: {error:?}"))).unwrap();
+                    .map_err(|error| MiscError(format!("Failed to seek: {error:?}")))
+                    .unwrap();
             },
             PlayerCmd::Mute => {
                 playerstate.mute = !playerstate.mute;
@@ -382,7 +368,8 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
                     .lock()
                     .unwrap()
                     .mute(playerstate.mute)
-                    .map_err(|error| MiscError(format!("Failed to mute player: {error:?}"))).unwrap();
+                    .map_err(|error| MiscError(format!("Failed to mute player: {error:?}")))
+                    .unwrap();
             },
             _ => (),
         }
@@ -390,12 +377,15 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
 
         while let Ok(event) = receiver.try_recv() {
             match event {
-                player::PlayerEvent::EndOfStream => *control_flow = glutin::event_loop::ControlFlow::Exit,
+                player::PlayerEvent::EndOfStream => {
+                    *control_flow = glutin::event_loop::ControlFlow::Exit
+                },
                 player::PlayerEvent::Error(ref s) => Err(SMError(format!("{:?}", s))).unwrap(),
                 player::PlayerEvent::MetadataUpdated(metadata) => {
                     println!("Metadata updated to {:?}", metadata);
-                    playerstate.duration =
-                        metadata.duration.map_or(std::f64::INFINITY, |duration| duration.as_secs_f64());
+                    playerstate.duration = metadata
+                        .duration
+                        .map_or(std::f64::INFINITY, |duration| duration.as_secs_f64());
                 },
                 player::PlayerEvent::DurationChanged(duration) => {
                     println!("Duration changed to {:?}", duration);
@@ -406,7 +396,9 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
                     println!("Player state changed to {:?}", state);
                     playerstate.state = state;
                     match playerstate.state {
-                        player::PlaybackState::Stopped => *control_flow = glutin::event_loop::ControlFlow::Exit,
+                        player::PlaybackState::Stopped => {
+                            *control_flow = glutin::event_loop::ControlFlow::Exit
+                        },
                         _ => (),
                     }
                 },
@@ -432,7 +424,8 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
                                 })
                                 .map_err(|error| {
                                     SMError(format!("Error at setting EOS: {error:?}"))
-                                }).unwrap();
+                                })
+                                .unwrap();
                         } else {
                             player
                                 .lock()
@@ -444,7 +437,8 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
                                     } else {
                                         Err(SMError(format!("Error at pushing data: {:?}", err)))
                                     }
-                                }).unwrap();
+                                })
+                                .unwrap();
                         }
                     }
                 },
@@ -492,7 +486,8 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
         webrender.update();
         webrender
             .render(framebuffer_size)
-            .map_err(|err| WRError(format!("{:?}", err))).unwrap();
+            .map_err(|err| WRError(format!("{:?}", err)))
+            .unwrap();
         let _ = webrender.flush_pipeline_info();
         windowed_context.swap_buffers().unwrap();
     });
