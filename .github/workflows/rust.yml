@@ -80,6 +80,7 @@ jobs:
     - name: Examples
       run: |
         ls examples/*.rs | xargs -I{} basename  {} .rs  | grep -v params_connect | RUST_BACKTRACE=1 GST_DEBUG=3 xargs -I{} cargo ex {} --all-features
+        find examples -type d | grep -v resources | grep -v android | RUST_BACKTRACE=1 GST_DEBUG=3 xargs -I{} cargo ex {} --all-features
 
   build_result:
     name: Result
