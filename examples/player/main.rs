@@ -9,8 +9,8 @@ extern crate euclid;
 #[cfg(not(target_os = "android"))]
 extern crate glutin;
 extern crate ipc_channel;
-extern crate thiserror;
 extern crate servo_media;
+extern crate thiserror;
 extern crate webrender;
 extern crate webrender_api;
 #[cfg(not(target_os = "android"))]

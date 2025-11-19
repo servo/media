@@ -229,15 +229,16 @@ impl App {
     }
 }
 
-pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::PossiblyCurrent>, anyhow::Error> {
+pub fn main_loop(
+    mut app: App,
+) -> Result<glutin::WindowedContext<glutin::PossiblyCurrent>, anyhow::Error> {
     let windowed_context = &mut app.windowed_context;
     let player = &mut app.player;
 
     let device_pixel_ratio = windowed_context.window().scale_factor();
     let window_size = windowed_context.window().inner_size();
-    let mut framebuffer_size = {
-        DeviceIntSize::new(window_size.width as i32, window_size.height as i32)
-    };
+    let mut framebuffer_size =
+        { DeviceIntSize::new(window_size.width as i32, window_size.height as i32) };
 
     let epoch = Epoch(0);
     let webrender_pipeline = PipelineId(0, 0);
