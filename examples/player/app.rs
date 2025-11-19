@@ -3,7 +3,6 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 use euclid::Scale;
-use failure::Error;
 use ipc_channel::ipc::{self, IpcReceiver};
 use servo_media::player;
 use servo_media::player::video;
@@ -12,22 +11,23 @@ use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
+use thiserror::Error;
 use webrender::Renderer;
 use webrender::*;
 use webrender_api::units::*;
 use webrender_api::DocumentId;
 use webrender_api::*;
 
-#[derive(Debug, Fail)]
-#[fail(display = "WebRender Error: {}", _0)]
+#[derive(Debug, Error)]
+#[error("WebRender Error: {0}")]
 struct WRError(std::string::String);
 
-#[derive(Debug, Fail)]
-#[fail(display = "Servo/Media Error: {}", _0)]
+#[derive(Debug, Error)]
+#[error("Servo/Media Error: {0}")]
 struct SMError(std::string::String);
 
-#[derive(Debug, Fail)]
-#[fail(display = "Error: {}", _0)]
+#[derive(Debug, Error)]
+#[error("Error: {0}")]
 struct MiscError(std::string::String);
 
 #[path = "renderer.rs"]
@@ -117,7 +117,7 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(opts: Options, path: &Path) -> Result<App, Error> {
+    pub fn new(opts: Options, path: &Path) -> Result<App, anyhow::Error> {
         // media file
         let file = File::open(&path)?;
         let metadata = file.metadata()?;
@@ -227,19 +227,10 @@ impl App {
             frame_renderer,
         })
     }
-
-    fn into_context(self) -> glutin::WindowedContext<glutin::PossiblyCurrent> {
-        self.webrender.deinit();
-        self.windowed_context
-    }
 }
 
-pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::PossiblyCurrent>, Error> {
+pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::PossiblyCurrent>, anyhow::Error> {
     let windowed_context = &mut app.windowed_context;
-    let events_loop = &mut app.events_loop;
-    let webrender = &mut app.webrender;
-    let receiver = &mut app.player_event_receiver;
-    let file = &mut app.file;
     let player = &mut app.player;
 
     let device_pixel_ratio = windowed_context.window().scale_factor();
@@ -491,12 +482,10 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
         let _ = webrender.flush_pipeline_info();
         windowed_context.swap_buffers().unwrap();
     });
-
-    Ok(app.into_context())
 }
 
 pub fn cleanup(
     _windowed_context: glutin::WindowedContext<glutin::PossiblyCurrent>,
-) -> Result<(), failure::Error> {
+) -> Result<(), anyhow::Error> {
     Ok(())
 }
