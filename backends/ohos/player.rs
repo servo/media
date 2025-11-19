@@ -36,6 +36,10 @@ impl Player for OhosAVPlayer {
         todo!()
     }
 
+    fn paused(&self) -> bool {
+        todo!()
+    }
+
     fn stop(&self) -> Result<(), servo_media_player::PlayerError> {
         todo!()
     }
@@ -44,15 +48,23 @@ impl Player for OhosAVPlayer {
         todo!()
     }
 
-    fn seekable(&self) -> Result<Vec<std::ops::Range<f64>>, servo_media_player::PlayerError> {
+    fn seekable(&self) -> Vec<std::ops::Range<f64>> {
         todo!()
     }
 
-    fn set_mute(&self, val: bool) -> Result<(), servo_media_player::PlayerError> {
+    fn set_mute(&self, muted: bool) -> Result<(), servo_media_player::PlayerError> {
         todo!()
     }
 
-    fn set_volume(&self, value: f64) -> Result<(), servo_media_player::PlayerError> {
+    fn muted(&self) -> bool {
+        todo!()
+    }
+
+    fn set_volume(&self, volume: f64) -> Result<(), servo_media_player::PlayerError> {
+        todo!()
+    }
+
+    fn volume(&self) -> f64 {
         todo!()
     }
 
@@ -60,7 +72,11 @@ impl Player for OhosAVPlayer {
         todo!()
     }
 
-    fn set_rate(&self, rate: f64) -> Result<(), servo_media_player::PlayerError> {
+    fn set_playback_rate(&self, playback_rate: f64) -> Result<(), servo_media_player::PlayerError> {
+        todo!()
+    }
+
+    fn playback_rate(&self) -> f64 {
         todo!()
     }
 
@@ -72,7 +88,7 @@ impl Player for OhosAVPlayer {
         todo!()
     }
 
-    fn buffered(&self) -> Result<Vec<std::ops::Range<f64>>, servo_media_player::PlayerError> {
+    fn buffered(&self) -> Vec<std::ops::Range<f64>> {
         todo!()
     }
 

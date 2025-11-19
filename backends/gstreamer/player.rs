@@ -1,3 +1,10 @@
+use std::cell::{Cell, RefCell};
+use std::ops::Range;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::{self, Sender};
+use std::sync::{Arc, Mutex, Once};
+use std::time;
+
 use super::BACKEND_BASE_TIME;
 use crate::media_stream::GStreamerMediaStream;
 use crate::media_stream_source::{register_servo_media_stream_src, ServoMediaStreamSrc};
@@ -21,13 +28,12 @@ use servo_media_player::{
 };
 use servo_media_streams::registry::{get_stream, MediaStreamId};
 use servo_media_traits::{BackendMsg, ClientContextId, MediaInstance};
-use std::cell::RefCell;
-use std::ops::Range;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{self, Sender};
-use std::sync::{Arc, Mutex, Once};
-use std::time;
-use std::u64;
+
+const DEFAULT_MUTED: bool = false;
+const DEFAULT_PAUSED: bool = true;
+const DEFAULT_PLAYBACK_RATE: f64 = 1.0;
+const DEFAULT_VOLUME: f64 = 1.0;
+const DEFAULT_TIME_RANGES: Vec<Range<f64>> = vec![];
 
 const MAX_BUFFER_SIZE: i32 = 500 * 1024 * 1024;
 
@@ -116,7 +122,11 @@ struct PlayerInner {
     source: Option<PlayerSource>,
     video_sink: gst_app::AppSink,
     input_size: u64,
-    rate: f64,
+    play_state: gst_play::PlayState,
+    paused: Cell<bool>,
+    playback_rate: Cell<f64>,
+    muted: Cell<bool>,
+    volume: Cell<f64>,
     stream_type: StreamType,
     last_metadata: Option<Metadata>,
     cat: gst::DebugCategory,
@@ -144,44 +154,75 @@ impl PlayerInner {
         Ok(())
     }
 
-    pub fn set_mute(&mut self, val: bool) -> Result<(), PlayerError> {
-        self.player.set_mute(val);
+    pub fn set_mute(&mut self, muted: bool) -> Result<(), PlayerError> {
+        if self.muted.get() == muted {
+            return Ok(());
+        }
+
+        self.muted.set(muted);
+        self.player.set_mute(muted);
         Ok(())
     }
 
-    pub fn set_rate(&mut self, rate: f64) -> Result<(), PlayerError> {
-        // This method may be called before the player setup is done, so we safe the rate value
-        // and set it once the player is ready and after getting the media info
-        self.rate = rate;
-        if let Some(ref metadata) = self.last_metadata {
-            if !metadata.is_seekable {
-                gst::warning!(
-                    self.cat,
-                    obj = &self.player,
-                    "Player must be seekable in order to set the playback rate"
-                );
-                return Err(PlayerError::NonSeekableStream);
-            }
-            self.player.set_rate(rate);
+    pub fn muted(&self) -> bool {
+        self.muted.get()
+    }
+
+    pub fn set_playback_rate(&mut self, playback_rate: f64) -> Result<(), PlayerError> {
+        if self.stream_type != StreamType::Seekable {
+            return Err(PlayerError::NonSeekableStream);
+        }
+
+        if self.playback_rate.get() == playback_rate {
+            return Ok(());
+        }
+
+        self.playback_rate.set(playback_rate);
+
+        // The new playback rate will not be passed to the pipeline if the
+        // current GstPlay state is less than GST_STATE_PAUSED, which will be
+        // set immediately before the initial GST_PLAY_MESSAGE_MEDIA_INFO_UPDATED
+        // message is posted to bus.
+        if self.last_metadata.is_some() {
+            self.player.set_rate(playback_rate);
         }
         Ok(())
     }
 
+    pub fn playback_rate(&self) -> f64 {
+        self.playback_rate.get()
+    }
+
     pub fn play(&mut self) -> Result<(), PlayerError> {
+        if !self.paused.get() {
+            return Ok(());
+        }
+
+        self.paused.set(false);
         self.player.play();
         Ok(())
     }
 
     pub fn stop(&mut self) -> Result<(), PlayerError> {
         self.player.stop();
+        self.paused.set(true);
         self.last_metadata = None;
         self.source = None;
         Ok(())
     }
 
     pub fn pause(&mut self) -> Result<(), PlayerError> {
+        if self.paused.get() {
+            return Ok(());
+        }
+
+        self.paused.set(true);
         self.player.pause();
         Ok(())
+    }
+
+    pub fn paused(&self) -> bool {
+        self.paused.get()
     }
 
     pub fn end_of_stream(&mut self) -> Result<(), PlayerError> {
@@ -218,9 +259,18 @@ impl PlayerInner {
         Ok(())
     }
 
-    pub fn set_volume(&mut self, value: f64) -> Result<(), PlayerError> {
-        self.player.set_volume(value);
+    pub fn set_volume(&mut self, volume: f64) -> Result<(), PlayerError> {
+        if self.volume.get() == volume {
+            return Ok(());
+        }
+
+        self.volume.set(volume);
+        self.player.set_volume(volume);
         Ok(())
+    }
+
+    pub fn volume(&self) -> f64 {
+        self.volume.get()
     }
 
     pub fn push_data(&mut self, data: Vec<u8>) -> Result<(), PlayerError> {
@@ -242,33 +292,57 @@ impl PlayerInner {
         self.source = Some(source);
     }
 
-    pub fn buffered(&mut self) -> Result<Vec<Range<f64>>, PlayerError> {
-        let mut result = vec![];
-        if let Some(ref metadata) = self.last_metadata {
-            if let Some(ref duration) = metadata.duration {
-                let pipeline = self.player.pipeline();
-                let mut buffering = gst::query::Buffering::new(gst::Format::Percent);
-                if pipeline.query(&mut buffering) {
-                    let ranges = buffering.ranges();
-                    for (start, end) in ranges {
-                        let start = (if let gst::GenericFormattedValue::Percent(start) = start {
-                            start.unwrap()
-                        } else {
-                            gst::format::Percent::from_percent(0)
-                        } / gst::format::Percent::MAX) as f64
-                            * duration.as_secs_f64();
-                        let end = (if let gst::GenericFormattedValue::Percent(end) = end {
-                            end.unwrap()
-                        } else {
-                            gst::format::Percent::from_percent(0)
-                        } / gst::format::Percent::MAX) as f64
-                            * duration.as_secs_f64();
-                        result.push(Range { start, end });
-                    }
+    pub fn buffered(&self) -> Vec<Range<f64>> {
+        let mut buffered_ranges = vec![];
+
+        let Some(duration) = self
+            .last_metadata
+            .as_ref()
+            .map(|metadata| metadata.duration)
+            .flatten()
+        else {
+            return buffered_ranges;
+        };
+
+        let pipeline = self.player.pipeline();
+        let mut buffering = gst::query::Buffering::new(gst::Format::Percent);
+        if pipeline.query(&mut buffering) {
+            let ranges = buffering.ranges();
+            for (start, end) in ranges {
+                let start = (if let gst::GenericFormattedValue::Percent(start) = start {
+                    start.unwrap()
+                } else {
+                    gst::format::Percent::from_percent(0)
+                } / gst::format::Percent::MAX) as f64
+                    * duration.as_secs_f64();
+                let end = (if let gst::GenericFormattedValue::Percent(end) = end {
+                    end.unwrap()
+                } else {
+                    gst::format::Percent::from_percent(0)
+                } / gst::format::Percent::MAX) as f64
+                    * duration.as_secs_f64();
+                buffered_ranges.push(Range { start, end });
+            }
+        }
+
+        buffered_ranges
+    }
+
+    pub fn seekable(&self) -> Vec<Range<f64>> {
+        // if the servosrc is seekable, we should return the duration of the media
+        if let Some(metadata) = self.last_metadata.as_ref() {
+            if metadata.is_seekable {
+                if let Some(duration) = metadata.duration {
+                    return vec![Range {
+                        start: 0.0,
+                        end: duration.as_secs_f64(),
+                    }];
                 }
             }
         }
-        Ok(result)
+
+        // if the servosrc is not seekable, we should return the buffered range
+        self.buffered()
     }
 
     fn set_stream(&mut self, stream: &MediaStreamId, only_stream: bool) -> Result<(), PlayerError> {
@@ -542,7 +616,11 @@ impl GStreamerPlayer {
             source: None,
             video_sink,
             input_size: 0,
-            rate: 1.0,
+            play_state: gst_play::PlayState::Stopped,
+            paused: Cell::new(DEFAULT_PAUSED),
+            playback_rate: Cell::new(DEFAULT_PLAYBACK_RATE),
+            muted: Cell::new(DEFAULT_MUTED),
+            volume: Cell::new(DEFAULT_VOLUME),
             stream_type: self.stream_type,
             last_metadata: None,
             cat: gst::DebugCategory::get("servoplayer").unwrap(),
@@ -563,10 +641,13 @@ impl GStreamerPlayer {
             let _ = notify!(observer, PlayerEvent::Error(error.to_string()));
         });
 
+        let inner_clone = inner.clone();
         let observer = self.observer.clone();
         // Handle `state-changed` signal.
-        signal_adapter.connect_state_changed(move |_, player_state| {
-            let state = match player_state {
+        signal_adapter.connect_state_changed(move |_, play_state| {
+            inner_clone.lock().unwrap().play_state = play_state;
+
+            let state = match play_state {
                 gst_play::PlayState::Buffering => Some(PlaybackState::Buffering),
                 gst_play::PlayState::Stopped => Some(PlaybackState::Stopped),
                 gst_play::PlayState::Paused => Some(PlaybackState::Paused),
@@ -596,21 +677,42 @@ impl GStreamerPlayer {
         let inner_clone = inner.clone();
         let observer = self.observer.clone();
         signal_adapter.connect_media_info_updated(move |_, info| {
+            let Ok(metadata) = metadata_from_media_info(info) else {
+                return;
+            };
+
             let mut inner = inner_clone.lock().unwrap();
-            if let Ok(metadata) = metadata_from_media_info(info) {
-                if inner.last_metadata.as_ref() != Some(&metadata) {
-                    inner.last_metadata = Some(metadata.clone());
-                    if metadata.is_seekable {
-                        inner.player.set_rate(inner.rate);
-                    }
-                    gst::info!(
-                        inner.cat,
-                        obj = &inner.player,
-                        "Metadata updated: {:?}",
-                        metadata
-                    );
-                    let _ = notify!(observer, PlayerEvent::MetadataUpdated(metadata));
+
+            if inner.last_metadata.as_ref() == Some(&metadata) {
+                return;
+            }
+
+            // TODO: Workaround to generate expected `paused` state change event.
+            // <https://github.com/servo/servo/issues/40740>
+            let mut send_pause_event = false;
+
+            if inner.last_metadata.is_none() && metadata.is_seekable {
+                if inner.playback_rate.get() != DEFAULT_PLAYBACK_RATE {
+                    // The `paused` state change event will be fired after the
+                    // seek initiated by the playback rate change has
+                    // completed.
+                    inner.player.set_rate(inner.playback_rate.get());
+                } else if inner.play_state == gst_play::PlayState::Paused {
+                    send_pause_event = true;
                 }
+            }
+
+            inner.last_metadata = Some(metadata.clone());
+            gst::info!(
+                inner.cat,
+                obj = &inner.player,
+                "Metadata updated: {:?}",
+                metadata
+            );
+            let _ = notify!(observer, PlayerEvent::MetadataUpdated(metadata));
+
+            if send_pause_event {
+                let _ = notify!(observer, PlayerEvent::StateChanged(PlaybackState::Paused));
             }
         });
 
@@ -686,7 +788,7 @@ impl GStreamerPlayer {
 
         let (receiver, error_handler_id) = {
             let inner_clone = inner.clone();
-            let mut inner = inner.lock().unwrap();
+            let inner = inner.lock().unwrap();
             let pipeline = inner.player.pipeline();
 
             let (sender, receiver) = mpsc::channel();
@@ -787,7 +889,7 @@ impl GStreamerPlayer {
                     signal_adapter.play().stop();
                 });
 
-            let _ = inner.pause();
+            let _ = inner.player.pause();
 
             (receiver, error_handler_id)
         };
@@ -796,6 +898,20 @@ impl GStreamerPlayer {
         glib::signal::signal_handler_disconnect(&inner.lock().unwrap().player, error_handler_id);
         result
     }
+}
+
+macro_rules! inner_player_proxy_getter {
+    ($fn_name:ident, $return_type:ty, $default_value:expr) => {
+        fn $fn_name(&self) -> $return_type {
+            if self.setup().is_err() {
+                return $default_value;
+            }
+
+            let inner = self.inner.borrow();
+            let inner = inner.as_ref().unwrap().lock().unwrap();
+            inner.$fn_name()
+        }
+    };
 }
 
 macro_rules! inner_player_proxy {
@@ -816,63 +932,40 @@ macro_rules! inner_player_proxy {
             inner.$fn_name($arg1)
         }
     };
+
+    ($fn_name:ident, $arg1:ident, $arg1_type:ty, $arg2:ident, $arg2_type:ty) => {
+        fn $fn_name(&self, $arg1: $arg1_type, $arg2: $arg2_type) -> Result<(), PlayerError> {
+            self.setup()?;
+            let inner = self.inner.borrow();
+            let mut inner = inner.as_ref().unwrap().lock().unwrap();
+            inner.$fn_name($arg1, $arg2)
+        }
+    };
 }
 
 impl Player for GStreamerPlayer {
     inner_player_proxy!(play, ());
     inner_player_proxy!(pause, ());
+    inner_player_proxy_getter!(paused, bool, DEFAULT_PAUSED);
     inner_player_proxy!(stop, ());
     inner_player_proxy!(end_of_stream, ());
     inner_player_proxy!(set_input_size, size, u64);
-    inner_player_proxy!(set_mute, val, bool);
-    inner_player_proxy!(set_rate, rate, f64);
+    inner_player_proxy!(set_mute, muted, bool);
+    inner_player_proxy_getter!(muted, bool, DEFAULT_MUTED);
+    inner_player_proxy!(set_playback_rate, playback_rate, f64);
+    inner_player_proxy_getter!(playback_rate, f64, DEFAULT_PLAYBACK_RATE);
     inner_player_proxy!(push_data, data, Vec<u8>);
     inner_player_proxy!(seek, time, f64);
-    inner_player_proxy!(set_volume, value, f64);
-    inner_player_proxy!(buffered, Vec<Range<f64>>);
-
-    fn seekable(&self) -> Result<Vec<Range<f64>>, PlayerError> {
-        self.setup()?;
-        let inner = self.inner.borrow();
-        let mut inner = inner.as_ref().unwrap().lock().unwrap();
-        // if the servosrc is seekable, we should return the duration of the media
-        if let Some(metadata) = inner.last_metadata.as_ref() {
-            if metadata.is_seekable {
-                if let Some(duration) = metadata.duration {
-                    return Ok(vec![Range {
-                        start: 0.0,
-                        end: duration.as_secs_f64(),
-                    }]);
-                }
-            }
-        }
-        // if the servosrc is not seekable, we should return the buffered range
-        inner.buffered()
-    }
+    inner_player_proxy!(set_volume, volume, f64);
+    inner_player_proxy_getter!(volume, f64, DEFAULT_VOLUME);
+    inner_player_proxy_getter!(buffered, Vec<Range<f64>>, DEFAULT_TIME_RANGES);
+    inner_player_proxy_getter!(seekable, Vec<Range<f64>>, DEFAULT_TIME_RANGES);
+    inner_player_proxy!(set_stream, stream, &MediaStreamId, only_stream, bool);
+    inner_player_proxy!(set_audio_track, stream_index, i32, enabled, bool);
+    inner_player_proxy!(set_video_track, stream_index, i32, enabled, bool);
 
     fn render_use_gl(&self) -> bool {
         self.render.lock().unwrap().is_gl()
-    }
-
-    fn set_stream(&self, stream: &MediaStreamId, only_stream: bool) -> Result<(), PlayerError> {
-        self.setup()?;
-        let inner = self.inner.borrow();
-        let mut inner = inner.as_ref().unwrap().lock().unwrap();
-        inner.set_stream(stream, only_stream)
-    }
-
-    fn set_audio_track(&self, stream_index: i32, enabled: bool) -> Result<(), PlayerError> {
-        self.setup()?;
-        let inner = self.inner.borrow();
-        let mut inner = inner.as_ref().unwrap().lock().unwrap();
-        inner.set_audio_track(stream_index, enabled)
-    }
-
-    fn set_video_track(&self, stream_index: i32, enabled: bool) -> Result<(), PlayerError> {
-        self.setup()?;
-        let inner = self.inner.borrow();
-        let mut inner = inner.as_ref().unwrap().lock().unwrap();
-        inner.set_video_track(stream_index, enabled)
     }
 }
 
