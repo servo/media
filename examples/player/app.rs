@@ -107,7 +107,7 @@ pub struct Options {
 pub struct App {
     events_loop: glutin::event_loop::EventLoop<()>,
     windowed_context: glutin::WindowedContext<glutin::PossiblyCurrent>,
-    webrender: Renderer,
+    webrender: Option<Renderer>,
     webrender_api: RenderApi,
     webrender_document: DocumentId,
     player: Arc<Mutex<dyn player::Player>>,
@@ -218,7 +218,7 @@ impl App {
         Ok(App {
             events_loop,
             windowed_context,
-            webrender,
+            webrender: Some(webrender),
             webrender_api,
             webrender_document,
             player,
@@ -270,7 +270,6 @@ pub fn main_loop(
     app.events_loop.run(move |event, _, control_flow| {
         let player = &mut app.player;
         let windowed_context = &mut app.windowed_context;
-        let webrender = &mut app.webrender;
         let receiver = &mut app.player_event_receiver;
         let file = &mut app.file;
         let mut buf_reader = BufReader::new(file);
@@ -475,13 +474,21 @@ pub fn main_loop(
             frameupdated = false;
         }
 
-        webrender.update();
-        webrender
-            .render(framebuffer_size)
-            .map_err(|err| WRError(format!("{:?}", err)))
-            .unwrap();
-        let _ = webrender.flush_pipeline_info();
-        windowed_context.swap_buffers().unwrap();
+        if let Some(webrender) = app.webrender.as_mut() {
+            webrender.update();
+            webrender
+                .render(framebuffer_size)
+                .map_err(|err| WRError(format!("{:?}", err)))
+                .unwrap();
+            let _ = webrender.flush_pipeline_info();
+            windowed_context.swap_buffers().unwrap();
+        }
+
+        if matches!(*control_flow, glutin::event_loop::ControlFlow::Exit) {
+            if let Some(webrender) = app.webrender.take() {
+                webrender.deinit();
+            }
+        }
     });
 }
 
