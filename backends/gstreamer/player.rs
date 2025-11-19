@@ -112,7 +112,7 @@ enum PlayerSource {
 
 struct PlayerInner {
     player: gst_play::Play,
-    signal_adapter: gst_play::PlaySignalAdapter,
+    _signal_adapter: gst_play::PlaySignalAdapter,
     source: Option<PlayerSource>,
     video_sink: gst_app::AppSink,
     input_size: u64,
@@ -538,7 +538,7 @@ impl GStreamerPlayer {
 
         *self.inner.borrow_mut() = Some(Arc::new(Mutex::new(PlayerInner {
             player,
-            signal_adapter: signal_adapter.clone(),
+            _signal_adapter: signal_adapter.clone(),
             source: None,
             video_sink,
             input_size: 0,
