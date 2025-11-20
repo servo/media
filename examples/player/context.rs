@@ -38,10 +38,10 @@ impl PlayerContextGlutin {
                 target_os = "openbsd"
             ))]
             {
-                use glutin::os::unix::WindowExt;
+                use glutin::platform::unix::WindowExtUnix;
 
                 let gl_context = {
-                    use glutin::os::unix::RawHandle;
+                    use glutin::platform::unix::RawHandle;
 
                     match raw_handle {
                         RawHandle::Egl(egl_context) => GlContext::Egl(egl_context as usize),
@@ -50,9 +50,9 @@ impl PlayerContextGlutin {
                 };
 
                 let native_display =
-                    if let Some(display) = windowed_context.window().get_wayland_display() {
+                    if let Some(display) = windowed_context.window().wayland_display() {
                         NativeDisplay::Wayland(display as usize)
-                    } else if let Some(display) = windowed_context.window().get_xlib_display() {
+                    } else if let Some(display) = windowed_context.window().xlib_display() {
                         NativeDisplay::X11(display as usize)
                     } else if let Some(display) =
                         unsafe { windowed_context.context().get_egl_display() }
