@@ -355,7 +355,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         println!("Usage: simple_webrtc <port> <peer id>");
         return;
     };
-    let server = format!("ws://localhost:{}", server_port);
+    let server = format!("wss://localhost:{}", server_port);
     let peer_id = args.next();
 
     println!("Connecting to server {}", server);
@@ -396,6 +396,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
 }
 
 fn main() {
+    env_logger::init();
     ServoMedia::init::<servo_media_auto::Backend>();
     let servo_media = ServoMedia::get();
     run_example(servo_media);

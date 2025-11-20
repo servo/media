@@ -2,16 +2,15 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+extern crate anyhow;
 #[cfg(not(target_os = "android"))]
 extern crate clap;
 extern crate euclid;
-extern crate failure;
-#[macro_use]
-extern crate failure_derive;
 #[cfg(not(target_os = "android"))]
 extern crate glutin;
 extern crate ipc_channel;
 extern crate servo_media;
+extern crate thiserror;
 extern crate webrender;
 extern crate webrender_api;
 #[cfg(not(target_os = "android"))]
