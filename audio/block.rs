@@ -108,7 +108,7 @@ impl Block {
 
     /// This provides the entire buffer as a mutable slice of u8
     pub fn as_mut_byte_slice(&mut self) -> &mut [u8] {
-        self.data_mut().as_mut_byte_slice().expect("casting failed")
+        self.data_mut().as_mut_byte_slice()
     }
 
     pub fn for_vec(buffer: Vec<f32>) -> Self {

@@ -10,7 +10,7 @@ name = "servo_media_gstreamer"
 path = "lib.rs"
 
 [dependencies]
-byte-slice-cast = "0.2"
+byte-slice-cast = "1"
 glib = { workspace = true }
 glib-sys = { workspace = true }
 gst = { workspace = true }
