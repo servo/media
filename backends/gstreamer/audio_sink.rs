@@ -219,7 +219,7 @@ impl AudioSink for GStreamerAudioSink {
             }
             debug_assert!(chunk.len() == 1);
             let mut data = chunk.blocks[0].interleave();
-            let data = data.as_mut_byte_slice().expect("casting failed");
+            let data = data.as_mut_byte_slice();
 
             // XXXManishearth if we have a safe way to convert
             // from Box<[f32]> to Box<[u8]> (similarly for Vec)
