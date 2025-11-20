@@ -255,14 +255,14 @@ impl PlayerInner {
                             start.unwrap()
                         } else {
                             gst::format::Percent::from_percent(0)
-                        } * duration.as_secs() as u32
-                            / gst::format::Percent::MAX) as f64;
+                        } / gst::format::Percent::MAX) as f64
+                            * duration.as_secs_f64();
                         let end = (if let gst::GenericFormattedValue::Percent(end) = end {
                             end.unwrap()
                         } else {
                             gst::format::Percent::from_percent(0)
-                        } * duration.as_secs() as u32
-                            / gst::format::Percent::MAX) as f64;
+                        } / gst::format::Percent::MAX) as f64
+                            * duration.as_secs_f64();
                         result.push(Range { start, end });
                     }
                 }

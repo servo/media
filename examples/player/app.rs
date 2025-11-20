@@ -384,8 +384,9 @@ pub fn main_loop(mut app: App) -> Result<glutin::WindowedContext<glutin::Possibl
                 player::PlayerEvent::Error(ref s) => Err(SMError(format!("{:?}", s)))?,
                 player::PlayerEvent::MetadataUpdated(metadata) => {
                     println!("Metadata updated to {:?}", metadata);
-                    playerstate.duration =
-                        metadata.duration.map_or(std::f64::INFINITY, |duration| duration.as_secs_f64());
+                    playerstate.duration = metadata
+                        .duration
+                        .map_or(std::f64::INFINITY, |duration| duration.as_secs_f64());
                 },
                 player::PlayerEvent::DurationChanged(duration) => {
                     println!("Duration changed to {:?}", duration);
