@@ -4,14 +4,18 @@ pub mod audio_stream_reader;
 mod datachannel;
 mod device_monitor;
 pub mod media_capture;
+pub mod media_source;
 pub mod media_stream;
 mod media_stream_source;
 pub mod player;
 mod registry_scanner;
 mod render;
 mod source;
+mod source_buffer;
+mod source_buffer_list;
 pub mod webrtc;
 
+use crate::media_source::GStreamerMediaSource;
 use device_monitor::GStreamerDeviceMonitor;
 use gst::prelude::*;
 use ipc_channel::ipc::IpcSender;
@@ -25,6 +29,7 @@ use servo_media_audio::context::{AudioContext, AudioContextOptions};
 use servo_media_audio::decoder::AudioDecoder;
 use servo_media_audio::sink::AudioSinkError;
 use servo_media_audio::{AudioBackend, AudioStreamReader};
+use servo_media_mse::MediaSource;
 use servo_media_player::audio::AudioRenderer;
 use servo_media_player::context::PlayerGLContext;
 use servo_media_player::video::VideoFrameRenderer;
@@ -300,6 +305,10 @@ impl Backend for GStreamerBackend {
 
     fn get_device_monitor(&self) -> Box<dyn MediaDeviceMonitor> {
         Box::new(GStreamerDeviceMonitor::new())
+    }
+
+    fn create_mse_source(&self) -> Option<Box<dyn MediaSource>> {
+        Some(Box::new(GStreamerMediaSource::new()))
     }
 }
 
