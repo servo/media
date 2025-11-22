@@ -17,49 +17,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04]
+        os: [ubuntu-latest]
         rust: [stable]
         target: ["default"]
     steps:
     - uses: actions/checkout@v2
-    - name: Install deps on linux
-      if: startsWith(matrix.os, 'ubuntu')
-      run: |
-        sudo bash -c 'apt-add-repository -y https://mirrors.kernel.org/ubuntu'
-        sudo apt update
-        sudo apt install -y \
-          gstreamer1.0-libav \
-          gstreamer1.0-plugins-bad \
-          gstreamer1.0-plugins-base \
-          gstreamer1.0-plugins-good \
-          gstreamer1.0-plugins-ugly \
-          gstreamer1.0-tools \
-          libasound2-plugins \
-          libfaad2 \
-          libffi7 \
-          libfftw3-single3 \
-          libges-1.0-dev \
-          libgstreamer-plugins-bad1.0-dev\
-          libgstreamer-plugins-base1.0-dev \
-          libgstreamer1.0-dev \
-          libgstrtspserver-1.0-dev \
-          libjack-jackd2-0 \
-          libmms0 \
-          libmpg123-0 \
-          libopus0 \
-          liborc-0.4-0 \
-          liborc-0.4-dev \
-          libpulsedsp \
-          libsamplerate0 \
-          libspeexdsp1 \
-          libtdb1 \
-          libtheora0 \
-          libtwolame0 \
-          libwayland-egl1-mesa \
-          libwebrtc-audio-processing1 \
-          pulseaudio \
-          pulseaudio-utils \
-          webp
+    - name: Install dependencies
+      run: sudo apt-get update && sudo apt-get install -y libasound2-dev libjack-dev libpulse-dev ninja-build gcc
+    - name: Install meson
+      run: python3 -m pip install --user meson
+    - name: Build gstreamer
+      run: mkdir gstreamer && sh etc/build_gstreamer.sh gstreamer
     - name: Start virtual audio device
       if: startsWith(matrix.os, 'ubuntu')
       run: |
