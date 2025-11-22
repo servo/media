@@ -15,13 +15,14 @@ extern crate servo_media;
 extern crate servo_media_auto;
 extern crate websocket;
 
+use parking_lot::Mutex;
 use rand::Rng;
 use servo_media::streams::*;
 use servo_media::webrtc::*;
 use servo_media::ServoMedia;
 use std::env;
 use std::net;
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{mpsc, Arc};
 use std::thread;
 use websocket::OwnedMessage;
 
@@ -192,7 +193,7 @@ impl WebRtcSignaller for Signaller {
     }
 
     fn on_add_stream(&self, stream: &registry::MediaStreamId, _: MediaStreamType) {
-        self.output.lock().unwrap().add_stream(&stream);
+        self.output.lock().add_stream(&stream);
     }
 
     fn on_data_channel_event(
@@ -374,7 +375,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let (send_msg_tx, send_msg_rx) = mpsc::channel::<OwnedMessage>();
     let send_loop = send_loop(sender, send_msg_rx);
 
-    let our_id = rand::thread_rng().gen_range(10..10_000);
+    let our_id = rand::rng().random_range(10..10_000);
     println!("Registering id {} with server", our_id);
     send_msg_tx
         .send(OwnedMessage::Text(format!("HELLO {}", our_id)))

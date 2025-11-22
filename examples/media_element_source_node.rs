@@ -37,7 +37,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let context = servo_media
         .create_audio_context(&ClientContextId::build(1, 1), Default::default())
         .unwrap();
-    let context = context.lock().unwrap();
+    let context = context.lock();
     let listener = context.listener();
 
     let source_node =
@@ -86,11 +86,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     };
 
     if let Ok(metadata) = file.metadata() {
-        player
-            .lock()
-            .unwrap()
-            .set_input_size(metadata.len())
-            .unwrap();
+        player.lock().set_input_size(metadata.len()).unwrap();
     }
 
     let player_clone = Arc::clone(&player);
@@ -114,7 +110,6 @@ fn run_example(servo_media: Arc<ServoMedia>) {
                     },
                     Ok(size) => player
                         .lock()
-                        .unwrap()
                         .push_data(Vec::from(&buffer[0..size]))
                         .unwrap(),
                     Err(e) => {
@@ -136,7 +131,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         }
     });
 
-    player.lock().unwrap().play().unwrap();
+    player.lock().play().unwrap();
     seek_sender.send(0).unwrap();
 
     let _ = context.resume();

@@ -14,7 +14,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let context1 = servo_media.create_audio_context(&context_id1, Default::default());
     {
         let context1 = context1.unwrap();
-        let context = context1.lock().unwrap();
+        let context = context1.lock();
         let dest = context.dest_node();
         let options = OscillatorNodeOptions::default();
         let osc1 = context.create_node(
@@ -35,7 +35,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         let mut options = OscillatorNodeOptions::default();
         options.oscillator_type = Sawtooth;
         let context2 = context2.unwrap();
-        let context = context2.lock().unwrap();
+        let context = context2.lock();
         let dest = context.dest_node();
         let osc3 = context.create_node(
             AudioNodeInit::OscillatorNode(options.clone()),

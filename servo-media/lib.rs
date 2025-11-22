@@ -8,19 +8,19 @@ extern crate once_cell;
 
 pub use traits::*;
 
-use std::ops::Deref;
-use std::sync::{Arc, Mutex};
-use std::thread;
-
 use audio::{
     context::{AudioContext, AudioContextOptions},
     sink::AudioSinkError,
 };
+use parking_lot::Mutex;
 use player::audio::AudioRenderer;
 use player::context::PlayerGLContext;
 use player::ipc_channel::ipc::IpcSender;
 use player::video::VideoFrameRenderer;
 use player::{Player, PlayerEvent, StreamType};
+use std::ops::Deref;
+use std::sync::Arc;
+use std::thread;
 use streams::capture::MediaTrackConstraintSet;
 use streams::device_monitor::MediaDeviceMonitor;
 use streams::registry::MediaStreamId;

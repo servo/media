@@ -1,6 +1,7 @@
 extern crate servo_media;
 extern crate servo_media_auto;
 
+use parking_lot::Mutex;
 use servo_media::audio::buffer_source_node::{AudioBuffer, AudioBufferSourceNodeMessage};
 use servo_media::audio::context::{AudioContextOptions, RealTimeAudioContextOptions};
 use servo_media::audio::decoder::AudioDecoderCallbacks;
@@ -11,7 +12,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 use std::sync::mpsc;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::{thread, time};
 
 fn run_example(servo_media: Arc<ServoMedia>) {
@@ -23,7 +24,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
             AudioContextOptions::RealTimeAudioContext(options),
         )
         .unwrap();
-    let context = context.lock().unwrap();
+    let context = context.lock();
     let args: Vec<_> = env::args().collect();
     let default = "./examples/resources/viper_cut.ogg";
     let filename: &str = if args.len() == 2 {
@@ -48,15 +49,12 @@ fn run_example(servo_media: Arc<ServoMedia>) {
             eprintln!("Error decoding audio {:?}", e);
         })
         .progress(move |buffer, channel| {
-            let mut decoded_audio = decoded_audio_.lock().unwrap();
+            let mut decoded_audio = decoded_audio_.lock();
             decoded_audio[(channel - 1) as usize].extend_from_slice((*buffer).as_ref());
         })
         .ready(move |channels| {
             println!("There are {:?} audio channels", channels);
-            decoded_audio__
-                .lock()
-                .unwrap()
-                .resize(channels as usize, Vec::new());
+            decoded_audio__.lock().resize(channels as usize, Vec::new());
         })
         .build();
     context.decode_audio_data(bytes.to_vec(), callbacks);
@@ -76,7 +74,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     context.message_node(
         buffer_source,
         AudioNodeMessage::AudioBufferSourceNode(AudioBufferSourceNodeMessage::SetBuffer(Some(
-            AudioBuffer::from_buffers(decoded_audio.lock().unwrap().to_vec(), sample_rate),
+            AudioBuffer::from_buffers(decoded_audio.lock().to_vec(), sample_rate),
         ))),
     );
     let _ = context.resume();
