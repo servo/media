@@ -22,5 +22,6 @@ gstreamer-gl-egl = { workspace = true, optional = true }
 gstreamer-gl-x11 = { workspace = true, optional = true }
 gstreamer-gl-wayland = { workspace = true, optional = true }
 gst-video = { workspace = true }
+parking_lot = { workspace = true }
 sm-player = { package = "servo-media-player", path = "../../../player" }
 sm-gst-render = { package = "servo-media-gstreamer-render", path = "../render" }

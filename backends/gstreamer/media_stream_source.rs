@@ -4,9 +4,10 @@ use gst::prelude::*;
 use gst::subclass::prelude::*;
 use gst_base::UniqueFlowCombiner;
 use once_cell::sync::Lazy;
+use parking_lot::Mutex;
 use servo_media_streams::{MediaStream, MediaStreamType};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use url::Url;
 
 // Implementation sub-module of the GObject
@@ -120,7 +121,7 @@ mod imp {
 
             let proxy_pad = src_pad.internal().unwrap();
             src_pad.set_active(true).expect("Could not active pad");
-            self.flow_combiner.lock().unwrap().add_pad(&proxy_pad);
+            self.flow_combiner.lock().add_pad(&proxy_pad);
 
             src.sync_state_with_parent().unwrap();
 
@@ -153,10 +154,7 @@ mod imp {
                     .chain_function({
                         move |pad, parent, buffer| {
                             let chain_result = gst::ProxyPad::chain_default(pad, parent, buffer);
-                            let result = flow_combiner
-                                .lock()
-                                .unwrap()
-                                .update_pad_flow(pad, chain_result);
+                            let result = flow_combiner.lock().update_pad_flow(pad, chain_result);
                             if result == Err(gst::FlowError::Flushing) {
                                 return chain_result;
                             }

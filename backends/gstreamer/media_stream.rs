@@ -2,12 +2,13 @@ use super::BACKEND_BASE_TIME;
 use gst;
 use gst::prelude::*;
 use once_cell::sync::Lazy;
+use parking_lot::Mutex;
 use servo_media_streams::registry::{
     get_stream, register_stream, unregister_stream, MediaStreamId,
 };
 use servo_media_streams::{MediaOutput, MediaSocket, MediaStream, MediaStreamType};
 use std::any::Any;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 pub static RTP_CAPS_OPUS: Lazy<gst::Caps> = Lazy::new(|| {
     gst::Caps::builder("application/x-rtp")
@@ -247,7 +248,7 @@ impl MediaOutput for MediaSink {
     fn add_stream(&mut self, stream: &MediaStreamId) {
         let stream = get_stream(stream).expect("Media streams registry does not contain such ID");
         {
-            let mut stream = stream.lock().unwrap();
+            let mut stream = stream.lock();
             let stream = stream
                 .as_mut_any()
                 .downcast_mut::<GStreamerMediaStream>()

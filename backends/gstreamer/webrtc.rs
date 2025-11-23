@@ -8,6 +8,7 @@ use gst::prelude::*;
 use gst_sdp;
 use gst_webrtc;
 use log::warn;
+use parking_lot::Mutex;
 use servo_media_streams::registry::{get_stream, MediaStreamId};
 use servo_media_streams::MediaStreamType;
 use servo_media_webrtc::datachannel::DataChannelId;
@@ -16,7 +17,7 @@ use servo_media_webrtc::WebRtcController as WebRtcThread;
 use servo_media_webrtc::*;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::{cmp, mem};
 
 // TODO:
@@ -142,7 +143,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
     fn add_stream(&mut self, stream_id: &MediaStreamId) -> WebRtcResult {
         let stream =
             get_stream(stream_id).expect("Media streams registry does not contain such ID");
-        let mut stream = stream.lock().unwrap();
+        let mut stream = stream.lock();
         let mut stream = stream
             .as_mut_any()
             .downcast_mut::<GStreamerMediaStream>()
@@ -166,7 +167,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
     fn close_data_channel(&mut self, id: &DataChannelId) -> WebRtcResult {
         // There is no need to unregister the channel here. It will be unregistered
         // when the data channel backend triggers the on closed event.
-        let mut data_channels = self.data_channels.lock().unwrap();
+        let mut data_channels = self.data_channels.lock();
         match data_channels.get(id) {
             Some(ref channel) => match channel {
                 DataChannelEventTarget::Created(ref channel) => {
@@ -187,7 +188,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         id: &DataChannelId,
         message: &DataChannelMessage,
     ) -> WebRtcResult {
-        match self.data_channels.lock().unwrap().get(id) {
+        match self.data_channels.lock().get(id) {
             Some(ref channel) => match channel {
                 DataChannelEventTarget::Created(ref channel) => {
                     channel.send(message);
@@ -228,7 +229,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                 self.signaller.on_add_stream(&stream, ty);
             },
             InternalEvent::OnDataChannelEvent(channel_id, event) => {
-                let mut data_channels = self.data_channels.lock().unwrap();
+                let mut data_channels = self.data_channels.lock();
                 match data_channels.get_mut(&channel_id) {
                     None => {
                         data_channels
@@ -507,7 +508,7 @@ impl GStreamerWebRtcController {
         for stream_id in pending_streams {
             let stream =
                 get_stream(&stream_id).expect("Media streams registry does not contain such ID");
-            let mut stream = stream.lock().unwrap();
+            let mut stream = stream.lock();
             let mut stream = stream
                 .as_mut_any()
                 .downcast_mut::<GStreamerMediaStream>()
@@ -527,7 +528,6 @@ impl GStreamerWebRtcController {
             .connect("on-ice-candidate", false, move |values| {
                 thread
                     .lock()
-                    .unwrap()
                     .internal_event(InternalEvent::OnIceCandidate(candidate(values)));
                 None
             });
@@ -551,7 +551,6 @@ impl GStreamerWebRtcController {
             .connect("on-negotiation-needed", false, move |_values| {
                 thread
                     .lock()
-                    .unwrap()
                     .internal_event(InternalEvent::OnNegotiationNeeded);
                 None
             });
@@ -561,7 +560,6 @@ impl GStreamerWebRtcController {
             .connect("notify::signaling-state", false, move |_values| {
                 thread
                     .lock()
-                    .unwrap()
                     .internal_event(InternalEvent::UpdateSignalingState);
                 None
             });
@@ -570,7 +568,6 @@ impl GStreamerWebRtcController {
             .connect("notify::ice-connection-state", false, move |_values| {
                 thread
                     .lock()
-                    .unwrap()
                     .internal_event(InternalEvent::UpdateIceConnectionState);
                 None
             });
@@ -579,7 +576,6 @@ impl GStreamerWebRtcController {
             .connect("notify::ice-gathering-state", false, move |_values| {
                 thread
                     .lock()
-                    .unwrap()
                     .internal_event(InternalEvent::UpdateGatheringState);
                 None
             });
@@ -593,7 +589,7 @@ impl GStreamerWebRtcController {
                     .map_err(|e| e.to_string())
                     .expect("Invalid data channel");
                 let id = next_data_channel_id.fetch_add(1, Ordering::Relaxed);
-                let thread_ = thread.lock().unwrap().clone();
+                let thread_ = thread.lock().clone();
                 match GStreamerWebRtcDataChannel::from(&id, channel, &thread_) {
                     Ok(channel) => {
                         let mut closed_channel = false;
@@ -603,7 +599,7 @@ impl GStreamerWebRtcController {
                                 DataChannelEvent::NewChannel,
                             ));
 
-                            let mut data_channels = data_channels.lock().unwrap();
+                            let mut data_channels = data_channels.lock();
                             if let Some(ref mut channel) = data_channels.get_mut(&id) {
                                 match channel {
                                     DataChannelEventTarget::Buffered(ref mut events) => {
@@ -762,7 +758,6 @@ fn on_incoming_decodebin_stream(
     };
     thread
         .lock()
-        .unwrap()
         .internal_event(InternalEvent::OnAddStream(stream, ty));
 }
 
@@ -790,14 +785,13 @@ fn register_data_channel(
     id: DataChannelId,
     channel: GStreamerWebRtcDataChannel,
 ) -> WebRtcDataChannelResult {
-    if registry.lock().unwrap().contains_key(&id) {
+    if registry.lock().contains_key(&id) {
         return Err(WebRtcError::Backend(
             "Could not register data channel. ID collision".to_owned(),
         ));
     }
     registry
         .lock()
-        .unwrap()
         .insert(id, DataChannelEventTarget::Created(channel));
     Ok(id)
 }

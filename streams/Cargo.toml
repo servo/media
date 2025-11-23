@@ -10,4 +10,5 @@ name = "servo_media_streams"
 path = "lib.rs"
 
 [dependencies]
+parking_lot = { workspace = true }
 uuid = { version = "1.4", features = ["v4"] }

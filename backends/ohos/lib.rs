@@ -3,11 +3,11 @@ use std::{
     sync::{
         atomic::AtomicUsize,
         mpsc::{self, Sender},
-        Arc, Mutex, Weak,
+        Arc, Weak,
     },
     thread,
 };
-
+use parking_lot::Mutex;
 use log::warn;
 use mime::Mime;
 use servo_media::{
@@ -30,11 +30,11 @@ impl OhosBackend {
         id: &ClientContextId,
         cb: &dyn Fn(&dyn MediaInstance) -> Result<(), ()>,
     ) {
-        let mut instances = self.instances.lock().unwrap();
+        let mut instances = self.instances.unwrap();
         match instances.get_mut(id) {
             Some(vec) => vec.retain(|(_, weak)| {
                 if let Some(instance) = weak.upgrade() {
-                    if cb(&*(instance.lock().unwrap())).is_err() {
+                    if cb(&*(instance.lock())).is_err() {
                         warn!("Error executing media instance action");
                     }
                     true
@@ -62,7 +62,7 @@ impl BackendInit for OhosBackend {
             .spawn(move || {
                 match recvr.recv().unwrap() {
                     BackendMsg::Shutdown { context, id, tx_ack } => {
-                        let mut map = instances_.lock().unwrap();
+                        let mut map = instances_.unwrap();
                         if let Some(vec) = map.get_mut(&context) {
                             vec.retain(|m| m.0 != id);
                             if vec.is_empty() {

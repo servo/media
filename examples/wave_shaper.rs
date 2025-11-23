@@ -16,7 +16,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
 
     {
         let context = context.unwrap();
-        let context = context.lock().unwrap();
+        let context = context.lock();
         let curve = vec![1., 0., 0., 0.75, 0.5];
 
         let dest = context.dest_node();

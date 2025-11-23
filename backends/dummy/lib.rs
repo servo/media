@@ -7,6 +7,7 @@ extern crate servo_media_traits;
 extern crate servo_media_webrtc;
 
 use ipc_channel::ipc::IpcSender;
+use parking_lot::Mutex;
 use servo_media::{Backend, BackendInit, SupportsMediaType};
 use servo_media_audio::block::{Block, Chunk};
 use servo_media_audio::context::{AudioContext, AudioContextOptions};
@@ -29,7 +30,7 @@ use servo_media_webrtc::{
 use std::any::Any;
 use std::ops::Range;
 use std::sync::mpsc::{self, Sender};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 pub struct DummyBackend;
 

@@ -19,6 +19,7 @@ use log::warn;
 use media_stream::GStreamerMediaStream;
 use mime::Mime;
 use once_cell::sync::{Lazy, OnceCell};
+use parking_lot::Mutex;
 use registry_scanner::GSTREAMER_REGISTRY_SCANNER;
 use servo_media::{Backend, BackendDeInit, BackendInit, SupportsMediaType};
 use servo_media_audio::context::{AudioContext, AudioContextOptions};
@@ -39,7 +40,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::mpsc::{self, Sender};
-use std::sync::{Arc, Mutex, Weak};
+use std::sync::{Arc, Weak};
 use std::thread;
 use std::vec::Vec;
 
@@ -114,7 +115,7 @@ impl GStreamerBackend {
                         id,
                         tx_ack,
                     } => {
-                        let mut instances_ = instances_.lock().unwrap();
+                        let mut instances_ = instances_.lock();
                         if let Some(vec) = instances_.get_mut(&context) {
                             vec.retain(|m| m.0 != id);
                             if vec.is_empty() {
@@ -141,11 +142,11 @@ impl GStreamerBackend {
         id: &ClientContextId,
         cb: &dyn Fn(&dyn MediaInstance) -> Result<(), ()>,
     ) {
-        let mut instances = self.instances.lock().unwrap();
+        let mut instances = self.instances.lock();
         match instances.get_mut(id) {
             Some(vec) => vec.retain(|(_, weak)| {
                 if let Some(instance) = weak.upgrade() {
-                    if cb(&*(instance.lock().unwrap())).is_err() {
+                    if cb(&*(instance.lock())).is_err() {
                         warn!("Error executing media instance action");
                     }
                     true
@@ -181,7 +182,7 @@ impl Backend for GStreamerBackend {
             audio_renderer,
             gl_context,
         )));
-        let mut instances = self.instances.lock().unwrap();
+        let mut instances = self.instances.lock();
         let entry = instances.entry(*context_id).or_insert(Vec::new());
         entry.push((id, Arc::downgrade(&player).clone()));
         player
@@ -198,7 +199,7 @@ impl Backend for GStreamerBackend {
 
         let audio_context = Arc::new(Mutex::new(audio_context));
 
-        let mut instances = self.instances.lock().unwrap();
+        let mut instances = self.instances.lock();
         let entry = instances.entry(*client_context_id).or_insert(Vec::new());
         entry.push((id, Arc::downgrade(&audio_context).clone()));
 
@@ -337,7 +338,7 @@ impl BackendInit for GStreamerBackend {
 impl BackendDeInit for GStreamerBackend {
     fn deinit(&self) {
         let to_shutdown: Vec<(ClientContextId, usize)> = {
-            let map = self.instances.lock().unwrap();
+            let map = self.instances.lock();
             map.iter()
                 .flat_map(|(ctx, v)| v.iter().map(move |(id, _)| (*ctx, *id)))
                 .collect()
@@ -345,15 +346,11 @@ impl BackendDeInit for GStreamerBackend {
 
         for (ctx, id) in to_shutdown {
             let (tx_ack, rx_ack) = mpsc::channel();
-            let _ = self
-                .backend_chan
-                .lock()
-                .unwrap()
-                .send(BackendMsg::Shutdown {
-                    context: ctx,
-                    id,
-                    tx_ack,
-                });
+            let _ = self.backend_chan.lock().send(BackendMsg::Shutdown {
+                context: ctx,
+                id,
+                tx_ack,
+            });
             let _ = rx_ack.recv();
         }
     }

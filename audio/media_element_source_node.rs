@@ -1,10 +1,11 @@
 use crate::block::{Block, Chunk, FRAMES_PER_BLOCK};
 use crate::node::{AudioNodeEngine, AudioNodeType, BlockInfo, ChannelInfo};
+use parking_lot::Mutex;
 use player::audio::AudioRenderer;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::sync::mpsc::Sender;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub enum MediaElementSourceNodeMessage {
@@ -50,7 +51,7 @@ impl AudioNodeEngine for MediaElementSourceNode {
     fn process(&mut self, mut inputs: Chunk, _info: &BlockInfo) -> Chunk {
         debug_assert!(inputs.len() == 0);
 
-        let buffers = self.buffers.lock().unwrap();
+        let buffers = self.buffers.lock();
         let chans = buffers.len() as u8;
 
         if chans == 0 {
@@ -119,12 +120,12 @@ impl AudioRenderer for MediaElementSourceNodeRenderer {
         let channel = match self.channels.entry(channel_pos) {
             Entry::Occupied(entry) => *entry.get(),
             Entry::Vacant(entry) => {
-                let mut buffers = self.buffers.lock().unwrap();
+                let mut buffers = self.buffers.lock();
                 let len = buffers.len();
                 buffers.resize(len + 1, Vec::new());
                 *entry.insert(buffers.len())
             },
         };
-        self.buffers.lock().unwrap()[(channel - 1) as usize].extend_from_slice((*sample).as_ref());
+        self.buffers.lock()[(channel - 1) as usize].extend_from_slice((*sample).as_ref());
     }
 }

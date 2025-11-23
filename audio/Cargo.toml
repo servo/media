@@ -12,6 +12,7 @@ path = "lib.rs"
 [dependencies]
 euclid = "0.22"
 log = "0.4"
+parking_lot = { workspace = true }
 serde_derive = "1.0.66"
 serde = "1.0.66"
 servo-media-derive = { path = "../servo-media-derive" }

@@ -4,13 +4,14 @@
 
 use euclid::Scale;
 use ipc_channel::ipc::{self, IpcReceiver};
+use parking_lot::Mutex;
 use servo_media::player;
 use servo_media::player::video;
 use servo_media::ServoMedia;
 use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::path::Path;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use thiserror::Error;
 use webrender::Renderer;
 use webrender::*;
@@ -211,7 +212,6 @@ impl App {
 
         player
             .lock()
-            .unwrap()
             .set_input_size(metadata.len())
             .map_err(|error| MiscError(format!("Failed to set media input size: {error:?}")))?;
 
@@ -258,7 +258,6 @@ pub fn main_loop(
 
     player
         .lock()
-        .unwrap()
         .play()
         .map_err(|error| MiscError(format!("Failed to start player: {error:?}")))?;
 
@@ -318,7 +317,6 @@ pub fn main_loop(
             PlayerCmd::Stop => {
                 player
                     .lock()
-                    .unwrap()
                     .stop()
                     .map_err(|error| MiscError(format!("Failed to stop player: {error:?}")))
                     .unwrap();
@@ -327,7 +325,6 @@ pub fn main_loop(
             PlayerCmd::Pause => {
                 player
                     .lock()
-                    .unwrap()
                     .pause()
                     .map_err(|error| MiscError(format!("Failed to pause player: {error:?}")))
                     .unwrap();
@@ -335,7 +332,6 @@ pub fn main_loop(
             PlayerCmd::Play => {
                 player
                     .lock()
-                    .unwrap()
                     .play()
                     .map_err(|error| MiscError(format!("Failed to start player: {error:?}")))
                     .unwrap();
@@ -348,7 +344,6 @@ pub fn main_loop(
                 eprintln!("Seeking {}", time);
                 player
                     .lock()
-                    .unwrap()
                     .seek(time)
                     .map_err(|error| MiscError(format!("Failed to seek: {error:?}")))
                     .unwrap();
@@ -357,7 +352,6 @@ pub fn main_loop(
                 playerstate.mute = !playerstate.mute;
                 player
                     .lock()
-                    .unwrap()
                     .mute(playerstate.mute)
                     .map_err(|error| MiscError(format!("Failed to mute player: {error:?}")))
                     .unwrap();
@@ -407,7 +401,6 @@ pub fn main_loop(
                         if bytes_read == 0 {
                             player
                                 .lock()
-                                .unwrap()
                                 .end_of_stream()
                                 .and_then(|_| {
                                     input_eos = true;
@@ -420,7 +413,6 @@ pub fn main_loop(
                         } else {
                             player
                                 .lock()
-                                .unwrap()
                                 .push_data(Vec::from(&buffer[0..bytes_read]))
                                 .or_else(|err| {
                                     if err == player::PlayerError::EnoughData {
@@ -445,7 +437,7 @@ pub fn main_loop(
 
             {
                 app.frame_renderer.as_ref().and_then(|renderer| {
-                    renderer.lock().unwrap().current_frame().and_then(|frame| {
+                    renderer.lock().current_frame().and_then(|frame| {
                         let content_bounds = LayoutRect::new(
                             LayoutPoint::zero(),
                             LayoutSize::new(frame.1 as f32, frame.2 as f32),

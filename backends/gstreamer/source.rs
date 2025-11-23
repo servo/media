@@ -2,9 +2,9 @@ use glib::subclass::prelude::*;
 use gst::prelude::*;
 use gst::subclass::prelude::*;
 use once_cell::sync::Lazy;
+use parking_lot::Mutex;
 use std::convert::TryFrom;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Mutex;
 use url::Url;
 
 const MAX_SRC_QUEUE_SIZE: u64 = 50 * 1024 * 1024; // 50 MB.
@@ -50,7 +50,7 @@ mod imp {
                 // We ignore set_size requests if we are seeking.
                 // The size value is temporarily stored so it
                 // is properly set once we are done seeking.
-                *self.size.lock().unwrap() = Some(size);
+                *self.size.lock() = Some(size);
                 return;
             }
 
@@ -60,7 +60,7 @@ mod imp {
         }
 
         pub fn set_seek_offset<O: IsA<gst::Object>>(&self, parent: &O, offset: u64) -> bool {
-            let mut pos = self.position.lock().unwrap();
+            let mut pos = self.position.lock();
 
             if pos.offset == offset || pos.requested_offset != 0 {
                 false
@@ -81,13 +81,13 @@ mod imp {
         pub fn set_seek_done(&self) {
             self.seeking.store(false, Ordering::Relaxed);
 
-            if let Some(size) = self.size.lock().unwrap().take() {
+            if let Some(size) = self.size.lock().take() {
                 if self.appsrc.size() == -1 {
                     self.appsrc.set_size(size);
                 }
             }
 
-            let mut pos = self.position.lock().unwrap();
+            let mut pos = self.position.lock();
             pos.offset = pos.requested_offset;
             pos.requested_offset = 0;
         }
@@ -102,7 +102,7 @@ mod imp {
                 return Ok(gst::FlowSuccess::Ok);
             }
 
-            let mut pos = self.position.lock().unwrap(); // will block seeking
+            let mut pos = self.position.lock(); // will block seeking
 
             let length = u64::try_from(data.len()).unwrap();
             let mut data_offset = 0;

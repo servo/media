@@ -12,6 +12,7 @@ use gst_app;
 use gst_play;
 use gst_play::prelude::*;
 use ipc_channel::ipc::{channel, IpcReceiver, IpcSender};
+use parking_lot::Mutex;
 use servo_media_player::audio::AudioRenderer;
 use servo_media_player::context::PlayerGLContext;
 use servo_media_player::metadata::Metadata;
@@ -25,7 +26,7 @@ use std::cell::RefCell;
 use std::ops::Range;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Sender};
-use std::sync::{Arc, Mutex, Once};
+use std::sync::{Arc, Once};
 use std::time;
 use std::u64;
 
@@ -277,7 +278,7 @@ impl PlayerInner {
             if let PlayerSource::Stream(source) = source {
                 let stream =
                     get_stream(stream).expect("Media streams registry does not contain such ID");
-                let mut stream = stream.lock().unwrap();
+                let mut stream = stream.lock();
                 if let Some(mut stream) = stream.as_mut_any().downcast_mut::<GStreamerMediaStream>()
                 {
                     let playbin = self
@@ -317,7 +318,7 @@ impl PlayerInner {
 
 macro_rules! notify(
     ($observer:expr, $event:expr) => {
-        $observer.lock().unwrap().send($event)
+        $observer.lock().send($event)
     };
 );
 
@@ -496,7 +497,7 @@ impl GStreamerPlayer {
                             let chunk = Box::new(GStreamerAudioChunk(map));
                             let channel = position.to_mask() as u32;
 
-                            audio_renderer.lock().unwrap().render(chunk, channel);
+                            audio_renderer.lock().render(chunk, channel);
                         }
                         Ok(gst::FlowSuccess::Ok)
                     })
@@ -504,7 +505,7 @@ impl GStreamerPlayer {
             );
         }
 
-        let video_sink = self.render.lock().unwrap().setup_video_sink(&pipeline)?;
+        let video_sink = self.render.lock().setup_video_sink(&pipeline)?;
 
         // There's a known bug in gstreamer that may cause a wrong transition
         // to the ready state while setting the uri property:
@@ -596,7 +597,7 @@ impl GStreamerPlayer {
         let inner_clone = inner.clone();
         let observer = self.observer.clone();
         signal_adapter.connect_media_info_updated(move |_, info| {
-            let mut inner = inner_clone.lock().unwrap();
+            let mut inner = inner_clone.lock();
             if let Ok(metadata) = metadata_from_media_info(info) {
                 if inner.last_metadata.as_ref() != Some(&metadata) {
                     inner.last_metadata = Some(metadata.clone());
@@ -625,7 +626,7 @@ impl GStreamerPlayer {
                 )
             });
 
-            let mut inner = inner_clone.lock().unwrap();
+            let mut inner = inner_clone.lock();
             if let Some(ref mut metadata) = inner.last_metadata {
                 if metadata.duration != duration {
                     metadata.duration = duration;
@@ -651,12 +652,11 @@ impl GStreamerPlayer {
                 move |sample: gst::Sample| {
                     let frame = render
                         .lock()
-                        .unwrap()
                         .get_frame_from_sample(sample)
                         .map_err(|_| gst::FlowError::Error)?;
 
                     if let Some(video_renderer) = weak_video_renderer.upgrade() {
-                        video_renderer.lock().unwrap().render(frame);
+                        video_renderer.lock().render(frame);
                     } else {
                         return Err(gst::FlowError::Flushing);
                     };
@@ -667,7 +667,7 @@ impl GStreamerPlayer {
             };
 
             // Set video_sink callbacks.
-            inner.lock().unwrap().video_sink.set_callbacks(
+            inner.lock().video_sink.set_callbacks(
                 gst_app::AppSinkCallbacks::builder()
                     .new_preroll({
                         let render_sample = render_sample.clone();
@@ -686,7 +686,7 @@ impl GStreamerPlayer {
 
         let (receiver, error_handler_id) = {
             let inner_clone = inner.clone();
-            let mut inner = inner.lock().unwrap();
+            let mut inner = inner.lock();
             let pipeline = inner.player.pipeline();
 
             let (sender, receiver) = mpsc::channel();
@@ -698,7 +698,7 @@ impl GStreamerPlayer {
             pipeline.connect("source-setup", false, move |args| {
                 let source = args[1].get::<gst::Element>().unwrap();
 
-                let mut inner = inner_clone.lock().unwrap();
+                let mut inner = inner_clone.lock();
                 let source = match inner.stream_type {
                     StreamType::Seekable => {
                         let servosrc = source
@@ -727,7 +727,7 @@ impl GStreamerPlayer {
                                     // calls setup and the player is actually ready to
                                     // get any data.
                                     is_ready.call_once(|| {
-                                        let _ = sender_clone.lock().unwrap().send(Ok(()));
+                                        let _ = sender_clone.lock().send(Ok(()));
                                     });
 
                                     enough_data_.store(false, Ordering::Relaxed);
@@ -743,11 +743,10 @@ impl GStreamerPlayer {
                                             observer___,
                                             PlayerEvent::SeekData(
                                                 offset,
-                                                seek_channel.lock().unwrap().sender()
+                                                seek_channel.lock().sender()
                                             )
                                         );
-                                        let (ret, ack_channel) =
-                                            seek_channel.lock().unwrap()._await();
+                                        let (ret, ack_channel) = seek_channel.lock()._await();
                                         (ret, Some(ack_channel))
                                     } else {
                                         (true, None)
@@ -793,7 +792,7 @@ impl GStreamerPlayer {
         };
 
         let result = receiver.recv().unwrap();
-        glib::signal::signal_handler_disconnect(&inner.lock().unwrap().player, error_handler_id);
+        glib::signal::signal_handler_disconnect(&inner.lock().player, error_handler_id);
         result
     }
 }
@@ -803,7 +802,7 @@ macro_rules! inner_player_proxy {
         fn $fn_name(&self) -> Result<$return_type, PlayerError> {
             self.setup()?;
             let inner = self.inner.borrow();
-            let mut inner = inner.as_ref().unwrap().lock().unwrap();
+            let mut inner = inner.as_ref().unwrap().lock();
             inner.$fn_name()
         }
     };
@@ -812,7 +811,7 @@ macro_rules! inner_player_proxy {
         fn $fn_name(&self, $arg1: $arg1_type) -> Result<(), PlayerError> {
             self.setup()?;
             let inner = self.inner.borrow();
-            let mut inner = inner.as_ref().unwrap().lock().unwrap();
+            let mut inner = inner.as_ref().unwrap().lock();
             inner.$fn_name($arg1)
         }
     };
@@ -834,7 +833,7 @@ impl Player for GStreamerPlayer {
     fn seekable(&self) -> Result<Vec<Range<f64>>, PlayerError> {
         self.setup()?;
         let inner = self.inner.borrow();
-        let mut inner = inner.as_ref().unwrap().lock().unwrap();
+        let mut inner = inner.as_ref().unwrap().lock();
         // if the servosrc is seekable, we should return the duration of the media
         if let Some(metadata) = inner.last_metadata.as_ref() {
             if metadata.is_seekable {
@@ -851,27 +850,27 @@ impl Player for GStreamerPlayer {
     }
 
     fn render_use_gl(&self) -> bool {
-        self.render.lock().unwrap().is_gl()
+        self.render.lock().is_gl()
     }
 
     fn set_stream(&self, stream: &MediaStreamId, only_stream: bool) -> Result<(), PlayerError> {
         self.setup()?;
         let inner = self.inner.borrow();
-        let mut inner = inner.as_ref().unwrap().lock().unwrap();
+        let mut inner = inner.as_ref().unwrap().lock();
         inner.set_stream(stream, only_stream)
     }
 
     fn set_audio_track(&self, stream_index: i32, enabled: bool) -> Result<(), PlayerError> {
         self.setup()?;
         let inner = self.inner.borrow();
-        let mut inner = inner.as_ref().unwrap().lock().unwrap();
+        let mut inner = inner.as_ref().unwrap().lock();
         inner.set_audio_track(stream_index, enabled)
     }
 
     fn set_video_track(&self, stream_index: i32, enabled: bool) -> Result<(), PlayerError> {
         self.setup()?;
         let inner = self.inner.borrow();
-        let mut inner = inner.as_ref().unwrap().lock().unwrap();
+        let mut inner = inner.as_ref().unwrap().lock();
         inner.set_video_track(stream_index, enabled)
     }
 }
@@ -898,15 +897,11 @@ impl Drop for GStreamerPlayer {
     fn drop(&mut self) {
         let _ = self.stop();
         let (tx_ack, rx_ack) = mpsc::channel();
-        let _ = self
-            .backend_chan
-            .lock()
-            .unwrap()
-            .send(BackendMsg::Shutdown {
-                context: self.context_id,
-                id: self.id,
-                tx_ack,
-            });
+        let _ = self.backend_chan.lock().send(BackendMsg::Shutdown {
+            context: self.context_id,
+            id: self.id,
+            tx_ack,
+        });
         let _ = rx_ack.recv();
     }
 }
