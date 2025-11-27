@@ -14,20 +14,21 @@ env:
 jobs:
   Build:
     runs-on: ${{ matrix.os }}
+    container:
+      image: ubuntu:25.04
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04]
+        os: [ubuntu-24.04]
         rust: [stable]
         target: ["default"]
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v6
     - name: Install deps on linux
       if: startsWith(matrix.os, 'ubuntu')
       run: |
-        sudo bash -c 'apt-add-repository -y https://mirrors.kernel.org/ubuntu'
-        sudo apt update
-        sudo apt install -y \
+        apt update
+        apt install -t plucky -y \
           gstreamer1.0-libav \
           gstreamer1.0-plugins-bad \
           gstreamer1.0-plugins-base \
@@ -36,7 +37,7 @@ jobs:
           gstreamer1.0-tools \
           libasound2-plugins \
           libfaad2 \
-          libffi7 \
+          libffi8 \
           libfftw3-single3 \
           libges-1.0-dev \
           libgstreamer-plugins-bad1.0-dev\
@@ -49,17 +50,18 @@ jobs:
           libopus0 \
           liborc-0.4-0 \
           liborc-0.4-dev \
-          libpulsedsp \
           libsamplerate0 \
           libspeexdsp1 \
           libtdb1 \
           libtheora0 \
           libtwolame0 \
-          libwayland-egl1-mesa \
-          libwebrtc-audio-processing1 \
           pulseaudio \
           pulseaudio-utils \
-          webp
+          webp \
+          curl \
+          wget \
+          build-essential \
+          libssl-dev
     - name: Start virtual audio device
       if: startsWith(matrix.os, 'ubuntu')
       run: |
@@ -73,7 +75,8 @@ jobs:
           default: true
     - name: Pre-build
       run: |
-        pulseaudio --start
+        # chown -R $USER:$USER $HOME/
+        # pulseaudio --start --system
         gst-inspect-1.0 | grep Total
     - name: Build
       run: cargo build
