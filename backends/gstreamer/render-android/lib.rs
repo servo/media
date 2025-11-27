@@ -7,12 +7,11 @@
 
 use gst::prelude::*;
 use gst_gl::prelude::*;
-use parking_lot::Mutex;
 use sm_gst_render::Render;
 use sm_player::context::{GlApi, GlContext, NativeDisplay, PlayerGLContext};
 use sm_player::video::{Buffer, VideoFrame, VideoFrameData};
 use sm_player::PlayerError;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 struct GStreamerBuffer {
     is_external_oes: bool,
@@ -113,12 +112,13 @@ impl Render for RenderAndroid {
     }
 
     fn build_frame(&self, sample: gst::Sample) -> Result<VideoFrame, ()> {
-        if self.gst_context.lock().is_none() && self.gl_upload.lock().is_some() {
-            *self.gst_context.lock() = if let Some(glupload) = self.gl_upload.lock().as_ref() {
-                Some(glupload.property::<gst_gl::GLContext>("context"))
-            } else {
-                None
-            };
+        if self.gst_context.lock().unwrap().is_none() && self.gl_upload.lock().unwrap().is_some() {
+            *self.gst_context.lock().unwrap() =
+                if let Some(glupload) = self.gl_upload.lock().unwrap().as_ref() {
+                    Some(glupload.property::<gst_gl::GLContext>("context"))
+                } else {
+                    None
+                };
         }
 
         let buffer = sample.buffer_owned().ok_or_else(|| ())?;
@@ -139,16 +139,16 @@ impl Render for RenderAndroid {
 
         let info = gst_video::VideoInfo::from_caps(caps).map_err(|_| ())?;
 
-        if self.gst_context.lock().is_some() {
+        if self.gst_context.lock().unwrap().is_some() {
             if let Some(sync_meta) = buffer.meta::<gst_gl::GLSyncMeta>() {
-                sync_meta.set_sync_point(self.gst_context.lock().as_ref().unwrap());
+                sync_meta.set_sync_point(self.gst_context.lock().unwrap().as_ref().unwrap());
             }
         }
 
         let frame =
             gst_gl::GLVideoFrame::from_buffer_readable(buffer, &info).or_else(|_| Err(()))?;
 
-        if self.gst_context.lock().is_some() {
+        if self.gst_context.lock().unwrap().is_some() {
             if let Some(sync_meta) = frame.buffer().meta::<gst_gl::GLSyncMeta>() {
                 // This should possibly be
                 // sync_meta.wait(&self.app_context);
@@ -156,7 +156,7 @@ impl Render for RenderAndroid {
                 // but the main thread and the app context aren't managed by gstreamer,
                 // so we can't do that directly.
                 // https://github.com/servo/media/issues/309
-                sync_meta.wait(self.gst_context.lock().as_ref().unwrap());
+                sync_meta.wait(self.gst_context.lock().unwrap().as_ref().unwrap());
             }
         }
 
@@ -175,7 +175,7 @@ impl Render for RenderAndroid {
         appsink: &gst::Element,
         pipeline: &gst::Element,
     ) -> Result<(), PlayerError> {
-        if self.gl_upload.lock().is_some() {
+        if self.gl_upload.lock().unwrap().is_some() {
             return Err(PlayerError::Backend(
                 "render unix already setup the video sink".to_owned(),
             ));
@@ -233,7 +233,7 @@ impl Render for RenderAndroid {
             .dynamic_cast::<gst::Bin>()
             .unwrap()
             .iterate_elements();
-        *self.gl_upload.lock() = loop {
+        *self.gl_upload.lock().unwrap() = loop {
             match iter.next() {
                 Ok(Some(element)) => {
                     if Some(true) == element.factory().map(|f| f.name() == "glupload") {

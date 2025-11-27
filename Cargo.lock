@@ -861,7 +861,6 @@ dependencies = [
  "gleam",
  "glutin",
  "ipc-channel",
- "parking_lot 0.12.5",
  "rand 0.9.0",
  "serde",
  "serde_derive",
@@ -2467,16 +2466,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "parking_lot"
-version = "0.12.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93857453250e3077bd71ff98b6a65ea6621a19bb0f559a85248955ac12c45a1a"
-dependencies = [
- "lock_api 0.4.14",
- "parking_lot_core 0.9.12",
-]
-
-[[package]]
 name = "parking_lot_core"
 version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2503,19 +2492,6 @@ dependencies = [
  "redox_syscall 0.2.16",
  "smallvec 1.15.1",
  "winapi 0.3.9",
-]
-
-[[package]]
-name = "parking_lot_core"
-version = "0.9.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2621685985a2ebf1c516881c026032ac7deafcda1a2c9b7850dc81e3dfcb64c1"
-dependencies = [
- "cfg-if 1.0.0",
- "libc",
- "redox_syscall 0.5.18",
- "smallvec 1.15.1",
- "windows-link",
 ]
 
 [[package]]
@@ -2872,15 +2848,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "redox_syscall"
-version = "0.5.18"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed2bf2547551a7053d6fdfafda3f938979645c44812fbfcda098faae3f1a362d"
-dependencies = [
- "bitflags 2.9.4",
-]
-
-[[package]]
 name = "redox_users"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3123,7 +3090,6 @@ name = "servo-media"
 version = "0.1.0"
 dependencies = [
  "once_cell",
- "parking_lot 0.12.5",
  "servo-media-audio",
  "servo-media-player",
  "servo-media-streams",
@@ -3140,7 +3106,6 @@ dependencies = [
  "log 0.4.17",
  "num-complex",
  "num-traits",
- "parking_lot 0.12.5",
  "petgraph",
  "serde",
  "serde_derive",
@@ -3174,7 +3139,6 @@ name = "servo-media-dummy"
 version = "0.1.0"
 dependencies = [
  "ipc-channel",
- "parking_lot 0.12.5",
  "servo-media",
  "servo-media-audio",
  "servo-media-player",
@@ -3203,7 +3167,6 @@ dependencies = [
  "log 0.4.17",
  "mime 0.3.17",
  "once_cell",
- "parking_lot 0.12.5",
  "servo-media",
  "servo-media-audio",
  "servo-media-gstreamer-render",
@@ -3234,7 +3197,6 @@ dependencies = [
  "gstreamer-gl",
  "gstreamer-gl-egl",
  "gstreamer-video",
- "parking_lot 0.12.5",
  "servo-media-gstreamer-render",
  "servo-media-player",
 ]
@@ -3250,7 +3212,6 @@ dependencies = [
  "gstreamer-gl-wayland",
  "gstreamer-gl-x11",
  "gstreamer-video",
- "parking_lot 0.12.5",
  "servo-media-gstreamer-render",
  "servo-media-player",
 ]
@@ -3270,7 +3231,6 @@ dependencies = [
 name = "servo-media-streams"
 version = "0.1.0"
 dependencies = [
- "parking_lot 0.12.5",
  "uuid",
 ]
 

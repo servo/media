@@ -8,14 +8,13 @@
 
 use gst::prelude::*;
 use gst_gl::prelude::*;
-use parking_lot::Mutex;
 use sm_gst_render;
 use sm_gst_render::Render;
 use sm_player;
 use sm_player::context::{GlApi, GlContext, NativeDisplay, PlayerGLContext};
 use sm_player::video::{Buffer, VideoFrame, VideoFrameData};
 use sm_player::PlayerError;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 struct GStreamerBuffer {
     is_external_oes: bool,
@@ -166,12 +165,13 @@ impl Render for RenderUnix {
     }
 
     fn build_frame(&self, sample: gst::Sample) -> Result<VideoFrame, ()> {
-        if self.gst_context.lock().is_none() && self.gl_upload.lock().is_some() {
-            *self.gst_context.lock() = if let Some(glupload) = self.gl_upload.lock().as_ref() {
-                Some(glupload.property::<gst_gl::GLContext>("context"))
-            } else {
-                None
-            };
+        if self.gst_context.lock().unwrap().is_none() && self.gl_upload.lock().unwrap().is_some() {
+            *self.gst_context.lock().unwrap() =
+                if let Some(glupload) = self.gl_upload.lock().unwrap().as_ref() {
+                    Some(glupload.property::<gst_gl::GLContext>("context"))
+                } else {
+                    None
+                };
         }
 
         let buffer = sample.buffer_owned().ok_or(())?;
@@ -208,7 +208,7 @@ impl Render for RenderUnix {
         appsink: &gst::Element,
         pipeline: &gst::Element,
     ) -> Result<(), PlayerError> {
-        if self.gl_upload.lock().is_some() {
+        if self.gl_upload.lock().unwrap().is_some() {
             return Err(PlayerError::Backend(
                 "render unix already setup the video sink".to_owned(),
             ));
@@ -267,7 +267,7 @@ impl Render for RenderUnix {
             .dynamic_cast::<gst::Bin>()
             .unwrap()
             .iterate_elements();
-        *self.gl_upload.lock() = loop {
+        *self.gl_upload.lock().unwrap() = loop {
             match iter.next() {
                 Ok(Some(element)) => {
                     if "glupload" == element.factory().unwrap().name() {

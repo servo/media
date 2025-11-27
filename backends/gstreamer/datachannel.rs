@@ -1,12 +1,12 @@
 use glib::prelude::*;
 use gst_webrtc::{WebRTCDataChannel, WebRTCDataChannelState};
-use parking_lot::Mutex;
 use servo_media_webrtc::thread::InternalEvent;
 use servo_media_webrtc::WebRtcController as WebRtcThread;
 use servo_media_webrtc::{
     DataChannelEvent, DataChannelId, DataChannelInit, DataChannelMessage, DataChannelState,
     WebRtcError,
 };
+use std::sync::Mutex;
 
 pub struct GStreamerWebRtcDataChannel {
     channel: WebRTCDataChannel,
@@ -59,6 +59,7 @@ impl GStreamerWebRtcDataChannel {
         channel.connect_on_open(move |_| {
             thread_
                 .lock()
+                .unwrap()
                 .internal_event(InternalEvent::OnDataChannelEvent(
                     id_,
                     DataChannelEvent::Open,
@@ -70,6 +71,7 @@ impl GStreamerWebRtcDataChannel {
         channel.connect_on_close(move |_| {
             thread_
                 .lock()
+                .unwrap()
                 .internal_event(InternalEvent::OnDataChannelEvent(
                     id_,
                     DataChannelEvent::Close,
@@ -81,6 +83,7 @@ impl GStreamerWebRtcDataChannel {
         channel.connect_on_error(move |_, error| {
             thread_
                 .lock()
+                .unwrap()
                 .internal_event(InternalEvent::OnDataChannelEvent(
                     id_,
                     DataChannelEvent::Error(WebRtcError::Backend(error.to_string())),
@@ -95,6 +98,7 @@ impl GStreamerWebRtcDataChannel {
             };
             thread_
                 .lock()
+                .unwrap()
                 .internal_event(InternalEvent::OnDataChannelEvent(
                     id_,
                     DataChannelEvent::OnMessage(DataChannelMessage::Text(message)),
@@ -109,6 +113,7 @@ impl GStreamerWebRtcDataChannel {
             };
             thread_
                 .lock()
+                .unwrap()
                 .internal_event(InternalEvent::OnDataChannelEvent(
                     id_,
                     DataChannelEvent::OnMessage(DataChannelMessage::Binary(message.to_vec())),
@@ -129,6 +134,7 @@ impl GStreamerWebRtcDataChannel {
             };
             thread_
                 .lock()
+                .unwrap()
                 .internal_event(InternalEvent::OnDataChannelEvent(
                     id_,
                     DataChannelEvent::StateChange(ready_state),

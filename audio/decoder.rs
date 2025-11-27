@@ -1,4 +1,4 @@
-use parking_lot::Mutex;
+use std::sync::Mutex;
 
 #[derive(Debug, PartialEq)]
 pub enum AudioDecoderError {
@@ -32,7 +32,7 @@ impl AudioDecoderCallbacks {
     }
 
     pub fn eos(&self) {
-        let eos = self.eos.lock().take();
+        let eos = self.eos.lock().unwrap().take();
         match eos {
             None => return,
             Some(callback) => callback(),
@@ -40,7 +40,7 @@ impl AudioDecoderCallbacks {
     }
 
     pub fn error(&self, error: AudioDecoderError) {
-        let callback = self.error.lock().take();
+        let callback = self.error.lock().unwrap().take();
         match callback {
             None => return,
             Some(callback) => callback(error),
@@ -55,7 +55,7 @@ impl AudioDecoderCallbacks {
     }
 
     pub fn ready(&self, channels: u32) {
-        let ready = self.ready.lock().take();
+        let ready = self.ready.lock().unwrap().take();
         match ready {
             None => return,
             Some(callback) => callback(channels),

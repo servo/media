@@ -58,7 +58,7 @@ thread::spawn(move || {
 });
 
 // Start playing.
-player.lock().play().unwrap();
+player.lock().unwrap().play().unwrap();
 
 // Listen for Player events.
 while let Ok(event) = receiver.recv() {

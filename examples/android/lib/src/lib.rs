@@ -30,7 +30,7 @@ impl AudioStream {
             .unwrap()
             .create_audio_context(&ClientContextId::build(1, 1), Default::default());
         {
-            let context = context.lock();
+            let context = context.lock().unwrap();
             let osc = context.create_node(
                 AudioNodeInit::OscillatorNode(Default::default()),
                 Default::default(),
@@ -52,12 +52,12 @@ impl AudioStream {
     }
 
     pub fn play(&mut self) {
-        let audio_context = self.context.lock();
+        let audio_context = self.context.lock().unwrap();
         let _ = audio_context.resume();
     }
 
     pub fn stop(&mut self) {
-        let audio_context = self.context.lock();
+        let audio_context = self.context.lock().unwrap();
         let _ = audio_context.suspend();
     }
 }

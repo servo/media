@@ -13,7 +13,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let context = servo_media
         .create_audio_context(&ClientContextId::build(1, 1), Default::default())
         .unwrap();
-    let context = context.lock();
+    let context = context.lock().unwrap();
     let mut options = OscillatorNodeOptions::default();
     let osc = context.create_node(
         AudioNodeInit::OscillatorNode(options.clone()),
