@@ -18,7 +18,7 @@ impl GStreamerAudioStreamReader {
     pub fn new(stream: MediaStreamId, sample_rate: f32) -> Result<Self, String> {
         let (tx, rx) = channel();
         let stream = get_stream(&stream).unwrap();
-        let mut stream = stream.lock();
+        let mut stream = stream.lock().unwrap();
         let g_stream = stream
             .as_mut_any()
             .downcast_mut::<GStreamerMediaStream>()

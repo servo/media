@@ -1,14 +1,13 @@
 extern crate servo_media;
 extern crate servo_media_auto;
 
-use parking_lot::Mutex;
 use servo_media::audio::block::FRAMES_PER_BLOCK_USIZE;
 use servo_media::audio::buffer_source_node::{AudioBuffer, AudioBufferSourceNodeMessage};
 use servo_media::audio::context::{AudioContextOptions, OfflineAudioContextOptions};
 use servo_media::audio::node::{AudioNodeInit, AudioNodeMessage, AudioScheduledSourceNodeMessage};
 use servo_media::{ClientContextId, ServoMedia};
 use std::sync::mpsc;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::{thread, time};
 
 fn run_example(servo_media: Arc<ServoMedia>) {
@@ -22,14 +21,17 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let context = servo_media
         .create_audio_context(&ClientContextId::build(1, 1), options)
         .unwrap();
-    let context = context.lock();
+    let context = context.lock().unwrap();
     let processed_audio = Arc::new(Mutex::new(Vec::new()));
     let processed_audio_ = processed_audio.clone();
     let (sender, receiver) = mpsc::channel();
     let sender = Mutex::new(sender);
     context.set_eos_callback(Box::new(move |buffer| {
-        processed_audio.lock().extend_from_slice((*buffer).as_ref());
-        sender.lock().send(()).unwrap();
+        processed_audio
+            .lock()
+            .unwrap()
+            .extend_from_slice((*buffer).as_ref());
+        sender.lock().unwrap().send(()).unwrap();
     }));
     let osc = context.create_node(
         AudioNodeInit::OscillatorNode(Default::default()),
@@ -50,7 +52,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let context = servo_media
         .create_audio_context(&ClientContextId::build(1, 2), Default::default())
         .unwrap();
-    let context = context.lock();
+    let context = context.lock().unwrap();
     let buffer_source = context.create_node(
         AudioNodeInit::AudioBufferSourceNode(Default::default()),
         Default::default(),
@@ -64,7 +66,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     context.message_node(
         buffer_source,
         AudioNodeMessage::AudioBufferSourceNode(AudioBufferSourceNodeMessage::SetBuffer(Some(
-            AudioBuffer::from_buffer(processed_audio_.lock().to_vec(), sample_rate),
+            AudioBuffer::from_buffer(processed_audio_.lock().unwrap().to_vec(), sample_rate),
         ))),
     );
     let _ = context.resume();

@@ -4,11 +4,10 @@ use crate::node::{AudioNodeInit, AudioNodeMessage, ChannelInfo};
 use crate::render_thread::AudioRenderThread;
 use crate::render_thread::AudioRenderThreadMsg;
 use crate::AudioBackend;
-use parking_lot::Mutex;
 use servo_media_traits::{BackendMsg, ClientContextId, MediaInstance};
 use std::cell::Cell;
 use std::sync::mpsc::{self, Sender};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::thread::Builder;
 
 use crate::sink::AudioSinkError;
@@ -316,11 +315,15 @@ impl Drop for AudioContext {
 
         // Ask the backend to unregister this instance and wait for ACK
         let (tx_ack, rx_ack) = mpsc::channel();
-        let _ = self.backend_chan.lock().send(BackendMsg::Shutdown {
-            context: self.client_context_id,
-            id: self.id,
-            tx_ack,
-        });
+        let _ = self
+            .backend_chan
+            .lock()
+            .unwrap()
+            .send(BackendMsg::Shutdown {
+                context: self.client_context_id,
+                id: self.id,
+                tx_ack,
+            });
         let _ = rx_ack.recv();
     }
 }

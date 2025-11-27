@@ -58,7 +58,11 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     };
 
     if let Ok(metadata) = file.metadata() {
-        player.lock().set_input_size(metadata.len()).unwrap();
+        player
+            .lock()
+            .unwrap()
+            .set_input_size(metadata.len())
+            .unwrap();
     }
 
     let mut buf_reader = BufReader::new(file);
@@ -72,6 +76,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
             },
             Ok(size) => player
                 .lock()
+                .unwrap()
                 .push_data(Vec::from(&buffer[0..size]))
                 .unwrap(),
             Err(e) => {
@@ -81,7 +86,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         }
     }
 
-    player.lock().play().unwrap();
+    player.lock().unwrap().play().unwrap();
 
     let mut muted = false;
     while let Ok(event) = receiver.recv() {

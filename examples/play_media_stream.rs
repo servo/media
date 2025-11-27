@@ -38,10 +38,11 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let audio_stream = servo_media.create_audiostream();
     player
         .lock()
+        .unwrap()
         .set_stream(&audio_stream, /* only stream */ true)
         .unwrap();
 
-    player.lock().play().unwrap();
+    player.lock().unwrap().play().unwrap();
 
     while let Ok(event) = receiver.recv() {
         match event {

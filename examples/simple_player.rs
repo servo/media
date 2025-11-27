@@ -68,7 +68,11 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     };
 
     if let Ok(metadata) = file.metadata() {
-        player.lock().set_input_size(metadata.len()).unwrap();
+        player
+            .lock()
+            .unwrap()
+            .set_input_size(metadata.len())
+            .unwrap();
     }
 
     let player_clone = Arc::clone(&player);
@@ -92,6 +96,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
                     },
                     Ok(size) => player
                         .lock()
+                        .unwrap()
                         .push_data(Vec::from(&buffer[0..size]))
                         .unwrap(),
                     Err(e) => {
@@ -113,7 +118,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         }
     });
 
-    player.lock().play().unwrap();
+    player.lock().unwrap().play().unwrap();
     seek_sender.send(0).unwrap();
 
     let mut seek_requested = false;
@@ -138,7 +143,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
             },
             PlayerEvent::VideoFrameUpdated => eprint!("."),
             PlayerEvent::PositionChanged(p) => {
-                let player = player.lock();
+                let player = player.lock().unwrap();
                 if p as u64 == 4 && !seek_requested {
                     println!("\nPosition changed to 4sec, seeking back to 0sec");
                     if let Err(e) = player.seek(0.) {

@@ -16,7 +16,7 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         .unwrap();
 
     {
-        let context = context.lock();
+        let context = context.lock().unwrap();
 
         let dest = context.dest_node();
         let osc = context.create_node(

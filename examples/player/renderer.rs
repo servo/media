@@ -3,10 +3,9 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 use euclid::{Size2D, UnknownUnit};
-use parking_lot::Mutex;
 use servo_media::player::video;
 use std::mem;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use webrender_api::units::*;
 use webrender_api::*;
 
@@ -209,8 +208,8 @@ impl ExternalImageHandler for MediaFrameHandler {
         _key: ExternalImageId,
         _channel_index: u8,
         _rendering: ImageRendering,
-    ) -> ExternalImage<'_> {
-        let (texture_id, size, _) = self.renderer.lock().lock();
+    ) -> ExternalImage {
+        let (texture_id, size, _) = self.renderer.lock().unwrap().lock();
         ExternalImage {
             uv: TexelRect::new(0., 0., size.width as f32, size.height as f32),
             source: ExternalImageSource::NativeTexture(texture_id),
@@ -218,6 +217,6 @@ impl ExternalImageHandler for MediaFrameHandler {
     }
 
     fn unlock(&mut self, _key: ExternalImageId, _channel_index: u8) {
-        self.renderer.lock().unlock()
+        self.renderer.lock().unwrap().unlock()
     }
 }
