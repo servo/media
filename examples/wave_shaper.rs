@@ -20,31 +20,39 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         let curve = vec![1., 0., 0., 0.75, 0.5];
 
         let dest = context.dest_node();
-        let osc = context.create_node(
-            AudioNodeInit::OscillatorNode(OscillatorNodeOptions::default()),
-            Default::default(),
-        );
-        let wsh = context.create_node(
-            AudioNodeInit::WaveShaperNode(WaveShaperNodeOptions {
-                curve: Some(curve.clone()),
-                oversample: OverSampleType::None,
-            }),
-            Default::default(),
-        );
-        let wshx2 = context.create_node(
-            AudioNodeInit::WaveShaperNode(WaveShaperNodeOptions {
-                curve: Some(curve.clone()),
-                oversample: OverSampleType::Double,
-            }),
-            Default::default(),
-        );
-        let wshx4 = context.create_node(
-            AudioNodeInit::WaveShaperNode(WaveShaperNodeOptions {
-                curve: Some(curve.clone()),
-                oversample: OverSampleType::Quadruple,
-            }),
-            Default::default(),
-        );
+        let osc = context
+            .create_node(
+                AudioNodeInit::OscillatorNode(OscillatorNodeOptions::default()),
+                Default::default(),
+            )
+            .expect("Failed to create oscillator node");
+        let wsh = context
+            .create_node(
+                AudioNodeInit::WaveShaperNode(WaveShaperNodeOptions {
+                    curve: Some(curve.clone()),
+                    oversample: OverSampleType::None,
+                }),
+                Default::default(),
+            )
+            .expect("Failed to create waveshaper node");
+        let wshx2 = context
+            .create_node(
+                AudioNodeInit::WaveShaperNode(WaveShaperNodeOptions {
+                    curve: Some(curve.clone()),
+                    oversample: OverSampleType::Double,
+                }),
+                Default::default(),
+            )
+            .expect("Failed to create waveshaper node");
+        let wshx4 = context
+            .create_node(
+                AudioNodeInit::WaveShaperNode(WaveShaperNodeOptions {
+                    curve: Some(curve.clone()),
+                    oversample: OverSampleType::Quadruple,
+                }),
+                Default::default(),
+            )
+            .expect("Failed to create waveshaper node");
 
         context.connect_ports(osc.output(0), dest.input(0));
         let _ = context.resume();

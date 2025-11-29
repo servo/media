@@ -14,10 +14,12 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         .create_audio_context(&ClientContextId::build(1, 1), Default::default())
         .unwrap();
     let context = context.lock().unwrap();
-    let buffer_source = context.create_node(
-        AudioNodeInit::AudioBufferSourceNode(Default::default()),
-        Default::default(),
-    );
+    let buffer_source = context
+        .create_node(
+            AudioNodeInit::AudioBufferSourceNode(Default::default()),
+            Default::default(),
+        )
+        .expect("Failed to create buffer source node");
     let dest = context.dest_node();
     context.connect_ports(buffer_source.output(0), dest.input(0));
     let mut buffers = vec![Vec::with_capacity(4096), Vec::with_capacity(4096)];

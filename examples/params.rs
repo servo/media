@@ -14,13 +14,17 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         .unwrap();
     let context = context.lock().unwrap();
     let dest = context.dest_node();
-    let osc = context.create_node(
-        AudioNodeInit::OscillatorNode(Default::default()),
-        Default::default(),
-    );
+    let osc = context
+        .create_node(
+            AudioNodeInit::OscillatorNode(Default::default()),
+            Default::default(),
+        )
+        .expect("Failed to create oscillator node");
     let mut options = GainNodeOptions::default();
     options.gain = 0.5;
-    let gain = context.create_node(AudioNodeInit::GainNode(options), Default::default());
+    let gain = context
+        .create_node(AudioNodeInit::GainNode(options), Default::default())
+        .expect("Failed to create gain node");
     context.connect_ports(osc.output(0), gain.input(0));
     context.connect_ports(gain.output(0), dest.input(0));
     let _ = context.resume();

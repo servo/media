@@ -29,10 +29,11 @@ let context =
 let osc = context.create_node(
   AudioNodeInit::OscillatorNode(Default::default()),
   Default::default(),
-);
+).expect("Failed to create oscillator node");
 let mut options = GainNodeOptions::default();
 options.gain = 0.5;
-let gain = context.create_node(AudioNodeInit::GainNode(options), Default::default());
+let gain = context.create_node(AudioNodeInit::GainNode(options), Default::default())
+  .expect("Failed to create gain node");
 
 // Connect nodes.
 let dest = context.dest_node();

@@ -13,10 +13,12 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let context = context.unwrap();
     let context = context.lock().unwrap();
     let dest = context.dest_node();
-    let osc1 = context.create_node(
-        AudioNodeInit::MediaStreamSourceNode(input),
-        Default::default(),
-    );
+    let osc1 = context
+        .create_node(
+            AudioNodeInit::MediaStreamSourceNode(input),
+            Default::default(),
+        )
+        .expect("Failed to create stream source node");
     context.connect_ports(osc1.output(0), dest.input(0));
     let _ = context.resume();
 
