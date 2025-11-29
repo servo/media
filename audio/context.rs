@@ -200,12 +200,16 @@ impl AudioContext {
         rx.recv().unwrap()
     }
 
-    pub fn create_node(&self, node_type: AudioNodeInit, ch: ChannelInfo) -> NodeId {
+    pub fn create_node(&self, node_type: AudioNodeInit, ch: ChannelInfo) -> Result<NodeId, ()> {
+        // Don't allow node creation once the context is closed.
+        if self.state() == ProcessingState::Closed {
+            return Err(());
+        }
         let (tx, rx) = mpsc::channel();
         let _ = self
             .sender
             .send(AudioRenderThreadMsg::CreateNode(node_type, tx, ch));
-        rx.recv().unwrap()
+        rx.recv().map_err(|_| ())
     }
 
     // Resume audio processing.
