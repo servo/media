@@ -201,10 +201,6 @@ impl AudioContext {
     }
 
     pub fn create_node(&self, node_type: AudioNodeInit, ch: ChannelInfo) -> Result<NodeId, ()> {
-        // Don't allow node creation once the context is closed.
-        if self.state() == ProcessingState::Closed {
-            return Err(());
-        }
         let (tx, rx) = mpsc::channel();
         let _ = self
             .sender
