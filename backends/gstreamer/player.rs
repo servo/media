@@ -1,4 +1,5 @@
 use super::BACKEND_BASE_TIME;
+use crate::media_source::GStreamerMediaSource;
 use crate::media_stream::GStreamerMediaStream;
 use crate::media_stream_source::{register_servo_media_stream_src, ServoMediaStreamSrc};
 use crate::render::GStreamerRender;
@@ -9,9 +10,11 @@ use glib::prelude::*;
 use gst;
 use gst::prelude::*;
 use gst_app;
+use gst_mse::MseSrc;
 use gst_play;
 use gst_play::prelude::*;
 use ipc_channel::ipc::{channel, IpcReceiver, IpcSender};
+use servo_media_mse::MediaSource;
 use servo_media_player::audio::AudioRenderer;
 use servo_media_player::context::PlayerGLContext;
 use servo_media_player::metadata::Metadata;
@@ -108,6 +111,7 @@ impl AsRef<[f32]> for GStreamerAudioChunk {
 enum PlayerSource {
     Seekable(ServoSrc),
     Stream(ServoMediaStreamSrc),
+    Mse(MseSrc),
 }
 
 struct PlayerInner {
@@ -312,6 +316,19 @@ impl PlayerInner {
             .map_err(|_| PlayerError::SetTrackFailed)?;
         self.player.set_video_track_enabled(enabled);
         Ok(())
+    }
+
+    fn connect_media_source(&self, source: &dyn MediaSource) -> Result<(), PlayerError> {
+        debug_assert!(self.stream_type == StreamType::MSE);
+        if let Some(ref src) = self.source {
+            if let PlayerSource::Mse(src) = src {
+                if let Some(gst_source) = source.as_any().downcast_ref::<GStreamerMediaSource>() {
+                    gst_source.inner().attach(src);
+                    return Ok(());
+                }
+            }
+        }
+        Err(PlayerError::SetStreamFailed)
     }
 }
 
@@ -528,6 +545,7 @@ impl GStreamerPlayer {
                 })?;
                 "servosrc://".to_value()
             },
+            StreamType::MSE => "mse://".to_value(),
         };
         player.set_property("uri", &uri);
 
@@ -774,6 +792,16 @@ impl GStreamerPlayer {
                         });
                         PlayerSource::Stream(media_stream_src)
                     },
+                    StreamType::MSE => {
+                        let mse_src = source
+                            .dynamic_cast::<MseSrc>()
+                            .expect("Source element is expected to be a MseSrc!");
+                        let sender_clone = sender.clone();
+                        is_ready_clone.call_once(|| {
+                            let _ = notify!(sender_clone, Ok(()));
+                        });
+                        PlayerSource::Mse(mse_src)
+                    },
                 };
 
                 inner.set_src(source);
@@ -873,6 +901,13 @@ impl Player for GStreamerPlayer {
         let inner = self.inner.borrow();
         let mut inner = inner.as_ref().unwrap().lock().unwrap();
         inner.set_video_track(stream_index, enabled)
+    }
+
+    fn connect_media_source(&self, source: &dyn MediaSource) -> Result<(), PlayerError> {
+        self.setup()?;
+        let inner = self.inner.borrow();
+        let inner = inner.as_ref().unwrap().lock().unwrap();
+        inner.connect_media_source(source)
     }
 }
 
