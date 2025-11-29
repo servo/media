@@ -19,21 +19,25 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         let context = context.lock().unwrap();
 
         let dest = context.dest_node();
-        let osc = context.create_node(
-            AudioNodeInit::OscillatorNode(OscillatorNodeOptions::default()),
-            Default::default(),
-        );
+        let osc = context
+            .create_node(
+                AudioNodeInit::OscillatorNode(OscillatorNodeOptions::default()),
+                Default::default(),
+            )
+            .expect("Failed to create oscillator node");
 
         let feedback = Arc::new(vec![7.0, 1.0, 1.0]);
         let feedforward = Arc::new(vec![1.0, 1.0, 1.0]);
 
-        let iir = context.create_node(
-            AudioNodeInit::IIRFilterNode(IIRFilterNodeOptions {
-                feedback: feedback.clone(),
-                feedforward: feedforward.clone(),
-            }),
-            Default::default(),
-        );
+        let iir = context
+            .create_node(
+                AudioNodeInit::IIRFilterNode(IIRFilterNodeOptions {
+                    feedback: feedback.clone(),
+                    feedforward: feedforward.clone(),
+                }),
+                Default::default(),
+            )
+            .expect("Failed to create IIR filter node");
 
         context.connect_ports(osc.output(0), dest.input(0));
         let _ = context.resume();

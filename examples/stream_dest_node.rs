@@ -14,16 +14,20 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         .unwrap();
     let context = context.lock().unwrap();
     let options = OscillatorNodeOptions::default();
-    let osc1 = context.create_node(
-        AudioNodeInit::OscillatorNode(options.clone()),
-        Default::default(),
-    );
+    let osc1 = context
+        .create_node(
+            AudioNodeInit::OscillatorNode(options.clone()),
+            Default::default(),
+        )
+        .expect("Failed to create oscillator node");
 
     let (socket, id) = servo_media.create_stream_and_socket(MediaStreamType::Audio);
-    let dest = context.create_node(
-        AudioNodeInit::MediaStreamDestinationNode(socket),
-        Default::default(),
-    );
+    let dest = context
+        .create_node(
+            AudioNodeInit::MediaStreamDestinationNode(socket),
+            Default::default(),
+        )
+        .expect("Failed to create stream destination node");
     context.connect_ports(osc1.output(0), dest.input(0));
 
     let mut output = servo_media.create_stream_output();

@@ -31,13 +31,17 @@ impl AudioStream {
             .create_audio_context(&ClientContextId::build(1, 1), Default::default());
         {
             let context = context.lock().unwrap();
-            let osc = context.create_node(
-                AudioNodeInit::OscillatorNode(Default::default()),
-                Default::default(),
-            );
+            let osc = context
+                .create_node(
+                    AudioNodeInit::OscillatorNode(Default::default()),
+                    Default::default(),
+                )
+                .expect("Failed to create oscillator node");
             let mut options = GainNodeOptions::default();
             options.gain = 0.5;
-            let gain = context.create_node(AudioNodeInit::GainNode(options), Default::default());
+            let gain = context
+                .create_node(AudioNodeInit::GainNode(options), Default::default())
+                .expect("Failed to create gain node");
             let dest = context.dest_node();
             context.connect_ports(osc.output(0), gain.input(0));
             context.connect_ports(gain.output(0), dest.input(0));

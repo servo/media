@@ -15,20 +15,28 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         .unwrap();
     let context = context.lock().unwrap();
     let mut options = OscillatorNodeOptions::default();
-    let osc = context.create_node(
-        AudioNodeInit::OscillatorNode(options.clone()),
-        Default::default(),
-    );
+    let osc = context
+        .create_node(
+            AudioNodeInit::OscillatorNode(options.clone()),
+            Default::default(),
+        )
+        .expect("Failed to create oscillator node");
     options.freq = 213.;
-    let osc2 = context.create_node(AudioNodeInit::OscillatorNode(options), Default::default());
+    let osc2 = context
+        .create_node(AudioNodeInit::OscillatorNode(options), Default::default())
+        .expect("Failed to create oscillator node");
     let mut options = GainNodeOptions::default();
     options.gain = 0.7;
-    let gain = context.create_node(AudioNodeInit::GainNode(options.clone()), Default::default());
+    let gain = context
+        .create_node(AudioNodeInit::GainNode(options.clone()), Default::default())
+        .expect("Failed to create gain node");
     let options = ChannelNodeOptions { channels: 2 };
-    let merger = context.create_node(
-        AudioNodeInit::ChannelMergerNode(options),
-        Default::default(),
-    );
+    let merger = context
+        .create_node(
+            AudioNodeInit::ChannelMergerNode(options),
+            Default::default(),
+        )
+        .expect("Failed to create channel merger node");
 
     let dest = context.dest_node();
     context.connect_ports(osc.output(0), gain.input(0));

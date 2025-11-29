@@ -33,10 +33,12 @@ fn run_example(servo_media: Arc<ServoMedia>) {
             .extend_from_slice((*buffer).as_ref());
         sender.lock().unwrap().send(()).unwrap();
     }));
-    let osc = context.create_node(
-        AudioNodeInit::OscillatorNode(Default::default()),
-        Default::default(),
-    );
+    let osc = context
+        .create_node(
+            AudioNodeInit::OscillatorNode(Default::default()),
+            Default::default(),
+        )
+        .expect("Failed to create oscillator node");
     let dest = context.dest_node();
     context.connect_ports(osc.output(0), dest.input(0));
     context.message_node(
@@ -53,10 +55,12 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         .create_audio_context(&ClientContextId::build(1, 2), Default::default())
         .unwrap();
     let context = context.lock().unwrap();
-    let buffer_source = context.create_node(
-        AudioNodeInit::AudioBufferSourceNode(Default::default()),
-        Default::default(),
-    );
+    let buffer_source = context
+        .create_node(
+            AudioNodeInit::AudioBufferSourceNode(Default::default()),
+            Default::default(),
+        )
+        .expect("Failed to create oscillator node");
     let dest = context.dest_node();
     context.connect_ports(buffer_source.output(0), dest.input(0));
     context.message_node(

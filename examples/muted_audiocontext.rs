@@ -17,10 +17,12 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         let context = context1.lock().unwrap();
         let dest = context.dest_node();
         let options = OscillatorNodeOptions::default();
-        let osc1 = context.create_node(
-            AudioNodeInit::OscillatorNode(options.clone()),
-            Default::default(),
-        );
+        let osc1 = context
+            .create_node(
+                AudioNodeInit::OscillatorNode(options.clone()),
+                Default::default(),
+            )
+            .expect("Failed to create oscillator node");
         context.connect_ports(osc1.output(0), dest.input(0));
         let _ = context.resume();
         context.message_node(
@@ -37,10 +39,12 @@ fn run_example(servo_media: Arc<ServoMedia>) {
         let context2 = context2.unwrap();
         let context = context2.lock().unwrap();
         let dest = context.dest_node();
-        let osc3 = context.create_node(
-            AudioNodeInit::OscillatorNode(options.clone()),
-            Default::default(),
-        );
+        let osc3 = context
+            .create_node(
+                AudioNodeInit::OscillatorNode(options.clone()),
+                Default::default(),
+            )
+            .expect("Failed to create oscillator node");
         context.connect_ports(osc3.output(0), dest.input(0));
 
         let _ = context.resume();

@@ -40,8 +40,9 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     let context = context.lock().unwrap();
     let listener = context.listener();
 
-    let source_node =
-        context.create_node(AudioNodeInit::MediaElementSourceNode, Default::default());
+    let source_node = context
+        .create_node(AudioNodeInit::MediaElementSourceNode, Default::default())
+        .expect("Failed to create MediaElementSourceNode node");
 
     let (sender, receiver) = mpsc::channel();
     context.message_node(
@@ -59,7 +60,9 @@ fn run_example(servo_media: Arc<ServoMedia>) {
     options.position_z = 100.;
     options.ref_distance = 100.;
     options.rolloff_factor = 0.01;
-    let panner = context.create_node(AudioNodeInit::PannerNode(options), Default::default());
+    let panner = context
+        .create_node(AudioNodeInit::PannerNode(options), Default::default())
+        .expect("Failed to create panner node");
 
     let dest = context.dest_node();
 
