@@ -96,17 +96,21 @@ pub enum StreamType {
 pub trait Player: Send + MediaInstance {
     fn play(&self) -> Result<(), PlayerError>;
     fn pause(&self) -> Result<(), PlayerError>;
+    fn paused(&self) -> bool;
     fn stop(&self) -> Result<(), PlayerError>;
     fn seek(&self, time: f64) -> Result<(), PlayerError>;
-    fn seekable(&self) -> Result<Vec<Range<f64>>, PlayerError>;
-    fn set_mute(&self, val: bool) -> Result<(), PlayerError>;
-    fn set_volume(&self, value: f64) -> Result<(), PlayerError>;
+    fn seekable(&self) -> Vec<Range<f64>>;
+    fn set_mute(&self, muted: bool) -> Result<(), PlayerError>;
+    fn muted(&self) -> bool;
+    fn set_volume(&self, volume: f64) -> Result<(), PlayerError>;
+    fn volume(&self) -> f64;
     fn set_input_size(&self, size: u64) -> Result<(), PlayerError>;
-    fn set_rate(&self, rate: f64) -> Result<(), PlayerError>;
+    fn set_playback_rate(&self, playback_rate: f64) -> Result<(), PlayerError>;
+    fn playback_rate(&self) -> f64;
     fn push_data(&self, data: Vec<u8>) -> Result<(), PlayerError>;
     fn end_of_stream(&self) -> Result<(), PlayerError>;
     /// Get the list of time ranges in seconds that have been buffered.
-    fn buffered(&self) -> Result<Vec<Range<f64>>, PlayerError>;
+    fn buffered(&self) -> Vec<Range<f64>>;
     /// Set the stream to be played by the player.
     /// Only a single stream of the same type (audio or video) can be set.
     /// Subsequent calls with a stream of the same type will override the previously

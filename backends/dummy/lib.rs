@@ -154,6 +154,11 @@ impl Player for DummyPlayer {
     fn pause(&self) -> Result<(), PlayerError> {
         Ok(())
     }
+
+    fn paused(&self) -> bool {
+        true
+    }
+
     fn stop(&self) -> Result<(), PlayerError> {
         Ok(())
     }
@@ -165,27 +170,43 @@ impl Player for DummyPlayer {
         Ok(())
     }
 
+    fn muted(&self) -> bool {
+        false
+    }
+
     fn set_volume(&self, _: f64) -> Result<(), PlayerError> {
         Ok(())
+    }
+
+    fn volume(&self) -> f64 {
+        1.0
     }
 
     fn set_input_size(&self, _: u64) -> Result<(), PlayerError> {
         Ok(())
     }
-    fn set_rate(&self, _: f64) -> Result<(), PlayerError> {
+
+    fn set_playback_rate(&self, _: f64) -> Result<(), PlayerError> {
         Ok(())
     }
+
+    fn playback_rate(&self) -> f64 {
+        1.0
+    }
+
     fn push_data(&self, _: Vec<u8>) -> Result<(), PlayerError> {
         Ok(())
     }
     fn end_of_stream(&self) -> Result<(), PlayerError> {
         Ok(())
     }
-    fn buffered(&self) -> Result<Vec<Range<f64>>, PlayerError> {
-        Ok(vec![])
+
+    fn buffered(&self) -> Vec<Range<f64>> {
+        vec![]
     }
-    fn seekable(&self) -> Result<Vec<Range<f64>>, PlayerError> {
-        Ok(vec![])
+
+    fn seekable(&self) -> Vec<Range<f64>> {
+        vec![]
     }
 
     fn set_stream(&self, _: &MediaStreamId, _: bool) -> Result<(), PlayerError> {
