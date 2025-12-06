@@ -2,7 +2,7 @@ use crate::graph::{PortIndex, PortKind};
 use crate::node::ChannelInterpretation;
 use byte_slice_cast::*;
 use euclid::default::Vector3D;
-use smallvec::SmallVec;
+use smallvec::{smallvec, SmallVec};
 use std::f32::consts::SQRT_2;
 use std::mem;
 use std::ops::*;
@@ -41,19 +41,11 @@ impl Chunk {
         self.blocks.len()
     }
 
-    pub fn explicit_silence() -> Chunk {
-        let blocks: SmallVec<[Block; 1]> = SmallVec::new();
-        Chunk {
-            blocks: blocks
-                .as_slice()
-                .iter()
-                .map(|_| {
-                    let mut block = Block::default();
-                    block.explicit_silence();
-                    block
-                })
-                .collect(),
-        }
+    pub fn explicit_silence() -> Self {
+        let mut block = Block::default();
+        block.explicit_silence();
+        let blocks = smallvec![block];
+        Self { blocks }
     }
 }
 
