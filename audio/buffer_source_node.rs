@@ -236,24 +236,35 @@ impl AudioNodeEngine for AudioBufferSourceNode {
             }
         }
 
-        let buffer_offset_per_tick =
+        let mut buffer_offset_per_tick =
             computed_playback_rate * (buffer.sample_rate as f64 / info.sample_rate as f64);
+
+        // WebAudio §1.9.5: "Setting the loop attribute to true causes playback of
+        // the region of the buffer defined by the endpoints loopStart and loopEnd
+        // to continue indefinitely, once any part of the looped region has been
+        // played. While loop remains true, looped playback will continue until one
+        // of the following occurs:
+        //  * stop() is called,
+        //  * the scheduled stop time has been reached,
+        //  * the duration has been exceeded, if start() was called with a duration value."
+        // Even with extreme playback rates we must stay inside the loop body, so wrap
+        // the per-tick delta instead of bailing.
+        if self.loop_enabled && actual_loop_end > actual_loop_start {
+            let loop_length = actual_loop_end - actual_loop_start;
+            if loop_length > 0. {
+                let step = buffer_offset_per_tick.abs();
+                if step >= loop_length {
+                    let mut wrapped = step.rem_euclid(loop_length);
+                    if wrapped == 0. {
+                        wrapped = loop_length;
+                    }
+                    buffer_offset_per_tick = wrapped.copysign(buffer_offset_per_tick);
+                }
+            }
+        }
 
         // We will output at most this many frames (fewer if we run out of data).
         let frames_to_output = stop_at - start_at;
-
-        if self.loop_enabled && buffer_offset_per_tick.abs() < actual_loop_end - actual_loop_start {
-            // Refuse to output data in this extreme edge case.
-            //
-            // XXX(collares): There are two ways we could handle it:
-            // 1) Take buffer_offset_per_tick modulo the loop length, and handle
-            // the pre-loop-entering output separately.
-            // 2) Add a division by the loop length to the hot path below.
-            // None of them seem worth the trouble. The spec should forbid this.
-            self.maybe_trigger_onended_callback();
-            inputs.blocks.push(Default::default());
-            return inputs;
-        }
 
         // Fast path for the case where we can just copy FRAMES_PER_BLOCK
         // frames straight from the buffer.
@@ -292,6 +303,15 @@ impl AudioNodeEngine for AudioBufferSourceNode {
 
                 for sample in data {
                     if duration <= 0. {
+                        println!(
+                            "AudioBufferSourceNode: duration exhausted (loop={}, buffer_pos={}, loop_range=({:.3},{:.3}), start_at={}, stop_at={})",
+                            self.loop_enabled,
+                            pos,
+                            actual_loop_start,
+                            actual_loop_end,
+                            start_at,
+                            stop_at
+                        );
                         break;
                     }
 
