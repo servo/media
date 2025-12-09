@@ -303,15 +303,6 @@ impl AudioNodeEngine for AudioBufferSourceNode {
 
                 for sample in data {
                     if duration <= 0. {
-                        println!(
-                            "AudioBufferSourceNode: duration exhausted (loop={}, buffer_pos={}, loop_range=({:.3},{:.3}), start_at={}, stop_at={})",
-                            self.loop_enabled,
-                            pos,
-                            actual_loop_start,
-                            actual_loop_end,
-                            start_at,
-                            stop_at
-                        );
                         break;
                     }
 
