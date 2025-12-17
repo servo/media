@@ -9,6 +9,10 @@ license = "MPL-2.0"
 name = "servo_media_gstreamer"
 path = "lib.rs"
 
+[features]
+glx = ["servo-media-gstreamer-render-unix/gl-x11"]
+wayland = ["servo-media-gstreamer-render-unix/gl-wayland"]
+
 [dependencies]
 byte-slice-cast = "1"
 glib = { workspace = true }
@@ -38,7 +42,6 @@ url = "2.0"
 [target.'cfg(any(target_os = "linux", target_os = "dragonfly", target_os = "freebsd", target_os = "netbsd", target_os = "openbsd"))'.dependencies]
 servo-media-gstreamer-render-unix = { path = "render-unix", features = [
     "gl-egl",
-    "gl-x11",
 ] }
 
 [target.'cfg(target_os = "android")'.dependencies]
