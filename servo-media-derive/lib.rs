@@ -11,8 +11,8 @@ use proc_macro::TokenStream;
 #[proc_macro_derive(AudioScheduledSourceNode)]
 pub fn audio_scheduled_source_node(input: TokenStream) -> TokenStream {
     let ast: syn::DeriveInput = syn::parse(input).unwrap();
-    let gen = impl_audio_scheduled_source_node(&ast);
-    gen.into()
+    let r#gen = impl_audio_scheduled_source_node(&ast);
+    r#gen.into()
 }
 
 fn impl_audio_scheduled_source_node(ast: &syn::DeriveInput) -> proc_macro2::TokenStream {
@@ -117,7 +117,7 @@ fn impl_audio_scheduled_source_node(ast: &syn::DeriveInput) -> proc_macro2::Toke
 pub fn channel_info(input: TokenStream) -> TokenStream {
     let ast: syn::DeriveInput = syn::parse(input).unwrap();
     let name = &ast.ident;
-    let gen = quote! {
+    let r#gen = quote! {
         impl crate::node::AudioNodeCommon for #name {
             fn channel_info(&self) -> &crate::node::ChannelInfo {
                 &self.channel_info
@@ -128,5 +128,5 @@ pub fn channel_info(input: TokenStream) -> TokenStream {
             }
         }
     };
-    gen.into()
+    r#gen.into()
 }

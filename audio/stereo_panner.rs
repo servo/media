@@ -1,4 +1,4 @@
-use crate::block::{Chunk, Tick, FRAMES_PER_BLOCK};
+use crate::block::{Chunk, FRAMES_PER_BLOCK, Tick};
 use crate::node::{AudioNodeEngine, BlockInfo};
 use crate::node::{AudioNodeType, ChannelInfo};
 use crate::param::{Param, ParamType};

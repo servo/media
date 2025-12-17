@@ -15,16 +15,16 @@ use servo_media_audio::render_thread::AudioRenderThreadMsg;
 use servo_media_audio::sink::{AudioSink, AudioSinkError};
 use servo_media_audio::{AudioBackend, AudioStreamReader};
 use servo_media_player::context::PlayerGLContext;
-use servo_media_player::{audio, video, Player, PlayerError, PlayerEvent, StreamType};
+use servo_media_player::{Player, PlayerError, PlayerEvent, StreamType, audio, video};
 use servo_media_streams::capture::MediaTrackConstraintSet;
 use servo_media_streams::device_monitor::{MediaDeviceInfo, MediaDeviceMonitor};
-use servo_media_streams::registry::{register_stream, unregister_stream, MediaStreamId};
+use servo_media_streams::registry::{MediaStreamId, register_stream, unregister_stream};
 use servo_media_streams::{MediaOutput, MediaSocket, MediaStream, MediaStreamType};
 use servo_media_traits::{ClientContextId, MediaInstance};
 use servo_media_webrtc::{
-    thread, BundlePolicy, DataChannelId, DataChannelInit, DataChannelMessage, IceCandidate,
+    BundlePolicy, DataChannelId, DataChannelInit, DataChannelMessage, IceCandidate,
     SessionDescription, WebRtcBackend, WebRtcController, WebRtcControllerBackend,
-    WebRtcDataChannelResult, WebRtcResult, WebRtcSignaller,
+    WebRtcDataChannelResult, WebRtcResult, WebRtcSignaller, thread,
 };
 use std::any::Any;
 use std::ops::Range;

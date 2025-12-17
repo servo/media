@@ -2,7 +2,7 @@ use crate::graph::{PortIndex, PortKind};
 use crate::node::ChannelInterpretation;
 use byte_slice_cast::*;
 use euclid::default::Vector3D;
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use std::f32::consts::SQRT_2;
 use std::mem;
 use std::ops::*;

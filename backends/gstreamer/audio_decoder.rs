@@ -7,7 +7,7 @@ use servo_media_audio::decoder::{AudioDecoder, AudioDecoderCallbacks};
 use servo_media_audio::decoder::{AudioDecoderError, AudioDecoderOptions};
 use std::io::Cursor;
 use std::io::Read;
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{Arc, Mutex, mpsc};
 
 pub struct GStreamerAudioDecoderProgress(gst::buffer::MappedBuffer<gst::buffer::Readable>);
 
@@ -242,13 +242,13 @@ impl AudioDecoder for GStreamerAudioDecoder {
 
                                     for position in positions.iter() {
                                         let buffer = buffer.clone();
-                                        let map = if let Ok(map) =
-                                            buffer.into_mapped_buffer_readable()
-                                        {
-                                            map
-                                        } else {
-                                            callbacks_.error(AudioDecoderError::BufferReadFailed);
-                                            return Err(gst::FlowError::Error);
+                                        let map = match buffer.into_mapped_buffer_readable() {
+                                            Ok(map) => map,
+                                            _ => {
+                                                callbacks_
+                                                    .error(AudioDecoderError::BufferReadFailed);
+                                                return Err(gst::FlowError::Error);
+                                            },
                                         };
                                         let progress = Box::new(GStreamerAudioDecoderProgress(map));
                                         let channel = position.to_mask() as u32;

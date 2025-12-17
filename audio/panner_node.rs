@@ -1,4 +1,4 @@
-use crate::block::{Block, Chunk, Tick, FRAMES_PER_BLOCK};
+use crate::block::{Block, Chunk, FRAMES_PER_BLOCK, Tick};
 use crate::node::{AudioNodeEngine, AudioNodeMessage, BlockInfo};
 use crate::node::{AudioNodeType, ChannelInfo};
 use crate::param::{Param, ParamDir, ParamType};
@@ -8,11 +8,7 @@ use std::f32::consts::PI;
 // .normalize(), but it takes into account zero vectors
 pub fn normalize_zero(v: Vector3D<f32>) -> Vector3D<f32> {
     let len = v.length();
-    if len == 0. {
-        v
-    } else {
-        v / len
-    }
+    if len == 0. { v } else { v / len }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

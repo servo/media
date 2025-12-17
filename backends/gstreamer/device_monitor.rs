@@ -1,5 +1,5 @@
-use gst::prelude::*;
 use gst::DeviceMonitor as GstDeviceMonitor;
+use gst::prelude::*;
 use std::cell::RefCell;
 
 use servo_media_streams::device_monitor::{MediaDeviceInfo, MediaDeviceKind, MediaDeviceMonitor};

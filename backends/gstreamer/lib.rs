@@ -143,15 +143,14 @@ impl GStreamerBackend {
     ) {
         let mut instances = self.instances.lock().unwrap();
         match instances.get_mut(id) {
-            Some(vec) => vec.retain(|(_, weak)| {
-                if let Some(instance) = weak.upgrade() {
+            Some(vec) => vec.retain(|(_, weak)| match weak.upgrade() {
+                Some(instance) => {
                     if cb(&*(instance.lock().unwrap())).is_err() {
                         warn!("Error executing media instance action");
                     }
                     true
-                } else {
-                    false
-                }
+                },
+                _ => false,
             }),
             None => {
                 warn!("Trying to exec media action on an unknown client context");

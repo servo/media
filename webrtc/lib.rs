@@ -2,8 +2,8 @@ extern crate log;
 extern crate servo_media_streams;
 extern crate uuid;
 
-use servo_media_streams::registry::MediaStreamId;
 use servo_media_streams::MediaStreamType;
+use servo_media_streams::registry::MediaStreamId;
 
 use std::fmt::Display;
 use std::str::FromStr;

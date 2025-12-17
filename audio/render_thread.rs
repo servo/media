@@ -1,6 +1,6 @@
 use crate::analyser_node::AnalyserNode;
 use crate::biquad_filter_node::BiquadFilterNode;
-use crate::block::{Chunk, Tick, FRAMES_PER_BLOCK};
+use crate::block::{Chunk, FRAMES_PER_BLOCK, Tick};
 use crate::buffer_source_node::AudioBufferSourceNode;
 use crate::channel_node::{ChannelMergerNode, ChannelSplitterNode};
 use crate::constant_source_node::ConstantSourceNode;

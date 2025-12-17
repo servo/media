@@ -4,9 +4,9 @@
 
 use euclid::Scale;
 use ipc_channel::ipc::{self, IpcReceiver};
+use servo_media::ServoMedia;
 use servo_media::player;
 use servo_media::player::video;
-use servo_media::ServoMedia;
 use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::path::Path;
@@ -14,8 +14,8 @@ use std::sync::{Arc, Mutex};
 use thiserror::Error;
 use webrender::Renderer;
 use webrender::*;
-use webrender_api::units::*;
 use webrender_api::DocumentId;
+use webrender_api::units::*;
 use webrender_api::*;
 
 #[derive(Debug, Error)]

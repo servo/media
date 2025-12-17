@@ -8,11 +8,11 @@ use gst::prelude::*;
 use gst_sdp;
 use gst_webrtc;
 use log::warn;
-use servo_media_streams::registry::{get_stream, MediaStreamId};
 use servo_media_streams::MediaStreamType;
+use servo_media_streams::registry::{MediaStreamId, get_stream};
+use servo_media_webrtc::WebRtcController as WebRtcThread;
 use servo_media_webrtc::datachannel::DataChannelId;
 use servo_media_webrtc::thread::InternalEvent;
-use servo_media_webrtc::WebRtcController as WebRtcThread;
 use servo_media_webrtc::*;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -169,7 +169,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         let mut data_channels = self.data_channels.lock().unwrap();
         match data_channels.get(id) {
             Some(ref channel) => match channel {
-                DataChannelEventTarget::Created(ref channel) => {
+                &&DataChannelEventTarget::Created(ref channel) => {
                     channel.close();
                     Ok(())
                 },
@@ -189,7 +189,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
     ) -> WebRtcResult {
         match self.data_channels.lock().unwrap().get(id) {
             Some(ref channel) => match channel {
-                DataChannelEventTarget::Created(ref channel) => {
+                &&DataChannelEventTarget::Created(ref channel) => {
                     channel.send(message);
                     Ok(())
                 },
@@ -235,7 +235,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                             .insert(channel_id, DataChannelEventTarget::Buffered(vec![event]));
                     },
                     Some(ref mut channel) => match channel {
-                        DataChannelEventTarget::Buffered(ref mut events) => {
+                        &mut &mut DataChannelEventTarget::Buffered(ref mut events) => {
                             events.push(event);
                             return Ok(());
                         },
@@ -283,7 +283,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                         return Err(WebRtcError::Backend(format!(
                             "unknown signaling state: {:?}",
                             i
-                        )))
+                        )));
                     },
                 };
                 self.signaller.update_signaling_state(state);
@@ -301,7 +301,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                         return Err(WebRtcError::Backend(format!(
                             "unknown gathering state: {:?}",
                             i
-                        )))
+                        )));
                     },
                 };
                 self.signaller.update_gathering_state(state);
@@ -323,7 +323,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                         return Err(WebRtcError::Backend(format!(
                             "unknown ICE connection state: {:?}",
                             i
-                        )))
+                        )));
                     },
                 };
                 self.signaller.update_ice_connection_state(state);
@@ -606,7 +606,7 @@ impl GStreamerWebRtcController {
                             let mut data_channels = data_channels.lock().unwrap();
                             if let Some(ref mut channel) = data_channels.get_mut(&id) {
                                 match channel {
-                                    DataChannelEventTarget::Buffered(ref mut events) => {
+                                    &mut &mut DataChannelEventTarget::Buffered(ref mut events) => {
                                         for event in events.drain(0..) {
                                             match event {
                                                 DataChannelEvent::Close => closed_channel = true,

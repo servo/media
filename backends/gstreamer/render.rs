@@ -3,9 +3,9 @@ use glib::prelude::*;
 use std::sync::Arc;
 
 use servo_media_gstreamer_render::Render;
+use servo_media_player::PlayerError;
 use servo_media_player::context::PlayerGLContext;
 use servo_media_player::video::{Buffer, VideoFrame, VideoFrameData};
-use servo_media_player::PlayerError;
 
 #[cfg(any(
     target_os = "linux",
@@ -47,9 +47,9 @@ mod platform {
 )))]
 mod platform {
     use servo_media_gstreamer_render::Render as RenderTrait;
+    use servo_media_player::PlayerError;
     use servo_media_player::context::PlayerGLContext;
     use servo_media_player::video::VideoFrame;
-    use servo_media_player::PlayerError;
 
     pub struct RenderDummy();
     pub type Render = RenderDummy;

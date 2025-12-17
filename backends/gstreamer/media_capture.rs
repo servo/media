@@ -2,9 +2,9 @@ use crate::media_stream::GStreamerMediaStream;
 use gst;
 use gst::caps::NoFeature;
 use gst::prelude::*;
+use servo_media_streams::MediaStreamType;
 use servo_media_streams::capture::*;
 use servo_media_streams::registry::MediaStreamId;
-use servo_media_streams::MediaStreamType;
 use std::i32;
 
 trait AddToCaps {
@@ -127,11 +127,12 @@ impl GstMediaDevices {
         if let Some(f) = f {
             let _ = self.monitor.remove_filter(f);
         }
-        if let Some(d) = devices.front() {
-            let element = d.create_element(None).ok()?;
-            Some(GstMediaTrack { element })
-        } else {
-            None
+        match devices.front() {
+            Some(d) => {
+                let element = d.create_element(None).ok()?;
+                Some(GstMediaTrack { element })
+            },
+            _ => None,
         }
     }
 }

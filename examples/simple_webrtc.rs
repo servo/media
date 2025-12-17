@@ -16,12 +16,12 @@ extern crate servo_media_auto;
 extern crate websocket;
 
 use rand::Rng;
+use servo_media::ServoMedia;
 use servo_media::streams::*;
 use servo_media::webrtc::*;
-use servo_media::ServoMedia;
 use std::env;
 use std::net;
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
 use websocket::OwnedMessage;
 
@@ -62,22 +62,24 @@ fn send_loop(
     mut sender: websocket::sender::Writer<net::TcpStream>,
     send_msg_rx: mpsc::Receiver<OwnedMessage>,
 ) -> thread::JoinHandle<()> {
-    thread::spawn(move || loop {
-        let msg = match send_msg_rx.recv() {
-            Ok(msg) => msg,
-            Err(err) => {
-                println!("Send loop error {:?}", err);
+    thread::spawn(move || {
+        loop {
+            let msg = match send_msg_rx.recv() {
+                Ok(msg) => msg,
+                Err(err) => {
+                    println!("Send loop error {:?}", err);
+                    return;
+                },
+            };
+
+            if let OwnedMessage::Close(_) = msg {
+                let _ = sender.send_message(&msg);
                 return;
-            },
-        };
+            }
 
-        if let OwnedMessage::Close(_) = msg {
-            let _ = sender.send_message(&msg);
-            return;
-        }
-
-        if let Err(err) = sender.send_message(&msg) {
-            println!("Error sending {:?}", err);
+            if let Err(err) = sender.send_message(&msg) {
+                println!("Error sending {:?}", err);
+            }
         }
     })
 }

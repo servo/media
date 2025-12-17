@@ -1,8 +1,8 @@
 use crate::block::{Block, Chunk, FRAMES_PER_BLOCK};
 use crate::node::{AudioNodeEngine, AudioNodeType, BlockInfo, ChannelInfo};
 use player::audio::AudioRenderer;
-use std::collections::hash_map::Entry;
 use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 

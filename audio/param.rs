@@ -1,6 +1,6 @@
 use crate::block::Block;
-use crate::block::Tick;
 use crate::block::FRAMES_PER_BLOCK_USIZE;
+use crate::block::Tick;
 use crate::node::BlockInfo;
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
