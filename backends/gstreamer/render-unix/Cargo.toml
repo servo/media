@@ -2,7 +2,7 @@
 name = "servo-media-gstreamer-render-unix"
 version = "0.1.0"
 authors = ["The Servo Project Developers"]
-edition = "2021"
+edition = "2024"
 license = "MPL-2.0"
 
 [features]
