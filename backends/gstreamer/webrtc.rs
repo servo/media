@@ -169,7 +169,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
         let mut data_channels = self.data_channels.lock().unwrap();
         match data_channels.get(id) {
             Some(ref channel) => match channel {
-                DataChannelEventTarget::Created(ref channel) => {
+                &&DataChannelEventTarget::Created(ref channel) => {
                     channel.close();
                     Ok(())
                 },
@@ -189,7 +189,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
     ) -> WebRtcResult {
         match self.data_channels.lock().unwrap().get(id) {
             Some(ref channel) => match channel {
-                DataChannelEventTarget::Created(ref channel) => {
+                &&DataChannelEventTarget::Created(ref channel) => {
                     channel.send(message);
                     Ok(())
                 },
@@ -235,7 +235,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                             .insert(channel_id, DataChannelEventTarget::Buffered(vec![event]));
                     },
                     Some(ref mut channel) => match channel {
-                        DataChannelEventTarget::Buffered(ref mut events) => {
+                        &mut &mut DataChannelEventTarget::Buffered(ref mut events) => {
                             events.push(event);
                             return Ok(());
                         },
@@ -606,7 +606,7 @@ impl GStreamerWebRtcController {
                             let mut data_channels = data_channels.lock().unwrap();
                             if let Some(ref mut channel) = data_channels.get_mut(&id) {
                                 match channel {
-                                    DataChannelEventTarget::Buffered(ref mut events) => {
+                                    &mut &mut DataChannelEventTarget::Buffered(ref mut events) => {
                                         for event in events.drain(0..) {
                                             match event {
                                                 DataChannelEvent::Close => closed_channel = true,

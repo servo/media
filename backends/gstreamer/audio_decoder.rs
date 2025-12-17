@@ -242,14 +242,13 @@ impl AudioDecoder for GStreamerAudioDecoder {
 
                                     for position in positions.iter() {
                                         let buffer = buffer.clone();
-                                        let map = if let Ok(map) =
-                                            buffer.into_mapped_buffer_readable()
-                                        {
+                                        let map = match buffer.into_mapped_buffer_readable()
+                                        { Ok(map) => {
                                             map
-                                        } else {
+                                        } _ => {
                                             callbacks_.error(AudioDecoderError::BufferReadFailed);
                                             return Err(gst::FlowError::Error);
-                                        };
+                                        }};
                                         let progress = Box::new(GStreamerAudioDecoderProgress(map));
                                         let channel = position.to_mask() as u32;
                                         callbacks_.progress(progress, channel);

@@ -64,11 +64,11 @@ impl GStreamerAudioSink {
     }
 
     fn set_channels_if_changed(&self, channels: u8) -> Result<(), AudioSinkError> {
-        let curr_channels = if let Some(ch) = self.audio_info.borrow().as_ref() {
+        let curr_channels = match self.audio_info.borrow().as_ref() { Some(ch) => {
             ch.channels()
-        } else {
+        } _ => {
             return Ok(());
-        };
+        }};
         if channels != curr_channels as u8 {
             self.set_audio_info(self.sample_rate.get(), channels)?;
         }

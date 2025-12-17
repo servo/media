@@ -114,7 +114,7 @@ impl RenderUnix {
             GlContext::Unknown => (None, None),
         };
 
-        if let Some(app_context) = wrapped_context {
+        match wrapped_context { Some(app_context) => {
             let cat = gst::DebugCategory::get("servoplayer").unwrap();
             let _: Result<(), ()> = app_context
                 .activate(true)
@@ -138,9 +138,9 @@ impl RenderUnix {
                 gst_context: Arc::new(Mutex::new(None)),
                 gl_upload: Arc::new(Mutex::new(None)),
             })
-        } else {
+        } _ => {
             None
-        }
+        }}
     }
 
     fn create_wrapped_context(
@@ -149,13 +149,13 @@ impl RenderUnix {
         platform: gst_gl::GLPlatform,
         api: gst_gl::GLAPI,
     ) -> (Option<gst_gl::GLContext>, Option<gst_gl::GLDisplay>) {
-        if let Some(display) = display {
+        match display { Some(display) => {
             let wrapped_context =
                 unsafe { gst_gl::GLContext::new_wrapped(&display, handle, platform, api) };
             (wrapped_context, Some(display))
-        } else {
+        } _ => {
             (None, None)
-        }
+        }}
     }
 }
 
@@ -167,11 +167,11 @@ impl Render for RenderUnix {
     fn build_frame(&self, sample: gst::Sample) -> Result<VideoFrame, ()> {
         if self.gst_context.lock().unwrap().is_none() && self.gl_upload.lock().unwrap().is_some() {
             *self.gst_context.lock().unwrap() =
-                if let Some(glupload) = self.gl_upload.lock().unwrap().as_ref() {
+                match self.gl_upload.lock().unwrap().as_ref() { Some(glupload) => {
                     Some(glupload.property::<gst_gl::GLContext>("context"))
-                } else {
+                } _ => {
                     None
-                };
+                }};
         }
 
         let buffer = sample.buffer_owned().ok_or(())?;

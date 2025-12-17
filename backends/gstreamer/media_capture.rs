@@ -127,12 +127,12 @@ impl GstMediaDevices {
         if let Some(f) = f {
             let _ = self.monitor.remove_filter(f);
         }
-        if let Some(d) = devices.front() {
+        match devices.front() { Some(d) => {
             let element = d.create_element(None).ok()?;
             Some(GstMediaTrack { element })
-        } else {
+        } _ => {
             None
-        }
+        }}
     }
 }
 

@@ -76,7 +76,7 @@ impl RenderAndroid {
                     _ => None,
                 };
 
-                if let Some(display) = display {
+                match display { Some(display) => {
                     let wrapped_context = unsafe {
                         gst_gl::GLContext::new_wrapped(
                             &display,
@@ -86,23 +86,23 @@ impl RenderAndroid {
                         )
                     };
                     (wrapped_context, Some(display))
-                } else {
+                } _ => {
                     (None, None)
-                }
+                }}
             },
             _ => (None, None),
         };
 
-        if let Some(app_context) = wrapped_context {
+        match wrapped_context { Some(app_context) => {
             Some(RenderAndroid {
                 display: display.unwrap(),
                 app_context,
                 gst_context: Arc::new(Mutex::new(None)),
                 gl_upload: Arc::new(Mutex::new(None)),
             })
-        } else {
+        } _ => {
             None
-        }
+        }}
     }
 }
 
@@ -114,11 +114,11 @@ impl Render for RenderAndroid {
     fn build_frame(&self, sample: gst::Sample) -> Result<VideoFrame, ()> {
         if self.gst_context.lock().unwrap().is_none() && self.gl_upload.lock().unwrap().is_some() {
             *self.gst_context.lock().unwrap() =
-                if let Some(glupload) = self.gl_upload.lock().unwrap().as_ref() {
+                match self.gl_upload.lock().unwrap().as_ref() { Some(glupload) => {
                     Some(glupload.property::<gst_gl::GLContext>("context"))
-                } else {
+                } _ => {
                     None
-                };
+                }};
         }
 
         let buffer = sample.buffer_owned().ok_or_else(|| ())?;

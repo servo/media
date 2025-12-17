@@ -96,9 +96,9 @@ impl GStreamerMediaStream {
     }
 
     pub fn pipeline_or_new(&mut self) -> gst::Pipeline {
-        if let Some(ref pipeline) = self.pipeline {
+        match self.pipeline { Some(ref pipeline) => {
             pipeline.clone()
-        } else {
+        } _ => {
             let pipeline = gst::Pipeline::with_name("gstreamermediastream fresh pipeline");
             let clock = gst::SystemClock::obtain();
             pipeline.set_start_time(gst::ClockTime::NONE);
@@ -106,7 +106,7 @@ impl GStreamerMediaStream {
             pipeline.use_clock(Some(&clock));
             self.attach_to_pipeline(&pipeline);
             pipeline
-        }
+        }}
     }
 
     pub fn create_video() -> MediaStreamId {

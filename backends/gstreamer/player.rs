@@ -390,7 +390,7 @@ impl PlayerInner {
 }
 
 macro_rules! notify(
-    ($observer:expr, $event:expr) => {
+    ($observer:expr_2021, $event:expr_2021) => {
         $observer.lock().unwrap().send($event)
     };
 );
@@ -562,11 +562,11 @@ impl GStreamerPlayer {
 
                         for position in positions.iter() {
                             let buffer = buffer.clone();
-                            let map = if let Ok(map) = buffer.into_mapped_buffer_readable() {
+                            let map = match buffer.into_mapped_buffer_readable() { Ok(map) => {
                                 map
-                            } else {
+                            } _ => {
                                 return Err(gst::FlowError::Error);
-                            };
+                            }};
                             let chunk = Box::new(GStreamerAudioChunk(map));
                             let channel = position.to_mask() as u32;
 
@@ -757,11 +757,11 @@ impl GStreamerPlayer {
                         .get_frame_from_sample(sample)
                         .map_err(|_| gst::FlowError::Error)?;
 
-                    if let Some(video_renderer) = weak_video_renderer.upgrade() {
+                    match weak_video_renderer.upgrade() { Some(video_renderer) => {
                         video_renderer.lock().unwrap().render(frame);
-                    } else {
+                    } _ => {
                         return Err(gst::FlowError::Flushing);
-                    };
+                    }};
 
                     let _ = notify!(observer, PlayerEvent::VideoFrameUpdated);
                     Ok(gst::FlowSuccess::Ok)
@@ -901,7 +901,7 @@ impl GStreamerPlayer {
 }
 
 macro_rules! inner_player_proxy_getter {
-    ($fn_name:ident, $return_type:ty, $default_value:expr) => {
+    ($fn_name:ident, $return_type:ty, $default_value:expr_2021) => {
         fn $fn_name(&self) -> $return_type {
             if self.setup().is_err() {
                 return $default_value;
