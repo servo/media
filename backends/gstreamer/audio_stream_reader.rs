@@ -1,12 +1,12 @@
 use crate::media_stream::GStreamerMediaStream;
-use servo_media_audio::block::{Block, FRAMES_PER_BLOCK_USIZE};
 use servo_media_audio::AudioStreamReader;
-use servo_media_streams::registry::{get_stream, MediaStreamId};
-use std::sync::mpsc::{channel, Receiver};
+use servo_media_audio::block::{Block, FRAMES_PER_BLOCK_USIZE};
+use servo_media_streams::registry::{MediaStreamId, get_stream};
+use std::sync::mpsc::{Receiver, channel};
 
 use byte_slice_cast::*;
-use gst::prelude::*;
 use gst::Fraction;
+use gst::prelude::*;
 use gst_audio::AUDIO_FORMAT_F32;
 
 pub struct GStreamerAudioStreamReader {

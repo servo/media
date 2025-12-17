@@ -13,9 +13,9 @@ use servo_media::{ClientContextId, ServoMedia};
 use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::path::Path;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
-use std::sync::Arc;
 use std::thread;
 
 struct PlayerContextDummy();

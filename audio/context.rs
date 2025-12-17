@@ -1,9 +1,9 @@
+use crate::AudioBackend;
 use crate::decoder::{AudioDecoder, AudioDecoderCallbacks, AudioDecoderOptions};
 use crate::graph::{AudioGraph, InputPort, NodeId, OutputPort, PortId};
 use crate::node::{AudioNodeInit, AudioNodeMessage, ChannelInfo};
 use crate::render_thread::AudioRenderThread;
 use crate::render_thread::AudioRenderThreadMsg;
-use crate::AudioBackend;
 use servo_media_traits::{BackendMsg, ClientContextId, MediaInstance};
 use std::cell::Cell;
 use std::sync::mpsc::{self, Sender};

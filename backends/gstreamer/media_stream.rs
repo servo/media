@@ -3,7 +3,7 @@ use gst;
 use gst::prelude::*;
 use once_cell::sync::Lazy;
 use servo_media_streams::registry::{
-    get_stream, register_stream, unregister_stream, MediaStreamId,
+    MediaStreamId, get_stream, register_stream, unregister_stream,
 };
 use servo_media_streams::{MediaOutput, MediaSocket, MediaStream, MediaStreamType};
 use std::any::Any;
@@ -96,17 +96,18 @@ impl GStreamerMediaStream {
     }
 
     pub fn pipeline_or_new(&mut self) -> gst::Pipeline {
-        match self.pipeline { Some(ref pipeline) => {
-            pipeline.clone()
-        } _ => {
-            let pipeline = gst::Pipeline::with_name("gstreamermediastream fresh pipeline");
-            let clock = gst::SystemClock::obtain();
-            pipeline.set_start_time(gst::ClockTime::NONE);
-            pipeline.set_base_time(*BACKEND_BASE_TIME);
-            pipeline.use_clock(Some(&clock));
-            self.attach_to_pipeline(&pipeline);
-            pipeline
-        }}
+        match self.pipeline {
+            Some(ref pipeline) => pipeline.clone(),
+            _ => {
+                let pipeline = gst::Pipeline::with_name("gstreamermediastream fresh pipeline");
+                let clock = gst::SystemClock::obtain();
+                pipeline.set_start_time(gst::ClockTime::NONE);
+                pipeline.set_base_time(*BACKEND_BASE_TIME);
+                pipeline.use_clock(Some(&clock));
+                self.attach_to_pipeline(&pipeline);
+                pipeline
+            },
+        }
     }
 
     pub fn create_video() -> MediaStreamId {

@@ -8,9 +8,9 @@
 use gst::prelude::*;
 use gst_gl::prelude::*;
 use sm_gst_render::Render;
+use sm_player::PlayerError;
 use sm_player::context::{GlApi, GlContext, NativeDisplay, PlayerGLContext};
 use sm_player::video::{Buffer, VideoFrame, VideoFrameData};
-use sm_player::PlayerError;
 use std::sync::{Arc, Mutex};
 
 struct GStreamerBuffer {
@@ -76,33 +76,33 @@ impl RenderAndroid {
                     _ => None,
                 };
 
-                match display { Some(display) => {
-                    let wrapped_context = unsafe {
-                        gst_gl::GLContext::new_wrapped(
-                            &display,
-                            context,
-                            gst_gl::GLPlatform::EGL,
-                            gl_api,
-                        )
-                    };
-                    (wrapped_context, Some(display))
-                } _ => {
-                    (None, None)
-                }}
+                match display {
+                    Some(display) => {
+                        let wrapped_context = unsafe {
+                            gst_gl::GLContext::new_wrapped(
+                                &display,
+                                context,
+                                gst_gl::GLPlatform::EGL,
+                                gl_api,
+                            )
+                        };
+                        (wrapped_context, Some(display))
+                    },
+                    _ => (None, None),
+                }
             },
             _ => (None, None),
         };
 
-        match wrapped_context { Some(app_context) => {
-            Some(RenderAndroid {
+        match wrapped_context {
+            Some(app_context) => Some(RenderAndroid {
                 display: display.unwrap(),
                 app_context,
                 gst_context: Arc::new(Mutex::new(None)),
                 gl_upload: Arc::new(Mutex::new(None)),
-            })
-        } _ => {
-            None
-        }}
+            }),
+            _ => None,
+        }
     }
 }
 
@@ -113,12 +113,10 @@ impl Render for RenderAndroid {
 
     fn build_frame(&self, sample: gst::Sample) -> Result<VideoFrame, ()> {
         if self.gst_context.lock().unwrap().is_none() && self.gl_upload.lock().unwrap().is_some() {
-            *self.gst_context.lock().unwrap() =
-                match self.gl_upload.lock().unwrap().as_ref() { Some(glupload) => {
-                    Some(glupload.property::<gst_gl::GLContext>("context"))
-                } _ => {
-                    None
-                }};
+            *self.gst_context.lock().unwrap() = match self.gl_upload.lock().unwrap().as_ref() {
+                Some(glupload) => Some(glupload.property::<gst_gl::GLContext>("context")),
+                _ => None,
+            };
         }
 
         let buffer = sample.buffer_owned().ok_or_else(|| ())?;

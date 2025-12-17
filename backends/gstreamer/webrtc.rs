@@ -8,11 +8,11 @@ use gst::prelude::*;
 use gst_sdp;
 use gst_webrtc;
 use log::warn;
-use servo_media_streams::registry::{get_stream, MediaStreamId};
 use servo_media_streams::MediaStreamType;
+use servo_media_streams::registry::{MediaStreamId, get_stream};
+use servo_media_webrtc::WebRtcController as WebRtcThread;
 use servo_media_webrtc::datachannel::DataChannelId;
 use servo_media_webrtc::thread::InternalEvent;
-use servo_media_webrtc::WebRtcController as WebRtcThread;
 use servo_media_webrtc::*;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -283,7 +283,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                         return Err(WebRtcError::Backend(format!(
                             "unknown signaling state: {:?}",
                             i
-                        )))
+                        )));
                     },
                 };
                 self.signaller.update_signaling_state(state);
@@ -301,7 +301,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                         return Err(WebRtcError::Backend(format!(
                             "unknown gathering state: {:?}",
                             i
-                        )))
+                        )));
                     },
                 };
                 self.signaller.update_gathering_state(state);
@@ -323,7 +323,7 @@ impl WebRtcControllerBackend for GStreamerWebRtcController {
                         return Err(WebRtcError::Backend(format!(
                             "unknown ICE connection state: {:?}",
                             i
-                        )))
+                        )));
                     },
                 };
                 self.signaller.update_ice_connection_state(state);

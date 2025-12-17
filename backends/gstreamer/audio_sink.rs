@@ -9,8 +9,8 @@ use servo_media_audio::render_thread::AudioRenderThreadMsg;
 use servo_media_audio::sink::{AudioSink, AudioSinkError};
 use servo_media_streams::MediaSocket;
 use std::cell::{Cell, RefCell};
-use std::sync::mpsc::Sender;
 use std::sync::Arc;
+use std::sync::mpsc::Sender;
 use std::thread::Builder;
 
 const DEFAULT_SAMPLE_RATE: f32 = 44100.;
@@ -64,11 +64,12 @@ impl GStreamerAudioSink {
     }
 
     fn set_channels_if_changed(&self, channels: u8) -> Result<(), AudioSinkError> {
-        let curr_channels = match self.audio_info.borrow().as_ref() { Some(ch) => {
-            ch.channels()
-        } _ => {
-            return Ok(());
-        }};
+        let curr_channels = match self.audio_info.borrow().as_ref() {
+            Some(ch) => ch.channels(),
+            _ => {
+                return Ok(());
+            },
+        };
         if channels != curr_channels as u8 {
             self.set_audio_info(self.sample_rate.get(), channels)?;
         }

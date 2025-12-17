@@ -1,4 +1,4 @@
-use crate::block::{Block, Chunk, Tick, FRAMES_PER_BLOCK};
+use crate::block::{Block, Chunk, FRAMES_PER_BLOCK, Tick};
 use crate::node::{AudioNodeEngine, AudioScheduledSourceNodeMessage, BlockInfo, OnEndedCallback};
 use crate::node::{AudioNodeType, ChannelInfo, ShouldPlay};
 use crate::param::{Param, ParamType};

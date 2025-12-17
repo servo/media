@@ -72,9 +72,9 @@ impl AudioStream {
 pub mod android {
     extern crate jni;
 
+    use self::jni::JNIEnv;
     use self::jni::objects::JClass;
     use self::jni::sys::jlong;
-    use self::jni::JNIEnv;
     use super::*;
 
     #[no_mangle]
