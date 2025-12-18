@@ -158,6 +158,9 @@ impl Player for DummyPlayer {
     fn paused(&self) -> bool {
         true
     }
+    fn can_resume(&self) -> bool {
+        true
+    }
 
     fn stop(&self) -> Result<(), PlayerError> {
         Ok(())
