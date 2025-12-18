@@ -160,10 +160,29 @@ impl Param {
                 }
             }
             if move_next {
+                // Fix:
+                // If we start rendering after a scheduled SetValueAtTime(tick), we still must apply the
+                // value (it is effective from `tick`) and anchor the next event (e.g. a linearRampToValueAtTime) to the
+                // scheduled boundary time `tick`, not to `current_tick` ("now"). Otherwise linearRampToValueAtTime compute
+                // from the wrong start time/value when we missed earlier ticks.
+                let (next_start_time, next_start_value) = match current_event {
+                    AutomationEvent::SetValueAtTime(val, tick) => {
+                        if current_tick >= *tick {
+                            if self.val != *val {
+                                changed = true;
+                            }
+                            self.val = *val;
+                        }
+                        (*tick, self.val)
+                    },
+                    _ => (current_tick, self.val),
+                };
+
                 self.current_event += 1;
-                self.event_start_value = self.val;
-                self.event_start_time = current_tick;
-                if let Some(next) = self.events.get(self.current_event + 1) {
+                self.event_start_time = next_start_time;
+                self.event_start_value = next_start_value;
+                // Fix: after increment, the current event is at `self.current_event` (not `+ 1`).
+                if let Some(next) = self.events.get(self.current_event) {
                     current_event = next;
                     // may need to move multiple times
                     continue;
