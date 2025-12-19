@@ -244,37 +244,66 @@ impl Backend for GStreamerBackend {
         media_capture::create_videoinput_stream(set)
     }
 
-    fn can_play_type(&self, media_type: &str) -> SupportsMediaType {
-        if let Ok(mime) = media_type.parse::<Mime>() {
-            // XXX GStreamer is currently not very reliable playing OGG and most of
-            //     the media related WPTs uses OGG if we report that we are able to
-            //     play this type. So we report that we are unable to play it to force
-            //     the usage of other types.
-            //     https://gitlab.freedesktop.org/gstreamer/gst-plugins-base/issues/520
-            if mime.subtype() == mime::OGG {
-                return SupportsMediaType::No;
-            }
+    fn can_play_type(&self, type_: &str) -> SupportsMediaType {
+        // Remove all whitespace from the input string to conform to the
+        // stricter parsing rules of the `mime` crate.
+        // <https://mimesniff.spec.whatwg.org/#parsing-a-mime-type>
+        // <https://github.com/hyperium/mime/blob/v0.3.17/src/parse.rs#L111>
+        let stripped_type: String = type_.chars().filter(|c| !c.is_whitespace()).collect();
 
-            let mime_type = mime.type_().as_str().to_owned() + "/" + mime.subtype().as_str();
-            let codecs = match mime.get_param("codecs") {
-                Some(codecs) => codecs
-                    .as_str()
-                    .split(',')
-                    .map(|codec| codec.trim())
-                    .collect(),
-                None => vec![],
-            };
-
-            if GSTREAMER_REGISTRY_SCANNER.is_container_type_supported(&mime_type) {
-                if codecs.is_empty() {
-                    return SupportsMediaType::Maybe;
-                } else if GSTREAMER_REGISTRY_SCANNER.are_all_codecs_supported(&codecs) {
-                    return SupportsMediaType::Probably;
-                } else {
+        match stripped_type.parse::<Mime>() {
+            Ok(mime) => {
+                // XXX GStreamer is currently not very reliable playing OGG and most of
+                //     the media related WPTs uses OGG if we report that we are able to
+                //     play this type. So we report that we are unable to play it to force
+                //     the usage of other types.
+                //     https://gitlab.freedesktop.org/gstreamer/gst-plugins-base/issues/520
+                if mime.subtype() == mime::OGG {
                     return SupportsMediaType::No;
                 }
-            }
+
+                let mime_type = mime.type_().as_str().to_owned() + "/" + mime.subtype().as_str();
+
+                let codecs = match mime.get_param("codecs") {
+                    Some(codecs) if !codecs.as_str().is_empty() => codecs
+                        .as_str()
+                        .split(',')
+                        .map(|codec| codec.trim())
+                        .collect(),
+                    _ => vec![],
+                };
+
+                if GSTREAMER_REGISTRY_SCANNER.is_container_type_supported(&mime_type) {
+                    if codecs.is_empty() {
+                        return SupportsMediaType::Maybe;
+                    } else if GSTREAMER_REGISTRY_SCANNER.are_all_codecs_supported(&codecs) {
+                        return SupportsMediaType::Probably;
+                    }
+                }
+            },
+            Err(_) if type_.contains(";codecs") => {
+                // The HTML specification says that a media resource type
+                // may be present and if present, the value must be a valid MIME
+                // type string. However there are still a lot of sites using incomplete
+                // `codecs` parameter string that don't work with the stricter
+                // parsing rules (e.g. "audio/webm;codecs").
+                // <https://html.spec.whatwg.org/multipage/#mime-types>
+                // <https://www.rfc-editor.org/rfc/rfc6381#section-3.2>
+                // <https://github.com/web-platform-tests/wpt/pull/7294>
+
+                // Let's use fallback mode with MIME type essence to match the
+                // behavior of other browsers.
+                let mime_type = &type_[0..type_.find(';').unwrap_or(type_.len())];
+
+                if GSTREAMER_REGISTRY_SCANNER.is_container_type_supported(&mime_type) {
+                    return SupportsMediaType::Maybe;
+                }
+            },
+            Err(error) => {
+                log::debug!("Failed to parse MIME type ({type_:?}): {error:?}");
+            },
         }
+
         SupportsMediaType::No
     }
 
