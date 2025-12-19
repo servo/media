@@ -31,6 +31,7 @@ use servo_media_traits::{BackendMsg, ClientContextId, MediaInstance};
 
 const DEFAULT_MUTED: bool = false;
 const DEFAULT_PAUSED: bool = true;
+const DEFAULT_CAN_RESUME: bool = false;
 const DEFAULT_PLAYBACK_RATE: f64 = 1.0;
 const DEFAULT_VOLUME: f64 = 1.0;
 const DEFAULT_TIME_RANGES: Vec<Range<f64>> = vec![];
@@ -124,6 +125,7 @@ struct PlayerInner {
     input_size: u64,
     play_state: gst_play::PlayState,
     paused: Cell<bool>,
+    can_resume: Cell<bool>,
     playback_rate: Cell<f64>,
     muted: Cell<bool>,
     volume: Cell<f64>,
@@ -199,6 +201,7 @@ impl PlayerInner {
         }
 
         self.paused.set(false);
+        self.can_resume.set(false);
         self.player.play();
         Ok(())
     }
@@ -206,6 +209,7 @@ impl PlayerInner {
     pub fn stop(&mut self) -> Result<(), PlayerError> {
         self.player.stop();
         self.paused.set(true);
+        self.can_resume.set(false);
         self.last_metadata = None;
         self.source = None;
         Ok(())
@@ -217,12 +221,17 @@ impl PlayerInner {
         }
 
         self.paused.set(true);
+        self.can_resume.set(true);
         self.player.pause();
         Ok(())
     }
 
     pub fn paused(&self) -> bool {
         self.paused.get()
+    }
+
+    pub fn can_resume(&self) -> bool {
+        self.can_resume.get()
     }
 
     pub fn end_of_stream(&mut self) -> Result<(), PlayerError> {
@@ -619,6 +628,7 @@ impl GStreamerPlayer {
             input_size: 0,
             play_state: gst_play::PlayState::Stopped,
             paused: Cell::new(DEFAULT_PAUSED),
+            can_resume: Cell::new(DEFAULT_CAN_RESUME),
             playback_rate: Cell::new(DEFAULT_PLAYBACK_RATE),
             muted: Cell::new(DEFAULT_MUTED),
             volume: Cell::new(DEFAULT_VOLUME),
@@ -951,6 +961,7 @@ impl Player for GStreamerPlayer {
     inner_player_proxy!(play, ());
     inner_player_proxy!(pause, ());
     inner_player_proxy_getter!(paused, bool, DEFAULT_PAUSED);
+    inner_player_proxy_getter!(can_resume, bool, DEFAULT_CAN_RESUME);
     inner_player_proxy!(stop, ());
     inner_player_proxy!(end_of_stream, ());
     inner_player_proxy!(set_input_size, size, u64);
@@ -987,6 +998,10 @@ impl MediaInstance for GStreamerPlayer {
     }
 
     fn resume(&self) -> Result<(), ()> {
+        if !self.can_resume() {
+            return Ok(());
+        }
+
         self.play().map_err(|_| ())
     }
 }
