@@ -167,10 +167,12 @@ impl Backend for OhosBackend {
                     .collect(),
                 None => vec![],
             };
-            if OHOS_REGISTRY_SCANNER.contains(mime_type.as_str()) {
+
+            if OHOS_REGISTRY_SCANNER.are_mime_and_codecs_supported(&mime_type, &codecs) {
                 if codecs.is_empty() {
                     return SupportsMediaType::Maybe;
                 }
+                return SupportsMediaType::Probably;
             }
         }
         SupportsMediaType::No
