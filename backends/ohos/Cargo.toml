@@ -16,5 +16,7 @@ servo-media-player = { path = "../../player" }
 servo-media-streams = { path = "../../streams" }
 servo-media-traits = { path = "../../traits" }
 servo-media-webrtc = { path = "../../webrtc" }
+mime = "0.3.13"
+once_cell = "1.18.0"
 log = "0.4"
-ohos-media-sys = { version = "0.0.4" ,features = ["api-13"] }
+ohos-media-sys = { version = "0.0.5" ,features = ["api-21"] }

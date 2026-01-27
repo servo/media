@@ -40,6 +40,10 @@ impl Player for OhosAVPlayer {
         todo!()
     }
 
+    fn can_resume(&self) -> bool {
+        todo!()
+    }
+
     fn stop(&self) -> Result<(), servo_media_player::PlayerError> {
         todo!()
     }
