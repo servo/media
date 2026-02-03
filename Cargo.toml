@@ -34,7 +34,6 @@ gstreamer-gl-egl = { version = "0.24" }
 gstreamer-gl-wayland = { version = "0.24" }
 gstreamer-gl-x11 = { version = "0.24" }
 gstreamer-sys = "0.24"
-# temporary git revision till merged
 ipc-channel = { version = "0.21"}
 
 [patch."https://github.com/servo/webrender"]
